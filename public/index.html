@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Network</title>
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link href='https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css' rel='stylesheet'>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar close">
+        <div class="logo-details">
+            <img src="/images/logo.png" alt="Logo" class="logo-img">
+        </div>
+        <ul class="nav-links">
+            <li>
+                <a href="index.html">
+                    <i class='bx bxs-coin'></i>
+                    <span class="link_name">ANML&nbsp;Token</span>
+                </a>
+            </li>
+            <li>
+                <a href="/html/stake.html">
+                    <i class='bx bxs-lock-alt'></i>
+                    <span class="link_name">Stake&nbsp;ERTH</span>
+                </a>
+            </li>
+            <li class="submenu">
+                <a href="#">
+                    <i class='bx bxs-pie-chart-alt-2'></i>
+                    <span class="link_name">Governance</span>
+                    <i class='bx bx-chevron-right arrow'></i>
+                </a>
+                <ul class="submenu-list remove">
+                    <li><a href="/html/deflationfund.html">Deflation Fund</a></li>
+                    <li><a href="publicGoods.html">Public Goods Fund</a></li>
+                </ul>
+            </li>
+            <li>
+                <div class="profile-details">
+                    <div class="profile-content">
+                        <img src="/images/keplr.svg" alt="profileImg">
+                    </div>
+                    <div class="name-job">
+                        <div id="wallet-name" class="profile_name">Wallet Name</div>
+                        <div class="job">keplr</div>
+                    </div>
+                    <i class='bx bx-log-out'></i>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Home Section -->
+    <section class="home-section">
+        <div class="home-content">
+            <div id="loading"></div>
+            <div class="menu-toggle">
+                <i class='bx bx-menu'></i>
+            </div>
+            <div id="register-box" class="test-box remove">
+                <img src="/images/passport.svg" width=350 alt="Logo" style="filter: drop-shadow(25px 25px 25px #aaa);" class="logo-img">
+                <button onclick="registerButton()" class="claim-button">Register</button>
+            </div>
+            <div id="claim-box" class="test-box remove">
+                <img src="/images/anml.png" alt="Logo" class="logo-img">
+                <button onclick="claimButton()" class="claim-button">Claim</button>
+            </div>
+            <div id="disclaimer-box" class="test-box remove">
+                <i class='bx bx-error-alt'></i>
+                <span class="disclaimer-text"><b>DISCLAIMER:</b> In order to secure proof of humanity your currently connected wallet address will be associated with your identity.</span>
+                <div id='veriff-root' style="margin-top: 30px"></div>
+            </div>
+            <div id="pending-box" class="test-box remove">
+                <i class='bx bx-hourglass status-icon'></i>
+                <span class="disclaimer-text">Your verification is now pending. Please allow up to 24 hours to verify. This page will be updated when complete</span>
+            </div>
+            <div id="complete-box" class="test-box remove">
+                <img src="/images/watermelon.png" width=350 alt="Logo" class="logo-img">
+                <span class="success-text"><b>CLAIMED! </b>see you tomorrow!</span>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://www.unpkg.com/secretjs/dist/browser.js"></script>
+    <script src='https://cdn.veriff.me/sdk/js/1.5/veriff.min.js'></script>
+    <script src='https://cdn.veriff.me/incontext/js/v1/veriff.js'></script>
+    <script src="/js/global.js"></script>
+    <script src="/js/index.js"></script>
+</body>
+
+</html>
