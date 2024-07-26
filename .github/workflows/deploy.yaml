@@ -26,4 +26,4 @@ jobs:
           cd erth-mainet-app
           git pull origin main
           npm install
-          pm2 restart app.js
+          pm2 restart mainnet-app.js
