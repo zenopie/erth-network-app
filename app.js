@@ -6,7 +6,7 @@ const path = require('path');
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
 
 const app = express();
-const WEBHOOK_PORT = 4000; // Port for HTTPS
+const WEBHOOK_PORT = 3000; // Port for HTTPS
 
 // Define contract address and hash for registration
 const REGISTRATION_CONTRACT = "secret1vl3auz6w3lxaq56uf06d442edm6xxv2qvhwcdq";
