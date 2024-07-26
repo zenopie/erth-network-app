@@ -23,7 +23,7 @@ jobs:
         username: ${{ secrets.REMOTE_SERVER_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd erth-mainet-app
+          cd erth-mainnet-app
           git pull origin main
           npm install
           pm2 restart mainnet-app.js
