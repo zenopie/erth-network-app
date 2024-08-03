@@ -28,6 +28,9 @@ function get_value(file) {
 const API_SECRET = get_value("API_SECRET.txt");
 const WALLET_KEY = get_value("WALLET_KEY.txt");
 
+// Log the API_SECRET being used
+console.log("Using API_SECRET:", API_SECRET);
+
 // Initialize wallet and Secret Network client
 const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
