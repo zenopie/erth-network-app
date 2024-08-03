@@ -80,29 +80,42 @@ app.use(express.static('public'));
 
 // Function to generate HMAC signature
 function generateSignature(payload, secret) {
-  if (typeof payload === 'object') {
+  if (payload.constructor === Object) {
     payload = JSON.stringify(payload);
   }
 
-  const hash = crypto.createHmac("sha256", secret)
-    .update(payload, 'utf8')
-    .digest("hex");
+  if (payload.constructor !== Buffer) {
+    payload = Buffer.from(payload, "utf8");
+  }
 
-  return hash;
+  const signature = crypto.createHmac("sha256", secret);
+  signature.update(payload);
+  return signature.digest("hex");
 }
 
 // Function to validate HMAC signature
-function isSignatureValid({ signature, secret, payload }) {
-  const generatedSignature = generateSignature(payload, secret);
-  console.log("Generated hash:", generatedSignature);
+function isSignatureValid(data) {
+  const { signature, secret } = data;
+  let { payload } = data;
+
+  if (data.payload.constructor === Object) {
+    payload = JSON.stringify(data.payload);
+  }
+  if (payload.constructor !== Buffer) {
+    payload = Buffer.from(payload, "utf8");
+  }
+  const hash = crypto.createHmac("sha256", secret);
+  hash.update(payload);
+  const digest = hash.digest("hex");
+  console.log("Generated hash:", digest);
   console.log("Provided signature:", signature.toLowerCase());
-  return generatedSignature === signature.toLowerCase();
+  return digest === signature.toLowerCase();
 }
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
   const signature = req.get("x-hmac-signature");
-  const payload = JSON.stringify(req.body);
+  const payload = req.body;
   const secret = API_SECRET;
 
   console.log("Received a decisions webhook");
@@ -143,7 +156,7 @@ app.post("/api/veriff/decisions/", (req, res) => {
 // Webhook endpoint for Veriff events
 app.post("/api/veriff/events/", (req, res) => {
   const signature = req.get("x-hmac-signature");
-  const payload = JSON.stringify(req.body);
+  const payload = req.body;
   const secret = API_SECRET;
   const isValid = isSignatureValid({ signature, secret, payload });
 
