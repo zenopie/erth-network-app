@@ -76,85 +76,86 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Function to validate HMAC signature
-function isSignatureValid(data) {
-  const { signature, secret } = data;
-  let { payload } = data;
-
-  if (payload.constructor === Object) {
+function isSignatureValid({ signature, secret, payload }) {
+  // Convert payload to string if it's an object
+  if (typeof payload === 'object') {
     payload = JSON.stringify(payload);
   }
-  if (payload.constructor !== Buffer) {
-    payload = Buffer.from(payload, "utf8");
-  }
-  const hash = crypto.createHmac("sha256", secret);
-  hash.update(payload);
-  const digest = hash.digest("hex");
-  return digest === signature.toLowerCase();
-}
 
-// Endpoint to check if an address has pending verifications
-app.get("/api/pending/:address", (req, res) => {
-  const address = req.params.address;
-  const pending = pending_verifications.includes(address);
-  res.json({ pending: pending });
-});
+  // Create HMAC hash using the secret
+  const hash = crypto.createHmac("sha256", secret)
+    .update(payload, 'utf8')
+    .digest("hex");
+
+  // Compare the generated hash with the provided signature
+  return hash === signature.toLowerCase();
+}
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
   const signature = req.get("x-hmac-signature");
+  const payload = JSON.stringify(req.body);
   const secret = API_SECRET;
-  const payload = req.body;
 
   console.log("Received a decisions webhook");
   const isValid = isSignatureValid({ signature, secret, payload });
   console.log("Validated signature:", isValid);
-  console.log("Payload", JSON.stringify(payload, null, 4));
+  console.log("Payload", JSON.stringify(req.body, null, 4));
   res.json({ status: "success" });
 
-  let find_address = pending_verifications.indexOf(payload.vendorData);
-  if (find_address != -1 && isValid) {
-    pending_verifications.splice(find_address, 1);
-    save_pending(pending_verifications, "PENDING_VERIFS.txt");
-    console.log("Spliced address", pending_verifications);
-  } else {
-    console.log("Error finding address in pending verifications");
-  }
+  if (isValid) {
+    let find_address = pending_verifications.indexOf(req.body.vendorData);
+    if (find_address != -1) {
+      pending_verifications.splice(find_address, 1);
+      save_pending(pending_verifications, "PENDING_VERIFS.txt");
+      console.log("Spliced address", pending_verifications);
 
-  if (payload.data.verification.decision == "approved" && isValid) {
-    const userObject = {
-      country: payload.data.verification.document.country.value,
-      address: payload.vendorData,
-      first_name: payload.data.verification.person.firstName,
-      last_name: payload.data.verification.person.lastName,
-      date_of_birth: payload.data.verification.document.dateOfBirth,
-      document_number: payload.data.document.number.value,
-      id_type: payload.data.document.type.value,
-      document_expiration: payload.data.document.validUntil.value,
-    };
-    const message_object = {
-      register: { user_object: userObject }
-    };
-    contract_interaction(message_object);
+      if (req.body.data.verification.decision === "approved") {
+        const userObject = {
+          country: req.body.data.verification.document.country.value,
+          address: req.body.vendorData,
+          first_name: req.body.data.verification.person.firstName,
+          last_name: req.body.data.verification.person.lastName,
+          date_of_birth: req.body.data.verification.document.dateOfBirth,
+          document_number: req.body.data.document.number.value,
+          id_type: req.body.data.document.type.value,
+          document_expiration: req.body.data.document.validUntil.value,
+        };
+        const message_object = {
+          register: { user_object: userObject }
+        };
+        contract_interaction(message_object);
+      }
+    } else {
+      console.log("Error finding address in pending verifications");
+    }
   }
 });
 
 // Webhook endpoint for Veriff events
 app.post("/api/veriff/events/", (req, res) => {
   const signature = req.get("x-hmac-signature");
+  const payload = JSON.stringify(req.body);
   const secret = API_SECRET;
-  const payload = req.body;
   const isValid = isSignatureValid({ signature, secret, payload });
 
   console.log("Received an events webhook");
   console.log("Validated signature:", isValid);
-  console.log("Payload", JSON.stringify(payload, null, 4));
+  console.log("Payload", JSON.stringify(req.body, null, 4));
   res.json({ status: "success" });
 
-  if (payload.action == "submitted" && isValid) {
-    pending_verifications.push(payload.vendorData);
+  if (isValid && req.body.action === "submitted") {
+    pending_verifications.push(req.body.vendorData);
     save_pending(pending_verifications, "PENDING_VERIFS.txt");
     console.log("Pushed address", pending_verifications);
   }
+});
+
+// Endpoint to check if an address has pending verifications
+app.get("/api/pending/:address", (req, res) => {
+  const address = req.params.address;
+  const pending = pending_verifications.includes(address);
+  res.json({ pending: pending });
 });
 
 // Start the server
