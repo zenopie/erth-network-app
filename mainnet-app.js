@@ -75,7 +75,7 @@ app.use(bodyParser.json());
 // Serve static files from the 'public' directory
 app.use(express.static('public'));
 
-// Function to validate HMAC signature
+// Function to generate HMAC signature
 function generateSignature(payload, secret) {
   if (typeof payload === 'object') {
     payload = JSON.stringify(payload);
@@ -85,14 +85,14 @@ function generateSignature(payload, secret) {
     .update(payload, 'utf8')
     .digest("hex");
 
-  console.log("Generated hash:", hash);
-  console.log("Provided signature:", signature.toLowerCase());
-
   return hash;
 }
 
+// Function to validate HMAC signature
 function isSignatureValid({ signature, secret, payload }) {
   const generatedSignature = generateSignature(payload, secret);
+  console.log("Generated hash:", generatedSignature);
+  console.log("Provided signature:", signature.toLowerCase());
   return generatedSignature === signature.toLowerCase();
 }
 
