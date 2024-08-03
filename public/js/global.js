@@ -23,36 +23,12 @@ function loadSidebar() {
         .then(data => {
             document.getElementById('sidebar-placeholder').innerHTML = data;
             initializeSidebar(); // Call the sidebar initialization function
-            initializeLoginLogout(); // Initialize login/logout functionality
         })
         .catch(error => console.error('Error loading sidebar:', error));
 }
 
-// Initialize the login/logout functionality
-function initializeLoginLogout() {
-    const profileDetails = document.querySelector('.profile-details');
-    const walletName = document.querySelector('#wallet-name');
-    const logButton = profileDetails.querySelector('i');
-
-    if (!profileDetails || !walletName || !logButton) {
-        console.error('Profile details, wallet name, or log button not found!');
-        return;
-    }
-
-    logButton.addEventListener('click', function() {
-        if (walletName.textContent === "Log In") {
-            connectKeplr();
-        } else {
-            disconnectKeplr();
-        }
-    });
-}
-
-// Ensure loadSidebar is called when the page loads
-document.addEventListener("DOMContentLoaded", loadSidebar);
 
 // Global functions
-
 
 function showLoadingScreen(show) {
     const loadingScreen = document.querySelector('#loading-screen');
@@ -68,19 +44,6 @@ function showLoadingScreen(show) {
         console.log("Hiding loading screen");
     }
 }
-
-function transitionBetweenScreens(hideSelector, showSelector) {
-    console.log(`Starting transition from ${hideSelector} to ${showSelector}`);
-    showLoadingScreen(true);
-
-    setTimeout(() => {
-        document.querySelector(hideSelector).classList.add("remove");
-        document.querySelector(showSelector).classList.remove("remove");
-        showLoadingScreen(false);
-        console.log(`Completed transition from ${hideSelector} to ${showSelector}`);
-    }, 1000); // Adjust the delay as needed
-}
-
 
 async function try_query_balance(viewing_key, contract, hash) {
     try {
@@ -194,98 +157,4 @@ async function checkAccountExists(accountAddress) {
     }
 }
 
-const veriff = Veriff({
-    host: 'https://stationapi.veriff.com',
-    apiKey: '0c926c59-8076-42a5-a7a3-80727c13e461',
-    parentId: 'veriff-root',
-    onSession: function(err, response) {
-        window.location.href = response.verification.url;
-    }
-});
 
-async function check_verification_status() {
-    console.log("Entering check_verification_status");
-    let querymsg = {
-        registration_status: {
-            address: secretjs.address
-        }
-    };
-    let anml_status = "not_verified";
-    let contract_value = await query(REGISTRATION_CONTRACT, REGISTRATION_HASH, querymsg);
-    if (contract_value.registration_status == "registered") {
-        const now = Date.now();
-        const oneDayInMillis = 24 * 60 * 60 * 1000; // 86,400,000 milliseconds in a day
-        let next_claim = contract_value.last_claim / 1000000 + oneDayInMillis; // divide to turn nanos into milliseconds then add one day
-        if (now > next_claim) {
-            anml_status = "claimable";
-        } else {
-            anml_status = "claimed";
-        }
-    } else {
-        const pending_check_url = '/api/pending/' + window.secretjs.address;
-        await fetch(pending_check_url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('GET request successful:', data);
-                if (data.pending) {
-                    anml_status = "pending";
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    }
-    console.log("Anml Status:", anml_status);
-    if (anml_status == "claimable") {
-        transitionBetweenScreens("#loading-screen", "#claim-box");
-    } else if (anml_status == "claimed") {
-        transitionBetweenScreens("#loading-screen", "#complete-box");
-    } else if (anml_status == "not_verified") {
-        transitionBetweenScreens("#loading-screen", "#register-box");
-    } else if (anml_status == "pending") {
-        transitionBetweenScreens("#loading-screen", "#pending-box");
-    }
-    console.log("Exiting check_verification_status");
-}
-
-
-function registerButton() {
-    console.log("Register button clicked");
-    veriff.setParams({
-        person: {
-            givenName: ' ',
-            lastName: ' '
-        },
-        vendorData: window.secretjs.address
-    });
-    veriff.mount();
-    transitionBetweenScreens("#register-box", "#disclaimer-box");
-}
-
-
-async function claimButton() {
-    console.log("Claim button clicked");
-    let contractmsg = {
-        claim: {}
-    };
-    let tx = await contract(contractmsg);
-
-    if (tx.arrayLog) {
-        const logEntry = tx.arrayLog.find(
-            (log) => log.type === "message" && log.key === "result"
-        );
-        transitionBetweenScreens("#loading", "#complete-box");
-    } else {
-        console.log("test");
-    }
-}

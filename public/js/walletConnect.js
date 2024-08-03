@@ -42,37 +42,42 @@ async function connectKeplr() {
                 try {
                     let wallet_name = await window.keplr.getKey(chainId);
                     document.querySelector("#wallet-name").innerHTML = wallet_name.name.slice(0, 12);
-                    updateLoginLogoutDisplay();
                     start();  // Call start() after successful connection
                 } catch (error) {
                     console.log("Error getting wallet name:", error);
                 }
             } else {
                 console.log("Error connecting to Keplr.");
+                document.querySelector("#wallet-connection-box").classList.remove('remove');
             }
         } catch (error) {
             console.error("Error connecting to Keplr:", error);
+            document.querySelector("#wallet-connection-box").classList.remove('remove');
         } finally {
         }
     }
 }
 
-
-function disconnectKeplr() {
-    console.log("Disconnecting Keplr");
-    const walletConnectBox = document.querySelector('#wallet-connection-box').classList.remove("remove");
-    document.querySelector("#wallet-name").innerHTML = "Log In";
-    updateLoginLogoutDisplay();
+async function initialization() {
+    loadSidebar();
+    await connectKeplr();
+    // Additional initialization can go here
 }
 
-function updateLoginLogoutDisplay() {
-    const walletName = document.querySelector('#wallet-name');
-    const logButton = document.querySelector('.profile-details i');
-    if (walletName.textContent === "Log In") {
-        logButton.classList.remove('bx-log-out');
-        logButton.classList.add('bx-log-in');
+function showLoadingScreen(show) {
+    const loadingScreen = document.querySelector("#loading-screen");
+    if (loadingScreen) {
+        if (show) {
+            loadingScreen.classList.remove('remove');
+            console.log("Showing loading screen");
+        } else {
+            loadingScreen.classList.add('remove');
+            console.log("Hiding loading screen");
+        }
     } else {
-        logButton.classList.remove('bx-log-in');
-        logButton.classList.add('bx-log-out');
+        console.error('Loading screen element not found!');
     }
 }
+
+// Ensure initialization() is called when the page loads
+document.addEventListener("DOMContentLoaded", initialization);

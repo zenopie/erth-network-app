@@ -271,3 +271,22 @@ red {
 .submenu-list li a:hover {
   color: blue;
 }
+
+.sidebar .profile-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* This ensures the content inside the profile-details is spaced out */
+}
+
+.sidebar .name-job {
+  text-align: left; /* Aligns the text to the right */
+}
+
+.sidebar .profile-details .profile-content {
+  flex-shrink: 0; /* Prevents the profile image from shrinking */
+}
+
+.sidebar .profile-details .name-job {
+  flex-grow: 1; /* Allows the name-job to take up the remaining space */
+  padding-left: 10px; /* Adds some padding to the left for spacing */
+}
