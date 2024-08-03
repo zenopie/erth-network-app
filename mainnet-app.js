@@ -34,8 +34,8 @@ console.log("Using API_SECRET:", API_SECRET);
 // Initialize wallet and Secret Network client
 const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
-  url: "https://api.pulsar.scrttestnet.com",
-  chainId: "pulsar-3",
+  url: "https://lcd.mainnet.secretsaturn.net",
+  chainId: "secret-4",
   wallet: wallet,
   walletAddress: wallet.address,
 });
