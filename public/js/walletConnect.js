@@ -59,7 +59,7 @@ async function connectKeplr() {
 }
 
 async function initialization() {
-    loadSidebar();
+    await loadSidebar();
     await connectKeplr();
     // Additional initialization can go here
 }
