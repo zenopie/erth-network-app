@@ -54,7 +54,9 @@ async function contract_interaction(message_object) {
     gasPriceInFeeDenom: 0.1,
     feeDenom: "uscrt",
   });
+
   console.log(resp);
+  return resp;
 }
 
 // Retrieve and parse the list of pending verifications
@@ -113,7 +115,7 @@ function isSignatureValid(data) {
 }
 
 // Webhook endpoint for Veriff decisions
-app.post("/api/veriff/decisions/", (req, res) => {
+app.post("/api/veriff/decisions/", async (req, res) => {
   const signature = req.get("x-hmac-signature");
   const payload = req.body;
   const secret = API_SECRET;
@@ -125,32 +127,36 @@ app.post("/api/veriff/decisions/", (req, res) => {
   res.json({ status: "success" });
 
   if (isValid) {
-    let find_address = pending_verifications.indexOf(req.body.vendorData);
-    if (find_address != -1) {
-      pending_verifications.splice(find_address, 1);
-      save_pending(pending_verifications, "PENDING_VERIFS.txt");
-      console.log("Spliced address", pending_verifications);
+    const verification = req.body.data.verification;
+    if (verification.decision === "approved" && verification.document && verification.person) {
+      const userObject = {
+        country: verification.document.country ? verification.document.country.value : null,
+        address: req.body.vendorData,
+        first_name: verification.person.firstName ? verification.person.firstName.value : null,
+        last_name: verification.person.lastName ? verification.person.lastName.value : null,
+        date_of_birth: verification.person.dateOfBirth ? verification.person.dateOfBirth.value : null,
+        document_number: verification.document.number ? verification.document.number.value : null,
+        id_type: verification.document.type ? verification.document.type.value : null,
+        document_expiration: verification.document.validUntil ? verification.document.validUntil.value : null,
+      };
+      const message_object = {
+        register: { user_object: userObject }
+      };
 
-      const verification = req.body.data.verification;
-      if (verification.decision === "approved" && verification.document && verification.person) {
-        const userObject = {
-          country: verification.document.country ? verification.document.country.value : null,
-          address: req.body.vendorData,
-          first_name: verification.person.firstName ? verification.person.firstName.value : null,
-          last_name: verification.person.lastName ? verification.person.lastName.value : null,
-          date_of_birth: verification.person.dateOfBirth ? verification.person.dateOfBirth.value : null,
-          document_number: verification.document.number ? verification.document.number.value : null,
-          id_type: verification.document.type ? verification.document.type.value : null,
-          document_expiration: verification.document.validUntil ? verification.document.validUntil.value : null,
-        };
-        console.log(userObject);
-        const message_object = {
-          register: { user_object: userObject }
-        };
-        contract_interaction(message_object);
+      const resp = await contract_interaction(message_object);
+
+      if (resp.code === 0) { // Assuming code 0 means success
+        let find_address = pending_verifications.indexOf(req.body.vendorData);
+        if (find_address != -1) {
+          pending_verifications.splice(find_address, 1);
+          save_pending(pending_verifications, "PENDING_VERIFS.txt");
+          console.log("Spliced address", pending_verifications);
+        } else {
+          console.log("Error finding address in pending verifications");
+        }
+      } else {
+        console.log("Contract interaction failed", resp);
       }
-    } else {
-      console.log("Error finding address in pending verifications");
     }
   }
 });
