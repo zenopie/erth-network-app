@@ -9,8 +9,8 @@ const app = express();
 const WEBHOOK_PORT = 3000; // Port for HTTPS
 
 // Define contract address and hash for registration
-const REGISTRATION_CONTRACT = "secret1td09kmwqrq3gm67c0g95nlfwhk5dwjyxzm8apc";
-const REGISTRATION_HASH = "73c7b12c18162e8fa9a319efddde6fa9930e5b8612574027e32cf611e4735dce";
+const REGISTRATION_CONTRACT = "secret1vl3auz6w3lxaq56uf06d442edm6xxv2qvhwcdq";
+const REGISTRATION_HASH = "f798c2abe39a705e21bfdfa4aef32dc9509dd4fc36f6a92c0525e1b3fcb9e838";
 
 // Utility function to read file contents
 function get_value(file) {
@@ -28,14 +28,32 @@ function get_value(file) {
 const API_SECRET = get_value("API_SECRET.txt");
 const WALLET_KEY = get_value("WALLET_KEY.txt");
 
+// Log the API_SECRET being used
+console.log("Using API_SECRET:", API_SECRET);
+
 // Initialize wallet and Secret Network client
 const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
-  url: "https://lcd.mainnet.secretsaturn.net",
-  chainId: "secret-4",
+  url: "https://lcd.pulsar.scrttestnet.com",
+  chainId: "pulsar-2",
   wallet: wallet,
   walletAddress: wallet.address,
 });
+
+// Function to check wallet balance
+async function checkBalance() {
+  try {
+    const balance = await secretjs.query.bank.balance({
+      address: wallet.address,
+      denom: "uscrt"
+    });
+    console.log("Wallet balance:", balance);
+  } catch (error) {
+    console.error("Error checking balance:", error);
+  }
+}
+
+checkBalance();
 
 // Function to interact with the smart contract
 async function contract_interaction(message_object) {
@@ -116,6 +134,22 @@ function isSignatureValid(data) {
   return digest === signature.toLowerCase();
 }
 
+// Function to parse the result attribute from the logs
+function parseResultFromLogs(logs) {
+  for (const log of logs) {
+    for (const event of log.events) {
+      if (event.type === 'wasm') {
+        for (const attribute of event.attributes) {
+          if (attribute.key === 'result' && attribute.value === 'registered') {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", async (req, res) => {
   const signature = req.get("x-hmac-signature");
@@ -141,7 +175,6 @@ app.post("/api/veriff/decisions/", async (req, res) => {
         id_type: verification.document.type ? verification.document.type.value : null,
         document_expiration: verification.document.validUntil ? verification.document.validUntil.value : null,
       };
-      console.log(userObject);
       const message_object = {
         register: { user_object: userObject }
       };
@@ -149,10 +182,8 @@ app.post("/api/veriff/decisions/", async (req, res) => {
       try {
         const resp = await contract_interaction(message_object);
 
-        // Check the logs for the 'result' attribute
-        const resultAttribute = resp.raw_log.match(/"result":"([^"]+)"/);
-
-        if (resultAttribute && resultAttribute[1] === "registered") {
+        // Parse the logs for the 'result' attribute
+        if (parseResultFromLogs(resp.logs)) {
           let find_address = pending_verifications.indexOf(req.body.vendorData);
           if (find_address != -1) {
             pending_verifications.splice(find_address, 1);
