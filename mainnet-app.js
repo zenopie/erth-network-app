@@ -76,19 +76,20 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Function to validate HMAC signature
-function isSignatureValid({ signature, secret, payload }) {
-  // Convert payload to string if it's an object
-  if (typeof payload === 'object') {
-    payload = JSON.stringify(payload);
+function isSignatureValid(data) {
+  const { signature, secret } = data;
+  let { payload } = data;
+
+  if (data.payload.constructor === Object) {
+    payload = JSON.stringify(data.payload);
   }
-
-  // Create HMAC hash using the secret
-  const hash = crypto.createHmac("sha256", secret)
-    .update(payload, 'utf8')
-    .digest("hex");
-
-  // Compare the generated hash with the provided signature
-  return hash === signature.toLowerCase();
+  if (payload.constructor !== Buffer) {
+    payload = new Buffer.from(payload, "utf8");
+  }
+  const hash = crypto.createHmac("sha256", secret);
+  hash.update(payload);
+  const digest = hash.digest("hex");
+  return digest === signature.toLowerCase();
 }
 
 // Webhook endpoint for Veriff decisions
