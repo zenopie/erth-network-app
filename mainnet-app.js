@@ -126,10 +126,10 @@ app.post("/api/veriff/decisions/", (req, res) => {
       address: payload.verification.vendorData,
       first_name: payload.verification.person.firstName,
       last_name: payload.verification.person.lastName,
-      date_of_birth: "test",
-      document_number: "test" + Math.ceil(Math.random() * 10000),
+      date_of_birth: verification.document.dateOfBirth,
+      document_number: verification.document.documentNumber,
       id_type: payload.verification.document.type,
-      document_expiration: "test"
+      document_expiration: verification.document.documentExpiration,
     };
     const message_object = {
       register: { user_object: userObject }

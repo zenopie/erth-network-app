@@ -201,7 +201,8 @@ red {
   color: #F24C4C !important;
 }
 
-#loading {
+/* Center the loading screen within the home section */
+#loading-screen {
   background: url('/images/loading.gif') no-repeat center center;
   position: absolute;
   top: 50%;
@@ -209,9 +210,14 @@ red {
   transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
-  z-index: 9999999;
-  background-size: 500px;
-  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 9999;
+  background-size: 800px;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.wallet-icon {
+  color: #4056a1;
+  font-size: 200px;
 }
 
 .tooltip-container {
