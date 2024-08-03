@@ -25,7 +25,7 @@ function get_value(file) {
 }
 
 // Retrieve secret values from files
-const API_SECRET = get_value("API_SECRET.txt");
+const API_SECRET = get_value("API_SECRET.txt").trim();
 const WALLET_KEY = get_value("WALLET_KEY.txt");
 
 // Initialize wallet and Secret Network client
@@ -77,19 +77,27 @@ app.use(express.static('public'));
 
 // Function to validate HMAC signature
 function isSignatureValid({ signature, secret, payload }) {
+  // Log the secret being used
+  console.log("Using secret:", secret);
+
+  // Ensure payload is a string
   if (typeof payload === 'object') {
     payload = JSON.stringify(payload);
   }
 
+  // Create HMAC hash using the secret
   const hash = crypto.createHmac("sha256", secret)
     .update(payload, 'utf8')
     .digest("hex");
 
+  // Log the generated hash and provided signature
   console.log("Generated hash:", hash);
   console.log("Provided signature:", signature.toLowerCase());
 
+  // Compare the generated hash with the provided signature
   return hash === signature.toLowerCase();
 }
+
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
