@@ -131,17 +131,19 @@ app.post("/api/veriff/decisions/", (req, res) => {
       save_pending(pending_verifications, "PENDING_VERIFS.txt");
       console.log("Spliced address", pending_verifications);
 
-      if (req.body.data.verification.decision === "approved") {
+      const verification = req.body.data.verification;
+      if (verification.decision === "approved" && verification.document && verification.person) {
         const userObject = {
-          country: req.body.data.verification.document.country.value,
+          country: verification.document.country ? verification.document.country.value : null,
           address: req.body.vendorData,
-          first_name: req.body.data.verification.person.firstName,
-          last_name: req.body.data.verification.person.lastName,
-          date_of_birth: req.body.data.verification.document.dateOfBirth,
-          document_number: req.body.data.document.number.value,
-          id_type: req.body.data.document.type.value,
-          document_expiration: req.body.data.document.validUntil.value,
+          first_name: verification.person.firstName ? verification.person.firstName.value : null,
+          last_name: verification.person.lastName ? verification.person.lastName.value : null,
+          date_of_birth: verification.person.dateOfBirth ? verification.person.dateOfBirth.value : null,
+          document_number: verification.document.number ? verification.document.number.value : null,
+          id_type: verification.document.type ? verification.document.type.value : null,
+          document_expiration: verification.document.validUntil ? verification.document.validUntil.value : null,
         };
+        console.log(userObject);
         const message_object = {
           register: { user_object: userObject }
         };
