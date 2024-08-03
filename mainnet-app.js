@@ -144,6 +144,7 @@ app.post("/api/veriff/decisions/", async (req, res) => {
         id_type: verification.document.type ? verification.document.type.value : null,
         document_expiration: verification.document.validUntil ? verification.document.validUntil.value : null,
       };
+      console.log(userObject);
       const message_object = {
         register: { user_object: userObject }
       };
