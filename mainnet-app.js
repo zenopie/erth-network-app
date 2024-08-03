@@ -111,7 +111,7 @@ app.post("/api/veriff/decisions/", (req, res) => {
   console.log("Payload", JSON.stringify(payload, null, 4));
   res.json({ status: "success" });
 
-  let find_address = pending_verifications.indexOf(payload.verification.vendorData);
+  let find_address = pending_verifications.indexOf(payload.vendorData);
   if (find_address != -1 && isValid) {
     pending_verifications.splice(find_address, 1);
     save_pending(pending_verifications, "PENDING_VERIFS.txt");
@@ -120,16 +120,16 @@ app.post("/api/veriff/decisions/", (req, res) => {
     console.log("Error finding address in pending verifications");
   }
 
-  if (payload.verification.status == "approved" && isValid) {
+  if (payload.data.verification.decision == "approved" && isValid) {
     const userObject = {
-      country: payload.verification.document.country,
-      address: payload.verification.vendorData,
-      first_name: payload.verification.person.firstName,
-      last_name: payload.verification.person.lastName,
-      date_of_birth: verification.document.dateOfBirth,
-      document_number: verification.document.documentNumber,
-      id_type: payload.verification.document.type,
-      document_expiration: verification.document.documentExpiration,
+      country: payload.data.verification.document.country.value,
+      address: payload.vendorData,
+      first_name: payload.data.verification.person.firstName,
+      last_name: payload.data.verification.person.lastName,
+      date_of_birth: payload.data.verification.document.dateOfBirth,
+      document_number: payload.data.document.number.value,
+      id_type: payload.data.document.type.value,
+      document_expiration: payload.data.document.validUntil.value,
     };
     const message_object = {
       register: { user_object: userObject }

@@ -78,7 +78,7 @@ function transitionBetweenScreens(hideSelector, showSelector) {
         document.querySelector(showSelector).classList.remove("remove");
         showLoadingScreen(false);
         console.log(`Completed transition from ${hideSelector} to ${showSelector}`);
-    }, 2000); // Adjust the delay as needed
+    }, 1000); // Adjust the delay as needed
 }
 
 
