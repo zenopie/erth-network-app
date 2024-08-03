@@ -89,12 +89,14 @@ function isSignatureValid(data) {
   const hash = crypto.createHmac("sha256", secret);
   hash.update(payload);
   const digest = hash.digest("hex");
+  console.log(digest);
   return digest === signature.toLowerCase();
 }
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
   const signature = req.get("x-hmac-signature");
+  console.log(signature);
   const payload = JSON.stringify(req.body);
   const secret = API_SECRET;
 
