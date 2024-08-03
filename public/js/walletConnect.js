@@ -24,6 +24,7 @@ async function connectKeplr() {
     } else {
         try {
             showLoadingScreen(true);
+            console.log("Connecting to Keplr...");
             document.querySelector("#wallet-connection-box").classList.add('remove');
             await window.keplr.enable(chainId);
             const keplrOfflineSigner = window.getOfflineSignerOnlyAmino(chainId);
@@ -41,27 +42,52 @@ async function connectKeplr() {
             if (address) {
                 try {
                     let wallet_name = await window.keplr.getKey(chainId);
-                    document.querySelector("#wallet-name").innerHTML = wallet_name.name.slice(0, 12);
+                    const walletNameElement = document.querySelector("#wallet-name");
+                    if (walletNameElement) {
+                        walletNameElement.innerHTML = wallet_name.name.slice(0, 12);
+                        console.log("Connected to Keplr with wallet name:", wallet_name.name);
+                    } else {
+                        console.error("#wallet-name element not found!");
+                    }
                     start();  // Call start() after successful connection
                 } catch (error) {
                     console.log("Error getting wallet name:", error);
                 }
             } else {
-                console.log("Error connecting to Keplr.");
+                console.log("Error connecting to Keplr: Address not found.");
                 document.querySelector("#wallet-connection-box").classList.remove('remove');
             }
         } catch (error) {
             console.error("Error connecting to Keplr:", error);
             document.querySelector("#wallet-connection-box").classList.remove('remove');
         } finally {
+            showLoadingScreen(false);
         }
     }
 }
 
+async function loadSidebar() {
+    try {
+        const response = await fetch('html/sidebar.html');
+        const sidebarHTML = await response.text();
+        document.getElementById('sidebar-placeholder').innerHTML = sidebarHTML;
+        console.log("Sidebar loaded successfully.");
+    } catch (error) {
+        console.error("Error loading sidebar:", error);
+    }
+}
+
 async function initialization() {
-    await loadSidebar();
-    await connectKeplr();
-    // Additional initialization can go here
+    showLoadingScreen(true);
+    try {
+        await loadSidebar();
+        await connectKeplr();
+        // Additional initialization can go here
+    } catch (error) {
+        console.error("Initialization error:", error);
+    } finally {
+        showLoadingScreen(false);
+    }
 }
 
 function showLoadingScreen(show) {
@@ -81,3 +107,4 @@ function showLoadingScreen(show) {
 
 // Ensure initialization() is called when the page loads
 document.addEventListener("DOMContentLoaded", initialization);
+
