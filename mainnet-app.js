@@ -76,27 +76,24 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Function to validate HMAC signature
-function isSignatureValid(data) {
-  const { signature, secret } = data;
-  let { payload } = data;
+function isSignatureValid({ signature, secret, payload }) {
+  if (typeof payload === 'object') {
+    payload = JSON.stringify(payload);
+  }
 
-  if (data.payload.constructor === Object) {
-    payload = JSON.stringify(data.payload);
-  }
-  if (payload.constructor !== Buffer) {
-    payload = new Buffer.from(payload, "utf8");
-  }
-  const hash = crypto.createHmac("sha256", secret);
-  hash.update(payload);
-  const digest = hash.digest("hex");
-  console.log(digest);
-  return digest === signature.toLowerCase();
+  const hash = crypto.createHmac("sha256", secret)
+    .update(payload, 'utf8')
+    .digest("hex");
+
+  console.log("Generated hash:", hash);
+  console.log("Provided signature:", signature.toLowerCase());
+
+  return hash === signature.toLowerCase();
 }
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
   const signature = req.get("x-hmac-signature");
-  console.log(signature);
   const payload = JSON.stringify(req.body);
   const secret = API_SECRET;
 
@@ -166,3 +163,4 @@ let server = require("http").Server(app);
 server.listen(WEBHOOK_PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${WEBHOOK_PORT}`);
 });
+
