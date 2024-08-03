@@ -42,21 +42,26 @@ const secretjs = new SecretNetworkClient({
 
 // Function to interact with the smart contract
 async function contract_interaction(message_object) {
-  let msg = new MsgExecuteContract({
-    sender: secretjs.address,
-    contract_address: REGISTRATION_CONTRACT,
-    code_hash: REGISTRATION_HASH,
-    msg: message_object,
-  });
-  
-  let resp = await secretjs.tx.broadcast([msg], {
-    gasLimit: 1_000_000,
-    gasPriceInFeeDenom: 0.1,
-    feeDenom: "uscrt",
-  });
+  try {
+    let msg = new MsgExecuteContract({
+      sender: secretjs.address,
+      contract_address: REGISTRATION_CONTRACT,
+      code_hash: REGISTRATION_HASH,
+      msg: message_object,
+    });
 
-  console.log(resp);
-  return resp;
+    let resp = await secretjs.tx.broadcast([msg], {
+      gasLimit: 1_000_000,
+      gasPriceInFeeDenom: 0.1,
+      feeDenom: "uscrt",
+    });
+
+    console.log(resp);
+    return resp;
+  } catch (error) {
+    console.error("RPC error during contract interaction:", error);
+    throw new Error("Contract interaction failed due to RPC error");
+  }
 }
 
 // Retrieve and parse the list of pending verifications
@@ -143,19 +148,26 @@ app.post("/api/veriff/decisions/", async (req, res) => {
         register: { user_object: userObject }
       };
 
-      const resp = await contract_interaction(message_object);
+      try {
+        const resp = await contract_interaction(message_object);
 
-      if (resp.code === 0) { // Assuming code 0 means success
-        let find_address = pending_verifications.indexOf(req.body.vendorData);
-        if (find_address != -1) {
-          pending_verifications.splice(find_address, 1);
-          save_pending(pending_verifications, "PENDING_VERIFS.txt");
-          console.log("Spliced address", pending_verifications);
+        // Check the logs for the 'result' attribute
+        const resultAttribute = resp.raw_log.match(/"result":"([^"]+)"/);
+
+        if (resultAttribute && resultAttribute[1] === "registered") {
+          let find_address = pending_verifications.indexOf(req.body.vendorData);
+          if (find_address != -1) {
+            pending_verifications.splice(find_address, 1);
+            save_pending(pending_verifications, "PENDING_VERIFS.txt");
+            console.log("Spliced address", pending_verifications);
+          } else {
+            console.log("Error finding address in pending verifications");
+          }
         } else {
-          console.log("Error finding address in pending verifications");
+          console.log("Contract interaction failed or document already registered", resp);
         }
-      } else {
-        console.log("Contract interaction failed", resp);
+      } catch (error) {
+        console.error("Contract interaction error:", error);
       }
     }
   }
