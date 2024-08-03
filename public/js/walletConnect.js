@@ -61,7 +61,6 @@ async function connectKeplr() {
             console.error("Error connecting to Keplr:", error);
             document.querySelector("#wallet-connection-box").classList.remove('remove');
         } finally {
-            showLoadingScreen(false);
         }
     }
 }
@@ -86,7 +85,6 @@ async function initialization() {
     } catch (error) {
         console.error("Initialization error:", error);
     } finally {
-        showLoadingScreen(false);
     }
 }
 
