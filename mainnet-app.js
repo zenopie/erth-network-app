@@ -17,7 +17,7 @@ function get_value(file) {
   const filePath = path.join(__dirname, file);
   try {
     const data = fs.readFileSync(filePath, 'utf8');
-    return data;
+    return data.trim(); // Trim to remove any extra whitespace or newlines
   } catch (err) {
     console.error(err);
     return null; // Handle the error as needed
@@ -25,7 +25,7 @@ function get_value(file) {
 }
 
 // Retrieve secret values from files
-const API_SECRET = get_value("API_SECRET.txt").trim();
+const API_SECRET = get_value("API_SECRET.txt");
 const WALLET_KEY = get_value("WALLET_KEY.txt");
 
 // Initialize wallet and Secret Network client
@@ -76,28 +76,25 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Function to validate HMAC signature
-function isSignatureValid({ signature, secret, payload }) {
-  // Log the secret being used
-  console.log("Using secret:", secret);
-
-  // Ensure payload is a string
+function generateSignature(payload, secret) {
   if (typeof payload === 'object') {
     payload = JSON.stringify(payload);
   }
 
-  // Create HMAC hash using the secret
   const hash = crypto.createHmac("sha256", secret)
     .update(payload, 'utf8')
     .digest("hex");
 
-  // Log the generated hash and provided signature
   console.log("Generated hash:", hash);
   console.log("Provided signature:", signature.toLowerCase());
 
-  // Compare the generated hash with the provided signature
-  return hash === signature.toLowerCase();
+  return hash;
 }
 
+function isSignatureValid({ signature, secret, payload }) {
+  const generatedSignature = generateSignature(payload, secret);
+  return generatedSignature === signature.toLowerCase();
+}
 
 // Webhook endpoint for Veriff decisions
 app.post("/api/veriff/decisions/", (req, res) => {
@@ -171,4 +168,3 @@ let server = require("http").Server(app);
 server.listen(WEBHOOK_PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${WEBHOOK_PORT}`);
 });
-
