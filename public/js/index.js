@@ -100,6 +100,7 @@ async function claimButton() {
           (log) => log.type === "message" && log.key === "result"
       );
       showLoadingScreen(false);
+      document.querySelector('#claim-box').classList.add('remove');
       document.querySelector("#complete-box").classList.remove("remove");
   } else {
       console.log("test");
