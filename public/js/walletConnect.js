@@ -5,7 +5,7 @@ const ERTH_HASH = "55bac6db7ea861e9c59c2d4429623a7b445838fed0b8fd5b4d8de10fa4fb6
 const ANML_CONTRACT = "secret1hsn3045l5eztd8xdeqly67wfver5gh7c7267pk";
 const ANML_HASH = "55bac6db7ea861e9c59c2d4429623a7b445838fed0b8fd5b4d8de10fa4fb6fe7";
 const REGISTRATION_CONTRACT = "secret1td09kmwqrq3gm67c0g95nlfwhk5dwjyxzm8apc";
-const REGISTRATION_HASH = "73c7b12c18162e8fa9a319efddde6fa9930e5b8612574027e32cf611e4735dce";
+const REGISTRATION_HASH = "bc3c85a28a314e80c6b839b9498dd492ca1a4562b56f06743d2e2257a090fe56";
 const GOV_CONTRACT = "secret1k3apatdqj46z6p5sh840k6tlkvnlmc2ug7dyf7";
 const GOV_HASH = "a0c6f06962720a447d8759274db48873bf17852b7fcc468af0b8b12ed66e1611";
 
@@ -84,7 +84,6 @@ async function initialization() {
         // Additional initialization can go here
     } catch (error) {
         console.error("Initialization error:", error);
-    } finally {
     }
 }
 

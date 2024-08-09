@@ -9,8 +9,8 @@ const app = express();
 const WEBHOOK_PORT = 3000; // Port for HTTPS
 
 // Define contract address and hash for registration
-const REGISTRATION_CONTRACT = "secret1vl3auz6w3lxaq56uf06d442edm6xxv2qvhwcdq";
-const REGISTRATION_HASH = "f798c2abe39a705e21bfdfa4aef32dc9509dd4fc36f6a92c0525e1b3fcb9e838";
+const REGISTRATION_CONTRACT = "secret1td09kmwqrq3gm67c0g95nlfwhk5dwjyxzm8apc";
+const REGISTRATION_HASH = "bc3c85a28a314e80c6b839b9498dd492ca1a4562b56f06743d2e2257a090fe56";
 
 // Utility function to read file contents
 function get_value(file) {
