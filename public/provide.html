@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="notranslate" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate" />
+    <title>Provide Liquidity - Earth Network</title>
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/swap.css">
+    <link href='https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+    <!-- Sidebar Placeholder -->
+    <div id="sidebar-placeholder"></div>
+
+    <!-- Home Section -->
+    <section class="home-section">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading"></div>
+        <div class="home-content">
+            <div class="menu-toggle">
+                <i class='bx bx-menu'></i>
+            </div>
+
+            <!-- Wallet Connection Section -->
+            <div id="wallet-connection-box" class="test-box remove">
+                <i class='bx bx-wallet wallet-icon'></i>
+                <button onclick="connectKeplr()" class="claim-button">Connect</button>
+            </div>
+
+            <!-- Provide Liquidity Section -->
+            <section id="provide-section" class="swap-section">
+                <div class="swap-box">
+                    <h2>Provide Liquidity</h2>
+
+                    <div class="input-group">
+                        <div class="label-wrapper">
+                            <label for="provide-erth" class="input-label">ERTH Amount</label>
+                        </div>
+                        <div class="input-wrapper">
+                            <img id="provide-erth-logo" src="/images/logo.png" alt="ERTH Token" class="input-logo">
+                            <input type="text" id="provide-erth" placeholder="Amount to Provide" class="swap-input">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <div class="label-wrapper">
+                            <label for="provide-anml" class="input-label">ANML Amount</label>
+                        </div>
+                        <div class="input-wrapper">
+                            <img id="provide-anml-logo" src="/images/anml.png" alt="ANML Token" class="input-logo">
+                            <input type="text" id="provide-anml" placeholder="Amount to Provide" class="swap-input">
+                        </div>
+                    </div>
+
+                    <button onclick="executeAddLiquidity()" class="swap-button">Provide Liquidity</button>
+                    <div id="provide-result" class="swap-result"></div>
+
+                    <!-- Pool Details Section -->
+                    <details class="expandable-info">
+                        <summary>
+                            <i class="bx bx-chevron-down chevron-icon"></i>
+                        </summary>
+                        <div class="info-display">
+                            <div class="info-row">
+                                <span class="info-label">Pool Reserve ERTH:</span>
+                                <span class="info-value" id="pool-erth-reserve">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Pool Reserve ANML:</span>
+                                <span class="info-value" id="pool-anml-reserve">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Your Pool Share:</span>
+                                <span class="info-value" id="pool-share">-</span>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <script src="https://www.unpkg.com/secretjs/dist/browser.js"></script>
+    <script src="/js/global.js"></script>
+    <script src="/js/pools.js"></script>
+    <script src="/js/provide.js"></script>
+    <script src="/js/walletConnect.js"></script>
+</body>
+</html>
