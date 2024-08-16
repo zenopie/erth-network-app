@@ -26,10 +26,11 @@ function initializeSidebar() {
     }
 
     if (window.innerWidth <= 800) {
-        menuToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('close');
-        });
+        sidebar.style.zIndex = '-100';
+    } else {
+        sidebar.style.zIndex = '1'; // Or whatever default z-index you want for larger screens
     }
+        
 }
 
 // Function to load the sidebar
