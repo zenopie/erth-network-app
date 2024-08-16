@@ -10,12 +10,30 @@
   font-weight: 500;
 }
 
-/*---- Home Section Styling ----*/
+/*--- Home Section Styling ---*/
 .home-section {
+  position: relative;
   background: #F1F0EA;
+  height: auto;
+  min-height: 100vh;
+  left: 260px; /* Start to the right to make room for sidebar */
+  width: calc(100% - 260px); /* Deduct sidebar width from total width */
+  transition: left 0.5s ease, width 0.5s ease;
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center; /* Centers vertically */
 }
 
-/* Main sidebar styles */
+.home-content {
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: center; /* Centers horizontally within home-content */
+  justify-content: center; /* Centers vertically within home-content */
+  width: 100%;
+  height: 100%;
+}
+
+/*--- Sidebar Styling ---*/
 .sidebar {
   position: fixed;
   top: 0;
@@ -27,13 +45,13 @@
   transition: all 0.5s ease;
 }
 
+/* Logo details in sidebar */
 .sidebar .logo-details {
-  height: 110px; /* or whatever is suitable for your design */
+  height: 110px; /* Adjust as needed */
 }
 
-/* Logo details in sidebar */
 .sidebar .logo-details .logo-img {
-  width: 100px; /* Adjust this as needed */
+  width: 100px; /* Adjust as needed */
   display: block;
   margin: 10px auto; /* Centering the logo inside its container */
   transition: all 0.3s ease;
@@ -85,23 +103,23 @@
   transition: all 0.4s ease;
 }
 
-/* Profile section at the bottom of sidebar */
+/*--- Profile Section in Sidebar ---*/
 .sidebar .profile-details {
   position: fixed;
   bottom: 0;
   width: 260px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; /* Ensures the content inside the profile-details is spaced out */
   background: #fff;
   padding: 12px 0;
   transition: all 0.5s ease;
 }
 
-/* Profile content within the profile section */
 .sidebar .profile-details .profile-content {
   display: flex;
   align-items: center;
+  flex-shrink: 0; /* Prevents the profile image from shrinking */
 }
 
 .sidebar .profile-details img {
@@ -114,6 +132,12 @@
   transition: all 0.5s ease;
 }
 
+.sidebar .profile-details .name-job {
+  flex-grow: 1; /* Allows the name-job to take up the remaining space */
+  padding-left: 10px; /* Adds some padding to the left for spacing */
+  text-align: left; /* Aligns the text to the left */
+}
+
 .sidebar .profile-details .profile_name,
 .sidebar .profile-details .job {
   color: #293462;
@@ -122,29 +146,17 @@
   white-space: nowrap;
 }
 
-/* Job title or designation within profile section */
 .sidebar .profile-details .job {
   font-size: 12px;
 }
 
-/* --- HOME SECTION STYLING --- */
-.home-section {
-  position: relative;
-  height: auto;
-  min-height: 100vh;
-  left: 260px; /* Start to the right to make room for sidebar */
-  width: calc(100% - 260px); /* Deduct sidebar width from total width */
-  transition: left 0.5s ease, width 0.5s ease; /* Specify which properties should have the transition */
-}
-
-/* Styling for content within home section */
+/*--- Home Content Styling ---*/
 .home-section .home-content {
   height: 60px;
   display: flex; /* Use flex for layout alignment */
   align-items: center; /* Center items vertically in flex container */
 }
 
-/* Styling for menu icon within home content */
 .home-section .home-content .bx-menu {
   margin: 0 15px;
   cursor: pointer; /* Indicate clickable element */
@@ -152,56 +164,13 @@
   font-size: 35px;
 }
 
-/* Styling for text within home content */
 .home-section .home-content .text {
   color: #293462;
   font-size: 26px;
   font-weight: 600; /* Make the text bold */
 }
 
-/* --- MEDIA QUERY FOR RESPONSIVE ADJUSTMENTS --- */
-.menu-toggle {
-  display: none; /* Default to not display */
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 101; /* Above everything else */
-  cursor: pointer;
-  font-size: 24px;
-  background-color: white; /* Or any desired color */
-  padding: 10px;
-  border-radius: 5px;
-}
-
-@media (max-width: 800px) {
-  .menu-toggle {
-    display: block;
-  }
-
-  .sidebar {
-    width: 100%;
-    overflow: auto;
-  }
-
-  .home-section {
-    left: 0; /* Start at the very left */
-    width: 100%; /* Occupy full viewport width */
-  }
-}
-
-.remove {
-  display: none !important;
-}
-
-b {
-  font-weight: bold !important;
-}
-
-red {
-  color: #F24C4C !important;
-}
-
-/* Center the loading screen within the home section */
+/*--- Loading Screen Styling ---*/
 #loading-screen {
   background: url('/images/loading.gif') no-repeat center center;
   position: absolute;
@@ -215,11 +184,13 @@ red {
   background-color: rgba(255, 255, 255, 0.9);
 }
 
+/*--- Wallet Icon Styling ---*/
 .wallet-icon {
   color: #4056a1;
   font-size: 200px;
 }
 
+/*--- Tooltip Styling ---*/
 .tooltip-container {
   display: flex;
   align-items: center; /* Center-align items vertically */
@@ -249,16 +220,16 @@ red {
   opacity: 1;
 }
 
-/* Initial state of the arrow */
+/*--- Arrow and Submenu Styling ---*/
 .arrow {
   transition: transform 0.3s; /* Add transition for smooth rotation */
 }
 
-/* Rotated state of the arrow when submenu is open */
 .open .arrow {
   transform: rotate(90deg); /* Rotate the arrow 90 degrees */
 }
 
+/*--- Submenu List Styling ---*/
 .submenu-list li {
   padding: 10px;
 }
@@ -272,6 +243,50 @@ red {
   color: blue;
 }
 
+/*--- Media Query for Responsive Adjustments ---*/
+.menu-toggle {
+  display: none; /* Default to not display */
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 101; /* Above everything else */
+  cursor: pointer;
+  font-size: 24px;
+  background-color: white; /* Or any desired color */
+  padding: 10px;
+  border-radius: 5px;
+}
+
+@media (max-width: 800px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .sidebar {
+    width: 100%;
+    overflow: auto;
+  }
+
+  .home-section {
+    left: 0; /* Start at the very left */
+    width: 100%; /* Occupy full viewport width */
+  }
+}
+
+/*--- Utility Classes ---*/
+.remove {
+  display: none !important;
+}
+
+b {
+  font-weight: bold !important;
+}
+
+red {
+  color: #F24C4C !important;
+}
+
+/*--- Additional Sidebar Adjustments ---*/
 .sidebar .profile-details {
   display: flex;
   align-items: center;
@@ -279,7 +294,7 @@ red {
 }
 
 .sidebar .name-job {
-  text-align: left; /* Aligns the text to the right */
+  text-align: left; /* Aligns the text to the left */
 }
 
 .sidebar .profile-details .profile-content {

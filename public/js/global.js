@@ -1,3 +1,19 @@
+
+
+const tokens = {
+    ERTH: {
+        contract: "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
+        hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e"
+    },
+    ANML: {
+        contract: "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
+        hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e"
+    },
+    // Add more tokens here as needed
+};
+
+
+
 // Function to initialize the sidebar functionalities
 function initializeSidebar() {
     const sidebar = document.querySelector(".sidebar");
@@ -71,12 +87,12 @@ function floorToDecimals(num, dec) {
     return Math.floor(num * multiplier) / multiplier;
 }
 
-async function snip(contract, hash, recipient, recipient_hash, snipmsg, amount) {
+async function snip(token_contract, token_hash, recipient, recipient_hash, snipmsg, amount) {
     let hookmsg64 = btoa(JSON.stringify(snipmsg));
     let msg = new MsgExecuteContract({
         sender: secretjs.address,
-        contract_address: contract,
-        code_hash: hash,
+        contract_address: token_contract,
+        code_hash: token_hash,
         msg: {
             send: {
                 recipient: recipient,

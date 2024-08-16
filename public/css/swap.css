@@ -1,0 +1,196 @@
+.swap-section {
+    width: 100%;
+    max-width: 500px; /* Restrict max-width for better layout on large screens */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Swap Box Styling */
+.swap-box {
+    width: 100%;
+    background-color: #ffffff; /* or your desired background color */
+    padding: 30px; /* Increased padding for more space inside the box */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Center the Swap Tokens label */
+.swap-box h2 {
+    text-align: center;
+    width: 100%;
+    margin-bottom: 20px; /* Added space below the label */
+}
+
+/* Input Group Styling */
+.input-group {
+    margin-bottom: 20px; /* Increased space between input groups */
+    position: relative;
+}
+
+/* Label Wrapper Styling */
+.label-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+/* Input Label Styling */
+.input-label {
+    font-size: 16px;
+    color: #333;
+    margin-right: 8px;
+}
+
+/* Token Select Styling */
+.token-select {
+    padding: 5px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Input Wrapper Styling */
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    position: relative;
+}
+
+/* Input Logo Styling */
+.input-logo {
+    width: 30px;
+    height: 30px;
+    margin-left: 10px;
+    position: absolute;
+    left: 10px;
+}
+
+/* Swap Input Styling */
+.swap-input {
+    background-color: #F1F0EA;
+    width: 100%;
+    padding: 15px 15px 15px 50px;
+    font-size: 16px;
+    border: none;
+    text-align: right;
+    border-radius: 8px;
+    -moz-appearance: textfield;
+}
+
+.swap-input::-webkit-outer-spin-button,
+.swap-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Swap Button Styling */
+.swap-button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px; /* Added space above the swap button */
+}
+
+.swap-button:hover {
+    background-color: #45a049;
+}
+
+/* Swap Result Styling */
+.swap-result {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Slippage Tolerance Section */
+.slippage-tolerance {
+    margin-top: 20px; /* Added space above the slippage tolerance section */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Slippage Label Styling */
+.slippage-label {
+    font-size: 14px;
+    color: #333;
+    margin-right: 10px;
+}
+
+/* Slippage Input Styling */
+.slippage-input {
+    width: 50px;
+    padding: 3px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    text-align: right;
+}
+
+/* Info Display Section */
+.info-display {
+    margin-top: 20px; /* Added space above the info display section */
+    font-size: 14px;
+    color: #333;
+    text-align: left;
+}
+
+/* Info Row Styling */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px; /* Increased space between info rows */
+}
+
+/* Info Label Styling */
+.info-label {
+    font-weight: bold;
+}
+
+/* Info Value Styling */
+.info-value {
+    text-align: right;
+}
+
+/* Expandable Details Section */
+.expandable-info summary {
+    cursor: pointer;
+    margin-top: 20px; /* Added space above the expandable section */
+    outline: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.expandable-info summary::before {
+    content: "View Details";
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.chevron-icon {
+    margin-left: 10px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.expandable-info[open] .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.expandable-info[open] summary::before {
+    content: "Hide Details";
+}
