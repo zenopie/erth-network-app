@@ -10,7 +10,7 @@ const WEBHOOK_PORT = 3000; // Port for HTTPS
 
 // Define contract address and hash for registration
 const REGISTRATION_CONTRACT = "secret1td09kmwqrq3gm67c0g95nlfwhk5dwjyxzm8apc";
-const REGISTRATION_HASH = "bc3c85a28a314e80c6b839b9498dd492ca1a4562b56f06743d2e2257a090fe56";
+const REGISTRATION_HASH = "4927d814875de5bf63b97e21e682fdd7cb7e9d60e46e0c9f862b84904ece4670";
 
 // Utility function to read file contents
 function get_value(file) {

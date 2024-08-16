@@ -3,7 +3,7 @@ const { SecretNetworkClient, MsgExecuteContract } = window.secretjs;
 
 
 const REGISTRATION_CONTRACT = "secret1td09kmwqrq3gm67c0g95nlfwhk5dwjyxzm8apc";
-const REGISTRATION_HASH = "40d7a26ed3b06d8da72561611725087078f77c86423ec4beb66ac37745c7ded8";
+const REGISTRATION_HASH = "4927d814875de5bf63b97e21e682fdd7cb7e9d60e46e0c9f862b84904ece4670";
 const GOV_CONTRACT = "secret1k3apatdqj46z6p5sh840k6tlkvnlmc2ug7dyf7";
 const GOV_HASH = "a0c6f06962720a447d8759274db48873bf17852b7fcc468af0b8b12ed66e1611";
 
