@@ -38,7 +38,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  height: 100%;
+  height: 100vh;
   width: 260px;
   background: #fff;
   z-index: 1;
@@ -59,7 +59,7 @@
 
 /* Nav links styling */
 .sidebar .nav-links {
-  height: 100%;
+  height: 100vh;
   padding: 0 0 150px 0;
   overflow: auto;
 }
@@ -71,7 +71,6 @@
 .sidebar .nav-links li {
   position: relative;
   list-style: none;
-  transition: all 0.4s ease;
 }
 
 .sidebar .nav-links li:hover {
