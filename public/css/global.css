@@ -81,7 +81,7 @@
 /* Icons in nav links */
 .sidebar .nav-links li i {
   height: 50px;
-  min-width: 78px;
+  min-width: 80px;
   text-align: center;
   line-height: 50px;
   color: #4056a1;
@@ -199,7 +199,7 @@
 
 .tooltip-container .tooltip-content {
   visibility: hidden;
-  width: 220px;
+  width: 260px;
   background-color: #4056a1;
   color: white;
   text-align: center;
@@ -265,6 +265,7 @@
   .sidebar {
     width: 100%;
     overflow: auto;
+    z-index: -100;
   }
 
   .home-section {

@@ -43,6 +43,18 @@ function loadSidebar() {
         .catch(error => console.error('Error loading sidebar:', error));
 }
 
+document.querySelector('.menu-toggle').addEventListener('click', function() {
+    const sidebar = document.querySelector('.sidebar');
+    document.querySelector('.menu-toggle').classList.add("remove");
+    
+    // Check the current z-index and toggle it
+    if (sidebar.style.zIndex === '100') {
+        sidebar.style.zIndex = '1'; // Change to default z-index
+    } else {
+        sidebar.style.zIndex = '100'; // Set z-index to 100
+    }
+});
+
 
 // Global functions
 
