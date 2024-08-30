@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import "./PoolOverview.css";
 import { query, contract } from '../utils/contractUtils';
 import { toMacroUnits } from '../utils/mathUtils.js';
@@ -12,13 +12,7 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [claimResult, setClaimResult] = useState('');
     const [showButtons, setShowButtons] = useState(false);
 
-    useEffect(() => {
-        if (isKeplrConnected) {
-            fetchPendingRewards();
-        }
-    }, [isKeplrConnected]);
-
-    const fetchPendingRewards = async () => {
+    const fetchPendingRewards = useCallback(async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
             return;
@@ -36,14 +30,24 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
 
             const resp = await query(this_contract, this_hash, querymsg);
 
-            const pendingRewardsDue = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
-
-            setPendingRewards(`${pendingRewardsDue} ERTH`);
+            if (resp && resp.pending_rewards) {
+                const pendingRewardsDue = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
+                setPendingRewards(`${pendingRewardsDue} ERTH`);
+            } else {
+                console.error("Invalid response structure:", resp);
+                setPendingRewards('Error');
+            }
         } catch (error) {
             console.error("Error querying pending rewards:", error);
             setPendingRewards('Error');
         }
-    };
+    }, [isKeplrConnected]);
+
+    useEffect(() => {
+        if (isKeplrConnected) {
+            fetchPendingRewards();
+        }
+    }, [isKeplrConnected, fetchPendingRewards]);
 
     const handleClaimRewards = async () => {
         if (!isKeplrConnected) {
@@ -52,17 +56,19 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         }
 
         try {
-            let msg = {
+            const msg = {
                 claim: {
                     pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
                 },
             };
 
-            let resp = await contract(this_contract, this_hash, msg);
+            const resp = await contract(this_contract, this_hash, msg);
 
             console.log("Claim Rewards Response:", resp);
             setClaimResult("Rewards claimed successfully!");
-            fetchPendingRewards(); // Refresh pending rewards after claiming
+
+            // Re-fetch pending rewards after claiming
+            fetchPendingRewards();
         } catch (error) {
             console.error("Error claiming rewards:", error);
             setClaimResult("Error claiming rewards. Check the console for details.");

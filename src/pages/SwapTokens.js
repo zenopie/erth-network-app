@@ -261,6 +261,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
             <button className="swap-button" onClick={handleSwap} disabled={loadingBalances}>
                 Swap
             </button>
+            {swapResult && (
+                <div className="swap-result">
+                    {swapResult}
+                </div>
+            )}
+
 
             {/* Show Details Section */}
             <details className="expandable-info">

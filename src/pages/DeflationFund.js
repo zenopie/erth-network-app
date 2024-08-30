@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Legend } from 'recharts';
 import './DeflationFund.css';
 import { showLoadingScreen } from '../utils/uiUtils';
 import { query } from '../utils/contractUtils';

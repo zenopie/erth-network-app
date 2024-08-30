@@ -6,13 +6,26 @@ import keplr from '../images/keplr.svg';
 
 const Sidebar = ({ walletName, isKeplrConnected }) => {
   const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Add state for collapsed sidebar
 
   const toggleSubmenu = () => {
     setIsSubmenuOpen(!isSubmenuOpen);
   };
 
+  const handleMouseEnter = () => {
+    setIsCollapsed(false); // Expand sidebar when mouse enters
+  };
+
+  const handleMouseLeave = () => {
+    setIsCollapsed(true); // Collapse sidebar when mouse leaves
+  };
+
   return (
-    <div className="sidebar close">
+    <div
+      className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} // Apply collapsed class based on state
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="logo-details">
         <img src={logo} alt="Logo" className="logo-img" />
       </div>
@@ -42,11 +55,11 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           </Link>
         </li>
         <li className={isSubmenuOpen ? "submenu open" : "submenu"}>
-          <a onClick={toggleSubmenu}>
+          <div onClick={toggleSubmenu} className="submenu-toggle">
             <i className='bx bxs-pie-chart-alt-2'></i>
             <span className="link_name">Governance</span>
             <i className='bx bx-chevron-right arrow'></i>
-          </a>
+          </div>
           <ul className={isSubmenuOpen ? "submenu-list" : "submenu-list remove"}>
             <li>
               <Link to="/deflation-fund">Deflation Fund</Link>

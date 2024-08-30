@@ -1,5 +1,5 @@
 import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
-import tokens from "./tokens.js"
+//import tokens from "./tokens.js"
 
 let secretjs = null;
 //const url = "https://rpc.ankr.com/http/scrt_cosmos";
