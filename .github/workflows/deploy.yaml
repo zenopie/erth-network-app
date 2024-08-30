@@ -24,11 +24,16 @@ jobs:
           HOME_DIR=/home/ubuntu/earth-network-app
           WWW_DIR=/var/www/earth-network-app
 
+          # Create the home directory if it doesn't exist
+          if [ ! -d "$HOME_DIR" ]; then
+            mkdir -p $HOME_DIR
+          fi
+
           # Navigate to the home directory where the source code is stored
           cd $HOME_DIR
-
-          # If the directory is not a Git repository, clone it
-          if [ ! -d .git ]; then
+          
+          # Check if it's already a Git repository
+          if [ ! -d ".git" ]; then
             git clone https://github.com/your-username/your-repository.git .
           else
             git pull origin main
@@ -53,3 +58,5 @@ jobs:
 
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
+
+
