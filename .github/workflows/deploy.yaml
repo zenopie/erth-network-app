@@ -20,21 +20,36 @@ jobs:
         username: ${{ secrets.REMOTE_SERVER_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Navigate to the project directory
-          cd /var/www/earth-network-app
+          # Define the directories
+          HOME_DIR=/home/ubuntu/earth-network-app
+          WWW_DIR=/var/www/earth-network-app
 
-          # Pull the latest changes from the repository
-          git pull origin main
+          # Navigate to the home directory where the source code is stored
+          cd $HOME_DIR
 
-          # Install dependencies
-          npm install
+          # If the directory is not a Git repository, clone it
+          if [ ! -d .git ]; then
+            git clone https://github.com/your-username/your-repository.git .
+          else
+            git pull origin main
+          fi
 
-          # Build the project
+          # Install dependencies in the home directory
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "Error: package.json not found!"
+            exit 1
+          fi
+
+          # Build the project in the home directory
           npm run build
 
-          # Remove old files and move build output to the correct location
-          sudo rm -rf /var/www/earth-network-app/build/*
-          mv build/* /var/www/earth-network-app/
+          # Remove old files in the web directory
+          sudo rm -rf $WWW_DIR/*
+
+          # Move the build output to the web directory
+          sudo mv $HOME_DIR/build/* $WWW_DIR/
 
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
