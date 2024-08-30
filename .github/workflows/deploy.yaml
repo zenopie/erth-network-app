@@ -13,27 +13,28 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
-    - name: Install Dependencies
-      run: npm install
-
-    - name: Build React App
-      run: npm run build
-
-    - name: Deploy to Remote Server
+    - name: Deploy and Build on Remote Server
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.REMOTE_SERVER_HOST }}
         username: ${{ secrets.REMOTE_SERVER_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Move to the directory where the site files are located
+          # Navigate to the project directory
           cd /var/www/earth-network-app
 
-          # Remove old build files
-          rm -rf *
+          # Pull the latest changes from the repository
+          git pull origin main
 
-          # Upload new build files from the GitHub runner with StrictHostKeyChecking disabled
-          scp -o StrictHostKeyChecking=no -r ./build/* ${{ secrets.REMOTE_SERVER_USERNAME }}@${{ secrets.REMOTE_SERVER_HOST }}:/var/www/earth-network-app/
+          # Install dependencies
+          npm install
+
+          # Build the project
+          npm run build
+
+          # Remove old files and move build output to the correct location
+          sudo rm -rf /var/www/earth-network-app/build/*
+          mv build/* /var/www/earth-network-app/
 
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
