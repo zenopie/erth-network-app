@@ -37,6 +37,3 @@ jobs:
 
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
-
-          # Optionally, restart your app server if it's part of the deployment
-          pm2 restart mainnet-app.js
