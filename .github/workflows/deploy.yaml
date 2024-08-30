@@ -34,7 +34,7 @@ jobs:
           
           # Check if it's already a Git repository
           if [ ! -d ".git" ]; then
-            git clone https://github.com/your-username/your-repository.git .
+            git clone https://github.com/zenopie/erth-mainnet-app.git .
           else
             git pull origin main
           fi
