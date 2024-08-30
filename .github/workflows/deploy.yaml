@@ -59,4 +59,21 @@ jobs:
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
 
+          # Install PM2 globally if not installed
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install pm2 -g
+          fi
 
+          # Stop any existing instance of the server
+          pm2 stop erth-network-server || true
+
+          # Start the server with PM2
+          pm2 start $HOME_DIR/server/server.js --name "erth-network-server"
+
+          # Save the PM2 process list
+          pm2 save
+
+          # Ensure PM2 restarts on reboot
+          pm2 startup systemd
+          sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+          sudo systemctl enable pm2-ubuntu

@@ -133,9 +133,6 @@ const ANMLClaim = ({ isKeplrConnected }) => {
 
   return (
     <div className="home-content">
-      <div className="menu-toggle">
-        <i className='bx bx-menu'></i>
-      </div>
 
       <div id="register-box" className="test-box remove">
         <img src={passportImage} width={350} alt="Logo" style={{ filter: 'drop-shadow(25px 25px 25px #aaa)' }} className="logo-img" />
