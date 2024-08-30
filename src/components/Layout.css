@@ -1,0 +1,47 @@
+/* Google Fonts Import Link */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+}
+
+/* Home Section Styling */
+.home-section {
+    position: relative;
+    background: #F1F0EA;
+    height: 100vh;
+    margin-left: 260px; /* Push the section to the right by the width of the sidebar */
+    width: calc(100% - 260px); /* Take up the remaining width minus the sidebar width */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.home-content {
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: center; /* Centers horizontally within home-content */
+  justify-content: center; /* Centers vertically within home-content */
+  width: 100%;
+  height: 100%;
+}
+
+/*--- Loading Screen Styling ---*/
+#loading-screen {
+    background: url('../images/loading.gif') no-repeat center center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-size: 800px;
+    background-color: rgba(255, 255, 255, 0.9);
+  }

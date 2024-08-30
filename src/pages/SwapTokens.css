@@ -1,0 +1,211 @@
+/* Swap Box Styling */
+.swap-box {
+    width: 100%;
+    max-width: 450px; /* Ensure it doesn't stretch too much */
+    background-color: #ffffff;
+    padding: 40px 30px 30px 30px; /* Increase padding at the top to make the box taller */
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
+    margin: 0 auto; /* Center the box horizontally within its container */
+}
+
+.swap-title {
+    margin-bottom: 20px;
+}
+
+/* Input Group Styling */
+.input-group {
+    display: block; /* Stack label-wrapper and input-wrapper vertically */
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* Label Wrapper Styling */
+.label-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 8px;
+}
+
+/* Input Label Styling */
+.input-label {
+    font-size: 16px;
+    color: #333;
+    margin-right: 8px;
+}
+
+/* Token Select Styling */
+.token-select {
+    padding: 5px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+    outline: none;
+    cursor: pointer;
+    margin-left: 8px; /* Add space between the label and dropdown */
+    flex-grow: 0; /* Prevent the dropdown from growing */
+}
+
+/* Add styling for token balance display */
+.token-balance {
+    font-size: 14px;
+    color: #333;
+    margin-left: 10px;
+    flex-grow: 1; /* Allow the balance text to take up available space */
+    text-align: right; /* Align balance text to the right */
+}
+
+
+/* Input Wrapper Styling */
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    margin-top: 10px; /* Add margin to create space between select and input */
+    position: relative;
+}
+
+/* Input Logo Styling */
+.input-logo {
+    width: 30px;
+    height: 30px;
+    margin-left: 10px;
+    position: absolute;
+    left: 10px;
+}
+
+/* Swap Input Styling */
+.swap-input {
+    background-color: #F1F0EA;
+    width: 100%;
+    padding: 15px 15px 15px 50px;
+    font-size: 16px;
+    border: none;
+    text-align: right;
+    border-radius: 8px;
+    -moz-appearance: textfield;
+}
+
+.swap-input::-webkit-outer-spin-button,
+.swap-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Swap Button Styling */
+.swap-button {
+    width: 100%;
+    max-width: 400px;
+    padding: 15px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.swap-button:hover {
+    background-color: #45a049;
+}
+
+.max-button {
+    background-color: #4CAF50; /* Match the primary button color */
+    color: white;
+    border: none;
+    border-radius: 8px; /* Match the general button shape */
+    padding: 5px 10px;  /* Smaller padding to keep it small */
+    font-size: 12px; /* Smaller font size to fit the button */
+    cursor: pointer;
+    margin-left: 8px; /* Add a bit of space between the button and the balance text */
+}
+
+.max-button:hover {
+    background-color: #45a049; /* Darker shade on hover, consistent with the main button */
+}
+
+
+/* Swap Result Styling */
+.swap-result {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Slippage Tolerance Section */
+.slippage-tolerance {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Slippage Label Styling */
+.slippage-label {
+    font-size: 14px;
+    color: #333;
+    margin-right: 10px;
+}
+
+/* Slippage Input Styling */
+.slippage-input {
+    width: 50px;
+    padding: 3px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    text-align: right;
+}
+
+/* Info Display Section */
+.info-display {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #333;
+    text-align: left;
+}
+
+/* Info Row Styling */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+/* Info Label Styling */
+.info-label {
+    font-weight: bold;
+}
+
+/* Info Value Styling */
+.info-value {
+    text-align: right;
+}
+
+/* Expandable Details Section */
+.expandable-info summary {
+    cursor: pointer;
+    margin-top: 20px;
+    outline: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.chevron-icon {
+    margin-left: 10px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.expandable-info[open] .chevron-icon {
+    transform: rotate(180deg);
+}

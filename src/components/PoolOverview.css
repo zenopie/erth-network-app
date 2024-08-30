@@ -1,0 +1,63 @@
+/* Ensure the box is positioned relative to its container */
+.pool-overview-box {
+    position: relative;
+    width: 100%;
+    max-width: 250px;
+    background-color: #ffffff;
+    padding: 20px 15px 15px 15px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    margin: 0 auto;
+    cursor: pointer; /* Add a cursor to indicate it's clickable */
+}
+
+/* Info Row Styling */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+/* Info Label Styling */
+.info-label {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+}
+
+/* Info Value Styling */
+.info-value {
+    font-size: 16px;
+    color: #333;
+    text-align: right;
+}
+
+/* Swap Button Styling */
+.swap-button {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 10px;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Slide-down transition */
+.buttons-container {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+/* When showing the buttons */
+.buttons-container.show {
+    max-height: 200px; /* Adjust based on the content's height */
+}

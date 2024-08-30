@@ -16,6 +16,9 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
+    - name: Build React App
+      run: npm run build
+
     - name: Deploy to Remote Server
       uses: appleboy/ssh-action@master
       with:
@@ -23,7 +26,17 @@ jobs:
         username: ${{ secrets.REMOTE_SERVER_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd erth-mainnet-app
-          git pull origin main
-          npm install
+          # Move to the directory where the site files are located
+          cd /var/www/earth-network-app
+
+          # Remove old build files
+          rm -rf *
+
+          # Upload new build files from the GitHub runner
+          scp -r ./build/* ${{ secrets.REMOTE_SERVER_USERNAME }}@${{ secrets.REMOTE_SERVER_HOST }}:/var/www/earth-network-app/
+
+          # Restart NGINX to apply the changes
+          sudo systemctl restart nginx
+
+          # Optionally, restart your app server if it's part of the deployment
           pm2 restart mainnet-app.js
