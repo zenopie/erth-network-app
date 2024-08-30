@@ -32,8 +32,8 @@ jobs:
           # Remove old build files
           rm -rf *
 
-          # Upload new build files from the GitHub runner
-          scp -r ./build/* ${{ secrets.REMOTE_SERVER_USERNAME }}@${{ secrets.REMOTE_SERVER_HOST }}:/var/www/earth-network-app/
+          # Upload new build files from the GitHub runner with StrictHostKeyChecking disabled
+          scp -o StrictHostKeyChecking=no -r ./build/* ${{ secrets.REMOTE_SERVER_USERNAME }}@${{ secrets.REMOTE_SERVER_HOST }}:/var/www/earth-network-app/
 
           # Restart NGINX to apply the changes
           sudo systemctl restart nginx
