@@ -180,15 +180,15 @@ app.post("/api/veriff/decisions/", async (req, res) => {
       let document_expiration = convertToSecondsString(verification.document.validUntil.value);
       let date_of_birth = convertToSecondsString(verification.person.dateOfBirth.value);
       const userObject = {
-        country: verification.document.country ? verification.document.country.value : null,
-        address: req.body.vendorData,
-        first_name: verification.person.firstName ? verification.person.firstName.value : null,
-        last_name: verification.person.lastName ? verification.person.lastName.value : null,
-        date_of_birth: date_of_birth.toString() ? date_of_birth : null,
-        document_number: verification.document.number ? verification.document.number.value : null,
-        id_type: verification.document.type ? verification.document.type.value : null,
-        document_expiration: document_expiration.toString() ? document_expiration : null,
-      };
+        country: verification.document.country ? verification.document.country.value : "",
+        address: req.body.vendorData ? req.body.vendorData : "",
+        first_name: verification.person.firstName ? verification.person.firstName.value : "",
+        last_name: verification.person.lastName ? verification.person.lastName.value : "",
+        date_of_birth: date_of_birth ? parseInt(date_of_birth) : 0, // Assuming date_of_birth is a timestamp
+        document_number: verification.document.number ? verification.document.number.value : "",
+        id_type: verification.document.type ? verification.document.type.value : "",
+        document_expiration: document_expiration ? parseInt(document_expiration) : 0, // Assuming document_expiration is a timestamp
+      };      
       console.log(userObject);
       const message_object = {
         register: {
