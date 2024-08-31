@@ -193,7 +193,6 @@ app.post("/api/veriff/decisions/", async (req, res) => {
       const message_object = {
         register: {
           user_object: userObject,
-          document_timestamp: document_expiration, // Include the timestamp for the document
         },
       };
 
