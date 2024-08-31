@@ -184,10 +184,10 @@ app.post("/api/veriff/decisions/", async (req, res) => {
         address: req.body.vendorData,
         first_name: verification.person.firstName ? verification.person.firstName.value : null,
         last_name: verification.person.lastName ? verification.person.lastName.value : null,
-        date_of_birth: date_of_birth ? date_of_birth : null,
+        date_of_birth: date_of_birth.toString() ? date_of_birth : null,
         document_number: verification.document.number ? verification.document.number.value : null,
         id_type: verification.document.type ? verification.document.type.value : null,
-        document_expiration: document_expiration ? document_expiration : null,
+        document_expiration: document_expiration.toString() ? document_expiration : null,
       };
       console.log(userObject);
       const message_object = {
