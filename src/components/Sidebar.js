@@ -6,23 +6,24 @@ import keplr from '../images/keplr.svg';
 
 const Sidebar = ({ walletName, isKeplrConnected }) => {
   const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true); // Add state for collapsed sidebar
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const toggleSubmenu = () => {
     setIsSubmenuOpen(!isSubmenuOpen);
   };
 
   const handleMouseEnter = () => {
-    setIsCollapsed(false); // Expand sidebar when mouse enters
+    setIsCollapsed(false);
   };
 
   const handleMouseLeave = () => {
-    setIsCollapsed(true); // Collapse sidebar when mouse leaves
+    setIsCollapsed(true);
+    setIsSubmenuOpen(false); // Close the submenu when sidebar collapses
   };
 
   return (
     <div
-      className={`sidebar ${isCollapsed ? 'collapsed' : ''}`} // Apply collapsed class based on state
+      className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

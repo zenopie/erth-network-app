@@ -56,6 +56,12 @@
   display: none; /* Hide submenu arrows when collapsed */
 }
 
+/* Sidebar collapsed submenu styling */
+.sidebar.collapsed .submenu.open .submenu-list {
+  height: 0; /* Ensures the submenu is collapsed when the sidebar is collapsed */
+  overflow: hidden;
+}
+
 /* Logo details in sidebar */
 .sidebar .logo-details {
   height: 110px; /* Adjust as needed */
@@ -69,7 +75,6 @@
   width: 100px; /* Adjust as needed */
   transition: width 0.3s ease; /* Smooth width transition */
 }
-
 
 .sidebar.collapsed .logo-details .logo-img {
   width: 50px; /* Reduce logo width for the collapsed sidebar */
@@ -90,7 +95,6 @@
   position: relative;
   list-style: none;
 }
-
 
 .sidebar .nav-links li:hover {
   background: #eee;
@@ -120,6 +124,25 @@
   font-size: 18px;
   color: #293462;
   transition: all 0.4s ease;
+}
+
+/* Submenu list item styling to match other list items */
+.submenu-list li {
+  padding-left: 40px; /* Indent to differentiate from main menu items */
+}
+
+.submenu-list li a {
+  font-size: 18px;
+  color: #293462;
+  display: flex;
+  align-items: center;
+  height: 50px;
+  text-decoration: none;
+  transition: all 0.4s ease;
+}
+
+.submenu-list li:hover {
+  background: #ddd !important;
 }
 
 /*--- Profile Section in Sidebar ---*/
@@ -190,19 +213,48 @@
   transform: rotate(90deg); /* Rotate the arrow 90 degrees */
 }
 
+/* Submenu toggle styling to match other list items */
+/* Submenu toggle styling to match other list items */
+/* Ensure submenu toggle has the same height and alignment as other list items */
+.submenu-toggle {
+  display: flex;
+  align-items: center;
+  height: 50px; /* Match the height of other list items */
+}
+
+.submenu-toggle i {
+  min-width: 80px; /* Ensure consistent spacing with other icons */
+  text-align: center;
+  line-height: 50px; /* Vertically center the icon */
+  color: #4056a1;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.submenu-toggle .link_name {
+  flex-grow: 1; /* Ensure the text takes up the remaining space */
+  font-size: 18px;
+  color: #293462;
+  transition: all 0.4s ease;
+  line-height: 50px; /* Vertically center the text */
+}
+
+.submenu-toggle .arrow {
+  line-height: 50px; /* Vertically center the arrow icon */
+}
+
+
 /*--- Submenu List Styling ---*/
-.submenu-list li {
-  padding: 10px;
+.submenu-list {
+  transition: height 0.3s ease;
 }
 
-.submenu-list li a {
-  color: black;
-  text-decoration: none;
+.submenu-list.remove {
+  height: 0;
+  overflow: hidden;
 }
 
-.submenu-list li a:hover {
-  color: blue;
-}
 
 /*--- Utility Classes ---*/
 .remove {
