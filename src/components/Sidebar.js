@@ -70,20 +70,38 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             </li>
           </ul>
         </li>
-        <li>
-          <div className="profile-details">
-            <div className="profile-content">
-              <img src={keplr} alt="profileImg" />
-            </div>
-            <div className="name-job">
-              <div id="wallet-name" className="profile_name">
-                {isKeplrConnected ? walletName : "Connecting..."}
-              </div>
-              <div className="job"></div>
-            </div>
-          </div>
-        </li>
       </ul>
+
+      <div className="profile-container">
+        <div className="profile-details">
+          <div className="profile-content">
+            <img src={keplr} alt="profileImg" />
+          </div>
+          <div className="name-job">
+            <div id="wallet-name" className="profile_name">
+              {isKeplrConnected ? walletName : "Connecting..."}
+            </div>
+            <div className="job"></div>
+          </div>
+        </div>
+
+        <li className="socials-link">
+          {/* Placeholder to maintain space */}
+          <div className="socials-placeholder">
+            <i className={`bx ${isCollapsed ? 'bx-heart' : ''}`}></i>
+          </div>
+          {!isCollapsed && (
+            <div className="expanded-socials">
+              <a href="https://discord.gg/uNKar4EbCZ" target="_blank" rel="noopener noreferrer">
+                <i className="bx bxl-discord"></i>
+              </a>
+              <a href="https://github.com/zenopie" target="_blank" rel="noopener noreferrer">
+                <i className="bx bxl-github"></i>
+              </a>
+            </div>
+          )}
+        </li>
+      </div>
     </div>
   );
 };

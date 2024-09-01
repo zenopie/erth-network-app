@@ -146,20 +146,28 @@
 }
 
 /*--- Profile Section in Sidebar ---*/
-.sidebar .profile-details {
+/* Profile container to wrap the profile and Socials link */
+.profile-container {
   position: fixed;
   bottom: 0;
   width: 260px;
+  background: #fff;
+  transition: all 0.5s ease;
+  padding-bottom: 12px;
+}
+
+.sidebar.collapsed .profile-container {
+  width: 80px;
+}
+
+.profile-details {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Ensures the content inside the profile-details is spaced out */
-  background: #fff;
+  justify-content: space-between;
   padding: 12px 0;
-  transition: all 0.5s ease;
 }
 
 .sidebar.collapsed .profile-details {
-  width: 80px; /* Adjust width to match collapsed sidebar */
   justify-content: center; /* Center the profile image in collapsed state */
 }
 
@@ -214,8 +222,6 @@
 }
 
 /* Submenu toggle styling to match other list items */
-/* Submenu toggle styling to match other list items */
-/* Ensure submenu toggle has the same height and alignment as other list items */
 .submenu-toggle {
   display: flex;
   align-items: center;
@@ -244,7 +250,6 @@
   line-height: 50px; /* Vertically center the arrow icon */
 }
 
-
 /*--- Submenu List Styling ---*/
 .submenu-list {
   transition: height 0.3s ease;
@@ -255,6 +260,38 @@
   overflow: hidden;
 }
 
+/* Socials link styling */
+.socials-link {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  transition: all 0.5s ease;
+}
+
+.socials-placeholder {
+  height: 16px; /* Adjust this height to match the size of the social icons */
+}
+
+.socials-link a {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #293462;
+  transition: all 0.4s ease;
+}
+
+.socials-link i {
+  min-width: 30px;
+  text-align: center;
+  color: #4056a1;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Expanded socials container */
+.expanded-socials {
+  display: flex;
+}
 
 /*--- Utility Classes ---*/
 .remove {
