@@ -4,8 +4,8 @@ import { query, contract } from '../utils/contractUtils';
 import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
 
-const this_contract = "secret1w9v0whdrwj6awj7u7zas87jz5nglawwgdg2309";
-const this_hash = "4b34d200564ee1c04ebf4c8cdb12ed145a489d5a5e1a39dfdb734b963ac96414";
+const this_contract =  "secret1aq8js6zhqfv9mtlf98nplvuayd0ve00q0ta4ul";
+const this_hash =  "941ff079bdd84cc57f514ef0135ad9414b2b388feaaa71266e58cd2232b228b6";
 
 const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');

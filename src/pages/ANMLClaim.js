@@ -10,7 +10,7 @@ import anmlImage from '../images/anml.png';
 import watermelonImage from '../images/watermelon.png';
 
 const REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const REGISTRATION_HASH = "ad7583f22bae9cc8277dfb1bbcc60b88aa4702f58df1f536293a26b5bdc17dfc";
+const REGISTRATION_HASH = "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
 
 
 const ANMLClaim = ({ isKeplrConnected }) => {
@@ -21,7 +21,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     showLoadingScreen(true);
 
     let querymsg = {
-      registration_status: {
+      query_registration_status: {
         address: window.secretjs.address
       }
     };

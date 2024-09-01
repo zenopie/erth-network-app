@@ -63,10 +63,10 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           </div>
           <ul className={isSubmenuOpen ? "submenu-list" : "submenu-list remove"}>
             <li>
-              <Link to="/deflation-fund">Deflation Fund</Link>
+              <Link to="/public-goods-fund">Public Goods Fund</Link>
             </li>
             <li>
-              <a href="publicGoods.html">Public Goods Fund</a>
+              <Link to="/deflation-fund">Deflation Fund</Link>
             </li>
           </ul>
         </li>

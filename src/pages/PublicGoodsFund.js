@@ -4,13 +4,15 @@ import './DeflationFund.css';
 import { showLoadingScreen } from '../utils/uiUtils';
 import { query } from '../utils/contractUtils';
 
-const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const this_hash = "7815b8b45275e14d060a553dbda6f16ac3ad6fce45adc2ec9bddad50e1e283f6";
+
+const this_contract =  "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
+const this_hash =  "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
 
 const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548'];
 
+
 const allocationNames = [
-  { id: '1', name: 'LP Rewards' },
+  { id: '1', name: 'Registration Rewards' },
   // Add more allocation names here
 ];
 
@@ -71,7 +73,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
   const fetchDataActual = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { get_allocation_options: {} }; 
+      const querymsg = { query_allocation_options: {} }; 
       const response = await query(this_contract, this_hash, querymsg);
 
       const transformedData = response.allocations.map((allocation) => {
@@ -93,9 +95,9 @@ const DeflationFund = ({ isKeplrConnected }) => {
   const fetchUserInfo = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { get_user_info: { address: window.secretjs.address } }; 
+      const querymsg = { query_user_allocations: { address: window.secretjs.address } }; 
       const response = await query(this_contract, this_hash, querymsg);
-      const transformedData = response.user_info.percentages.map((percentage) => {
+      const transformedData = response.allocations.map((percentage) => {
         const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
         return {
           id: percentage.allocation_id,
@@ -136,7 +138,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
 
   return (
     <div className="deflation-fund-box">
-      <h2>Deflation Fund</h2>
+      <h2>Public Goods Fund</h2>
       <div className="deflation-fund-tab">
         <button
           className={`tablinks ${activeTab === 'Actual' ? 'active' : ''}`}
