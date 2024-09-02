@@ -189,15 +189,14 @@
 
 .sidebar .profile-details .name-job {
   flex-grow: 1; /* Allows the name-job to take up the remaining space */
-  padding-left: 10px;
   text-align: left; /* Aligns the text to the left */
-  transition: opacity 0.3s ease; /* Smooth transition for hiding text */
+  transition: all 0.5s ease;
+  overflow: hidden; /* Hide the content when the width is reduced */
 }
 
 .sidebar.collapsed .profile-details .name-job {
-  opacity: 0; /* Hide the wallet name and job title */
   width: 0; /* Shrink the space for the name-job section */
-  padding-left: 0; /* Remove padding in collapsed state */
+  opacity: 0;
 }
 
 .sidebar .profile-details .profile_name,
@@ -269,7 +268,7 @@
 }
 
 .socials-placeholder {
-  height: 16px; /* Adjust this height to match the size of the social icons */
+  height: 20px; /* Adjust this height to match the size of the social icons */
 }
 
 .socials-link a {
@@ -284,7 +283,7 @@
   min-width: 30px;
   text-align: center;
   color: #4056a1;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
 }
 

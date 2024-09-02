@@ -93,7 +93,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           {!isCollapsed && (
             <div className="expanded-socials">
               <a href="https://discord.gg/uNKar4EbCZ" target="_blank" rel="noopener noreferrer">
-                <i className="bx bxl-discord"></i>
+                <i className="bx bxl-discord-alt"></i>
               </a>
               <a href="https://github.com/zenopie" target="_blank" rel="noopener noreferrer">
                 <i className="bx bxl-github"></i>

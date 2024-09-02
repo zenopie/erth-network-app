@@ -7,7 +7,8 @@ import { query } from '../utils/contractUtils';
 const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
 const this_hash = "7815b8b45275e14d060a553dbda6f16ac3ad6fce45adc2ec9bddad50e1e283f6";
 
-const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548'];
+const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548']; // Colors for allocations
+const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated
 
 const allocationNames = [
   { id: '1', name: 'LP Rewards' },
@@ -52,11 +53,32 @@ const renderCustomLegend = (props, data) => {
   );
 };
 
+const getChartDataWithUnallocated = (allocations = []) => {
+  const totalPercentage = allocations.reduce((acc, alloc) => acc + alloc.value, 0);
+  const unallocatedPercentage = Math.max(100 - totalPercentage, 0);
+  
+  const chartData = allocations.map((alloc) => ({
+    ...alloc,
+    value: alloc.value,
+  }));
+
+  if (unallocatedPercentage > 0) {
+    chartData.push({
+      id: 'unallocated',
+      name: 'Unallocated',
+      value: unallocatedPercentage,
+    });
+  }
+
+  return chartData;
+};
+
 const DeflationFund = ({ isKeplrConnected }) => {
   const [activeTab, setActiveTab] = useState('Actual');
   const [dataActual, setDataActual] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [totalPercentage, setTotalPercentage] = useState(0); // State for total percentage
 
   useEffect(() => {
     if (isKeplrConnected) {
@@ -67,6 +89,12 @@ const DeflationFund = ({ isKeplrConnected }) => {
       }
     }
   }, [isKeplrConnected, activeTab]);
+
+  useEffect(() => {
+    // Calculate total percentage whenever selectedAllocations changes
+    const total = selectedAllocations.reduce((acc, alloc) => acc + (parseInt(alloc.value) || 0), 0);
+    setTotalPercentage(total);
+  }, [selectedAllocations]);
 
   const fetchDataActual = async () => {
     try {
@@ -117,7 +145,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
 
   const addAllocation = (option) => {
     if (!selectedAllocations.find((alloc) => alloc.id === option.id)) {
-      setSelectedAllocations([...selectedAllocations, { ...option, percentage: '' }]);
+      setSelectedAllocations([...selectedAllocations, { ...option, value: 0 }]);
     }
     setShowDropdown(false);
   };
@@ -127,11 +155,13 @@ const DeflationFund = ({ isKeplrConnected }) => {
   };
 
   const handlePercentageChange = (id, value) => {
-    setSelectedAllocations(
-      selectedAllocations.map((alloc) =>
-        alloc.id === id ? { ...alloc, value: value } : alloc
-      )
+    // Update the allocation percentage
+    const updatedAllocations = selectedAllocations.map((alloc) =>
+      alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc
     );
+    
+    // Update the state with the new allocations
+    setSelectedAllocations(updatedAllocations);
   };
 
   return (
@@ -160,7 +190,6 @@ const DeflationFund = ({ isKeplrConnected }) => {
                 data={dataActual}
                 cx="50%"
                 cy="50%"
-                innerRadius={70}
                 outerRadius={120}
                 fill="#8884d8"
                 paddingAngle={0}
@@ -188,27 +217,46 @@ const DeflationFund = ({ isKeplrConnected }) => {
       {activeTab === 'Preferred' && (
         <div className="chart-box">
           <div className="canvas-container">
-            <PieChart width={350} height={350}>
-              <Pie
-                data={selectedAllocations}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={120}
-                fill="#8884d8"
-                paddingAngle={0}
-                cornerRadius={2}
-                startAngle={90}
-                endAngle={450}
-                dataKey="value"
-                isAnimationActive={false}
+            <div style={{ position: 'relative', width: 350, height: 350 }}>
+              <PieChart width={350} height={350}>
+                <Pie
+                  data={getChartDataWithUnallocated(selectedAllocations)}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  paddingAngle={0}
+                  cornerRadius={2}
+                  startAngle={90}
+                  endAngle={450}
+                  dataKey="value"
+                  isAnimationActive={false}
+                >
+                  {getChartDataWithUnallocated(selectedAllocations).map((entry, index) => {
+                    if (entry.name === 'Unallocated') {
+                      return <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />;
+                    } else {
+                      return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                    }
+                  })}
+                </Pie>
+              </PieChart>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: 24,
+                  color: totalPercentage === 100 ? 'green' : 'red',
+                }}
               >
-                {selectedAllocations.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
+                {`${totalPercentage}%`}
+              </div>
+            </div>
           </div>
+
           <div id="input-container">
             {selectedAllocations.map((alloc) => (
               <div key={alloc.id} className="allocation-input-group">

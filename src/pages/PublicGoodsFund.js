@@ -4,12 +4,11 @@ import './DeflationFund.css';
 import { showLoadingScreen } from '../utils/uiUtils';
 import { query } from '../utils/contractUtils';
 
-
-const this_contract =  "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const this_hash =  "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
+const this_contract = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
+const this_hash = "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
 
 const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548'];
-
+const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated
 
 const allocationNames = [
   { id: '1', name: 'Registration Rewards' },
@@ -54,11 +53,32 @@ const renderCustomLegend = (props, data) => {
   );
 };
 
-const DeflationFund = ({ isKeplrConnected }) => {
+const getChartDataWithUnallocated = (allocations = []) => {
+  const totalPercentage = allocations.reduce((acc, alloc) => acc + alloc.value, 0);
+  const unallocatedPercentage = Math.max(100 - totalPercentage, 0);
+  
+  const chartData = allocations.map((alloc) => ({
+    ...alloc,
+    value: alloc.value,
+  }));
+
+  if (unallocatedPercentage > 0) {
+    chartData.push({
+      id: 'unallocated',
+      name: 'Unallocated',
+      value: unallocatedPercentage,
+    });
+  }
+
+  return chartData;
+};
+
+const PublicGoodsFund = ({ isKeplrConnected }) => {
   const [activeTab, setActiveTab] = useState('Actual');
   const [dataActual, setDataActual] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [totalPercentage, setTotalPercentage] = useState(0); // State for total percentage
 
   useEffect(() => {
     if (isKeplrConnected) {
@@ -70,10 +90,16 @@ const DeflationFund = ({ isKeplrConnected }) => {
     }
   }, [isKeplrConnected, activeTab]);
 
+  useEffect(() => {
+    // Calculate total percentage whenever selectedAllocations changes
+    const total = selectedAllocations.reduce((acc, alloc) => acc + (parseInt(alloc.value) || 0), 0);
+    setTotalPercentage(total);
+  }, [selectedAllocations]);
+
   const fetchDataActual = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { query_allocation_options: {} }; 
+      const querymsg = { query_allocation_options: {} };
       const response = await query(this_contract, this_hash, querymsg);
 
       const transformedData = response.allocations.map((allocation) => {
@@ -95,7 +121,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
   const fetchUserInfo = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { query_user_allocations: { address: window.secretjs.address } }; 
+      const querymsg = { query_user_allocations: { address: window.secretjs.address } };
       const response = await query(this_contract, this_hash, querymsg);
       const transformedData = response.allocations.map((percentage) => {
         const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
@@ -119,7 +145,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
 
   const addAllocation = (option) => {
     if (!selectedAllocations.find((alloc) => alloc.id === option.id)) {
-      setSelectedAllocations([...selectedAllocations, { ...option, percentage: '' }]);
+      setSelectedAllocations([...selectedAllocations, { ...option, value: 0 }]);
     }
     setShowDropdown(false);
   };
@@ -129,11 +155,13 @@ const DeflationFund = ({ isKeplrConnected }) => {
   };
 
   const handlePercentageChange = (id, value) => {
-    setSelectedAllocations(
-      selectedAllocations.map((alloc) =>
-        alloc.id === id ? { ...alloc, value: value } : alloc
-      )
+    // Update the allocation percentage
+    const updatedAllocations = selectedAllocations.map((alloc) =>
+      alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc
     );
+    
+    // Update the state with the new allocations
+    setSelectedAllocations(updatedAllocations);
   };
 
   return (
@@ -162,7 +190,6 @@ const DeflationFund = ({ isKeplrConnected }) => {
                 data={dataActual}
                 cx="50%"
                 cy="50%"
-                innerRadius={70}
                 outerRadius={120}
                 fill="#8884d8"
                 paddingAngle={0}
@@ -176,11 +203,11 @@ const DeflationFund = ({ isKeplrConnected }) => {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Legend 
+              <Legend
                 content={(props) => renderCustomLegend(props, dataActual)} 
-                layout="horizontal" 
-                align="center" 
-                verticalAlign="bottom" 
+                layout="horizontal"
+                align="center"
+                verticalAlign="bottom"
               />
             </PieChart>
           </div>
@@ -190,27 +217,46 @@ const DeflationFund = ({ isKeplrConnected }) => {
       {activeTab === 'Preferred' && (
         <div className="chart-box">
           <div className="canvas-container">
-            <PieChart width={350} height={350}>
-              <Pie
-                data={selectedAllocations}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={120}
-                fill="#8884d8"
-                paddingAngle={0}
-                cornerRadius={2}
-                startAngle={90}
-                endAngle={450}
-                dataKey="value"
-                isAnimationActive={false}
+            <div style={{ position: 'relative', width: 350, height: 350 }}>
+              <PieChart width={350} height={350}>
+                <Pie
+                  data={getChartDataWithUnallocated(selectedAllocations)}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  paddingAngle={0}
+                  cornerRadius={2}
+                  startAngle={90}
+                  endAngle={450}
+                  dataKey="value"
+                  isAnimationActive={false}
+                >
+                  {getChartDataWithUnallocated(selectedAllocations).map((entry, index) => {
+                    if (entry.name === 'Unallocated') {
+                      return <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />;
+                    } else {
+                      return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                    }
+                  })}
+                </Pie>
+              </PieChart>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: 24,
+                  color: totalPercentage === 100 ? 'green' : 'red',
+                }}
               >
-                {selectedAllocations.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
+                {`${totalPercentage}%`}
+              </div>
+            </div>
           </div>
+
           <div id="input-container">
             {selectedAllocations.map((alloc) => (
               <div key={alloc.id} className="allocation-input-group">
@@ -230,6 +276,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
               </div>
             ))}
           </div>
+
           <div className="dropdown-container">
             <button className="circle-button" onClick={() => setShowDropdown(!showDropdown)}>
               +
@@ -262,4 +309,4 @@ const DeflationFund = ({ isKeplrConnected }) => {
   );
 };
 
-export default DeflationFund;
+export default PublicGoodsFund;
