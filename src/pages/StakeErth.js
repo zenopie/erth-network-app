@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { contract, query } from '../utils/contractUtils';
+import { contract, query, snip } from '../utils/contractUtils';
 import { showLoadingScreen } from '../utils/uiUtils';
-import { toMacroUnits } from '../utils/mathUtils.js'; // Ensure this function exists and is correctly named
+import { toMicroUnits, toMacroUnits } from '../utils/mathUtils.js'; // Ensure this function exists and is correctly named
 import tokens from '../utils/tokens.js';
 import './StakeErth.css';
 
@@ -80,17 +80,15 @@ const StakingManagement = ({ isKeplrConnected }) => {
             showLoadingScreen(true);
 
             // Convert stakeAmount to micro units if necessary
-            const amountInMicroUnits = toMacroUnits(stakeAmount, tokens['ERTH']); // Verify correct function
+            const amountInMicroUnits = toMicroUnits(stakeAmount, tokens['ERTH']); 
 
             // Construct the staking message
-            const msg = {
-                stake: {
-                    amount: amountInMicroUnits.toString()
-                }
+            const snipmsg = {
+                stake_erth: {}
             };
 
             // Send the staking transaction
-            await contract(THIS_CONTRACT, THIS_HASH, msg);
+            await snip(tokens["ERTH"].contract, tokens["ERTH"].hash, THIS_CONTRACT, THIS_HASH, snipmsg, amountInMicroUnits.toString()) 
 
             setStakeResult("Staking executed successfully!");
             // Optionally, refresh staking rewards

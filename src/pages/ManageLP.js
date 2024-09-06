@@ -14,7 +14,10 @@ const ManageLP = ({ isKeplrConnected }) => {
     return (
         <>
             {isManagingLiquidity ? (
-                <LiquidityManagement toggleManageLiquidity={toggleManageLiquidity} />
+                <LiquidityManagement 
+                    toggleManageLiquidity={toggleManageLiquidity} 
+                    isKeplrConnected={isKeplrConnected}  // Pass the isKeplrConnected prop here
+                />
             ) : (
                 <PoolOverview 
                     toggleManageLiquidity={toggleManageLiquidity} 
@@ -26,3 +29,4 @@ const ManageLP = ({ isKeplrConnected }) => {
 };
 
 export default ManageLP;
+

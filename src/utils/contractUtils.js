@@ -1,5 +1,4 @@
 import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
-//import tokens from "./tokens.js"
 
 let secretjs = null;
 //const url = "https://rpc.ankr.com/http/scrt_cosmos";
@@ -123,3 +122,65 @@ export async function querySnipBalance(token) {
     }
 }
 
+export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, poolAddress, poolHash, amountErth, amountB) {
+    if (!secretjs) {
+        throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
+    }
+
+    try {
+        // Step 1: Create allowance message for ERTH token
+        let erthAllowanceMsg = new MsgExecuteContract({
+            sender: secretjs.address,
+            contract_address: tokenErthContract,
+            code_hash: tokenErthHash,
+            msg: {
+                increase_allowance: {
+                    spender: poolAddress,
+                    amount: amountErth.toString(),
+                },
+            },
+        });
+
+        // Step 2: Create allowance message for B token
+        let bAllowanceMsg = new MsgExecuteContract({
+            sender: secretjs.address,
+            contract_address: tokenBContract,
+            code_hash: tokenBHash,
+            msg: {
+                increase_allowance: {
+                    spender: poolAddress,
+                    amount: amountB.toString(),
+                },
+            },
+        });
+
+        // Step 3: Create add liquidity message
+        let addLiquidityMsg = new MsgExecuteContract({
+            sender: secretjs.address,
+            contract_address: poolAddress,
+            code_hash: poolHash,
+            msg: {
+                add_liquidity: {
+                    amount_erth: amountErth.toString(),
+                    amount_b: amountB.toString(),
+                },
+            },
+        });
+
+        // Combine all messages into a single array
+        let msgs = [erthAllowanceMsg, bAllowanceMsg, addLiquidityMsg];
+
+        // Send all messages in a single transaction
+        let resp = await secretjs.tx.broadcast(msgs, {
+            gasLimit: 1_000_000, // Adjust the gas limit as needed
+            gasPriceInFeeDenom: 0.1,
+            feeDenom: "uscrt",
+        });
+
+        console.log("Liquidity provided successfully:", resp);
+        return resp;
+    } catch (error) {
+        console.error("Error providing liquidity:", error);
+        throw error;
+    }
+}

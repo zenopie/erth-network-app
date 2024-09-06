@@ -4,8 +4,9 @@ import { query, contract } from '../utils/contractUtils';
 import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
 
-const this_contract =  "secret1aq8js6zhqfv9mtlf98nplvuayd0ve00q0ta4ul";
-const this_hash =  "941ff079bdd84cc57f514ef0135ad9414b2b388feaaa71266e58cd2232b228b6";
+
+const this_contract =  "secret1j9z593quw67ht3d5a9n6h2vhlc40raqxg3aewz";
+const this_hash =  "2927d7135c7ca5863e7f24687adb88acdfe544e0fb1971ecf662a37edb2393a8";
 
 const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');
@@ -39,7 +40,7 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             }
         } catch (error) {
             console.error("Error querying pending rewards:", error);
-            setPendingRewards('Error');
+            setPendingRewards('N/A');
         }
     }, [isKeplrConnected]);
 
@@ -62,9 +63,8 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
                 },
             };
 
-            const resp = await contract(this_contract, this_hash, msg);
+            await contract(this_contract, this_hash, msg);
 
-            console.log("Claim Rewards Response:", resp);
             setClaimResult("Rewards claimed successfully!");
 
             // Re-fetch pending rewards after claiming
