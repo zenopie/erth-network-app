@@ -115,7 +115,7 @@ export async function querySnipBalance(token) {
 
         // Handle micro units conversion to standard units
         const snip_balance = snip_info.balance.amount / Math.pow(10, token.decimals);
-        return snip_balance.toFixed(6);  // Return balance formatted to 6 decimal places
+        return parseFloat(snip_balance);  // Return balance formatted to 6 decimal places
     } catch (error) {
         console.error(`Error querying SNIP balance for ${token.contract}:`, error);
         return "Error";

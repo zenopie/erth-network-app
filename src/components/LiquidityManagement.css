@@ -186,3 +186,12 @@
 .provide-liquidity-button:hover {
     background-color: #45a049;
 }
+
+/* Add styling for token balance display */
+.balance-label {
+    font-size: 14px;
+    color: #333;
+    margin-left: 10px;
+    flex-grow: 1; /* Allow the balance text to take up available space */
+    text-align: right; /* Align balance text to the right */
+}

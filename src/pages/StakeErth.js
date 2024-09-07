@@ -6,7 +6,7 @@ import tokens from '../utils/tokens.js';
 import './StakeErth.css';
 
 const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const THIS_HASH = "7815b8b45275e14d060a553dbda6f16ac3ad6fce45adc2ec9bddad50e1e283f6";
+const THIS_HASH = "bd3a394194dead56ab74f0c0b33448e11c3c73dc88adbb4223ca1ec169d47ccf";
 
 const StakingManagement = ({ isKeplrConnected }) => {
     const [activeTab, setActiveTab] = useState('Stake');

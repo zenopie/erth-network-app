@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import './LiquidityManagement.css';
 import { query, provideLiquidity, querySnipBalance, snip, contract } from '../utils/contractUtils'; // Import contract function
 import tokens from '../utils/tokens';
-import { toMicroUnits } from '../utils/mathUtils';
+import { toMicroUnits, toMacroUnits } from '../utils/mathUtils';
+import { showLoadingScreen } from '../utils/uiUtils';
 
-const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
+const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo }) => {
     const [activeTab, setActiveTab] = useState('Provide');
     const [erthAmount, setErthAmount] = useState('');
     const [anmlAmount, setAnmlAmount] = useState('');
@@ -18,16 +19,21 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
     const [loading, setLoading] = useState(false);
 
     // Staking/Withdrawal Contract Details
-    const this_contract = "secret1j9z593quw67ht3d5a9n6h2vhlc40raqxg3aewz";
-    const this_hash = "2927d7135c7ca5863e7f24687adb88acdfe544e0fb1971ecf662a37edb2393a8";
+    const this_contract =  "secret10squ8j00kz057k7qdq53q52ldrvuf2ux27sg0a";
+    const this_hash =  "00ee06ee70f98f26ba91a43b10a6e5da35579b4d5ba10b88c0f71d4fa3372709";
 
     useEffect(() => {
         const fetchBalancesAndReserves = async () => {
+
+            showLoadingScreen(true);
             if (!isKeplrConnected) {
                 console.warn("Keplr is not connected.");
                 return;
             }
-            setLoading(true);
+            if (poolInfo) {
+                let amountStaked = toMacroUnits(poolInfo.user_info.amount_staked, tokens["ANML"].lp);
+                setStakedLpTokenBalance(amountStaked);
+            }
             try {
                 // Fetch ERTH balance from wallet
                 const erthBalance = await querySnipBalance(tokens['ERTH']);
@@ -35,25 +41,19 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
 
                 // Fetch ANML balance from wallet
                 const anmlBalance = await querySnipBalance(tokens['ANML']);
-                console.log(anmlBalance);
                 setAnmlBalance(anmlBalance);
 
                 // Fetch LP token wallet balance
                 const lpWalletBalance = await querySnipBalance(tokens['ANML'].lp);
-                console.log(lpWalletBalance);
                 setLpTokenWalletBalance(lpWalletBalance);
-
-                // Fetch staked LP token balance
-                //const stakedLpTokenData = await query(this_contract, this_hash, { query_staked_balance: {} });
-                //setStakedLpTokenBalance(stakedLpTokenData.balance);
 
                 // Fetch pool reserves
                 const poolDetails = {
                     poolContract: tokens['ANML'].poolContract, // Pool contract for liquidity
                     poolHash: tokens['ANML'].poolHash,
                 };
-                const reservesData = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
-                const stateInfo = reservesData.state;
+                const resp = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
+                const stateInfo = resp.state;
 
                 if (stateInfo) {
                     setReserves({
@@ -70,12 +70,12 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
                 setLpTokenWalletBalance("Error");
                 setStakedLpTokenBalance("Error");
             } finally {
-                setLoading(false);
+                showLoadingScreen(false);
             }
         };
 
         fetchBalancesAndReserves();
-    }, [isKeplrConnected]);
+    }, [isKeplrConnected, poolInfo]);
 
     // Handle ERTH amount change and dynamically calculate ANML equivalent based on reserves
     const handleErthChange = (event) => {
@@ -275,27 +275,10 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
             {/* Provide Liquidity Section */}
             {activeTab === 'Provide' && (
                 <div id="Provide" className="liquidity-management-tabcontent">
-                    <div className="liquidity-management-input-group">
-                        <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="provide-erth" className="liquidity-management-input-label">ERTH Amount</label>
-                            <span className="balance-label">Balance: {erthBalance || 'Loading...'}</span> {/* Display ERTH balance */}
-                        </div>
-                        <div className="liquidity-management-input-wrapper">
-                            <img id="provide-erth-logo" src="/images/logo.png" alt="ERTH Token" className="liquidity-management-input-logo" />
-                            <input
-                                type="text"
-                                id="provide-erth"
-                                value={erthAmount}
-                                onChange={handleErthChange}  // Re-added the calculation logic here
-                                placeholder="Amount to Provide"
-                                className="liquidity-management-input"
-                            />
-                        </div>
-                    </div>
 
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="provide-anml" className="liquidity-management-input-label">ANML Amount</label>
+                            <label htmlFor="provide-anml" className="liquidity-management-input-label">ANML</label>
                             <span className="balance-label">Balance: {anmlBalance || 'Loading...'}</span> {/* Display ANML balance */}
                         </div>
                         <div className="liquidity-management-input-wrapper">
@@ -311,6 +294,24 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
                         </div>
                     </div>
 
+                    <div className="liquidity-management-input-group">
+                        <div className="liquidity-management-label-wrapper">
+                            <label htmlFor="provide-erth" className="liquidity-management-input-label">ERTH</label>
+                            <span className="balance-label">Balance: {erthBalance || 'Loading...'}</span> {/* Display ERTH balance */}
+                        </div>
+                        <div className="liquidity-management-input-wrapper">
+                            <img id="provide-erth-logo" src="/images/logo.png" alt="ERTH Token" className="liquidity-management-input-logo" />
+                            <input
+                                type="text"
+                                id="provide-erth"
+                                value={erthAmount}
+                                onChange={handleErthChange}  // Re-added the calculation logic here
+                                placeholder="Amount to Provide"
+                                className="liquidity-management-input"
+                            />
+                        </div>
+                    </div>
+
                     <button onClick={handleProvideLiquidity} className="liquidity-management-button" disabled={loading}>
                         {loading ? 'Providing Liquidity...' : 'Provide Liquidity'}
                     </button>
@@ -320,60 +321,77 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity }) => {
             {/* Stake LP Tokens Section */}
             {activeTab === 'Stake' && (
                 <div id="Stake" className="liquidity-management-tabcontent">
+                    {/* Stake LP Tokens Input */}
                     <div className="liquidity-management-input-group">
-                        <label htmlFor="stake-lp" className="liquidity-management-input-label">LP Token Amount</label>
-                        <input
-                            type="text"
-                            id="stake-lp"
-                            value={lpTokenAmount}
-                            onChange={(e) => setLpTokenAmount(e.target.value)}
-                            placeholder="Amount of LP Tokens to Stake"
-                            className="liquidity-management-input"
-                        />
-                        <span className="balance-label">Wallet Balance: {lpTokenWalletBalance || 'Loading...'}</span> {/* Display LP token wallet balance */}
+                        <div className="liquidity-management-label-wrapper">
+                            <label htmlFor="stake-lp" className="liquidity-management-input-label">Unstaked LP</label>
+                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span> {/* Display LP token wallet balance */}
+                        </div>
+                        <div className="liquidity-management-input-wrapper">
+                            <input
+                                type="text"
+                                id="stake-lp"
+                                value={lpTokenAmount}
+                                onChange={(e) => setLpTokenAmount(e.target.value)}
+                                placeholder="Amount of LP Tokens to Stake"
+                                className="liquidity-management-input"
+                            />
+                        </div>
                     </div>
                     <button onClick={handleStakeLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Staking...' : 'Stake LP Tokens'}
+                        {loading ? 'Staking...' : 'Stake LP'}
                     </button>
 
-                    {/* Unstake LP Tokens Section */}
+                    {/* Unstake LP Tokens Input */}
                     <div className="liquidity-management-input-group">
-                        <label htmlFor="unstake-lp" className="liquidity-management-input-label">Unstake LP Token Amount</label>
-                        <input
-                            type="text"
-                            id="unstake-lp"
-                            value={unstakeAmount}
-                            onChange={(e) => setUnstakeAmount(e.target.value)}
-                            placeholder="Amount of LP Tokens to Unstake"
-                            className="liquidity-management-input"
-                        />
-                        <span className="balance-label">Staked Balance: {stakedLpTokenBalance || 'Loading...'}</span> {/* Display staked LP token balance */}
+                        <div className="liquidity-management-label-wrapper">
+                            <label htmlFor="unstake-lp" className="liquidity-management-input-label">Staked LP</label>
+                            <span className="balance-label">Balance: {stakedLpTokenBalance || 'Loading...'}</span> {/* Display staked LP token balance */}
+                        </div>
+                        <div className="liquidity-management-input-wrapper">
+                            <input
+                                type="text"
+                                id="unstake-lp"
+                                value={unstakeAmount}
+                                onChange={(e) => setUnstakeAmount(e.target.value)}
+                                placeholder="Amount of LP Tokens to Unstake"
+                                className="liquidity-management-input"
+                            />
+                        </div>
                     </div>
                     <button onClick={handleUnstakeLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Unstaking...' : 'Unstake LP Tokens'}
+                        {loading ? 'Unstaking...' : 'Unstake LP'}
                     </button>
                 </div>
             )}
+
 
             {/* Withdraw LP Tokens Section */}
             {activeTab === 'Withdraw' && (
                 <div id="Withdraw" className="liquidity-management-tabcontent">
+                    {/* Unstaked LP Tokens Input */}
                     <div className="liquidity-management-input-group">
-                        <label htmlFor="withdraw-lp" className="liquidity-management-input-label">LP Token Amount</label>
-                        <input
-                            type="text"
-                            id="withdraw-lp"
-                            value={lpTokenAmount}
-                            onChange={(e) => setLpTokenAmount(e.target.value)}
-                            placeholder="Amount of LP Tokens to Withdraw"
-                            className="liquidity-management-input"
-                        />
+                        <div className="liquidity-management-label-wrapper">
+                            <label htmlFor="withdraw-lp" className="liquidity-management-input-label">Unstaked LP</label>
+                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span> {/* Display unstaked LP token balance */}
+                        </div>
+                        <div className="liquidity-management-input-wrapper">
+                            <input
+                                type="text"
+                                id="withdraw-lp"
+                                value={lpTokenAmount}
+                                onChange={(e) => setLpTokenAmount(e.target.value)}
+                                placeholder="Amount of LP Tokens to Withdraw"
+                                className="liquidity-management-input"
+                            />
+                        </div>
                     </div>
                     <button onClick={handleWithdrawLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Withdrawing...' : 'Withdraw LP Tokens'}
+                        {loading ? 'Withdrawing...' : 'Withdraw LP'}
                     </button>
                 </div>
             )}
+
         </div>
     );
 };

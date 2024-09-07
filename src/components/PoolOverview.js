@@ -3,15 +3,17 @@ import "./PoolOverview.css";
 import { query, contract } from '../utils/contractUtils';
 import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
+import StatusModal from "./StatusModal.js";
 
-
-const this_contract =  "secret1j9z593quw67ht3d5a9n6h2vhlc40raqxg3aewz";
-const this_hash =  "2927d7135c7ca5863e7f24687adb88acdfe544e0fb1971ecf662a37edb2393a8";
+const this_contract =  "secret10squ8j00kz057k7qdq53q52ldrvuf2ux27sg0a";
+const this_hash =  "00ee06ee70f98f26ba91a43b10a6e5da35579b4d5ba10b88c0f71d4fa3372709";
 
 const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');
-    const [claimResult, setClaimResult] = useState('');
+    const [poolInfo, setPoolInfo] = useState(null); // Store poolInfo here
     const [showButtons, setShowButtons] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
     const fetchPendingRewards = useCallback(async () => {
         if (!isKeplrConnected) {
@@ -20,16 +22,16 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         }
 
         try {
-            console.log("Fetching pending LP rewards...");
 
             const querymsg = {
-                query_user_rewards: { 
-                    pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3", 
-                    user: window.secretjs.address 
-                }
+                query_user_rewards: {
+                    pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
+                    user: window.secretjs.address,
+                },
             };
 
             const resp = await query(this_contract, this_hash, querymsg);
+            setPoolInfo(resp);
 
             if (resp && resp.pending_rewards) {
                 const pendingRewardsDue = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
@@ -50,30 +52,48 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         }
     }, [isKeplrConnected, fetchPendingRewards]);
 
-    const handleClaimRewards = async () => {
+    const handleManageLiquidityClick = (event) => {
+        event.stopPropagation(); // Prevents the box click from firing
+        if (poolInfo) {
+            toggleManageLiquidity(poolInfo); // Pass poolInfo to Liquidity Management
+        } else {
+            console.warn("Pool info is not yet available.");
+        }
+    };
+    
+    const handleClaimRewards = async (event) => {
+        event.stopPropagation(); // Prevents the box click from firing
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
             return;
         }
-
+    
+        // Open the modal with the loading animation state
+        setIsModalOpen(true);
+        setAnimationState('loading'); // Set the modal to show the loading state
+    
         try {
             const msg = {
                 claim: {
                     pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
                 },
             };
-
+    
             await contract(this_contract, this_hash, msg);
-
-            setClaimResult("Rewards claimed successfully!");
-
+    
+            // Set the modal to show the success state after the claim is successful
+            setAnimationState('success');
+    
             // Re-fetch pending rewards after claiming
-            fetchPendingRewards();
+            fetchPendingRewards(); 
         } catch (error) {
             console.error("Error claiming rewards:", error);
-            setClaimResult("Error claiming rewards. Check the console for details.");
+    
+            // Set the modal to show the error state if there's an error
+            setAnimationState('error');
         }
     };
+    
 
     const handleBoxClick = () => {
         setShowButtons(!showButtons);
@@ -88,9 +108,14 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             </div>
 
             <div className={`buttons-container ${showButtons ? 'show' : ''}`}>
-                <button onClick={toggleManageLiquidity} className="swap-button">Manage Liquidity</button>
+                <button onClick={handleManageLiquidityClick} className="swap-button">Manage Liquidity</button>
                 <button onClick={handleClaimRewards} className="swap-button">Claim Rewards</button>
-                <div id="claim-result" className="claim-result">{claimResult}</div>
+                {/* Modal for displaying swap status */}
+                <StatusModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    animationState={animationState}
+                />
             </div>
         </div>
     );

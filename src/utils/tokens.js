@@ -11,7 +11,7 @@ const tokens = {
         hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
         decimals: 6,
         poolContract: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
-        poolHash: "594493ce83e00ec34854f91e527ea7f4397d0a04e385d7ab8c23e9c1bae1d853",
+        poolHash: "a1769d76040f708d0b0124dcf190717b54ba0619e799a43e3bad5bb5b8da068e",
         logo: "/images/anml.png",
         lp: {
             contract: 'secret1ztcedff57xqmt4lwnpdrz865rtrst037n6d8tq',

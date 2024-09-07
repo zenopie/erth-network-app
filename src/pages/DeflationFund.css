@@ -123,28 +123,6 @@
     padding: 5px;
 }
 
-/* Button Styling */
-.claim-button {
-    margin: auto;
-    margin-top: 20px;
-    background-color: white;
-    border: 5px solid #4056a1;
-    font-size: 25px;
-    border-radius: 30px;
-    color: #293462;
-    height: 50px;
-    padding-left: 20px;
-    padding-right: 20px;
-    cursor: pointer;
-    display: block;
-    width: 100%;
-    max-width: 400px;
-}
-
-.claim-button:hover {
-    background-color: #eee;
-    transition: all 0.3s ease;
-}
 
 /* Total Indicator Styling */
 .total-indicator {

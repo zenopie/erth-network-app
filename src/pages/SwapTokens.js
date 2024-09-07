@@ -5,6 +5,7 @@ import tokens from '../utils/tokens';
 import './SwapTokens.css';
 import { showLoadingScreen } from '../utils/uiUtils';
 import { toMicroUnits } from '../utils/mathUtils';
+import StatusModal from '../components/StatusModal'; 
 
 const SwapTokens = ({ isKeplrConnected }) => {
     const [fromToken, setFromToken] = useState('ANML');
@@ -16,9 +17,10 @@ const SwapTokens = ({ isKeplrConnected }) => {
     const [reserves, setReserves] = useState({});
     const [fees, setFees] = useState({});
     const [loadingBalances, setLoadingBalances] = useState(false);
-    const [swapResult, setSwapResult] = useState('');
     const [slippage, setSlippage] = useState(1);  // Default slippage
     const [poolDetails, setPoolDetails] = useState(null);  // Store pool details
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
     useEffect(() => {
         const fetchData = async () => {
@@ -107,37 +109,39 @@ const SwapTokens = ({ isKeplrConnected }) => {
             console.warn("Keplr is not connected.");
             return;
         }
-
+    
         try {
-            showLoadingScreen(true);
 
             const inputAmount = parseFloat(fromAmount);
             if (isNaN(inputAmount) || inputAmount <= 0) {
-                alert("Invalid input amount.");
                 return;
             }
-
+    
             const outputAmount = calculateOutput(inputAmount, tokens[fromToken], tokens[toToken], reserves, fees);
             if (outputAmount === "Insufficient liquidity") {
-                alert("Insufficient liquidity.");
                 return;
             }
 
+            setIsModalOpen(true);  // Open the modal and show loading animation
+            setAnimationState('loading');  // Set the state to loading when the swap starts
+    
             const minReceived = calculateMinimumReceived(outputAmount, slippage);
             const inputAmountInMicroUnits = toMicroUnits(inputAmount, tokens[fromToken]);
             const minReceivedInMicroUnits = toMicroUnits(minReceived, tokens[toToken]);
-
+    
             if (!poolDetails || !poolDetails.poolContract || !poolDetails.poolHash) {
                 console.error('Invalid pool details:', poolDetails);
+                setAnimationState('error'); // Set to error if pool details are invalid
                 throw new Error('Invalid pool details.');
             }
-
+    
             const snipmsg = {
                 swap: {
                     min_received: minReceivedInMicroUnits.toString(),
                 }
             };
-
+    
+            // Perform the swap
             await snip(
                 tokens[fromToken].contract,
                 tokens[fromToken].hash,
@@ -146,15 +150,14 @@ const SwapTokens = ({ isKeplrConnected }) => {
                 snipmsg,
                 inputAmountInMicroUnits
             );
-            setSwapResult("Swap executed successfully!");
+    
+            setAnimationState('success'); // Set the animation state to success after a successful swap
         } catch (error) {
             console.error('Error executing swap:', error);
-            setSwapResult("Error executing swap. Check the console for details.");
-        } finally {
-            showLoadingScreen(false);
+            setAnimationState('error');  // Set the animation state to error if an exception occurs
         }
     };
-
+    
     const calculatePriceImpact = () => {
         const inputMicro = toMicroUnits(fromAmount, tokens[fromToken]);
         const newFromReserve = reserves[tokens[fromToken].contract] + inputMicro;
@@ -261,11 +264,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
             <button className="swap-button" onClick={handleSwap} disabled={loadingBalances}>
                 Swap
             </button>
-            {swapResult && (
-                <div className="swap-result">
-                    {swapResult}
-                </div>
-            )}
+            {/* Modal for displaying swap status */}
+            <StatusModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                animationState={animationState}
+            />
 
 
             {/* Show Details Section */}

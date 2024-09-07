@@ -11,17 +11,6 @@
 }
 
 /* Home Section Styling */
-.home-section {
-    position: relative;
-    background: #F1F0EA;
-    height: 100vh;
-    margin-left: 260px; /* Push the section to the right by the width of the sidebar */
-    width: calc(100% - 260px); /* Take up the remaining width minus the sidebar width */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow-y: auto;
-}
 
 .home-content {
   display: flex;

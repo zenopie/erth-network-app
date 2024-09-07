@@ -5,10 +5,14 @@ import { showLoadingScreen } from '../utils/uiUtils';
 
 const ManageLP = ({ isKeplrConnected }) => {
     const [isManagingLiquidity, setIsManagingLiquidity] = useState(false);
+    const [poolInfo, setPoolInfo] = useState(null); // State to store user info
+
     showLoadingScreen(false);
 
-    const toggleManageLiquidity = () => {
-        setIsManagingLiquidity(!isManagingLiquidity);
+    // Toggle Manage Liquidity and accept user info
+    const toggleManageLiquidity = (info = null) => {
+        setPoolInfo(info); // Store user info when passed from PoolOverview
+        setIsManagingLiquidity(!isManagingLiquidity); // Toggle between views
     };
 
     return (
@@ -16,7 +20,8 @@ const ManageLP = ({ isKeplrConnected }) => {
             {isManagingLiquidity ? (
                 <LiquidityManagement 
                     toggleManageLiquidity={toggleManageLiquidity} 
-                    isKeplrConnected={isKeplrConnected}  // Pass the isKeplrConnected prop here
+                    isKeplrConnected={isKeplrConnected}  
+                    poolInfo={poolInfo} // Pass the userInfo to LiquidityManagement
                 />
             ) : (
                 <PoolOverview 
@@ -29,4 +34,3 @@ const ManageLP = ({ isKeplrConnected }) => {
 };
 
 export default ManageLP;
-
