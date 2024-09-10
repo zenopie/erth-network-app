@@ -34,7 +34,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const [stakeResult, setStakeResult] = useState('');
     const [unstakeResult, setUnstakeResult] = useState('');
     const [stakingRewards, setStakingRewards] = useState(null);
-    const [totalStaked, setTotalStaked] = useState(null); // Track total staked
     const [apr, setApr] = useState(0);
     const [loading, setLoading] = useState(false);
 
@@ -70,7 +69,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
             const stakingRewardsDueMicro = resp.staking_rewards_due;
             const totalStakedMicro = resp.total_staked;
             setStakingRewards(toMacroUnits(stakingRewardsDueMicro, tokens["ERTH"]));
-            setTotalStaked(totalStakedMicro);
 
             // Only calculate APR once totalStaked is available
             if (totalStakedMicro) {
