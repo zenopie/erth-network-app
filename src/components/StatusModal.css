@@ -5,7 +5,7 @@
   left: 0;
   width: 100vw; /* Full width of the viewport */
   height: 100vh; /* Full height of the viewport */
-  background: rgba(0, 0, 0, 0.5); /* Semi-transparent grey background */
+  background: rgba(255, 255, 255, 0.8); /* Semi-transparent grey background */
   z-index: 999; /* Ensure it appears behind the modal content */
 }
 

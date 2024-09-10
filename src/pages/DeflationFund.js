@@ -5,7 +5,7 @@ import { showLoadingScreen } from '../utils/uiUtils';
 import { query } from '../utils/contractUtils';
 
 const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const this_hash = "bd3a394194dead56ab74f0c0b33448e11c3c73dc88adbb4223ca1ec169d47ccf";
+const this_hash = "769c585aeb36c80967f6e8d214683e6e9637cd29a1770c056c1c6ecaa38401cd";
 
 const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548']; // Colors for allocations
 const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated

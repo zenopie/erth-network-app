@@ -9,7 +9,6 @@ export async function connectKeplr() {
     const chainId = 'secret-4';  // Mainnet chain ID
 
     if (!window.getOfflineSigner || !window.keplr) {
-        alert("Please install the Keplr extension.");
         throw new Error("Keplr extension is not installed.");
     }
 

@@ -31,34 +31,35 @@ export const calculateInput = (outputAmount, toToken, fromToken, reserves, fees)
     const toReserve = reserves[toToken.contract];
     const fromReserve = reserves[fromToken.contract];
 
+    // Ensure the reserves are valid numbers
     if (!toReserve || !fromReserve || isNaN(toReserve) || isNaN(fromReserve)) {
         console.error('Invalid reserves in calculateInput:', { toReserve, fromReserve });
         return '';
     }
 
+    // Convert output amount to micro units
     const outputMicro = toMicroUnits(parseFloat(outputAmount), toToken);
 
-    // Check if outputMicro is greater than toReserve
+    // Check if the outputMicro exceeds the available liquidity in the `toReserve`
     if (outputMicro >= toReserve) {
         console.error('Insufficient liquidity: outputMicro exceeds toReserve');
         return '';
     }
 
-    const inputMicro = (outputMicro * (fromReserve + outputMicro)) / (toReserve - outputMicro);
+    // Reverse the constant product formula to solve for input amount
+    // inputAmount = ((toReserve * outputMicro) / (toReserve - outputMicro)) - fromReserve
+    const numerator = fromReserve * outputMicro;
+    const denominator = toReserve - outputMicro;
+    const inputMicroWithoutFee = Math.ceil(numerator / denominator);  // Ceil to ensure rounding up
 
-    // Apply protocol fee
-    const protocolFeeAmount = inputMicro * (fees.protocol / 10000);
-    const totalInput = inputMicro + protocolFeeAmount;
+    // Apply the protocol fee to get the actual input amount
+    const protocolFeeAmount = Math.ceil(inputMicroWithoutFee * (fees.protocol / 10000));
+    const totalInputMicro = inputMicroWithoutFee + protocolFeeAmount;
 
-
-    if (isNaN(totalInput) || totalInput < 0) {
-        console.error('Invalid totalInput:', totalInput);
-        return '';
-    }
-
-    // Convert to macro units and return as a string
-    return toMacroUnits(totalInput, fromToken).toString();
+    // Return input amount in macro units
+    return toMacroUnits(totalInputMicro, fromToken).toString();
 };
+
 
 
 

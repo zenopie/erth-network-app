@@ -1,7 +1,7 @@
 /* Swap Box Styling */
 .swap-box {
     width: 100%;
-    max-width: 450px; /* Ensure it doesn't stretch too much */
+    max-width: 420px; /* Ensure it doesn't stretch too much */
     background-color: #ffffff;
     padding: 40px 30px 30px 30px; /* Increase padding at the top to make the box taller */
     border-radius: 20px;
@@ -33,7 +33,6 @@
 /* Input Label Styling */
 .input-label {
     font-size: 16px;
-    color: #333;
     margin-right: 8px;
 }
 
@@ -41,6 +40,7 @@
 .token-select {
     padding: 5px;
     font-size: 14px;
+    font-weight: 600;
     border-radius: 8px;
     border: 1px solid #ccc;
     background-color: #f9f9f9;
@@ -53,7 +53,6 @@
 /* Add styling for token balance display */
 .token-balance {
     font-size: 14px;
-    color: #333;
     margin-left: 10px;
     flex-grow: 1; /* Allow the balance text to take up available space */
     text-align: right; /* Align balance text to the right */
@@ -132,12 +131,6 @@
 }
 
 
-/* Swap Result Styling */
-.swap-result {
-    margin-top: 20px;
-    font-size: 18px;
-    color: #333;
-}
 
 /* Slippage Tolerance Section */
 .slippage-tolerance {
@@ -150,7 +143,6 @@
 /* Slippage Label Styling */
 .slippage-label {
     font-size: 14px;
-    color: #333;
     margin-right: 10px;
 }
 
@@ -168,7 +160,6 @@
 .info-display {
     margin-top: 20px;
     font-size: 14px;
-    color: #333;
     text-align: left;
 }
 
@@ -190,6 +181,7 @@
 }
 
 /* Expandable Details Section */
+
 .expandable-info summary {
     cursor: pointer;
     margin-top: 20px;

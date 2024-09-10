@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { contract, query, snip } from '../utils/contractUtils';
-import { showLoadingScreen } from '../utils/uiUtils';
-import { toMicroUnits, toMacroUnits } from '../utils/mathUtils.js'; // Ensure this function exists and is correctly named
+import { query, contract, snip } from '../utils/contractUtils'; 
+import { toMicroUnits, toMacroUnits } from '../utils/mathUtils.js'; 
 import tokens from '../utils/tokens.js';
+import { showLoadingScreen } from '../utils/uiUtils';
 import './StakeErth.css';
 
 const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const THIS_HASH = "bd3a394194dead56ab74f0c0b33448e11c3c73dc88adbb4223ca1ec169d47ccf";
+const THIS_HASH = "769c585aeb36c80967f6e8d214683e6e9637cd29a1770c056c1c6ecaa38401cd";
+
+const SECONDS_PER_DAY = 24 * 60 * 60;
+const DAYS_PER_YEAR = 365;
+
+const calculateAPR = (totalStakedMicro) => {
+    if (!totalStakedMicro) return 0; // Return 0 if the totalStakedMicro is undefined
+
+    const totalStakedMacro = toMacroUnits(totalStakedMicro, tokens["ERTH"]);
+
+    if (totalStakedMacro === 0) {
+        return 0;
+    }
+
+    const dailyGrowth = SECONDS_PER_DAY / totalStakedMacro;
+    const annualGrowth = dailyGrowth * DAYS_PER_YEAR;
+
+    return annualGrowth;
+};
 
 const StakingManagement = ({ isKeplrConnected }) => {
     const [activeTab, setActiveTab] = useState('Stake');
@@ -16,9 +34,16 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const [stakeResult, setStakeResult] = useState('');
     const [unstakeResult, setUnstakeResult] = useState('');
     const [stakingRewards, setStakingRewards] = useState(null);
-    const [loading, setLoading] = useState(false); // Optional: To manage loading state
+    const [totalStaked, setTotalStaked] = useState(null); // Track total staked
+    const [apr, setApr] = useState(0);
+    const [loading, setLoading] = useState(false);
 
-    // Fetch Staking Rewards Function Inside the Component
+    useEffect(() => {
+        if (isKeplrConnected) {
+            fetchStakingRewards();
+        }
+    }, [isKeplrConnected]);
+
     const fetchStakingRewards = async () => {
         if (!window.secretjs || !window.secretjs.address) {
             console.error("secretjs or secretjs.address is not defined.");
@@ -27,7 +52,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
         }
 
         try {
-            console.log("Fetching staking rewards...");
             setLoading(true);
             showLoadingScreen(true);
 
@@ -44,9 +68,15 @@ const StakingManagement = ({ isKeplrConnected }) => {
             }
 
             const stakingRewardsDueMicro = resp.staking_rewards_due;
-            const stakingRewardsDue = toMacroUnits(stakingRewardsDueMicro, tokens["ERTH"]);
+            const totalStakedMicro = resp.total_staked;
+            setStakingRewards(toMacroUnits(stakingRewardsDueMicro, tokens["ERTH"]));
+            setTotalStaked(totalStakedMicro);
 
-            setStakingRewards(stakingRewardsDue);
+            // Only calculate APR once totalStaked is available
+            if (totalStakedMicro) {
+                const calculatedApr = calculateAPR(totalStakedMicro);
+                setApr(calculatedApr);
+            }
         } catch (error) {
             console.error("Error querying user info:", error);
             setStakingRewards("Error");
@@ -56,13 +86,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
         }
     };
 
-    useEffect(() => {
-        if (isKeplrConnected) {
-            fetchStakingRewards();
-        }
-    }, [isKeplrConnected]);
-
-    // Handlers for Stake, Unstake, and Claim Rewards
     const handleStake = async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
@@ -79,19 +102,15 @@ const StakingManagement = ({ isKeplrConnected }) => {
             setLoading(true);
             showLoadingScreen(true);
 
-            // Convert stakeAmount to micro units if necessary
             const amountInMicroUnits = toMicroUnits(stakeAmount, tokens['ERTH']); 
 
-            // Construct the staking message
             const snipmsg = {
                 stake_erth: {}
             };
 
-            // Send the staking transaction
-            await snip(tokens["ERTH"].contract, tokens["ERTH"].hash, THIS_CONTRACT, THIS_HASH, snipmsg, amountInMicroUnits.toString()) 
+            await snip(tokens["ERTH"].contract, tokens["ERTH"].hash, THIS_CONTRACT, THIS_HASH, snipmsg, amountInMicroUnits.toString());
 
             setStakeResult("Staking executed successfully!");
-            // Optionally, refresh staking rewards
             fetchStakingRewards();
         } catch (error) {
             console.error("Error executing stake:", error);
@@ -118,21 +137,17 @@ const StakingManagement = ({ isKeplrConnected }) => {
             setLoading(true);
             showLoadingScreen(true);
 
-            // Convert unstakeAmount to micro units if necessary
-            const amountInMicroUnits = toMacroUnits(unstakeAmount, tokens['ERTH']); // Verify correct function
+            const amountInMicroUnits = toMicroUnits(unstakeAmount, tokens['ERTH']);
 
-            // Construct the unstaking message
             const msg = {
                 unstake: {
                     amount: amountInMicroUnits.toString()
                 }
             };
 
-            // Send the unstaking transaction
             await contract(THIS_CONTRACT, THIS_HASH, msg);
 
             setUnstakeResult("Unstaking executed successfully!");
-            // Optionally, refresh staking rewards
             fetchStakingRewards();
         } catch (error) {
             console.error("Error executing unstake:", error);
@@ -161,7 +176,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
             await contract(THIS_CONTRACT, THIS_HASH, msg);
 
             setClaimResult("Rewards claimed successfully!");
-            // Optionally, refresh staking rewards
             fetchStakingRewards();
         } catch (error) {
             console.error("Error claiming rewards:", error);
@@ -172,14 +186,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
         }
     };
 
-    const openTab = (tabName) => {
-        setActiveTab(tabName);
-        // Optionally, reset results when switching tabs
-        setStakeResult('');
-        setUnstakeResult('');
-        setClaimResult('');
-    };
-
     return (
         <div className="staking-management-box">
             <h2>Manage Staking</h2>
@@ -187,13 +193,13 @@ const StakingManagement = ({ isKeplrConnected }) => {
             <div className="staking-management-tab">
                 <button
                     className={`tablinks ${activeTab === 'Stake' ? 'active' : ''}`}
-                    onClick={() => openTab('Stake')}
+                    onClick={() => setActiveTab('Stake')}
                 >
                     Stake
                 </button>
                 <button
                     className={`tablinks ${activeTab === 'Withdraw' ? 'active' : ''}`}
-                    onClick={() => openTab('Withdraw')}
+                    onClick={() => setActiveTab('Withdraw')}
                 >
                     Withdraw
                 </button>
@@ -204,6 +210,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
                     <div className="staking-rewards-display">
                         <h3>Staking Rewards Due:</h3>
                         <p>{stakingRewards !== null ? `${stakingRewards} ERTH` : "Loading..."}</p>
+
                         <div className="staking-management-claim-section">
                             <button onClick={handleClaimRewards} className="staking-management-button" disabled={loading}>
                                 Claim Rewards
@@ -211,6 +218,12 @@ const StakingManagement = ({ isKeplrConnected }) => {
                             <div id="claim-result" className="staking-management-result">
                                 {claimResult}
                             </div>
+                        </div>
+
+                        {/* APR Display */}
+                        <div className="staking-apr-display">
+                            <h3>Current APR:</h3>
+                            <p>{(apr * 100).toFixed(2)}%</p>
                         </div>
                     </div>
 

@@ -5,24 +5,25 @@ import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
 import StatusModal from "./StatusModal.js";
 
-const this_contract =  "secret10squ8j00kz057k7qdq53q52ldrvuf2ux27sg0a";
-const this_hash =  "00ee06ee70f98f26ba91a43b10a6e5da35579b4d5ba10b88c0f71d4fa3372709";
+const this_contract = "secret10squ8j00kz057k7qdq53q52ldrvuf2ux27sg0a";
+const this_hash = "00ee06ee70f98f26ba91a43b10a6e5da35579b4d5ba10b88c0f71d4fa3372709";
 
 const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');
-    const [poolInfo, setPoolInfo] = useState(null); // Store poolInfo here
-    const [showButtons, setShowButtons] = useState(false);
+    const [poolInfo, setPoolInfo] = useState(null); 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
+    const [animationState, setAnimationState] = useState('loading');
+    const [liquidity, setLiquidity] = useState('-');
+    const [volume, setVolume] = useState('-');
+    const [apr, setApr] = useState('-');
 
-    const fetchPendingRewards = useCallback(async () => {
+    const fetchPoolInfo = useCallback(async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
             return;
         }
 
         try {
-
             const querymsg = {
                 query_user_rewards: {
                     pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
@@ -34,91 +35,127 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             setPoolInfo(resp);
 
             if (resp && resp.pending_rewards) {
-                const pendingRewardsDue = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
-                setPendingRewards(`${pendingRewardsDue} ERTH`);
+                setPendingRewards(`${Math.floor(resp.pending_rewards).toLocaleString()}`);
             } else {
                 console.error("Invalid response structure:", resp);
                 setPendingRewards('Error');
             }
+
+            if (resp && resp.pool_info) {
+                // Convert liquidity from micro units to macro units (for ERTH)
+                const liquidityMacro = toMacroUnits(parseInt(resp.pool_info.liquidity, 10), tokens["ERTH"]);
+                setLiquidity(`${Math.floor(liquidityMacro).toLocaleString()}`);
+
+                // Calculate volume for the last 7 days (excluding today), converting to macro units
+                const dailyVolumes = resp.pool_info.daily_volumes.slice(1, 8);
+                const totalVolumeMicro = dailyVolumes.reduce((acc, dayVolume) => acc + parseInt(dayVolume, 10), 0);
+                const totalVolumeMacro = toMacroUnits(totalVolumeMicro, tokens["ERTH"]);
+                setVolume(`${Math.floor(totalVolumeMacro).toLocaleString()}`);
+
+                // Calculate rewards for the last 7 days (in micro units)
+                const lastWeekRewards = resp.pool_info.daily_rewards.slice(1, 8).reduce((acc, dayReward) => acc + parseInt(dayReward, 10), 0);
+
+                // Calculate staked liquidity in ERTH (using shares)
+                const totalShares = parseInt(resp.pool_info.total_shares, 10); // Total shares in the pool
+                const stakedShares = parseInt(resp.pool_info.total_staked, 10); // Staked shares
+                const erthPerShare = parseInt(resp.pool_info.liquidity, 10) / totalShares; // ERTH per share ratio
+                const stakedLiquidityInERTH = stakedShares * erthPerShare;
+
+                // Annualize the rewards and calculate APR using micro units
+                const annualRewards = lastWeekRewards * 52; // Multiply by 52 weeks
+                const aprValue = (annualRewards / stakedLiquidityInERTH) * 100; // APR formula using micro units
+                setApr(`${aprValue.toFixed(2)}%`);
+            }
         } catch (error) {
-            console.error("Error querying pending rewards:", error);
+            console.error("Error fetching pool info:", error);
             setPendingRewards('N/A');
+            setLiquidity('N/A');
+            setVolume('N/A');
+            setApr('N/A');
         }
     }, [isKeplrConnected]);
 
     useEffect(() => {
         if (isKeplrConnected) {
-            fetchPendingRewards();
+            fetchPoolInfo();
         }
-    }, [isKeplrConnected, fetchPendingRewards]);
+    }, [isKeplrConnected, fetchPoolInfo]);
 
     const handleManageLiquidityClick = (event) => {
-        event.stopPropagation(); // Prevents the box click from firing
+        event.stopPropagation();
         if (poolInfo) {
-            toggleManageLiquidity(poolInfo); // Pass poolInfo to Liquidity Management
+            toggleManageLiquidity(poolInfo);
         } else {
             console.warn("Pool info is not yet available.");
         }
     };
-    
+
     const handleClaimRewards = async (event) => {
-        event.stopPropagation(); // Prevents the box click from firing
+        event.stopPropagation();
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
             return;
         }
-    
-        // Open the modal with the loading animation state
         setIsModalOpen(true);
-        setAnimationState('loading'); // Set the modal to show the loading state
-    
+        setAnimationState('loading');
+
         try {
             const msg = {
                 claim: {
                     pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
                 },
             };
-    
+
             await contract(this_contract, this_hash, msg);
-    
-            // Set the modal to show the success state after the claim is successful
             setAnimationState('success');
-    
-            // Re-fetch pending rewards after claiming
-            fetchPendingRewards(); 
+            fetchPoolInfo(); 
         } catch (error) {
             console.error("Error claiming rewards:", error);
-    
-            // Set the modal to show the error state if there's an error
             setAnimationState('error');
         }
     };
-    
-
-    const handleBoxClick = () => {
-        setShowButtons(!showButtons);
-    };
 
     return (
-        <div className="pool-overview-box" onClick={handleBoxClick}>
-            <h2>ANML/ERTH</h2>
+        <div className="pool-overview-box">
+            {/* Modal for displaying swap status */}
+            <StatusModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                animationState={animationState}
+            />
+    
+            {/* Info Row with buttons */}
             <div className="info-row">
-                <span className="info-label">Rewards:</span>
-                <span className="info-value" id="pending-rewards">{pendingRewards}</span>
-            </div>
-
-            <div className={`buttons-container ${showButtons ? 'show' : ''}`}>
-                <button onClick={handleManageLiquidityClick} className="swap-button">Manage Liquidity</button>
-                <button onClick={handleClaimRewards} className="swap-button">Claim Rewards</button>
-                {/* Modal for displaying swap status */}
-                <StatusModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    animationState={animationState}
-                />
+                {/* Coin Logo */}
+                <img src="/images/coin/ANML.png" alt="" className="coin-logo" />
+                
+                <h2 className="pool-label">ANML/ERTH</h2>
+                <div className="info-item">
+                    <span className="info-value">{pendingRewards}</span>
+                    <span className="info-label">Rewards</span>
+                </div>
+                <div className="info-item">
+                    <span className="info-value">{volume}</span>
+                    <span className="info-label">Volume</span>
+                </div>
+                <div className="info-item">
+                    <span className="info-value">{liquidity}</span>
+                    <span className="info-label">Liquidity</span>
+                </div>
+                <div className="info-item">
+                    <span className="info-value">{apr}</span>
+                    <span className="info-label">APR</span>
+                </div>
+    
+                {/* Buttons at the end of the row */}
+                <div className="buttons-container">
+                    <button onClick={handleManageLiquidityClick} className="pool-overview-button reverse">Manage</button>
+                    <button onClick={handleClaimRewards} className="pool-overview-button">Claim</button>
+                </div>
             </div>
         </div>
     );
 };
+
 
 export default PoolOverview;

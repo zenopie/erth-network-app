@@ -183,7 +183,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
 
       <div id="complete-box" className="test-box remove">
         <img src={watermelonImage} width={350} alt="Logo" className="logo-img" />
-        <span className="success-text"><b>CLAIMED! </b>see you tomorrow!</span>
+        <span className="success-text">CLAIMED! see you tomorrow!</span>
       </div>
     </>
   );

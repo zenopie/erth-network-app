@@ -122,7 +122,6 @@
 
 .sidebar .nav-links li a .link_name {
   font-size: 18px;
-  color: #293462;
   transition: all 0.4s ease;
 }
 
@@ -133,7 +132,6 @@
 
 .submenu-list li a {
   font-size: 18px;
-  color: #293462;
   display: flex;
   align-items: center;
   height: 50px;
@@ -201,7 +199,6 @@
 
 .sidebar .profile-details .profile_name,
 .sidebar .profile-details .job {
-  color: #293462;
   font-size: 18px;
   font-weight: 500;
   white-space: nowrap;
@@ -240,7 +237,6 @@
 .submenu-toggle .link_name {
   flex-grow: 1; /* Ensure the text takes up the remaining space */
   font-size: 18px;
-  color: #293462;
   transition: all 0.4s ease;
   line-height: 50px; /* Vertically center the text */
 }
@@ -275,7 +271,6 @@
   display: flex;
   align-items: center;
   text-decoration: none;
-  color: #293462;
   transition: all 0.4s ease;
 }
 

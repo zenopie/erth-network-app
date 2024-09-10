@@ -187,6 +187,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
 
     return (
         <div className="swap-box">
+            {/* Modal for displaying swap status */}
+            <StatusModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                animationState={animationState}
+            />
             <h2 className="swap-title">Swap Tokens</h2>
             <div className="input-group">
                 <div className="label-wrapper">
@@ -205,9 +211,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
                     </select>
                     <span className="token-balance">
                         Balance: {loadingBalances ? 'Loading...' : fromBalance !== null ? fromBalance : 'N/A'}
-                        {fromBalance && !isNaN(fromBalance) && (
-                            <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
-                        )}
+                        <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
                     </span>
                 </div>
                 <div className="input-wrapper">
@@ -264,12 +268,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
             <button className="swap-button" onClick={handleSwap} disabled={loadingBalances}>
                 Swap
             </button>
-            {/* Modal for displaying swap status */}
-            <StatusModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                animationState={animationState}
-            />
+            
 
 
             {/* Show Details Section */}
