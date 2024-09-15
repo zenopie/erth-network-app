@@ -5,8 +5,8 @@ import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
 import StatusModal from "./StatusModal.js";
 
-const this_contract = "secret10squ8j00kz057k7qdq53q52ldrvuf2ux27sg0a";
-const this_hash = "00ee06ee70f98f26ba91a43b10a6e5da35579b4d5ba10b88c0f71d4fa3372709";
+const this_contract =  "secret1f75jf2yxnkdsxsyverzuxk7a260jyqzgm8g9ka";
+const this_hash =  "08c36f6512179e8cafe0216a0eb41dbbc4d47384ed2d187c73b02739f321cba0";
 
 const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');
@@ -35,7 +35,8 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             setPoolInfo(resp);
 
             if (resp && resp.pending_rewards) {
-                setPendingRewards(`${Math.floor(resp.pending_rewards).toLocaleString()}`);
+                let pending_rewards = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
+                setPendingRewards(`${Math.floor(pending_rewards).toLocaleString()}`);
             } else {
                 console.error("Invalid response structure:", resp);
                 setPendingRewards('Error');
