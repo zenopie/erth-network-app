@@ -1,14 +1,13 @@
+// PoolOverview.js
 import React, { useState, useEffect, useCallback } from 'react';
 import "./PoolOverview.css";
 import { query, contract } from '../utils/contractUtils';
 import { toMacroUnits } from '../utils/mathUtils.js';
 import tokens from '../utils/tokens.js';
+import contracts from '../utils/contracts.js';
 import StatusModal from "./StatusModal.js";
 
-const this_contract =  "secret1f75jf2yxnkdsxsyverzuxk7a260jyqzgm8g9ka";
-const this_hash =  "08c36f6512179e8cafe0216a0eb41dbbc4d47384ed2d187c73b02739f321cba0";
-
-const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
+const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected }) => {
     const [pendingRewards, setPendingRewards] = useState('-');
     const [poolInfo, setPoolInfo] = useState(null); 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +15,12 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
     const [liquidity, setLiquidity] = useState('-');
     const [volume, setVolume] = useState('-');
     const [apr, setApr] = useState('-');
+
+    // Access token and pool data from tokens.js
+    const token = tokens[tokenKey];
+    const poolContract = token.poolContract;
+    const stakingContract = contracts.lpStaking.contract;
+    const stakingHash = contracts.lpStaking.hash;
 
     const fetchPoolInfo = useCallback(async () => {
         if (!isKeplrConnected) {
@@ -26,13 +31,18 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         try {
             const querymsg = {
                 query_user_rewards: {
-                    pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
+                    pool: poolContract,
                     user: window.secretjs.address,
                 },
             };
 
-            const resp = await query(this_contract, this_hash, querymsg);
-            setPoolInfo(resp);
+            const resp = await query(stakingContract, stakingHash, querymsg);
+
+            // Set poolInfo with tokenKey
+            setPoolInfo({
+                ...resp,
+                tokenKey: tokenKey, // Include the token key here
+            });
 
             if (resp && resp.pending_rewards) {
                 let pending_rewards = toMacroUnits(resp.pending_rewards, tokens["ERTH"]);
@@ -74,7 +84,7 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             setVolume('N/A');
             setApr('N/A');
         }
-    }, [isKeplrConnected]);
+    }, [isKeplrConnected, poolContract, stakingContract, stakingHash, tokenKey]);
 
     useEffect(() => {
         if (isKeplrConnected) {
@@ -103,11 +113,11 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         try {
             const msg = {
                 claim: {
-                    pool: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
+                    pool: poolContract,
                 },
             };
 
-            await contract(this_contract, this_hash, msg);
+            await contract(stakingContract, stakingHash, msg);
             setAnimationState('success');
             fetchPoolInfo(); 
         } catch (error) {
@@ -128,21 +138,29 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
             {/* Info Row with buttons */}
             <div className="info-row">
                 {/* Coin Logo */}
-                <img src="/images/coin/ANML.png" alt="" className="coin-logo" />
+                <img src={token.logo} alt={`${tokenKey} logo`} className="coin-logo" />
                 
-                <h2 className="pool-label">ANML/ERTH</h2>
+                <h2 className="pool-label">{tokenKey}/ERTH</h2>
+
+                {/* Pending Rewards */}
                 <div className="info-item">
                     <span className="info-value">{pendingRewards}</span>
                     <span className="info-label">Rewards</span>
                 </div>
+
+                {/* Volume */}
                 <div className="info-item">
                     <span className="info-value">{volume}</span>
                     <span className="info-label">Volume</span>
                 </div>
+
+                {/* Liquidity */}
                 <div className="info-item">
                     <span className="info-value">{liquidity}</span>
                     <span className="info-label">Liquidity</span>
                 </div>
+
+                {/* APR */}
                 <div className="info-item">
                     <span className="info-value">{apr}</span>
                     <span className="info-label">APR</span>
@@ -157,6 +175,5 @@ const PoolOverview = ({ toggleManageLiquidity, isKeplrConnected }) => {
         </div>
     );
 };
-
 
 export default PoolOverview;

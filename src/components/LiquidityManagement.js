@@ -1,64 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import './LiquidityManagement.css';
-import { query, provideLiquidity, querySnipBalance, snip, contract } from '../utils/contractUtils'; // Import contract function
+import { query, provideLiquidity, querySnipBalance, snip, contract } from '../utils/contractUtils';
 import tokens from '../utils/tokens';
+import contracts from '../utils/contracts.js';
 import { toMicroUnits, toMacroUnits } from '../utils/mathUtils';
 import { showLoadingScreen } from '../utils/uiUtils';
 
 const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo }) => {
     const [activeTab, setActiveTab] = useState('Provide');
     const [erthAmount, setErthAmount] = useState('');
-    const [anmlAmount, setAnmlAmount] = useState('');
-    const [lpTokenAmount, setLpTokenAmount] = useState(''); // For LP token staking/withdrawing input
-    const [unstakeAmount, setUnstakeAmount] = useState(''); // For unstaking LP tokens
+    const [tokenBAmount, setTokenBAmount] = useState('');
+    const [lpTokenAmount, setLpTokenAmount] = useState('');
+    const [unstakeAmount, setUnstakeAmount] = useState('');
     const [reserves, setReserves] = useState({});
-    const [erthBalance, setErthBalance] = useState(null); // ERTH balance in wallet
-    const [anmlBalance, setAnmlBalance] = useState(null); // ANML balance in wallet
-    const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null); // LP Token balance in wallet
-    const [stakedLpTokenBalance, setStakedLpTokenBalance] = useState(null); // Staked LP Token balance
+    const [erthBalance, setErthBalance] = useState(null);
+    const [tokenBBalance, setTokenBBalance] = useState(null);
+    const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null);
+    const [stakedLpTokenBalance, setStakedLpTokenBalance] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    // Staking/Withdrawal Contract Details
-    const this_contract =  "secret1f75jf2yxnkdsxsyverzuxk7a260jyqzgm8g9ka";
-    const this_hash =  "08c36f6512179e8cafe0216a0eb41dbbc4d47384ed2d187c73b02739f321cba0";
+    // Tokens
+    const tokenErthKey = 'ERTH'; // Always ERTH
+    const tokenBKey = poolInfo.tokenKey; // The other token in the pool
+    const tokenErth = tokens[tokenErthKey];
+    const tokenB = tokens[tokenBKey];
+
+    const stakingContract = contracts.lpStaking.contract;
+    const stakingHash = contracts.lpStaking.hash;
 
     useEffect(() => {
         const fetchBalancesAndReserves = async () => {
-
             showLoadingScreen(true);
             if (!isKeplrConnected) {
                 console.warn("Keplr is not connected.");
                 return;
             }
             if (poolInfo) {
-                let amountStaked = toMacroUnits(poolInfo.user_info.amount_staked, tokens["ANML"].lp);
+                let amountStaked = toMacroUnits(poolInfo.user_info.amount_staked, tokenB.lp);
                 setStakedLpTokenBalance(amountStaked);
             }
             try {
-                // Fetch ERTH balance from wallet
-                const erthBalance = await querySnipBalance(tokens['ERTH']);
+                // Fetch balances
+                const erthBalance = await querySnipBalance(tokenErth);
                 setErthBalance(erthBalance);
 
-                // Fetch ANML balance from wallet
-                const anmlBalance = await querySnipBalance(tokens['ANML']);
-                setAnmlBalance(anmlBalance);
+                const tokenBBalance = await querySnipBalance(tokenB);
+                setTokenBBalance(tokenBBalance);
 
                 // Fetch LP token wallet balance
-                const lpWalletBalance = await querySnipBalance(tokens['ANML'].lp);
+                const lpWalletBalance = await querySnipBalance(tokenB.lp);
                 setLpTokenWalletBalance(lpWalletBalance);
 
                 // Fetch pool reserves
                 const poolDetails = {
-                    poolContract: tokens['ANML'].poolContract, // Pool contract for liquidity
-                    poolHash: tokens['ANML'].poolHash,
+                    poolContract: tokenB.poolContract,
+                    poolHash: tokenB.poolHash,
                 };
                 const resp = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
                 const stateInfo = resp.state;
 
                 if (stateInfo) {
                     setReserves({
-                        erth: parseInt(stateInfo.token_erth_reserve),
-                        anml: parseInt(stateInfo.token_b_reserve),
+                        erthReserve: parseInt(stateInfo.token_erth_reserve),
+                        tokenBReserve: parseInt(stateInfo.token_b_reserve),
                     });
                 } else {
                     console.warn("No state information available from the pool query.");
@@ -66,7 +70,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             } catch (err) {
                 console.error("Error fetching data:", err);
                 setErthBalance("Error");
-                setAnmlBalance("Error");
+                setTokenBBalance("Error");
                 setLpTokenWalletBalance("Error");
                 setStakedLpTokenBalance("Error");
             } finally {
@@ -75,33 +79,33 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         };
 
         fetchBalancesAndReserves();
-    }, [isKeplrConnected, poolInfo]);
+    }, [isKeplrConnected, poolInfo, tokenErth, tokenB]);
 
-    // Handle ERTH amount change and dynamically calculate ANML equivalent based on reserves
+    // Handle ERTH amount change and dynamically calculate tokenB equivalent based on reserves
     const handleErthChange = (event) => {
         const value = event.target.value;
         setErthAmount(value);
 
         const parsedValue = parseFloat(value);
 
-        if (!isNaN(parsedValue) && reserves.erth > 0 && reserves.anml > 0) {
-            const anmlEquivalent = (parsedValue * reserves.anml) / reserves.erth;
-            setAnmlAmount(anmlEquivalent.toFixed(6));  // Adjust decimal places as needed
+        if (!isNaN(parsedValue) && reserves.erthReserve > 0 && reserves.tokenBReserve > 0) {
+            const tokenBEquivalent = (parsedValue * reserves.tokenBReserve) / reserves.erthReserve;
+            setTokenBAmount(tokenBEquivalent.toFixed(6));
         } else {
-            setAnmlAmount('');
+            setTokenBAmount('');
         }
     };
 
-    // Handle ANML amount change and dynamically calculate ERTH equivalent based on reserves
-    const handleAnmlChange = (event) => {
+    // Handle tokenB amount change and dynamically calculate ERTH equivalent based on reserves
+    const handleTokenBChange = (event) => {
         const value = event.target.value;
-        setAnmlAmount(value);
+        setTokenBAmount(value);
 
         const parsedValue = parseFloat(value);
 
-        if (!isNaN(parsedValue) && reserves.erth > 0 && reserves.anml > 0) {
-            const erthEquivalent = (parsedValue * reserves.erth) / reserves.anml;
-            setErthAmount(erthEquivalent.toFixed(6));  // Adjust decimal places as needed
+        if (!isNaN(parsedValue) && reserves.erthReserve > 0 && reserves.tokenBReserve > 0) {
+            const erthEquivalent = (parsedValue * reserves.erthReserve) / reserves.tokenBReserve;
+            setErthAmount(erthEquivalent.toFixed(6));
         } else {
             setErthAmount('');
         }
@@ -114,19 +118,19 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             return;
         }
 
-        const tokenErthContract = tokens['ERTH'].contract;
-        const tokenErthHash = tokens['ERTH'].hash;
-        const tokenBContract = tokens['ANML'].contract;
-        const tokenBHash = tokens['ANML'].hash;
-        const poolAddress = tokens['ANML'].poolContract;
-        const poolHash = tokens['ANML'].poolHash;
+        const tokenErthContract = tokenErth.contract;
+        const tokenErthHash = tokenErth.hash;
+        const tokenBContract = tokenB.contract;
+        const tokenBHash = tokenB.hash;
+        const poolAddress = tokenB.poolContract; // Pool contract is associated with tokenB
+        const poolHash = tokenB.poolHash;
 
         try {
             setLoading(true);
 
-            // Convert amounts to micro units using the toMicroUnits utility function
-            const microErthAmount = toMicroUnits(erthAmount, tokens['ERTH']);
-            const microAnmlAmount = toMicroUnits(anmlAmount, tokens['ANML']);
+            // Convert amounts to micro units
+            const microErthAmount = toMicroUnits(erthAmount, tokenErth);
+            const microTokenBAmount = toMicroUnits(tokenBAmount, tokenB);
 
             await provideLiquidity(
                 tokenErthContract,
@@ -136,7 +140,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                 poolAddress,
                 poolHash,
                 microErthAmount,
-                microAnmlAmount
+                microTokenBAmount
             );
             console.log("Liquidity provided successfully!");
         } catch (error) {
@@ -153,7 +157,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             return;
         }
 
-        const inputAmountInMicroUnits = toMicroUnits(lpTokenAmount, tokens['ANML']); // Convert amount to micro units
+        const inputAmountInMicroUnits = toMicroUnits(lpTokenAmount, tokenB.lp); // Convert amount to micro units
         const snipMsg = {
             deposit: {},
         };
@@ -163,12 +167,12 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
 
             // Execute the snip interaction, sending to the staking contract
             await snip(
-                tokens['ANML'].lp.contract, // LP token contract address
-                tokens['ANML'].lp.hash,     // LP token contract hash
-                this_contract,                  // Staking contract address
-                this_hash,                      // Staking contract hash
-                snipMsg,                        // The message (deposit action)
-                inputAmountInMicroUnits         // Amount to stake
+                tokenB.lp.contract,    // LP token contract address
+                tokenB.lp.hash,        // LP token contract hash
+                stakingContract,       // Staking contract address
+                stakingHash,           // Staking contract hash
+                snipMsg,               // The message (deposit action)
+                inputAmountInMicroUnits // Amount to stake
             );
 
             console.log("Staking of LP tokens to staking contract successful!");
@@ -186,11 +190,11 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             return;
         }
 
-        const unstakeAmountInMicroUnits = toMicroUnits(unstakeAmount, tokens['ANML']); // Convert amount to micro units
+        const unstakeAmountInMicroUnits = toMicroUnits(unstakeAmount, tokenB.lp); // Convert amount to micro units
 
         const contractMsg = {
             withdraw: {
-                pool: tokens['ANML'].poolContract,  // Pool contract address
+                pool: tokenB.poolContract,  // Pool contract address
                 amount: unstakeAmountInMicroUnits.toString(),
             }
         };
@@ -199,7 +203,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             setLoading(true);
 
             // Execute the unstake contract interaction
-            await contract(this_contract, this_hash, contractMsg);
+            await contract(stakingContract, stakingHash, contractMsg);
 
             console.log("Unstaking LP tokens from staking contract successful!");
         } catch (error) {
@@ -216,7 +220,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             return;
         }
 
-        const inputAmountInMicroUnits = toMicroUnits(lpTokenAmount, tokens['ANML']); // Convert amount to micro units
+        const inputAmountInMicroUnits = toMicroUnits(lpTokenAmount, tokenB.lp); // Convert amount to micro units
         const snipMsg = {
             unbond_liquidity: {},  // Hook message for unbonding liquidity
         };
@@ -226,12 +230,12 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
 
             // Execute the snip interaction, sending the unbond message to the pool contract
             await snip(
-                tokens['ANML'].lp.contract, // LP token contract address
-                tokens['ANML'].lp.hash,     // LP token contract hash
-                tokens['ANML'].poolContract,    // Pool contract address for unbonding liquidity
-                tokens['ANML'].poolHash,        // Pool contract hash
-                snipMsg,                        // The message (unbonding action)
-                inputAmountInMicroUnits         // Amount to withdraw
+                tokenB.lp.contract,    // LP token contract address
+                tokenB.lp.hash,        // LP token contract hash
+                tokenB.poolContract,   // Pool contract address for unbonding liquidity
+                tokenB.poolHash,       // Pool contract hash
+                snipMsg,               // The message (unbonding action)
+                inputAmountInMicroUnits // Amount to withdraw
             );
 
             console.log("Unbonding liquidity from the pool successful!");
@@ -242,10 +246,6 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         }
     };
 
-    const openTab = (event, tabName) => {
-        setActiveTab(tabName);
-    };
-
     return (
         <div className="liquidity-management-box">
             <h2>Manage Liquidity</h2>
@@ -254,19 +254,19 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             <div className="liquidity-management-tab">
                 <button
                     className={`tablinks ${activeTab === 'Provide' ? 'active' : ''}`}
-                    onClick={(e) => openTab(e, 'Provide')}
+                    onClick={() => setActiveTab('Provide')}
                 >
                     Provide
                 </button>
                 <button
                     className={`tablinks ${activeTab === 'Stake' ? 'active' : ''}`}
-                    onClick={(e) => openTab(e, 'Stake')}
+                    onClick={() => setActiveTab('Stake')}
                 >
                     Stake
                 </button>
                 <button
                     className={`tablinks ${activeTab === 'Withdraw' ? 'active' : ''}`}
-                    onClick={(e) => openTab(e, 'Withdraw')}
+                    onClick={() => setActiveTab('Withdraw')}
                 >
                     Withdraw
                 </button>
@@ -275,38 +275,39 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             {/* Provide Liquidity Section */}
             {activeTab === 'Provide' && (
                 <div id="Provide" className="liquidity-management-tabcontent">
-
+                    {/* Token B Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="provide-anml" className="liquidity-management-input-label">ANML</label>
-                            <span className="balance-label">Balance: {anmlBalance || 'Loading...'}</span> {/* Display ANML balance */}
+                            <label htmlFor="provide-tokenB" className="liquidity-management-input-label">{tokenBKey}</label>
+                            <span className="balance-label">Balance: {tokenBBalance || 'Loading...'}</span>
                         </div>
                         <div className="liquidity-management-input-wrapper">
-                            <img id="provide-anml-logo" src="/images/anml.png" alt="ANML Token" className="liquidity-management-input-logo" />
+                            <img id="provide-tokenB-logo" src={tokenB.logo} alt={`${tokenBKey} Token`} className="liquidity-management-input-logo" />
                             <input
                                 type="text"
-                                id="provide-anml"
-                                value={anmlAmount}
-                                onChange={handleAnmlChange}  // Re-added the calculation logic here
-                                placeholder="Amount to Provide"
+                                id="provide-tokenB"
+                                value={tokenBAmount}
+                                onChange={handleTokenBChange}
+                                placeholder={`Amount of ${tokenBKey} to Provide`}
                                 className="liquidity-management-input"
                             />
                         </div>
                     </div>
 
+                    {/* ERTH Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="provide-erth" className="liquidity-management-input-label">ERTH</label>
-                            <span className="balance-label">Balance: {erthBalance || 'Loading...'}</span> {/* Display ERTH balance */}
+                            <span className="balance-label">Balance: {erthBalance || 'Loading...'}</span>
                         </div>
                         <div className="liquidity-management-input-wrapper">
-                            <img id="provide-erth-logo" src="/images/logo.png" alt="ERTH Token" className="liquidity-management-input-logo" />
+                            <img id="provide-erth-logo" src={tokenErth.logo} alt="ERTH Token" className="liquidity-management-input-logo" />
                             <input
                                 type="text"
                                 id="provide-erth"
                                 value={erthAmount}
-                                onChange={handleErthChange}  // Re-added the calculation logic here
-                                placeholder="Amount to Provide"
+                                onChange={handleErthChange}
+                                placeholder="Amount of ERTH to Provide"
                                 className="liquidity-management-input"
                             />
                         </div>
@@ -324,8 +325,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     {/* Stake LP Tokens Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="stake-lp" className="liquidity-management-input-label">Unstaked LP</label>
-                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span> {/* Display LP token wallet balance */}
+                            <label htmlFor="stake-lp" className="liquidity-management-input-label">Unstaked LP Tokens</label>
+                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -345,8 +346,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     {/* Unstake LP Tokens Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="unstake-lp" className="liquidity-management-input-label">Staked LP</label>
-                            <span className="balance-label">Balance: {stakedLpTokenBalance || 'Loading...'}</span> {/* Display staked LP token balance */}
+                            <label htmlFor="unstake-lp" className="liquidity-management-input-label">Staked LP Tokens</label>
+                            <span className="balance-label">Balance: {stakedLpTokenBalance || 'Loading...'}</span>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -365,15 +366,14 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                 </div>
             )}
 
-
             {/* Withdraw LP Tokens Section */}
             {activeTab === 'Withdraw' && (
                 <div id="Withdraw" className="liquidity-management-tabcontent">
                     {/* Unstaked LP Tokens Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
-                            <label htmlFor="withdraw-lp" className="liquidity-management-input-label">Unstaked LP</label>
-                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span> {/* Display unstaked LP token balance */}
+                            <label htmlFor="withdraw-lp" className="liquidity-management-input-label">Unstaked LP Tokens</label>
+                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -391,7 +391,6 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     </button>
                 </div>
             )}
-
         </div>
     );
 };

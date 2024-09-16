@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PoolOverview from '../components/PoolOverview';
 import LiquidityManagement from '../components/LiquidityManagement';
 import { showLoadingScreen } from '../utils/uiUtils';
+import tokens from '../utils/tokens';
 
 const ManageLP = ({ isKeplrConnected }) => {
     const [isManagingLiquidity, setIsManagingLiquidity] = useState(false);
@@ -15,6 +16,9 @@ const ManageLP = ({ isKeplrConnected }) => {
         setIsManagingLiquidity(!isManagingLiquidity); // Toggle between views
     };
 
+    // Get list of tokens excluding ERTH
+    const tokenKeys = Object.keys(tokens).filter(token => token !== 'ERTH');
+
     return (
         <>
             {isManagingLiquidity ? (
@@ -24,10 +28,15 @@ const ManageLP = ({ isKeplrConnected }) => {
                     poolInfo={poolInfo} // Pass the userInfo to LiquidityManagement
                 />
             ) : (
-                <PoolOverview 
-                    toggleManageLiquidity={toggleManageLiquidity} 
-                    isKeplrConnected={isKeplrConnected} 
-                />
+                // Map over tokenKeys to create PoolOverview components
+                tokenKeys.map(tokenKey => (
+                    <PoolOverview 
+                        key={tokenKey}
+                        tokenKey={tokenKey}
+                        toggleManageLiquidity={toggleManageLiquidity} 
+                        isKeplrConnected={isKeplrConnected} 
+                    />
+                ))
             )}
         </>
     );
