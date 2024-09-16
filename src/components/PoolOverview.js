@@ -16,6 +16,8 @@ const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected }) => 
     const [volume, setVolume] = useState('-');
     const [apr, setApr] = useState('-');
 
+    const hasRewards = pendingRewards > 0; // Check if rewards are greater than 0
+
     // Access token and pool data from tokens.js
     const token = tokens[tokenKey];
     const poolContract = token.poolContract;
@@ -127,7 +129,7 @@ const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected }) => 
     };
 
     return (
-        <div className="pool-overview-box">
+        <div className={`pool-overview-box ${hasRewards ? 'green-outline' : ''}`}>
             {/* Modal for displaying swap status */}
             <StatusModal
                 isOpen={isModalOpen}

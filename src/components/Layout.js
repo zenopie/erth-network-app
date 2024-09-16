@@ -8,15 +8,21 @@ const Layout = ({ children }) => {
   const [isKeplrConnected, setKeplrConnected] = useState(false);
 
   useEffect(() => {
-    const connectWallet = async () => {
+    const connectWallet = async (retryCount = 0) => {
       try {
         const { secretjs, walletName } = await connectKeplr();
         window.secretjs = secretjs;
         setWalletName(walletName);
         setKeplrConnected(true);
-        console.log("Keplr connected, you can now access SecretJS and other features.");
+        console.log("Keplr connected, you can now access SecretJS and other features.", retryCount);
       } catch (error) {
-        console.log("Failed to connect to Keplr:", error);
+        if (retryCount < 5) { // Retry up to 5 times
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+          console.log(`Retrying to connect to Keplr in ${delay / 1000} seconds...`);
+          setTimeout(() => connectWallet(retryCount + 1), delay);
+        } else {
+          console.log("Failed to connect to Keplr after multiple attempts:", error);
+        }
       }
     };
 
@@ -38,3 +44,4 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+

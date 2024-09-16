@@ -12,6 +12,10 @@
     margin-bottom: 25px;
 }
 
+.green-outline {
+    outline: 2px solid #4CAF50;
+}
+
 /* Flexbox layout for the info-row */
 .info-row {
     margin-bottom: 5px;
