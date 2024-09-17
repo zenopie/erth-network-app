@@ -2,7 +2,7 @@
 const contracts = {
     lpStaking: {
         contract: "secret1f75jf2yxnkdsxsyverzuxk7a260jyqzgm8g9ka",
-        hash: "08c36f6512179e8cafe0216a0eb41dbbc4d47384ed2d187c73b02739f321cba0",
+        hash: "79c3012bb59ab1c5139148a1acc9160d32b04152e6363f2961bcebb68974f988",
     },
 };
 

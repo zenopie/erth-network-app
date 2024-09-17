@@ -14,7 +14,7 @@ const Layout = ({ children }) => {
         window.secretjs = secretjs;
         setWalletName(walletName);
         setKeplrConnected(true);
-        console.log("Keplr connected, you can now access SecretJS and other features.", retryCount);
+        console.log("Keplr connected, retry count:", retryCount);
       } catch (error) {
         if (retryCount < 5) { // Retry up to 5 times
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
