@@ -96,7 +96,11 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
 export async function querySnipBalance(token) {
     try {
         const chainId = window.secretjs.chainId;
-        const viewing_key = await window.keplr.getSecret20ViewingKey(chainId, token.contract);
+        let viewing_key = await window.keplr.getSecret20ViewingKey(chainId, token.contract);
+
+        if (!viewing_key) {
+            throw new Error('Viewing key not found');
+        }
 
         const snip_info = await window.secretjs.query.compute.queryContract({
             contract_address: token.contract,
@@ -110,16 +114,26 @@ export async function querySnipBalance(token) {
             },
         });
 
-        console.log('SNIP info:', snip_info);
-
         // Handle micro units conversion to standard units
         const snip_balance = snip_info.balance.amount / Math.pow(10, token.decimals);
-        return parseFloat(snip_balance);  // Return balance formatted to 6 decimal places
+        return parseFloat(snip_balance);
     } catch (error) {
         console.error(`Error querying SNIP balance for ${token.contract}:`, error);
-        return "Error";
+        return "Error";  // Set balance to "Error" when an issue occurs
     }
 }
+
+
+export async function requestViewingKey(token) {
+    try {
+        const chainId = window.secretjs.chainId;
+        await window.keplr.suggestToken(chainId, token.contract);
+        console.log('Viewing key requested successfully');
+    } catch (error) {
+        console.error('Error requesting viewing key:', error);
+    }
+}
+
 
 export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, poolAddress, poolHash, amountErth, amountB) {
     if (!secretjs) {

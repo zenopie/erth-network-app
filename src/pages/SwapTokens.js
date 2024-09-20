@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { querySnipBalance, query, snip } from '../utils/contractUtils';
+import React, { useState, useEffect, useCallback } from 'react';
+import { querySnipBalance, query, snip, requestViewingKey } from '../utils/contractUtils';
 import { getPoolDetails, calculateOutput, calculateInput, calculateMinimumReceived,
     calculateOutputWithHop,
 } from '../utils/swapTokensUtils';
@@ -18,111 +18,100 @@ const SwapTokens = ({ isKeplrConnected }) => {
     const [toBalance, setToBalance] = useState(null);
     const [reserves, setReserves] = useState({});
     const [fees, setFees] = useState({});
-    const [loadingBalances, setLoadingBalances] = useState(false);
     const [slippage, setSlippage] = useState(1);  // Default slippage
     const [poolDetails, setPoolDetails] = useState(null);  // Store pool details
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!isKeplrConnected) {
-                console.warn("Keplr is not connected.");
-                return;
+    const fetchData = useCallback(async () => {
+        if (!isKeplrConnected) {
+            console.warn("Keplr is not connected.");
+            return;
+        }
+        showLoadingScreen(true);
+        try {
+            const fromTokenBalance = await querySnipBalance(tokens[fromToken]);
+            const toTokenBalance = await querySnipBalance(tokens[toToken]);
+
+             // Ensure balance is only set if it's a valid number
+            setFromBalance(isNaN(fromTokenBalance) || fromTokenBalance === "Error" ? "Error" : parseFloat(fromTokenBalance));
+            setToBalance(isNaN(toTokenBalance) || toTokenBalance === "Error" ? "Error" : parseFloat(toTokenBalance));
+
+            const poolDetails = getPoolDetails(fromToken, toToken);
+
+            if (!poolDetails) {
+                console.error('Invalid pool details:', poolDetails);
+                throw new Error('Invalid pool details.');
             }
-            setLoadingBalances(true);
-            showLoadingScreen(true);
-            try {
-                const fromTokenBalance = await querySnipBalance(tokens[fromToken]);
-                const toTokenBalance = await querySnipBalance(tokens[toToken]);
-    
-                const poolDetails = getPoolDetails(fromToken, toToken);
-    
-                if (!poolDetails) {
-                    console.error('Invalid pool details:', poolDetails);
-                    throw new Error('Invalid pool details.');
+
+            setPoolDetails(poolDetails); // Store pool details in state
+
+            let newReserves = {};
+            let newFees = {};
+            if (!poolDetails.isHop) {
+                
+                const reservesData = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
+                const stateInfo = reservesData.state;
+
+                if (stateInfo) {
+                    if (fromToken === 'ERTH') {
+                        // When fromToken is ERTH
+                        newReserves[`${fromToken}-${toToken}`] = {
+                            [fromToken]: parseInt(stateInfo.token_erth_reserve),
+                            [toToken]: parseInt(stateInfo.token_b_reserve),
+                        };
+                    } else {
+                        // When toToken is ERTH or neither token is ERTH
+                        newReserves[`${fromToken}-${toToken}`] = {
+                            [fromToken]: parseInt(stateInfo.token_b_reserve),
+                            [toToken]: parseInt(stateInfo.token_erth_reserve),
+                        };
+                    }
+                    newFees[`${fromToken}-${toToken}`] = parseInt(stateInfo.protocol_fee);
                 }
-    
-                setPoolDetails(poolDetails); // Store pool details in state
-    
-                let newReserves = {};
-                let newFees = {};
-                console.log("entering hop test");
-                if (!poolDetails.isHop) {
-                    console.log("ishop test on Swaptokens.js");
-                    console.log('pool details ', poolDetails);
-                    
-                    const reservesData = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
-                    const stateInfo = reservesData.state;
-    
-                    if (stateInfo) {
-                        if (fromToken === 'ERTH') {
-                            // When fromToken is ERTH
-                            newReserves[`${fromToken}-${toToken}`] = {
-                                [fromToken]: parseInt(stateInfo.token_erth_reserve),
-                                [toToken]: parseInt(stateInfo.token_b_reserve),
-                            };
-                        } else {
-                            // When toToken is ERTH or neither token is ERTH
-                            newReserves[`${fromToken}-${toToken}`] = {
-                                [fromToken]: parseInt(stateInfo.token_b_reserve),
-                                [toToken]: parseInt(stateInfo.token_erth_reserve),
-                            };
-                        }
-                        newFees[`${fromToken}-${toToken}`] = parseInt(stateInfo.protocol_fee);
-                    }
-                    
-                } else {
-                    console.log("is a hop");
-                    console.log(poolDetails);
-    
-                    // FromToken -> ERTH
-                    const reservesFromData = await query(poolDetails.firstPoolContract, poolDetails.firstPoolHash, { query_state: {} });
-                    const fromState = reservesFromData.state;
-    
-                    if (fromState) {
-                        newReserves[`${fromToken}-${'ERTH'}`] = {
-                            [fromToken]: parseInt(fromState.token_b_reserve),
-                            'ERTH': parseInt(fromState.token_erth_reserve),
-                        };
-                        newFees[`${fromToken}-${'ERTH'}`] = parseInt(fromState.protocol_fee);
-                    }
-    
-                    // ERTH -> ToToken
-                    const reservesToData = await query(poolDetails.secondPoolContract, poolDetails.secondPoolHash, { query_state: {} });
-                    const toState = reservesToData.state;
-    
-                    if (toState) {
-                        newReserves[`ERTH-${toToken}`] = {
-                            'ERTH': parseInt(toState.token_erth_reserve),
-                            [toToken]: parseInt(toState.token_b_reserve),
-                        };
-                        newFees[`ERTH-${toToken}`] = parseInt(toState.protocol_fee);
-                    }
-                    
+                
+            } else {
+
+                // FromToken -> ERTH
+                const reservesFromData = await query(poolDetails.firstPoolContract, poolDetails.firstPoolHash, { query_state: {} });
+                const fromState = reservesFromData.state;
+
+                if (fromState) {
+                    newReserves[`${fromToken}-${'ERTH'}`] = {
+                        [fromToken]: parseInt(fromState.token_b_reserve),
+                        'ERTH': parseInt(fromState.token_erth_reserve),
+                    };
+                    newFees[`${fromToken}-${'ERTH'}`] = parseInt(fromState.protocol_fee);
                 }
 
-                console.log(newReserves);
-    
-                setReserves(newReserves);
-                setFees(newFees);
+                // ERTH -> ToToken
+                const reservesToData = await query(poolDetails.secondPoolContract, poolDetails.secondPoolHash, { query_state: {} });
+                const toState = reservesToData.state;
 
-                console.log('new fees: ', newFees);
-    
-                setFromBalance(parseFloat(fromTokenBalance));
-                setToBalance(parseFloat(toTokenBalance));
-            } catch (err) {
-                console.error("Error fetching data:", err);
-                setFromBalance("Error");
-                setToBalance("Error");
-            } finally {
-                setLoadingBalances(false);
-                showLoadingScreen(false);
+                if (toState) {
+                    newReserves[`ERTH-${toToken}`] = {
+                        'ERTH': parseInt(toState.token_erth_reserve),
+                        [toToken]: parseInt(toState.token_b_reserve),
+                    };
+                    newFees[`ERTH-${toToken}`] = parseInt(toState.protocol_fee);
+                }
+                
             }
-        };
-    
-        fetchData();
+
+            setReserves(newReserves);
+            setFees(newFees);
+        } catch (err) {
+            console.error("Error fetching data:", err);
+            setFromBalance("Error");
+            setToBalance("Error");
+        } finally {
+            showLoadingScreen(false);
+        }
     }, [isKeplrConnected, fromToken, toToken]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
     
 
     const handleFromAmountChange = (inputAmount) => {
@@ -162,6 +151,8 @@ const SwapTokens = ({ isKeplrConnected }) => {
             setToToken(fromToken);
         }
         setFromToken(selectedToken);
+        setFromAmount('');  // Clear input after token change
+        setToAmount('');    // Clear output after token change
     };
 
     const handleToTokenChange = (e) => {
@@ -169,8 +160,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
         if (selectedToken === fromToken) {
             setFromToken(toToken);
         }
-        console.log('selected token ', selectedToken);
         setToToken(selectedToken);
+        setFromAmount('');  // Clear input after token change
+        setToAmount('');    // Clear output after token change
     };
 
     const handleSwap = async () => {
@@ -242,6 +234,8 @@ const SwapTokens = ({ isKeplrConnected }) => {
             }
     
             setAnimationState('success'); // Set the animation state to success after a successful swap
+            setFromAmount('');  // Clear input after token change
+            setToAmount('');    // Clear output after token change
         } catch (error) {
             console.error('Error executing swap:', error);
             setAnimationState('error');  // Set the animation state to error if an exception occurs
@@ -267,6 +261,11 @@ const SwapTokens = ({ isKeplrConnected }) => {
 
     const handleMaxFromAmount = () => {
         handleFromAmountChange(fromBalance);
+    };
+
+    const handleRequestViewingKey = async (token) => {
+        await requestViewingKey(token); // Call the universal function
+        fetchData(); // Refresh balances after viewing key is set
     };
     
 
@@ -298,10 +297,20 @@ const SwapTokens = ({ isKeplrConnected }) => {
                             </option>
                         ))}
                     </select>
-                    <span className="token-balance">
-                        Balance: {loadingBalances ? 'Loading...' : fromBalance !== null ? fromBalance : 'N/A'}
-                        <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
-                    </span>
+                    <div className="token-balance">
+                        {fromBalance === 'Error' ? (
+                            <button className="max-button" onClick={() => handleRequestViewingKey(tokens[fromToken])}>
+                                Get Viewing Key
+                            </button>
+                        ) : (
+                            <>
+                                Balance: {fromBalance !== null ? fromBalance : 'N/A'}
+                                <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
+                            </>
+                        )}
+                    </div>
+
+
                 </div>
                 <div className="input-wrapper">
                     <img
@@ -334,9 +343,17 @@ const SwapTokens = ({ isKeplrConnected }) => {
                             </option>
                         ))}
                     </select>
-                    <span className="token-balance">
-                        Balance: {loadingBalances ? 'Loading...' : toBalance !== null ? toBalance : 'N/A'}
-                    </span>
+                    <div className="token-balance">
+                        {toBalance === 'Error' ? (
+                            <button className="max-button" onClick={() => handleRequestViewingKey(tokens[toToken])}>
+                                Get Viewing Key
+                            </button>
+                        ) : (
+                            <>
+                                Balance: {toBalance !== null ? toBalance : 'N/A'}
+                            </>
+                        )}
+                    </div>
                 </div>
                 <div className="input-wrapper">
                     <img
@@ -354,7 +371,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
                 </div>
             </div>
 
-            <button className="swap-button" onClick={handleSwap} disabled={loadingBalances}>
+            <button className="swap-button" onClick={handleSwap}>
                 Swap
             </button>
             
