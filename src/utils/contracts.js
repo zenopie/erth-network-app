@@ -1,8 +1,8 @@
 // token details
 const contracts = {
     lpStaking: {
-        contract: "secret1f75jf2yxnkdsxsyverzuxk7a260jyqzgm8g9ka",
-        hash: "79c3012bb59ab1c5139148a1acc9160d32b04152e6363f2961bcebb68974f988",
+        contract: "secret1cr4ksw99fagg7lyvjuqhhxrernkxadtlzq9m6l",
+        hash: "58fbe2161437074719b4ccb5489f75f90634a0a89a7119bf1f66beb60401b8be",
     },
 };
 
