@@ -1,107 +1,136 @@
-.staking-management-box {
+/* Staking Page Styles */
+
+/* Staking Page Box */
+.stake-page-box {
     position: relative;
     width: 100%;
-    max-width: 450px;
+    max-width: 425px;
     background-color: #ffffff;
-    padding: 40px 30px 30px 30px;
+    padding: 30px; /* Reduced padding to make the box shorter */
     border-radius: 20px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1;
     margin: 0 auto;
 }
 
-/* Add some space between the heading and the tabs */
-.staking-management-box h2 {
-    margin-bottom: 20px;
+/* Heading Styling */
+.stake-page-box h2 {
+    margin-bottom: 15px; /* Reduced margin to save space */
     text-align: center;
+    font-size: 24px; /* Adjusted font size */
 }
 
 /* Tab Navigation Styling */
-.staking-management-tab {
+.stake-page-tab {
     display: flex;
     justify-content: space-evenly;
-    margin-bottom: 20px;
+    margin-bottom: 25px; /* Reduced margin */
     width: 100%;
     background-color: #F1F0EA;
-    border-radius: 20px;
+    border-radius: 12px; /* Reduced border radius for a sleeker look */
     overflow: hidden;
 }
 
-.staking-management-tab button {
+.stake-page-tab button {
     background-color: #F1F0EA;
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 14px 20px;
+    padding: 10px 15px; /* Reduced padding */
     transition: background-color 0.3s ease;
-    font-size: 16px;
+    font-size: 14px; /* Slightly smaller font size */
     flex-grow: 1;
     text-align: center;
     color: #333;
     position: relative;
 }
 
-/* Rounded corners only on the outer edges */
-.staking-management-tab button:first-child {
-    border-radius: 20px 0 0 20px;
+.stake-page-tab button:first-child {
+    border-radius: 12px 0 0 12px;
 }
 
-.staking-management-tab button:last-child {
-    border-radius: 0 20px 20px 0;
+.stake-page-tab button:last-child {
+    border-radius: 0 12px 12px 0;
 }
 
-.staking-management-tab button.active {
+.stake-page-tab button.active {
     background-color: #4CAF50;
     color: white;
 }
 
-.staking-management-tab button:not(.active):hover {
+.stake-page-tab button:not(.active):hover {
     background-color: #ddd;
 }
 
 /* Tab Content Styling */
-.staking-management-tabcontent {
+.stake-page-tabcontent {
     width: 100%;
-    padding: 0px 20px;
-    margin-top: -20px;
+    padding: 0 10px; /* Reduced padding */
+    margin-top: -15px; /* Adjusted to overlap with tabs */
     display: flex;
     flex-direction: column;
 }
 
 /* Input Group Styling */
-.staking-management-input-group {
-    margin-top: 20px;
+.stake-page-input-group {
+    margin-top: 15px; /* Reduced margin */
     width: 100%;
     display: flex;
     flex-direction: column;
 }
 
 /* Label Wrapper Styling */
-.staking-management-label-wrapper {
+.stake-page-label-wrapper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 5px; /* Reduced margin */
+    width: 100%;
 }
 
 /* Input Label Styling */
-.staking-management-input-label {
-    font-size: 16px;
+.stake-page-input-label {
+    font-size: 14px; /* Slightly smaller font size */
     color: #333;
+}
+
+/* Token Balance and Max Button */
+.stake-page-token-balance {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align content to the right */
+    font-size: 12px; /* Reduced font size */
+}
+
+.stake-page-token-balance span {
     margin-right: 8px;
 }
 
+/* Max Button */
+.stake-page-max-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 4px 8px; /* Reduced padding */
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.stake-page-max-button:hover {
+    background-color: #45a049;
+}
+
 /* Input Wrapper Styling */
-.staking-management-input-wrapper {
+.stake-page-input-wrapper {
     display: flex;
     flex-direction: column;
 }
 
 /* Input Styling */
-.staking-management-input {
+.stake-page-input {
     background-color: #F1F0EA;
     width: 100%;
-    padding: 15px;
+    padding: 10px; /* Reduced padding */
     font-size: 16px;
     border: none;
     text-align: right;
@@ -109,42 +138,54 @@
     -moz-appearance: textfield;
 }
 
-.staking-management-input::-webkit-outer-spin-button,
-.staking-management-input::-webkit-inner-spin-button {
+.stake-page-input::-webkit-outer-spin-button,
+.stake-page-input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-/* Staking and Claim Section Styling */
-.staking-management-claim-section {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
 /* Button Styling */
-.staking-management-button {
+.stake-page-button {
     width: 100%;
     max-width: 400px;
-    padding: 15px;
-    font-size: 18px;
+    padding: 12px; /* Reduced padding */
+    font-size: 16px; /* Slightly smaller font size */
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    margin-top: 20px;
+    margin-top: 15px; /* Reduced margin */
 }
 
-.staking-management-button:hover {
+.stake-page-button:hover {
     background-color: #45a049;
 }
 
 /* Result Styling */
-.staking-management-result {
-    margin-top: 20px;
-    font-size: 18px;
+.stake-page-result {
+    margin-top: 15px; /* Reduced margin */
+    font-size: 14px; /* Slightly smaller font size */
     color: #333;
     text-align: center;
+}
+
+/* Info Row Styling */
+.stake-page-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px; /* Reduced margin */
+}
+
+.stake-page-info-label {
+    font-size: 14px; /* Adjusted font size */
+    font-weight: bold;
+    color: #333;
+}
+
+.stake-page-info-value {
+    font-size: 14px;
+    color: #333;
+    text-align: right;
 }

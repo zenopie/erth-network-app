@@ -121,10 +121,8 @@ const SwapTokens = ({ isKeplrConnected }) => {
     
         if (poolDetails) {
             if (!poolDetails.isHop) {
-                console.log(reserves);
                 outputAmount = calculateOutput(inputAmount, fromToken, toToken, reserves, fees);
             } else {
-                console.log('fees sent to calculate output with hop', fees);
                 outputAmount = calculateOutputWithHop(inputAmount, fromToken, toToken, reserves, fees);
             }
         } else {
@@ -170,67 +168,68 @@ const SwapTokens = ({ isKeplrConnected }) => {
             console.warn("Keplr is not connected.");
             return;
         }
-    
+        
         try {
-
             const inputAmount = parseFloat(fromAmount);
             if (isNaN(inputAmount) || inputAmount <= 0) {
                 return;
             }
-
+    
             setIsModalOpen(true);  // Open the modal and show loading animation
             setAnimationState('loading');  // Set the state to loading when the swap starts
-    
+            
             const minReceived = calculateMinimumReceived(toAmount, slippage);
             const inputAmountInMicroUnits = toMicroUnits(inputAmount, tokens[fromToken]);
             const minReceivedInMicroUnits = toMicroUnits(minReceived, tokens[toToken]);
     
             let snipmsg;
-
+    
             if (!poolDetails.isHop) {
-
-                console.log(minReceivedInMicroUnits);
-
                 snipmsg = {
                     swap: {
                         min_received: minReceivedInMicroUnits.toString(),
                     }
                 };
-
-                // Perform the swap
-                await snip(
-                    tokens[fromToken].contract,
-                    tokens[fromToken].hash,
-                    poolDetails.poolContract,
-                    poolDetails.poolHash,
-                    snipmsg,
-                    inputAmountInMicroUnits
-                );
+    
+                try {
+                    await snip(
+                        tokens[fromToken].contract,
+                        tokens[fromToken].hash,
+                        poolDetails.poolContract,
+                        poolDetails.poolHash,
+                        snipmsg,
+                        inputAmountInMicroUnits
+                    );
+                } catch (error) {
+                    console.error("Error during non-hop swap:", error);
+                }
+    
             } else {
-
+    
                 const hop = {
                     contract: poolDetails.secondPoolContract,
                     hash: poolDetails.secondPoolHash,
                 };
-
-                console.log('min recieved in micro units: ', minReceivedInMicroUnits);
-
+    
                 snipmsg = {
                     swap: {
                         min_received: minReceivedInMicroUnits.toString(),
                         hop: hop,
                     }
                 };
-
-                // Perform the swap with hop
-                await snip(
-                    tokens[fromToken].contract,
-                    tokens[fromToken].hash,
-                    poolDetails.firstPoolContract,
-                    poolDetails.firstPoolHash,
-                    snipmsg,
-                    inputAmountInMicroUnits
-                );
+    
+                try {
+                    await snip(
+                        tokens[fromToken].contract,
+                        tokens[fromToken].hash,
+                        poolDetails.firstPoolContract,
+                        poolDetails.firstPoolHash,
+                        snipmsg,
+                        inputAmountInMicroUnits
+                    );
+                } catch (error) {
+                    console.error("Error during hop swap:", error);
+                }
             }
     
             setAnimationState('success'); // Set the animation state to success after a successful swap
@@ -239,8 +238,11 @@ const SwapTokens = ({ isKeplrConnected }) => {
         } catch (error) {
             console.error('Error executing swap:', error);
             setAnimationState('error');  // Set the animation state to error if an exception occurs
+        } finally {
+            fetchData(); // Re-fetch balances after the swap
         }
     };
+    
     
     const calculatePriceImpact = () => {
         const inputMicro = toMicroUnits(fromAmount, tokens[fromToken]);

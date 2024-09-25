@@ -59,11 +59,10 @@ const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected}) => {
 
                 const dailyVolumes = resp.pool_info.daily_volumes.slice(1, 8);
                 const totalVolumeMicro = dailyVolumes.reduce((acc, dayVolume) => acc + parseInt(dayVolume, 10), 0);
-                console.log("total volume test: ", totalVolumeMicro);
                 const totalVolumeMacro = toMacroUnits(totalVolumeMicro, tokens["ERTH"]);
                 setVolume(`${Math.floor(totalVolumeMacro).toLocaleString()}`);
 
-                const lastWeekRewards = resp.pool_info.daily_rewards.slice(1, 8).reduce((acc, dayReward) => acc + parseInt(dayReward, 10), 0);
+                const lastWeekRewards = resp.pool_info.daily_rewards.slice(0, 7).reduce((acc, dayReward) => acc + parseInt(dayReward, 10), 0);
 
                 const totalShares = parseInt(resp.pool_info.total_shares, 10);
                 const stakedShares = parseInt(resp.pool_info.total_staked, 10);

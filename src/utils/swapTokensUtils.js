@@ -3,16 +3,10 @@ import { toMacroUnits, toMicroUnits } from "./mathUtils.js";
 // swapUtils.js
 export const calculateOutput = (inputAmount, fromToken, toToken, reserves, fees) => {
     // Use the contract addresses to access the reserves
-    console.log(reserves);
-    console.log('from token - ', fromToken, ' to token-', toToken);
     const reservesKey = `${fromToken}-${toToken}`;
-    console.log(reservesKey);
     const reservesForPair = reserves[reservesKey];
-    console.log(reservesForPair);
     const fromReserve = reservesForPair[fromToken];
-    console.log('from reserve', fromReserve);
     const toReserve = reservesForPair[toToken];
-    console.log('to reserve', toReserve);
 
     
     if (!fromReserve || !toReserve) {
@@ -20,21 +14,13 @@ export const calculateOutput = (inputAmount, fromToken, toToken, reserves, fees)
         return NaN;
     }
 
-    console.log('input amount ', inputAmount);
-
     const inputMicro = toMicroUnits(parseFloat(inputAmount), tokens[fromToken]); // Convert inputAmount to a float for calculation
-
-    console.log('input micro ', inputMicro);
-
-    console.log('fees in calculate output ', fees);
 
     const protocolFeeAmount = inputMicro * (fees[reservesKey] / 10000);
 
     const amountAfterProtocolFee = inputMicro - protocolFeeAmount;
 
     const outputMicro = (amountAfterProtocolFee * toReserve) / (fromReserve + amountAfterProtocolFee);
-
-    console.log('output micro ', outputMicro);
 
     if (outputMicro > toReserve) {
         return "";
@@ -45,9 +31,7 @@ export const calculateOutput = (inputAmount, fromToken, toToken, reserves, fees)
 
 // swapTokensUtils.js
 export const calculateOutputWithHop = (inputAmount, fromToken, toToken, reserves, fees) => {
-
-    console.log('fees recieved to calc output with hop: ', fees);
-
+    
     // First swap: fromToken -> ERTH
     const outputAfterFirstSwap = calculateOutput(
         inputAmount,
@@ -116,17 +100,14 @@ export const calculateMinimumReceived = (outputAmount, slippage) => {
 };
 
 export const getPoolDetails = (tokenA, tokenB) => {
-    console.log("start getPoolDetails");
     if (tokenA === tokenB) {
         console.error('Cannot swap the same token.');
         return null;
     }
 
     const isHop = tokenA !== 'ERTH' && tokenB !== 'ERTH';
-    console.log(isHop);
 
     if (!isHop) {
-        console.log("test isHop false");
         // Direct swap without hop
         const poolToken = tokenA === 'ERTH' ? tokenB : tokenA;
         return {
