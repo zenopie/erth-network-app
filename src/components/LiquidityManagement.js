@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './LiquidityManagement.css';
-import { query, provideLiquidity, querySnipBalance, snip, contract } from '../utils/contractUtils';
+import { query, provideLiquidity, querySnipBalance, snip, contract, requestViewingKey } from '../utils/contractUtils';
 import tokens from '../utils/tokens';
 import contracts from '../utils/contracts.js';
 import { toMicroUnits, toMacroUnits } from '../utils/mathUtils';
-import { showLoadingScreen } from '../utils/uiUtils';
+import StatusModal from '../components/StatusModal'; 
 
 const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo }) => {
     const [activeTab, setActiveTab] = useState('Provide');
@@ -17,7 +17,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
     const [tokenBBalance, setTokenBBalance] = useState(null);
     const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null);
     const [stakedLpTokenBalance, setStakedLpTokenBalance] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
     // Tokens
     const tokenErthKey = 'ERTH'; // Always ERTH
@@ -28,58 +29,60 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
     const stakingContract = contracts.lpStaking.contract;
     const stakingHash = contracts.lpStaking.hash;
 
-    useEffect(() => {
-        const fetchBalancesAndReserves = async () => {
-            showLoadingScreen(true);
-            if (!isKeplrConnected) {
-                console.warn("Keplr is not connected.");
-                return;
+    const fetchBalancesAndReserves = useCallback(async () => {
+        if (!isKeplrConnected) {
+            console.warn("Keplr is not connected.");
+            return;
+        }
+        if (poolInfo) {
+            let amountStaked = toMacroUnits(poolInfo.user_info.amount_staked, tokenB.lp);
+            setStakedLpTokenBalance(amountStaked);
+        }
+        try {
+            // Fetch balances
+            const erthBalance = await querySnipBalance(tokenErth);
+            setErthBalance(erthBalance);
+
+            const tokenBBalance = await querySnipBalance(tokenB);
+            setTokenBBalance(tokenBBalance);
+
+            // Fetch LP token wallet balance
+            const lpWalletBalance = await querySnipBalance(tokenB.lp);
+            setLpTokenWalletBalance(lpWalletBalance);
+
+            // Fetch pool reserves
+            const poolDetails = {
+                poolContract: tokenB.poolContract,
+                poolHash: tokenB.poolHash,
+            };
+            const resp = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
+            const stateInfo = resp.state;
+
+            if (stateInfo) {
+                setReserves({
+                    erthReserve: parseInt(stateInfo.token_erth_reserve),
+                    tokenBReserve: parseInt(stateInfo.token_b_reserve),
+                });
+            } else {
+                console.warn("No state information available from the pool query.");
             }
-            if (poolInfo) {
-                let amountStaked = toMacroUnits(poolInfo.user_info.amount_staked, tokenB.lp);
-                setStakedLpTokenBalance(amountStaked);
-            }
-            try {
-                // Fetch balances
-                const erthBalance = await querySnipBalance(tokenErth);
-                setErthBalance(erthBalance);
-
-                const tokenBBalance = await querySnipBalance(tokenB);
-                setTokenBBalance(tokenBBalance);
-
-                // Fetch LP token wallet balance
-                const lpWalletBalance = await querySnipBalance(tokenB.lp);
-                setLpTokenWalletBalance(lpWalletBalance);
-
-                // Fetch pool reserves
-                const poolDetails = {
-                    poolContract: tokenB.poolContract,
-                    poolHash: tokenB.poolHash,
-                };
-                const resp = await query(poolDetails.poolContract, poolDetails.poolHash, { query_state: {} });
-                const stateInfo = resp.state;
-
-                if (stateInfo) {
-                    setReserves({
-                        erthReserve: parseInt(stateInfo.token_erth_reserve),
-                        tokenBReserve: parseInt(stateInfo.token_b_reserve),
-                    });
-                } else {
-                    console.warn("No state information available from the pool query.");
-                }
-            } catch (err) {
-                console.error("Error fetching data:", err);
-                setErthBalance("Error");
-                setTokenBBalance("Error");
-                setLpTokenWalletBalance("Error");
-                setStakedLpTokenBalance("Error");
-            } finally {
-                showLoadingScreen(false);
-            }
-        };
-
-        fetchBalancesAndReserves();
+        } catch (err) {
+            console.error("Error fetching data:", err);
+            setErthBalance("Error");
+            setTokenBBalance("Error");
+            setLpTokenWalletBalance("Error");
+            setStakedLpTokenBalance("Error");
+        }
     }, [isKeplrConnected, poolInfo, tokenErth, tokenB]);
+
+    useEffect(() => {
+        fetchBalancesAndReserves();
+    }, [fetchBalancesAndReserves]);
+
+    const handleRequestViewingKey = async (token) => {
+        await requestViewingKey(token);
+        fetchBalancesAndReserves(); // Refresh data after viewing key is set
+    };
 
     // Handle ERTH amount change and dynamically calculate tokenB equivalent based on reserves
     const handleErthChange = (event) => {
@@ -111,6 +114,33 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         }
     };
 
+    // Max buttons handlers
+    const handleMaxErthAmount = () => {
+        if (erthBalance && !isNaN(erthBalance)) {
+            setErthAmount(erthBalance);
+            handleErthChange({ target: { value: erthBalance } });
+        }
+    };
+
+    const handleMaxTokenBAmount = () => {
+        if (tokenBBalance && !isNaN(tokenBBalance)) {
+            setTokenBAmount(tokenBBalance);
+            handleTokenBChange({ target: { value: tokenBBalance } });
+        }
+    };
+
+    const handleMaxLpTokenWalletBalance = () => {
+        if (lpTokenWalletBalance && !isNaN(lpTokenWalletBalance)) {
+            setLpTokenAmount(lpTokenWalletBalance);
+        }
+    };
+
+    const handleMaxStakedLpTokenBalance = () => {
+        if (stakedLpTokenBalance && !isNaN(stakedLpTokenBalance)) {
+            setUnstakeAmount(stakedLpTokenBalance);
+        }
+    };
+
     // Provide Liquidity Functionality
     const handleProvideLiquidity = async () => {
         if (!isKeplrConnected) {
@@ -126,7 +156,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         const poolHash = tokenB.poolHash;
 
         try {
-            setLoading(true);
+            setIsModalOpen(true);
+            setAnimationState('loading');
 
             // Convert amounts to micro units
             const microErthAmount = toMicroUnits(erthAmount, tokenErth);
@@ -143,10 +174,17 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                 microTokenBAmount
             );
             console.log("Liquidity provided successfully!");
+
+            setAnimationState('success');
+
+            // Clear inputs
+            setErthAmount('');
+            setTokenBAmount('');
         } catch (error) {
             console.error("Error providing liquidity:", error);
+            setAnimationState('error');
         } finally {
-            setLoading(false);
+            fetchBalancesAndReserves(); // Refresh data
         }
     };
 
@@ -163,7 +201,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         };
 
         try {
-            setLoading(true);
+            setIsModalOpen(true);
+            setAnimationState('loading');
 
             // Execute the snip interaction, sending to the staking contract
             await snip(
@@ -176,10 +215,15 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             );
 
             console.log("Staking of LP tokens to staking contract successful!");
+            setAnimationState('success');
+
+            // Clear input
+            setLpTokenAmount('');
         } catch (error) {
             console.error("Error staking LP tokens to staking contract:", error);
+            setAnimationState('error');
         } finally {
-            setLoading(false);
+            fetchBalancesAndReserves(); // Refresh data
         }
     };
 
@@ -200,16 +244,22 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         };
 
         try {
-            setLoading(true);
+            setIsModalOpen(true);
+            setAnimationState('loading');
 
             // Execute the unstake contract interaction
             await contract(stakingContract, stakingHash, contractMsg);
 
             console.log("Unstaking LP tokens from staking contract successful!");
+            setAnimationState('success');
+
+            // Clear input
+            setUnstakeAmount('');
         } catch (error) {
             console.error("Error unstaking LP tokens from staking contract:", error);
+            setAnimationState('error');
         } finally {
-            setLoading(false);
+            fetchBalancesAndReserves(); // Refresh data
         }
     };
 
@@ -226,7 +276,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
         };
 
         try {
-            setLoading(true);
+            setIsModalOpen(true);
+            setAnimationState('loading');
 
             // Execute the snip interaction, sending the unbond message to the pool contract
             await snip(
@@ -239,15 +290,27 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
             );
 
             console.log("Unbonding liquidity from the pool successful!");
+            setAnimationState('success');
+
+            // Clear input
+            setLpTokenAmount('');
         } catch (error) {
             console.error("Error unbonding liquidity from the pool:", error);
+            setAnimationState('error');
         } finally {
-            setLoading(false);
+            fetchBalancesAndReserves(); // Refresh data
         }
     };
 
     return (
         <div className="liquidity-management-box">
+            {/* Modal for displaying transaction status */}
+            <StatusModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                animationState={animationState}
+            />
+
             <h2>Manage Liquidity</h2>
             <div className="liquidity-management-close-button" onClick={toggleManageLiquidity}>X</div>
 
@@ -279,7 +342,18 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="provide-tokenB" className="liquidity-management-input-label">{tokenBKey}</label>
-                            <span className="balance-label">Balance: {tokenBBalance || 'Loading...'}</span>
+                            <div className="balance-container">
+                                {tokenBBalance === 'Error' ? (
+                                    <button className="max-button" onClick={() => handleRequestViewingKey(tokenB)}>
+                                        Get Viewing Key
+                                    </button>
+                                ) : (
+                                    <>
+                                        Balance: {tokenBBalance !== null ? tokenBBalance : 'N/A'}
+                                        <button className="max-button" onClick={handleMaxTokenBAmount}>Max</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <img id="provide-tokenB-logo" src={tokenB.logo} alt={`${tokenBKey} Token`} className="liquidity-management-input-logo" />
@@ -298,7 +372,18 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="provide-erth" className="liquidity-management-input-label">ERTH</label>
-                            <span className="balance-label">Balance: {erthBalance || 'Loading...'}</span>
+                            <div className="balance-container">
+                                {erthBalance === 'Error' ? (
+                                    <button className="max-button" onClick={() => handleRequestViewingKey(tokenErth)}>
+                                        Get Viewing Key
+                                    </button>
+                                ) : (
+                                    <>
+                                        Balance: {erthBalance !== null ? erthBalance : 'N/A'}
+                                        <button className="max-button" onClick={handleMaxErthAmount}>Max</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <img id="provide-erth-logo" src={tokenErth.logo} alt="ERTH Token" className="liquidity-management-input-logo" />
@@ -313,8 +398,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                         </div>
                     </div>
 
-                    <button onClick={handleProvideLiquidity} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Providing Liquidity...' : 'Provide Liquidity'}
+                    <button onClick={handleProvideLiquidity} className="liquidity-management-button">
+                        Provide Liquidity
                     </button>
                 </div>
             )}
@@ -326,7 +411,18 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="stake-lp" className="liquidity-management-input-label">Unstaked LP Tokens</label>
-                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span>
+                            <div className="balance-container">
+                                {lpTokenWalletBalance === 'Error' ? (
+                                    <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
+                                        Get Viewing Key
+                                    </button>
+                                ) : (
+                                    <>
+                                        Balance: {lpTokenWalletBalance !== null ? lpTokenWalletBalance : 'N/A'}
+                                        <button className="max-button" onClick={handleMaxLpTokenWalletBalance}>Max</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -339,15 +435,26 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                             />
                         </div>
                     </div>
-                    <button onClick={handleStakeLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Staking...' : 'Stake LP'}
+                    <button onClick={handleStakeLpTokens} className="liquidity-management-button">
+                        Stake LP
                     </button>
 
                     {/* Unstake LP Tokens Input */}
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="unstake-lp" className="liquidity-management-input-label">Staked LP Tokens</label>
-                            <span className="balance-label">Balance: {stakedLpTokenBalance || 'Loading...'}</span>
+                            <div className="balance-container">
+                                {stakedLpTokenBalance === 'Error' ? (
+                                    <button className="max-button" onClick={() => handleRequestViewingKey(stakingContract)}>
+                                        Get Viewing Key
+                                    </button>
+                                ) : (
+                                    <>
+                                        Balance: {stakedLpTokenBalance !== null ? stakedLpTokenBalance : 'N/A'}
+                                        <button className="max-button" onClick={handleMaxStakedLpTokenBalance}>Max</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -360,8 +467,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                             />
                         </div>
                     </div>
-                    <button onClick={handleUnstakeLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Unstaking...' : 'Unstake LP'}
+                    <button onClick={handleUnstakeLpTokens} className="liquidity-management-button">
+                        Unstake LP
                     </button>
                 </div>
             )}
@@ -373,7 +480,18 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                     <div className="liquidity-management-input-group">
                         <div className="liquidity-management-label-wrapper">
                             <label htmlFor="withdraw-lp" className="liquidity-management-input-label">Unstaked LP Tokens</label>
-                            <span className="balance-label">Balance: {lpTokenWalletBalance || 'Loading...'}</span>
+                            <div className="balance-container">
+                                {lpTokenWalletBalance === 'Error' ? (
+                                    <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
+                                        Get Viewing Key
+                                    </button>
+                                ) : (
+                                    <>
+                                        Balance: {lpTokenWalletBalance !== null ? lpTokenWalletBalance : 'N/A'}
+                                        <button className="max-button" onClick={handleMaxLpTokenWalletBalance}>Max</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="liquidity-management-input-wrapper">
                             <input
@@ -386,8 +504,8 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                             />
                         </div>
                     </div>
-                    <button onClick={handleWithdrawLpTokens} className="liquidity-management-button" disabled={loading}>
-                        {loading ? 'Withdrawing...' : 'Withdraw LP'}
+                    <button onClick={handleWithdrawLpTokens} className="liquidity-management-button">
+                        Withdraw LP
                     </button>
                 </div>
             )}

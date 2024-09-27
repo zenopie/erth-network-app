@@ -252,7 +252,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
                             <span className="stake-page-info-value">{(apr * 100).toFixed(2)}%</span>
                         </div>
                         <div className="stake-page-info-row">
-                            <span className="stake-page-info-label">Total Staked in the System:</span>
+                            <span className="stake-page-info-label">Total Staked:</span>
                             <span className="stake-page-info-value">
                                 {totalStakedBalance !== null ? `${totalStakedBalance} ERTH` : "Loading..."}
                             </span>
