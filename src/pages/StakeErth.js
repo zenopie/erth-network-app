@@ -3,7 +3,8 @@ import { query, contract, snip, querySnipBalance, requestViewingKey } from '../u
 import { toMicroUnits, toMacroUnits } from '../utils/mathUtils.js'; 
 import tokens from '../utils/tokens.js';
 import { showLoadingScreen } from '../utils/uiUtils';
-import './StakeErth.css'; // Ensure this CSS file contains the updated CSS with unique class names
+import './StakeErth.css'; 
+import StatusModal from '../components/StatusModal'; 
 
 const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
 const THIS_HASH = "769c585aeb36c80967f6e8d214683e6e9637cd29a1770c056c1c6ecaa38401cd";
@@ -30,15 +31,13 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const [activeTab, setActiveTab] = useState('Stake');
     const [stakeAmount, setStakeAmount] = useState('');
     const [unstakeAmount, setUnstakeAmount] = useState('');
-    const [claimResult, setClaimResult] = useState('');
-    const [stakeResult, setStakeResult] = useState('');
-    const [unstakeResult, setUnstakeResult] = useState('');
     const [stakingRewards, setStakingRewards] = useState(null);
     const [apr, setApr] = useState(0);
-    const [loading, setLoading] = useState(false);
     const [stakedBalance, setStakedBalance] = useState(null);
     const [unstakedBalance, setUnstakedBalance] = useState(null);
     const [totalStakedBalance, setTotalStakedBalance] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
     useEffect(() => {
         if (isKeplrConnected) {
@@ -54,7 +53,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
         }
 
         try {
-            setLoading(true);
             showLoadingScreen(true);
 
             const queryMsg = {
@@ -106,7 +104,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
             setStakedBalance("Error");
             setUnstakedBalance("Error");
         } finally {
-            setLoading(false);
             showLoadingScreen(false);
         }
     };
@@ -114,18 +111,16 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const handleStake = async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
-            setStakeResult("Please connect your Keplr wallet.");
             return;
         }
 
         if (!stakeAmount || isNaN(stakeAmount) || parseFloat(stakeAmount) <= 0) {
-            setStakeResult("Please enter a valid stake amount.");
             return;
         }
 
         try {
-            setLoading(true);
-            showLoadingScreen(true);
+            setIsModalOpen(true);  // Open the modal and show loading animation
+            setAnimationState('loading');  // Set the state to loading when the swap starts
 
             const amountInMicroUnits = toMicroUnits(stakeAmount, tokens['ERTH']); 
 
@@ -135,32 +130,27 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
             await snip(tokens["ERTH"].contract, tokens["ERTH"].hash, THIS_CONTRACT, THIS_HASH, snipmsg, amountInMicroUnits.toString());
 
-            setStakeResult("Staking executed successfully!");
+            setAnimationState('success'); 
             setStakeAmount(''); // Clear the input
-            fetchStakingRewards();
         } catch (error) {
             console.error("Error executing stake:", error);
-            setStakeResult("Error executing stake. Check the console for details.");
+            setAnimationState('error');
         } finally {
-            setLoading(false);
-            showLoadingScreen(false);
+            fetchStakingRewards();
         }
     };
 
     const handleUnstake = async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
-            setUnstakeResult("Please connect your Keplr wallet.");
             return;
         }
 
         if (!unstakeAmount || isNaN(unstakeAmount) || parseFloat(unstakeAmount) <= 0) {
-            setUnstakeResult("Please enter a valid unstake amount.");
             return;
         }
 
         try {
-            setLoading(true);
             showLoadingScreen(true);
 
             const amountInMicroUnits = toMicroUnits(unstakeAmount, tokens['ERTH']);
@@ -173,14 +163,11 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
             await contract(THIS_CONTRACT, THIS_HASH, msg);
 
-            setUnstakeResult("Unstaking executed successfully!");
             setUnstakeAmount(''); // Clear the input
             fetchStakingRewards();
         } catch (error) {
             console.error("Error executing unstake:", error);
-            setUnstakeResult("Error executing unstake. Check the console for details.");
         } finally {
-            setLoading(false);
             showLoadingScreen(false);
         }
     };
@@ -188,13 +175,12 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const handleClaimRewards = async () => {
         if (!isKeplrConnected) {
             console.warn("Keplr is not connected yet.");
-            setClaimResult("Please connect your Keplr wallet.");
             return;
         }
 
         try {
-            setLoading(true);
-            showLoadingScreen(true);
+            setIsModalOpen(true);
+            setAnimationState('loading');
 
             const msg = {
                 claim: {},
@@ -202,14 +188,12 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
             await contract(THIS_CONTRACT, THIS_HASH, msg);
 
-            setClaimResult("Rewards claimed successfully!");
-            fetchStakingRewards();
+            setAnimationState('success'); 
         } catch (error) {
             console.error("Error claiming rewards:", error);
-            setClaimResult("Error claiming rewards. Check the console for details.");
+            setAnimationState('error');
         } finally {
-            setLoading(false);
-            showLoadingScreen(false);
+            fetchStakingRewards();
         }
     };
 
@@ -220,6 +204,12 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
     return (
         <div className="stake-page-box">
+            {/* Modal for displaying swap status */}
+            <StatusModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                animationState={animationState}
+            />
             <h2>Manage Staking</h2>
 
             <div className="stake-page-tab">
@@ -290,12 +280,9 @@ const StakingManagement = ({ isKeplrConnected }) => {
                                 step="any"
                             />
                         </div>
-                        <button onClick={handleStake} className="stake-page-button" disabled={loading}>
+                        <button onClick={handleStake} className="stake-page-button">
                             Stake Tokens
                         </button>
-                        <div id="stake-result" className="stake-page-result">
-                            {stakeResult}
-                        </div>
                     </div>
 
                     {/* Staking Rewards Display and Claim Section */}
@@ -307,12 +294,9 @@ const StakingManagement = ({ isKeplrConnected }) => {
                                     {stakingRewards !== null ? `${stakingRewards} ERTH` : "Loading..."}
                                 </span>
                             </div>
-                            <button onClick={handleClaimRewards} className="stake-page-button" disabled={loading}>
+                            <button onClick={handleClaimRewards} className="stake-page-button">
                                 Claim Rewards
                             </button>
-                            <div id="claim-result" className="stake-page-result">
-                                {claimResult}
-                            </div>
                         </div>
                     )}
                 </div>
@@ -349,12 +333,9 @@ const StakingManagement = ({ isKeplrConnected }) => {
                                 step="any"
                             />
                         </div>
-                        <button onClick={handleUnstake} className="stake-page-button" disabled={loading}>
+                        <button onClick={handleUnstake} className="stake-page-button">
                             Unstake Tokens
                         </button>
-                        <div id="unstake-result" className="stake-page-result">
-                            {unstakeResult}
-                        </div>
                     </div>
 
                     {/* Staking Rewards Display and Claim Section */}
@@ -366,12 +347,9 @@ const StakingManagement = ({ isKeplrConnected }) => {
                                     {stakingRewards !== null ? `${stakingRewards} ERTH` : "Loading..."}
                                 </span>
                             </div>
-                            <button onClick={handleClaimRewards} className="stake-page-button" disabled={loading}>
+                            <button onClick={handleClaimRewards} className="stake-page-button">
                                 Claim Rewards
                             </button>
-                            <div id="claim-result" className="stake-page-result">
-                                {claimResult}
-                            </div>
                         </div>
                     )}
                 </div>
