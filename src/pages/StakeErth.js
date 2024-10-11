@@ -1,3 +1,5 @@
+// StakeErth.js
+
 import React, { useState, useEffect } from 'react';
 import { query, contract, snip, querySnipBalance, requestViewingKey } from '../utils/contractUtils'; 
 import { toMicroUnits, toMacroUnits } from '../utils/mathUtils.js'; 
@@ -7,7 +9,7 @@ import './StakeErth.css';
 import StatusModal from '../components/StatusModal'; 
 
 const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const THIS_HASH = "769c585aeb36c80967f6e8d214683e6e9637cd29a1770c056c1c6ecaa38401cd";
+const THIS_HASH = "5ddc47db84b244ff1c63c179f579d5f1f72c257e421f9d54c3e685c9e56af184";
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const DAYS_PER_YEAR = 365;
@@ -36,6 +38,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
     const [stakedBalance, setStakedBalance] = useState(null);
     const [unstakedBalance, setUnstakedBalance] = useState(null);
     const [totalStakedBalance, setTotalStakedBalance] = useState(null);
+    const [unbondingEntries, setUnbondingEntries] = useState([]); // New state variable
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
 
@@ -66,6 +69,9 @@ const StakingManagement = ({ isKeplrConnected }) => {
                 setStakingRewards(0);
                 return;
             }
+
+            console.log("Unbonding Entries:", resp.unbonding_entries);
+
 
             const stakingRewardsDueMicro = resp.staking_rewards_due;
             const totalStakedMicro = resp.total_staked;
@@ -98,11 +104,19 @@ const StakingManagement = ({ isKeplrConnected }) => {
                 const calculatedApr = calculateAPR(totalStakedMicro);
                 setApr(calculatedApr);
             }
+
+            // Fetch unbonding entries
+            if (resp.unbonding_entries) {
+                setUnbondingEntries(resp.unbonding_entries);
+            } else {
+                setUnbondingEntries([]);
+            }
         } catch (error) {
             console.error("Error querying user info:", error);
             setStakingRewards(0);
             setStakedBalance("Error");
             setUnstakedBalance("Error");
+            setUnbondingEntries([]);
         } finally {
             showLoadingScreen(false);
         }
@@ -153,10 +167,10 @@ const StakingManagement = ({ isKeplrConnected }) => {
         try {
             showLoadingScreen(true);
 
-            const amountInMicroUnits = toMicroUnits(unstakeAmount, tokens['ERTH']);
+            const amountInMicroUnits = toMicroUnits(unstakeAmount, tokens["ERTH"]);
 
             const msg = {
-                unstake: {
+                withdraw: {
                     amount: amountInMicroUnits.toString()
                 }
             };
@@ -194,6 +208,29 @@ const StakingManagement = ({ isKeplrConnected }) => {
             setAnimationState('error');
         } finally {
             fetchStakingRewards();
+        }
+    };
+
+    const handleClaimUnbonded = async () => {
+        if (!isKeplrConnected) {
+            console.warn("Keplr is not connected yet.");
+            return;
+        }
+
+        try {
+            showLoadingScreen(true);
+
+            const msg = {
+                claim_unbonded: {},
+            };
+
+            await contract(THIS_CONTRACT, THIS_HASH, msg);
+
+            fetchStakingRewards();
+        } catch (error) {
+            console.error("Error claiming unbonded tokens:", error);
+        } finally {
+            showLoadingScreen(false);
         }
     };
 
@@ -337,6 +374,29 @@ const StakingManagement = ({ isKeplrConnected }) => {
                             Unstake Tokens
                         </button>
                     </div>
+
+                    {/* Unbonding Entries Section */}
+                    {unbondingEntries.length > 0 && (
+                        <div className="unbonding-entries-section">
+                            <h3>Unbonding Tokens</h3>
+                            <ul>
+                                {unbondingEntries.map((entry, index) => {
+                                    // Convert nanoseconds to milliseconds by dividing by 1e6
+                                    const availableDate = new Date(entry.unbonding_time / 1e6).toLocaleString();
+                                    return (
+                                        <li key={index}>
+                                            Amount: {toMacroUnits(entry.amount, tokens["ERTH"])} ERTH<br />
+                                            Available on: {availableDate}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <button onClick={handleClaimUnbonded} className="stake-page-button">
+                                Claim Unbonded Tokens
+                            </button>
+                        </div>
+                    )}
+
 
                     {/* Staking Rewards Display and Claim Section */}
                     {stakingRewards > 0 && (
