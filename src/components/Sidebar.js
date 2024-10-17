@@ -70,6 +70,13 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             </li>
           </ul>
         </li>
+        <li>
+        <a href="https://dash.scrt.network/" target="_blank" rel="noopener noreferrer">
+          <i class='bx bxs-dashboard'></i>
+          <span className="link_name">SCRT&nbsp;Dashboard</span>
+        </a>
+
+        </li>
       </ul>
 
       <div className="profile-container">
