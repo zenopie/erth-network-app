@@ -71,11 +71,16 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           </ul>
         </li>
         <li>
-        <a href="https://dash.scrt.network/" target="_blank" rel="noopener noreferrer">
-          <i class='bx bxs-dashboard'></i>
-          <span className="link_name">SCRT&nbsp;Dashboard</span>
-        </a>
-
+          <a href="https://dash.scrt.network/" target="_blank" rel="noopener noreferrer">
+            <i class='bx bxs-dashboard'></i>
+            <span className="link_name">SCRT&nbsp;Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a href="https://app.fina.cash/" target="_blank" rel="noopener noreferrer">
+            <i class='bx bx-credit-card'></i>
+            <span className="link_name">FINA&nbsp;Card</span>
+          </a>
         </li>
       </ul>
 
