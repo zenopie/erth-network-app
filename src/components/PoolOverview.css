@@ -34,6 +34,7 @@
     display: block;
 }
 
+
 /* Individual Info Item Styling */
 .info-item {
     display: flex;
@@ -111,3 +112,5 @@
     border-color: #45a049;
     color: #45a049;
 }
+
+
