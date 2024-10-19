@@ -32,6 +32,19 @@ const tokens = {
             decimals: 6,
         },
     },
+    sSCRT: {
+        contract: "secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek",
+        hash: "af74387e276be8874f07bec3a87023ee49b0e7ebe08178c49d0a49c3c98ed60e",
+        decimals: 6,
+        poolContract: "secret1qp8ed8qdnf9q8l6w3jqehnda4d5m842ch79600",
+        poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
+        logo: "/images/coin/SSCRT.png",
+        lp: {
+            contract: 'secret1hk5lj62949s88q7kl892rkxyhxcxdpznzlw924',
+            hash: '638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e',
+            decimals: 6,
+        },
+    },
 };
 
 
