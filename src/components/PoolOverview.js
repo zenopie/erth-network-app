@@ -135,6 +135,7 @@ const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected}) => {
                 <img src={token.logo} alt={`${tokenKey} logo`} className="coin-logo" />
                 <div className="info-item">
                     <h2 className="pool-label">{tokenKey}</h2>
+                    <span className="info-label">/ERTH</span>
                  
                 </div>
                 <div className="info-item">
