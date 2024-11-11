@@ -11,7 +11,7 @@ import anmlImage from '../images/anml.png';
 import watermelonImage from '../images/watermelon.png';
 
 const REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const REGISTRATION_HASH = "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
+const REGISTRATION_HASH = "2c0d1e6fa1fdf4899384107a3a2f0b7424143f65ebc975fa802ffe0926db4606";
 
 
 const ANMLClaim = ({ isKeplrConnected }) => {

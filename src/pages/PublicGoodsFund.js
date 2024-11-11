@@ -5,7 +5,7 @@ import { showLoadingScreen } from '../utils/uiUtils';
 import { query } from '../utils/contractUtils';
 
 const this_contract = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const this_hash = "56b23939334e37ab046d9b9a64134289512e9b40b7cbe738a9385f7ddfdbe40d";
+const this_hash = "2c0d1e6fa1fdf4899384107a3a2f0b7424143f65ebc975fa802ffe0926db4606";
 
 const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548'];
 const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated
@@ -102,12 +102,12 @@ const PublicGoodsFund = ({ isKeplrConnected }) => {
       const querymsg = { query_allocation_options: {} };
       const response = await query(this_contract, this_hash, querymsg);
 
-      const transformedData = response.allocations.map((allocation) => {
-        const nameMatch = allocationNames.find((item) => item.id === String(allocation.allocation_id));
+      const transformedData = response.map((allocation) => {
+        const nameMatch = allocationNames.find((item) => item.id === String(allocation.state.allocation_id));
         return {
-          id: allocation.allocation_id,
+          id: allocation.state.allocation_id,
           name: nameMatch ? nameMatch.name : `Unknown (${allocation.allocation_id})`,
-          value: parseInt(allocation.amount_allocated, 10),
+          value: parseInt(allocation.state.amount_allocated, 10),
         };
       });
 
@@ -123,7 +123,7 @@ const PublicGoodsFund = ({ isKeplrConnected }) => {
       showLoadingScreen(true);
       const querymsg = { query_user_allocations: { address: window.secretjs.address } };
       const response = await query(this_contract, this_hash, querymsg);
-      const transformedData = response.allocations.map((percentage) => {
+      const transformedData = response.map((percentage) => {
         const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
         return {
           id: percentage.allocation_id,
