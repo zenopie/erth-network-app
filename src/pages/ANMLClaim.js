@@ -120,7 +120,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     setAnimationState('loading');  // Set the state to loading when the swap starts
 
     let contractmsg = {
-      claim: {}
+      claim_anml: {}
     };
 
     try {
