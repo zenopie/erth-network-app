@@ -4,7 +4,7 @@ import './Sidebar.css';
 import logo from '../images/logo.png';
 import keplr from '../images/keplr.svg';
 
-const Sidebar = ({ walletName, isKeplrConnected }) => {
+const Sidebar = ({ walletName, isKeplrConnected, onConnectKeplr }) => {
   const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -90,15 +90,22 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             <img src={keplr} alt="profileImg" />
           </div>
           <div className="name-job">
-            <div id="wallet-name" className="profile_name">
-              {isKeplrConnected ? walletName : "Connecting..."}
-            </div>
-            <div className="job"></div>
+            {isKeplrConnected ? (
+              <div id="wallet-name" className="profile_name">
+                {walletName}
+              </div>
+            ) : (
+              <button
+                className="connect-keplr-button-small"
+                onClick={onConnectKeplr}
+              >
+                Connect
+              </button>
+            )}
           </div>
         </div>
 
         <li className="socials-link">
-          {/* Placeholder to maintain space */}
           <div className="socials-placeholder">
             <i className={`bx ${isCollapsed ? 'bx-heart' : ''}`}></i>
           </div>
