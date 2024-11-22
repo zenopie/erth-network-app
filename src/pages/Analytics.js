@@ -13,18 +13,18 @@ const Analytics = () => {
     useEffect(() => {
         const fetchPricesAndData = async () => {
             try {
-                console.log("test start");
+                console.log("Fetching analytics data...");
                 // Start loading
+                showLoadingScreen(true);
 
                 // Step 1: Get prices from Coingecko
                 const tokenIds = Object.values(tokens)
                     .filter(token => token.coingeckoId)
                     .map(token => token.coingeckoId)
-                    .join(',')
+                    .join(',');
 
                 const priceResponse = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds}&vs_currencies=usd`);
                 const priceData = await priceResponse.json();
-
 
                 const prices = {};
                 for (const tokenKey in tokens) {
@@ -43,7 +43,8 @@ const Analytics = () => {
 
                 const totalSupplyRaw = erthTokenInfo.token_info.total_supply;
                 const totalSupply = parseInt(totalSupplyRaw) / (10 ** tokens.ERTH.decimals);
-                setErthTotalSupply(totalSupply);
+                console.log('totalSupply:', totalSupply, 'Type:', typeof totalSupply);
+                setErthTotalSupply(totalSupply); // Update state
 
                 // For each ERTH pair, get reserves
                 const pools = [];
@@ -80,35 +81,35 @@ const Analytics = () => {
                 for (const pool of pools) {
                     const tokenKey = pool.token;
                     const reserves = pool.reserves;
-                    const tokenPrice = prices[tokenKey];
-                    const R_ERTH = reserves.tokenErthReserve / (10 ** tokens.ERTH.decimals);
-                    const R_B = reserves.tokenBReserve / (10 ** tokens[tokenKey].decimals);
-                    const P_B_USD = tokenPrice;
+                    const tokenPriceUSD = prices[tokenKey]; // Price of the paired token in USD
 
-                    const P_ERTH_USD = (R_B / R_ERTH) * P_B_USD;
+                    // Adjust the reserves by dividing by 10^decimals to get the actual amounts
+                    const erthReserve = reserves.tokenErthReserve / (10 ** tokens.ERTH.decimals);
+                    const tokenReserve = reserves.tokenBReserve / (10 ** tokens[tokenKey].decimals);
 
-                    const TVL = (R_B * P_B_USD) + (R_ERTH * P_ERTH_USD);
-                    pool.erthPrice = P_ERTH_USD;
-                    pool.tvl = TVL;
+                    // Calculate the ERTH price in USD using the ratio of reserves and the paired token's price
+                    const erthPriceUSD = (tokenReserve / erthReserve) * tokenPriceUSD;
 
-                    totalWeightedPrice += P_ERTH_USD * TVL;
-                    totalLiquidity += TVL;
+                    // Calculate the Total Value Locked (TVL) in USD for the pool
+                    const poolTVL = (tokenReserve * tokenPriceUSD) + (erthReserve * erthPriceUSD);
+
+                    // Store the calculated ERTH price and TVL in the pool object for later use
+                    pool.erthPrice = erthPriceUSD;
+                    pool.tvl = poolTVL;
+
+                    // Accumulate the weighted ERTH price and total liquidity for averaging later
+                    totalWeightedPrice += erthPriceUSD * poolTVL;
+                    totalLiquidity += poolTVL;
                 }
 
                 const averageErthPrice = totalWeightedPrice / totalLiquidity;
                 setErthPrice(averageErthPrice);
 
-                // Calculate ERTH Market Cap
-               
+                // Calculate ERTH Market Cap using local totalSupply
                 console.log('averageErthPrice:', averageErthPrice, 'Type:', typeof averageErthPrice);
+                console.log('totalSupply:', totalSupply, 'Type:', typeof totalSupply);
 
-
-                console.log('erthTotalSupply:', erthTotalSupply, 'Type:', typeof erthTotalSupply);
-
-                const averageErthPriceNum = parseFloat(averageErthPrice);
-                const erthTotalSupplyNum = parseFloat(totalSupply);
-
-                const marketCap = averageErthPriceNum * erthTotalSupplyNum;
+                const marketCap = averageErthPrice * totalSupply;
                 console.log('marketCap:', marketCap, 'Type:', typeof marketCap);
                 setErthMarketCap(marketCap);
 
@@ -121,7 +122,7 @@ const Analytics = () => {
         };
 
         fetchPricesAndData();
-    }, );
+    }, []); // Empty dependency array
 
     return (
         <div className="analytics-page">
