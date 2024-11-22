@@ -229,7 +229,7 @@ const Analytics = () => {
                         <tr key={index}>
                             <td>{`ERTH-${pool.token}`}</td>
                             <td>${pool.erthPrice.toFixed(6)}</td>
-                            <td>${pool.tvl.toFixed(2)}</td>
+                            <td>${pool.tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                         </tr>
                     ))}
                 </tbody>
