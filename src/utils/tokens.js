@@ -26,6 +26,7 @@ const tokens = {
         poolContract: "secret1tfrkp459jtvlhkev39yr6avkq3qjmffu8sc6c7",
         poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
         logo: "/images/coin/FINA.webp",
+        coingeckoId: "fina",
         lp: {
             contract: 'secret14ttyephg7pvzzt0n53y888rvmeec5hl0pnf5tw',
             hash: '638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e',
@@ -39,6 +40,7 @@ const tokens = {
         poolContract: "secret1qp8ed8qdnf9q8l6w3jqehnda4d5m842ch79600",
         poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
         logo: "/images/coin/SSCRT.png",
+        coingeckoId: "secret",
         lp: {
             contract: 'secret1hk5lj62949s88q7kl892rkxyhxcxdpznzlw924',
             hash: '638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e',

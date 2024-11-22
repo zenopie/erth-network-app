@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ANMLClaim from './pages/ANMLClaim';
+import Analytics from './pages/Analytics';
 import SwapTokens from './pages/SwapTokens';
 import ManageLP from './pages/ManageLP';
 import StakeErth from './pages/StakeErth';
@@ -16,6 +17,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/anml-claim" />} />
           <Route path="/anml-claim" element={<Layout><ANMLClaim /></Layout>} />
+          <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
           <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
           <Route path="/manage-lp" element={<Layout><ManageLP /></Layout>} />
           <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />

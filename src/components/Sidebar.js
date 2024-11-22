@@ -38,6 +38,12 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           </Link>
         </li>
         <li>
+          <Link to="/analytics">
+            <i className='bx bx-line-chart'></i>
+            <span className="link_name">Analytics</span>
+          </Link>
+        </li>
+        <li>
           <Link to="/swap-tokens">
             <i className='bx bxs-store-alt'></i>
             <span className="link_name">Swap&nbsp;Tokens</span>
