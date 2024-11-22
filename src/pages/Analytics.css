@@ -1,7 +1,7 @@
 /* Analytics Page Styling */
 .analytics-page {
     width: 100%;
-    max-width: 800px; /* Wider than swap-box to accommodate more data */
+    max-width: 600px; /* Wider than swap-box to accommodate more data */
     background-color: #ffffff;
     padding: 40px 30px 30px 30px;
     border-radius: 20px;
@@ -15,17 +15,47 @@
     text-align: center;
 }
 
-/* ERTH Price Section */
-.erth-price-section {
-    text-align: center;
-    margin-bottom: 30px;
+/* Analytics Price Section Styling */
+.analytics-price-section {
+    width: 100%;
+    max-width: 450px;
+    margin: 20px auto; /* Center the section horizontally */
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 10px;
+
 }
 
-.erth-price-section h3 {
-    margin: 10px 0;
-    font-size: 20px;
-    font-weight: bold;
+.analytics-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
+
+.analytics-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.analytics-row:last-child {
+    border-bottom: none;
+}
+
+.analytics-label {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+}
+
+.analytics-value {
+    font-size: 14px;
+    color: #333;
+    text-align: right;
+}
+
 
 /* Analytics Table Styling */
 .analytics-table {

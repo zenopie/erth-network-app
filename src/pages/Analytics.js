@@ -9,7 +9,9 @@ const Analytics = () => {
     const [poolData, setPoolData] = useState([]);
     const [erthPrice, setErthPrice] = useState(null);
     const [erthTotalSupply, setErthTotalSupply] = useState(null);
+    const [totalValueLocked, setTotalValueLocked] = useState(null);
     const [erthMarketCap, setErthMarketCap] = useState(null);
+    const [anmlPriceUSD, setAnmlPriceUSD] = useState(null);
 
     useEffect(() => {
         const fetchPricesAndData = async () => {
@@ -105,6 +107,7 @@ const Analytics = () => {
 
                 const averageErthPrice = totalWeightedPrice / totalLiquidity;
                 setErthPrice(averageErthPrice);
+                setTotalValueLocked(totalLiquidity); // Update state
 
                 // Calculate ERTH Market Cap using local totalSupply
                 console.log('averageErthPrice:', averageErthPrice, 'Type:', typeof averageErthPrice);
@@ -113,6 +116,51 @@ const Analytics = () => {
                 const marketCap = averageErthPrice * totalSupply;
                 console.log('marketCap:', marketCap, 'Type:', typeof marketCap);
                 setErthMarketCap(marketCap);
+
+                // Now, separately query the ERTH-ANML pool to calculate ANML price
+                const anmlToken = tokens['ANML'];
+                if (anmlToken && anmlToken.poolContract) {
+                    const poolContract = anmlToken.poolContract;
+                    const poolHash = anmlToken.poolHash;
+                    const poolStateResponse = await query(poolContract, poolHash, { query_state: {} });
+                    const state = poolStateResponse.state;
+                    if (state) {
+                        const reserves = {
+                            tokenErthReserve: parseInt(state.token_erth_reserve),
+                            tokenBReserve: parseInt(state.token_b_reserve),
+                        };
+                        console.log(reserves);
+
+                        // Adjust the reserves
+                        const erthReserve = reserves.tokenErthReserve / (10 ** tokens.ERTH.decimals);
+                        const anmlReserve = reserves.tokenBReserve / (10 ** tokens['ANML'].decimals);
+
+                        // Calculate ANML price based on ERTH price
+                        const anmlPriceUSD = (erthReserve / anmlReserve) * averageErthPrice;
+
+                        setAnmlPriceUSD(anmlPriceUSD);
+                        // Calculate the TVL of the ANML pool
+                        const poolTVL = (erthReserve * averageErthPrice * 2)
+
+                        // Add the poolTVL to totalLiquidity
+                        const updatedTotalLiquidity = totalLiquidity + poolTVL;
+                        setTotalValueLocked(updatedTotalLiquidity); // Update state with new total TVL
+
+                        // Create a poolInfo object for the ANML pool
+                        const anmlPoolInfo = {
+                            token: 'ANML',
+                            erthPrice: averageErthPrice, // Use average ERTH price
+                            tvl: poolTVL,
+                            reserves: {
+                                tokenErthReserve: reserves.tokenErthReserve,
+                                tokenBReserve: reserves.tokenBReserve,
+                            },
+                        };
+
+                        // Add the ANML pool to the top of the poolData array
+                        setPoolData(prevPoolData => [anmlPoolInfo, ...prevPoolData]);
+                    }
+                }
 
             } catch (error) {
                 console.error('Error fetching analytics data:', error);
@@ -129,17 +177,44 @@ const Analytics = () => {
         <div className="analytics-page">
             <h2>Analytics</h2>
             {erthPrice && (
-                <div className="erth-price-section">
-                    <h3>ERTH Price: ${erthPrice.toFixed(6)}</h3>
+                <div className="analytics-price-section">
+                <div className="analytics-info">
+                    <div className="analytics-row">
+                        <span className="analytics-label">ERTH Price:</span>
+                        <span className="analytics-value">${erthPrice.toFixed(6)}</span>
+                    </div>
                     {erthTotalSupply !== null ? (
-                        <h3>Total Supply: {erthTotalSupply.toLocaleString()} ERTH</h3>
+                        <div className="analytics-row">
+                            <span className="analytics-label">Total Supply:</span>
+                            <span className="analytics-value">{erthTotalSupply.toLocaleString()} ERTH</span>
+                        </div>
                     ) : (
-                        <h3>Total Supply: Data not available</h3>
+                        <div className="analytics-row">
+                            <span className="analytics-label">Total Supply:</span>
+                            <span className="analytics-value">Data not available</span>
+                        </div>
                     )}
                     {erthMarketCap && (
-                        <h3>Market Cap: ${erthMarketCap.toLocaleString(undefined, { maximumFractionDigits: 2 })}</h3>
+                        <div className="analytics-row">
+                            <span className="analytics-label">Market Cap:</span>
+                            <span className="analytics-value">${erthMarketCap.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                    )}
+                    {totalValueLocked !== null && (
+                        <div className="analytics-row">
+                            <span className="analytics-label">TVL:</span>
+                            <span className="analytics-value">${totalValueLocked.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                    )}
+                    {anmlPriceUSD && (
+                        <div className="analytics-row">
+                            <span className="analytics-label">ANML Price:</span>
+                            <span className="analytics-value">${anmlPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
                     )}
                 </div>
+            </div>
+            
             )}
             <table className="analytics-table">
                 <thead>
