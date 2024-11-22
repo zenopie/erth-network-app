@@ -1,0 +1,89 @@
+/* Analytics Page Styling */
+.analytics-page {
+    width: 100%;
+    max-width: 800px; /* Wider than swap-box to accommodate more data */
+    background-color: #ffffff;
+    padding: 40px 30px 30px 30px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin: 40px auto; /* Center the box horizontally and add top margin */
+}
+
+/* Title Styling */
+.analytics-page h2 {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* ERTH Price Section */
+.erth-price-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.erth-price-section h3 {
+    margin: 10px 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Analytics Table Styling */
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-size: 16px;
+}
+
+.analytics-table th {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.analytics-table tr:nth-child(even) {
+    background-color: #f1f0ea;
+}
+
+.analytics-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 600px) {
+    .analytics-page {
+        padding: 20px;
+        margin: 20px auto;
+    }
+
+    .analytics-table th,
+    .analytics-table td {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .erth-price-section h3 {
+        font-size: 18px;
+    }
+}
+
+/* Loading Message Styling */
+.loading-message {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 50px;
+}
+
+/* Error Message Styling */
+.error-message {
+    color: red;
+    text-align: center;
+    font-size: 18px;
+    margin-top: 50px;
+}

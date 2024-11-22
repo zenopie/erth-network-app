@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { query } from '../utils/contractUtils';
 import tokens from '../utils/tokens';
 import { showLoadingScreen } from '../utils/uiUtils';
+import './Analytics.css'; // Import the CSS file
 
 const Analytics = () => {
     const [poolData, setPoolData] = useState([]);
@@ -129,7 +130,7 @@ const Analytics = () => {
             <h2>Analytics</h2>
             {erthPrice && (
                 <div className="erth-price-section">
-                    <h3>Average ERTH Price: ${erthPrice.toFixed(6)}</h3>
+                    <h3>ERTH Price: ${erthPrice.toFixed(6)}</h3>
                     {erthTotalSupply !== null ? (
                         <h3>Total Supply: {erthTotalSupply.toLocaleString()} ERTH</h3>
                     ) : (
