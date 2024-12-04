@@ -2,8 +2,13 @@ import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 
 let secretjs = null;
 //const url = "https://rpc.ankr.com/http/scrt_cosmos";
-const url = "https://lcd.mainnet.secretsaturn.net";
-//const url = "https://lcd.archive.scrt.marionode.com";
+//const url = "https://lcd.mainnet.secretsaturn.net";
+const url = "https://lcd.archive.scrt.marionode.com";
+//const url = "https://rpc.ankr.com/http/scrt_cosmos";
+//const url = "https://secretnetwork-api.lavenderfive.com:443";
+//const url = "https://secretnetwork-api.highstakes.ch:1317";
+
+console.log("node url = " + url);
 
 export async function connectKeplr() {
     const chainId = 'secret-4';  // Mainnet chain ID

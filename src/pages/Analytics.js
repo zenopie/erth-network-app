@@ -129,7 +129,6 @@ const Analytics = () => {
                             tokenErthReserve: parseInt(state.token_erth_reserve),
                             tokenBReserve: parseInt(state.token_b_reserve),
                         };
-                        console.log(reserves);
 
                         // Adjust the reserves
                         const erthReserve = reserves.tokenErthReserve / (10 ** tokens.ERTH.decimals);
