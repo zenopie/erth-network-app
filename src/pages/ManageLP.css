@@ -1,0 +1,30 @@
+/*---- Claim Button Styling ----*/
+.claim-all-button {
+    margin-bottom: 20px;
+    background-color: white;
+    border: 5px solid #4CAF50;
+    font-size: 20px;
+    border-radius: 30px;
+    color: #293462;
+    padding: 5px 20px;
+    max-width: 175px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    cursor: pointer;
+}
+
+.claim-all-button:hover {
+    background-color: #eee;
+    transition: all 0.3s ease;
+}
+
+.total-rewards-text {
+    margin-bottom: 50px;
+    font-size: 25px;
+    color: #293462;
+    padding: 20px;
+
+    text-align: center;
+
+}
