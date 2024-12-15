@@ -161,7 +161,7 @@ const PoolOverview = ({ tokenKey, toggleManageLiquidity, isKeplrConnected, onPoo
                     <span className="info-label">APR</span>
                 </div>
                 <div className="buttons-container">
-                    <button onClick={handleManageLiquidityClick} className="pool-overview-button reverse">Manage</button>
+                   {/*<button onClick={handleManageLiquidityClick} className="pool-overview-button reverse">Manage</button>*/}
                     <button onClick={handleClaimRewards} className="pool-overview-button">Claim</button>
                 </div>
             </div>
