@@ -1,21 +1,21 @@
 /*---- Claim Button Styling ----*/
 .claim-all-button {
-    margin-bottom: 20px;
-    background-color: white;
-    border: 5px solid #4CAF50;
+    border: none;
+    margin-top: 15px;
+    margin-bottom: 25px;
+    background-color: #4CAF50;
     font-size: 20px;
     border-radius: 30px;
-    color: #293462;
+    color: white;
     padding: 5px 20px;
     max-width: 175px;
     width: 100%;
-    box-sizing: border-box;
     text-align: center;
     cursor: pointer;
 }
 
 .claim-all-button:hover {
-    background-color: #eee;
+    background-color: #45a049;
     transition: all 0.3s ease;
 }
 
