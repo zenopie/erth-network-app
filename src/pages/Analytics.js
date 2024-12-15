@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { query } from '../utils/contractUtils';
 import tokens from '../utils/tokens';
 import { showLoadingScreen } from '../utils/uiUtils';
-import './Analytics.css'; // Import the CSS file
+import './Analytics.css';
 
-const Analytics = () => {
+const Analytics = ({ isKeplrConnected }) => {
     const [poolData, setPoolData] = useState([]);
     const [erthPrice, setErthPrice] = useState(null);
     const [erthTotalSupply, setErthTotalSupply] = useState(null);
@@ -14,10 +14,11 @@ const Analytics = () => {
     const [anmlPriceUSD, setAnmlPriceUSD] = useState(null);
 
     useEffect(() => {
+        if (!isKeplrConnected) return; // Wait for Keplr connection first
+
         const fetchPricesAndData = async () => {
             try {
                 console.log("Fetching analytics data...");
-                // Start loading
                 showLoadingScreen(true);
 
                 // Step 1: Get prices from Coingecko
@@ -151,8 +152,8 @@ const Analytics = () => {
                             erthPrice: averageErthPrice, // Use average ERTH price
                             tvl: poolTVL,
                             reserves: {
-                                tokenErthReserve: reserves.tokenErthReserve,
-                                tokenBReserve: reserves.tokenBReserve,
+                                tokenErthReserve: reserves.token_erth_reserve,
+                                tokenBReserve: reserves.token_b_reserve,
                             },
                         };
 
@@ -164,56 +165,54 @@ const Analytics = () => {
             } catch (error) {
                 console.error('Error fetching analytics data:', error);
             } finally {
-                // End loading
                 showLoadingScreen(false);
             }
         };
 
         fetchPricesAndData();
-    }, []); // Empty dependency array
+    }, [isKeplrConnected]); // Empty dependency array replaced with isKeplrConnected
 
     return (
         <div className="analytics-page">
             <h2>Analytics</h2>
             {erthPrice && (
                 <div className="analytics-price-section">
-                <div className="analytics-info">
-                    <div className="analytics-row">
-                        <span className="analytics-label">ERTH Price:</span>
-                        <span className="analytics-value">${erthPrice.toFixed(6)}</span>
+                    <div className="analytics-info">
+                        <div className="analytics-row">
+                            <span className="analytics-label">ERTH Price:</span>
+                            <span className="analytics-value">${erthPrice.toFixed(6)}</span>
+                        </div>
+                        {erthTotalSupply !== null ? (
+                            <div className="analytics-row">
+                                <span className="analytics-label">Total Supply:</span>
+                                <span className="analytics-value">{erthTotalSupply.toLocaleString()} ERTH</span>
+                            </div>
+                        ) : (
+                            <div className="analytics-row">
+                                <span className="analytics-label">Total Supply:</span>
+                                <span className="analytics-value">Data not available</span>
+                            </div>
+                        )}
+                        {erthMarketCap && (
+                            <div className="analytics-row">
+                                <span className="analytics-label">Market Cap:</span>
+                                <span className="analytics-value">${erthMarketCap.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        {totalValueLocked !== null && (
+                            <div className="analytics-row">
+                                <span className="analytics-label">TVL:</span>
+                                <span className="analytics-value">${totalValueLocked.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        {anmlPriceUSD && (
+                            <div className="analytics-row">
+                                <span className="analytics-label">ANML Price:</span>
+                                <span className="analytics-value">${anmlPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
                     </div>
-                    {erthTotalSupply !== null ? (
-                        <div className="analytics-row">
-                            <span className="analytics-label">Total Supply:</span>
-                            <span className="analytics-value">{erthTotalSupply.toLocaleString()} ERTH</span>
-                        </div>
-                    ) : (
-                        <div className="analytics-row">
-                            <span className="analytics-label">Total Supply:</span>
-                            <span className="analytics-value">Data not available</span>
-                        </div>
-                    )}
-                    {erthMarketCap && (
-                        <div className="analytics-row">
-                            <span className="analytics-label">Market Cap:</span>
-                            <span className="analytics-value">${erthMarketCap.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                        </div>
-                    )}
-                    {totalValueLocked !== null && (
-                        <div className="analytics-row">
-                            <span className="analytics-label">TVL:</span>
-                            <span className="analytics-value">${totalValueLocked.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                        </div>
-                    )}
-                    {anmlPriceUSD && (
-                        <div className="analytics-row">
-                            <span className="analytics-label">ANML Price:</span>
-                            <span className="analytics-value">${anmlPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                        </div>
-                    )}
                 </div>
-            </div>
-            
             )}
             <table className="analytics-table">
                 <thead>
