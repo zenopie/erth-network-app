@@ -65,7 +65,7 @@ export async function contract(contract, hash, contractmsg) {
         gasLimit: 1_000_000,
         gasPriceInFeeDenom: 0.1,
         feeDenom: "uscrt",
-        returnType: "sync",
+        broadcastMode: "Sync",
     });
     console.log("Contract: ", resp);
     return resp;
@@ -95,7 +95,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         gasLimit: 1_000_000,
         gasPriceInFeeDenom: 0.1,
         feeDenom: "uscrt",
-        broadcastMode: "sync",
+        broadcastMode: "Sync",
     });
     console.log("Snip: ", resp);
 }
@@ -195,7 +195,7 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             gasLimit: 1_000_000, // Adjust the gas limit as needed
             gasPriceInFeeDenom: 0.1,
             feeDenom: "uscrt",
-            returnType: "sync",
+            broadcastMode: "Sync",
         });
 
         console.log("Liquidity provided successfully:", resp);
