@@ -262,6 +262,7 @@ app.all("/api/proxy/*", async (req, res) => {
       method: req.method,
       headers: {
         ...req.headers,
+        host: "lcd.archive.scrt.marionode.com",
       },
     };
 
