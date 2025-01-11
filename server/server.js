@@ -245,18 +245,70 @@ app.get("/api/pending/:address", (req, res) => {
   res.json({ pending: pending });
 });
 
-// **Proxy route**: fetch from the node, send CORS header
-app.get("/proxy", async (req, res) => {
+app.all("/proxy/*", async (req, res) => {
   try {
-    // Example request - customize the endpoint as needed
-    const response = await fetch("https://lcd.archive.scrt.marionode.com/status");
-    const data = await response.json();
-    res.set("Access-Control-Allow-Origin", "*");
-    res.json(data);
+    // 1) Build out the path after "/proxy/"
+    const subPath = req.params[0] || "";
+
+    // 2) Build the query string if any
+    const queryString = new URLSearchParams(req.query).toString();
+    let urlToFetch = `https://lcd.archive.scrt.marionode.com/${subPath}`;
+    if (queryString) {
+      urlToFetch += `?${queryString}`;
+    }
+
+    // 3) Set up fetch options: method, headers, body, etc.
+    const fetchOptions = {
+      method: req.method,
+      headers: {
+        ...req.headers,
+        // remove host header so Node won't complain
+        host: undefined,
+      },
+    };
+
+    // If there's a body (POST, etc.), forward that too
+    if (["POST", "PUT", "PATCH"].includes(req.method.toUpperCase())) {
+      fetchOptions.body = JSON.stringify(req.body);
+      fetchOptions.headers["Content-Type"] = "application/json";
+    }
+
+    // 4) Fetch from marionode
+    const response = await fetch(urlToFetch, fetchOptions);
+
+    // Relay headers/status from marionode
+    res.status(response.status);
+    for (const [key, value] of response.headers.entries()) {
+      res.setHeader(key, value);
+    }
+
+    // 5) Add yo own CORS header
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    // 6) Return the data as JSON (or stream text if needed)
+    // If the remote returns JSON, parse it. Otherwise pipe raw data.
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      const data = await response.json();
+      return res.json(data);
+    } else {
+      const text = await response.text();
+      return res.send(text);
+    }
+
   } catch (error) {
-    res.status(500).send(error.toString());
+    console.error("Proxy error:", error);
+    return res.status(500).send(error.toString());
   }
 });
+
+// Also handle preflight for CORS
+app.options("/proxy/*", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.end();
+});
+
 
 // Start the server
 let server = require("http").Server(app);
