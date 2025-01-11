@@ -1,4 +1,4 @@
-import { SecretNetworkClient, MsgExecuteContract, BroadcastMode } from 'secretjs';
+import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 
 let secretjs = null;
 //const url = "https://rpc.ankr.com/http/scrt_cosmos";
@@ -95,7 +95,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         gasLimit: 1_000_000,
         gasPriceInFeeDenom: 0.1,
         feeDenom: "uscrt",
-        broadcastMode: BroadcastMode.BROADCAST_MODE_SYNC,
+        broadcastMode: "sync",
     });
     console.log("Snip: ", resp);
 }
