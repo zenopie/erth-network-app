@@ -1,10 +1,10 @@
 import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 
 let secretjs = null;
-//const url = "https://rpc.ankr.com/http/scrt_cosmos";
+const url = "http://erth.network:5000/proxy";
 //const url = "https://lcd.mainnet.secretsaturn.net";
 //const url = "https://lcd.archive.scrt.marionode.com";
-const url = "https://rpc.ankr.com/http/scrt_cosmos";
+//const url = "https://rpc.ankr.com/http/scrt_cosmos";
 //const url = "https://secretnetwork-api.lavenderfive.com:443";
 //const url = "https://secretnetwork-api.highstakes.ch:1317";
 
@@ -36,7 +36,7 @@ export async function connectKeplr() {
         address: secretjs.address,
       });
       console.log('Account info:', accountInfo);     
-      
+
     return { secretjs, walletName: walletName.name.slice(0, 12) };
 }
 

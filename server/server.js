@@ -245,6 +245,19 @@ app.get("/api/pending/:address", (req, res) => {
   res.json({ pending: pending });
 });
 
+// **Proxy route**: fetch from the node, send CORS header
+app.get("/proxy", async (req, res) => {
+  try {
+    // Example request - customize the endpoint as needed
+    const response = await fetch("https://lcd.archive.scrt.marionode.com/status");
+    const data = await response.json();
+    res.set("Access-Control-Allow-Origin", "*");
+    res.json(data);
+  } catch (error) {
+    res.status(500).send(error.toString());
+  }
+});
+
 // Start the server
 let server = require("http").Server(app);
 
