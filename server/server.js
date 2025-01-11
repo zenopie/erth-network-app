@@ -262,8 +262,6 @@ app.all("/api/proxy/*", async (req, res) => {
       method: req.method,
       headers: {
         ...req.headers,
-        // remove host header so Node won't complain
-        host: undefined,
       },
     };
 
