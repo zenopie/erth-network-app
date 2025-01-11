@@ -245,7 +245,7 @@ app.get("/api/pending/:address", (req, res) => {
   res.json({ pending: pending });
 });
 
-app.all("/proxy/*", async (req, res) => {
+app.all("/api/proxy/*", async (req, res) => {
   try {
     // 1) Build out the path after "/proxy/"
     const subPath = req.params[0] || "";
