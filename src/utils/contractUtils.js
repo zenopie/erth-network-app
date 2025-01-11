@@ -31,6 +31,12 @@ export async function connectKeplr() {
     });
 
     const walletName = await window.keplr.getKey(chainId);
+
+    let accountInfo = await secretjs.query.auth.account({
+        address: secretjs.address,
+      });
+      console.log('Account info:', accountInfo);     
+      
     return { secretjs, walletName: walletName.name.slice(0, 12) };
 }
 
