@@ -1,7 +1,7 @@
 import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 
 let secretjs = null;
-const url = "http://erth.network:5000/proxy";
+const url = "https://erth.network:5000/proxy";
 //const url = "https://lcd.mainnet.secretsaturn.net";
 //const url = "https://lcd.archive.scrt.marionode.com";
 //const url = "https://rpc.ankr.com/http/scrt_cosmos";
