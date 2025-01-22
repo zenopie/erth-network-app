@@ -245,7 +245,7 @@ app.get("/api/pending/:address", (req, res) => {
   res.json({ pending: pending });
 });
 
-app.all("/api/proxy/*", async (req, res) => {
+app.all("/api/node/*", async (req, res) => {
   try {
     // 1) Build out the path after "/proxy/"
     const subPath = req.params[0] || "";
@@ -300,13 +300,6 @@ app.all("/api/proxy/*", async (req, res) => {
   }
 });
 
-// Also handle preflight for CORS
-app.options("api/proxy/*", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.end();
-});
 
 
 // Start the server
