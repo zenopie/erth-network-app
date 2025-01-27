@@ -21,8 +21,8 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           # Define the directories
-          HOME_DIR=/home/ubuntu/earth-network-app
-          WWW_DIR=/var/www/earth-network-app
+          HOME_DIR=/home/ubuntu/earth-mainnet-app
+          WWW_DIR=/var/www/earth-mainnet-app
 
           # Create the home directory if it doesn't exist
           if [ ! -d "$HOME_DIR" ]; then
