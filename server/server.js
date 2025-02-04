@@ -245,61 +245,6 @@ app.get("/api/pending/:address", (req, res) => {
   res.json({ pending: pending });
 });
 
-app.all("/api/node/*", async (req, res) => {
-  try {
-    // 1) Build out the path after "/proxy/"
-    const subPath = req.params[0] || "";
-
-    // 2) Build the query string if any
-    const queryString = new URLSearchParams(req.query).toString();
-    let urlToFetch = `https://lcd.archive.scrt.marionode.com/${subPath}`;
-    if (queryString) {
-      urlToFetch += `?${queryString}`;
-    }
-
-    // 3) Set up fetch options: method, headers, body, etc.
-    const fetchOptions = {
-      method: req.method,
-      headers: {
-        ...req.headers,
-        host: "lcd.archive.scrt.marionode.com",
-      },
-    };
-
-    // If there's a body (POST, etc.), forward that too
-    if (["POST", "PUT", "PATCH"].includes(req.method.toUpperCase())) {
-      fetchOptions.body = JSON.stringify(req.body);
-      fetchOptions.headers["Content-Type"] = "application/json";
-    }
-
-    // 4) Fetch from marionode
-    const response = await fetch(urlToFetch, fetchOptions);
-
-    // Relay headers/status from marionode
-    res.status(response.status);
-    for (const [key, value] of response.headers.entries()) {
-      res.setHeader(key, value);
-    }
-
-    // 5) Add yo own CORS header
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    // 6) Return the data as JSON (or stream text if needed)
-    // If the remote returns JSON, parse it. Otherwise pipe raw data.
-    if (response.headers.get("content-type")?.includes("application/json")) {
-      const data = await response.json();
-      return res.json(data);
-    } else {
-      const text = await response.text();
-      return res.send(text);
-    }
-
-  } catch (error) {
-    console.error("Proxy error:", error);
-    return res.status(500).send(error.toString());
-  }
-});
-
 
 
 // Start the server
