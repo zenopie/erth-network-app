@@ -311,7 +311,7 @@ const LiquidityManagement = ({ isKeplrConnected, toggleManageLiquidity, poolInfo
                 animationState={animationState}
             />
 
-            <h2>Manage Liquidity</h2>
+            <h2>Manage Liquidity (migration soon- DO NOT USE!)</h2>
             <div className="liquidity-management-close-button" onClick={toggleManageLiquidity}>X</div>
 
             <div className="liquidity-management-tab">

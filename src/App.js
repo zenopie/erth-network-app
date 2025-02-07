@@ -8,6 +8,7 @@ import ManageLP from './pages/ManageLP';
 import StakeErth from './pages/StakeErth';
 import PublicGoodsFund from './pages/PublicGoodsFund';
 import DeflationFund from './pages/DeflationFund';
+import SecretAIChat from './pages/SecretAIChat';
 import './App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
           <Route path="/public-goods-fund" element={<Layout><PublicGoodsFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
+          <Route path="/ai-chat" element={<Layout><SecretAIChat /></Layout>} />
         </Routes>
       </div>
     </Router>

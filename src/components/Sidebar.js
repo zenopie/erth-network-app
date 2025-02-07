@@ -5,20 +5,15 @@ import logo from '../images/logo.png';
 import keplr from '../images/keplr.svg';
 
 const Sidebar = ({ walletName, isKeplrConnected }) => {
-  const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
+  const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
+  const [isExperimentsOpen, setIsExperimentsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const toggleSubmenu = () => {
-    setIsSubmenuOpen(!isSubmenuOpen);
-  };
-
-  const handleMouseEnter = () => {
-    setIsCollapsed(false);
-  };
-
+  const handleMouseEnter = () => setIsCollapsed(false);
   const handleMouseLeave = () => {
     setIsCollapsed(true);
-    setIsSubmenuOpen(false); // Close the submenu when sidebar collapses
+    setIsGovernanceOpen(false);
+    setIsExperimentsOpen(false);
   };
 
   return (
@@ -33,41 +28,41 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
       <ul className="nav-links">
         <li>
           <Link to="/anml-claim">
-            <i className='bx bxs-coin'></i>
-            <span className="link_name">ANML&nbsp;Claim</span>
-          </Link>
-        </li>
-        <li>
-          <Link to="/analytics">
-            <i className='bx bx-line-chart'></i>
-            <span className="link_name">Analytics</span>
+            <i className="bx bxs-coin"></i>
+            <span className="link_name">ANML Claim</span>
           </Link>
         </li>
         <li>
           <Link to="/swap-tokens">
-            <i className='bx bxs-store-alt'></i>
-            <span className="link_name">Swap&nbsp;Tokens</span>
+            <i className="bx bxs-store-alt"></i>
+            <span className="link_name">Swap Tokens</span>
           </Link>
         </li>
         <li>
           <Link to="/manage-lp">
-            <i className='bx bxs-droplet-half'></i>
-            <span className="link_name">Manage&nbsp;LP</span>
+            <i className="bx bxs-droplet-half"></i>
+            <span className="link_name">Manage LP</span>
           </Link>
         </li>
         <li>
           <Link to="/stake-erth">
-            <i className='bx bxs-bank'></i>
-            <span className="link_name">Stake&nbsp;ERTH</span>
+            <i className="bx bxs-bank"></i>
+            <span className="link_name">Stake ERTH</span>
           </Link>
         </li>
-        <li className={isSubmenuOpen ? "submenu open" : "submenu"}>
-          <div onClick={toggleSubmenu} className="submenu-toggle">
-            <i className='bx bxs-pie-chart-alt-2'></i>
+        <li className={`submenu ${isGovernanceOpen ? 'open' : ''}`}>
+          <div
+            onClick={() => {
+              setIsGovernanceOpen(prev => !prev);
+              setIsExperimentsOpen(false);
+            }}
+            className="submenu-toggle"
+          >
+            <i className="bx bxs-pie-chart-alt-2"></i>
             <span className="link_name">Governance</span>
-            <i className='bx bx-chevron-right arrow'></i>
+            <i className="bx bx-chevron-right arrow"></i>
           </div>
-          <ul className={isSubmenuOpen ? "submenu-list" : "submenu-list remove"}>
+          <ul className="submenu-list">
             <li>
               <Link to="/public-goods-fund">Public Goods Fund</Link>
             </li>
@@ -78,15 +73,36 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
         </li>
         <li>
           <a href="https://dash.scrt.network/" target="_blank" rel="noopener noreferrer">
-            <i className='bx bxs-dashboard'></i>
-            <span className="link_name">SCRT&nbsp;Dashboard</span>
+            <i className="bx bxs-dashboard"></i>
+            <span className="link_name">SCRT Dashboard</span>
           </a>
         </li>
         <li>
           <a href="https://app.fina.cash/" target="_blank" rel="noopener noreferrer">
-            <i className='bx bx-credit-card'></i>
-            <span className="link_name">FINA&nbsp;Card</span>
+            <i className="bx bx-credit-card"></i>
+            <span className="link_name">FINA Card</span>
           </a>
+        </li>
+        <li className={`submenu ${isExperimentsOpen ? 'open' : ''}`}>
+          <div
+            onClick={() => {
+              setIsExperimentsOpen(prev => !prev);
+              setIsGovernanceOpen(false);
+            }}
+            className="submenu-toggle"
+          >
+            <i className="bx bx-test-tube"></i>
+            <span className="link_name">Experiments</span>
+            <i className="bx bx-chevron-right arrow"></i>
+          </div>
+          <ul className="submenu-list">
+            <li>
+              <Link to="/ai-chat">AI Chat</Link>
+            </li>
+            <li>
+              <Link to="/analytics">Analytics</Link>
+            </li>
+          </ul>
         </li>
       </ul>
 
@@ -97,14 +113,12 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           </div>
           <div className="name-job">
             <div id="wallet-name" className="profile_name">
-              {isKeplrConnected ? walletName : "Connecting..."}
+              {isKeplrConnected ? walletName : 'Connecting...'}
             </div>
             <div className="job"></div>
           </div>
         </div>
-
         <li className="socials-link">
-          {/* Placeholder to maintain space */}
           <div className="socials-placeholder">
             <i className={`bx ${isCollapsed ? 'bx-heart' : ''}`}></i>
           </div>
