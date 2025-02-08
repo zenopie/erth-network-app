@@ -4,9 +4,20 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
+const corsProxy = require("cors-anywhere");
 
 const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
+
+const proxy = corsProxy.createServer({
+  originWhitelist: [], // allow all origins
+  removeHeaders: ["cookie", "cookie2"],
+});
+
+app.use("/api/cors", (req, res) => {
+  req.url = req.url.replace(/^\/api\/cors/, ""); // strip the /api/cors prefix
+  proxy.emit("request", req, res);
+});
 
 // Define contract address and hash for registration
 
