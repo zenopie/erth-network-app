@@ -10,6 +10,7 @@ import "./SecretAIChat.css";
 
 const SECRET_NODE_URL = SECRET_AI_CONFIG.SECRET_NODE_URL_DEFAULT;
 const SECRET_CHAIN_ID = SECRET_AI_CONFIG.SECRET_CHAIN_ID_DEFAULT;
+const LLM_URL = "https://erth.network/api/cors/" + SECRET_AI_CONFIG.DEFAULT_LLM_URL;
 const SECRET_WORKER_SMART_CONTRACT =
   SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
 const API_KEY =
@@ -108,6 +109,7 @@ const SecretAIChat = () => {
     try {
       const secretAiLLM = new ChatSecret({
         apiKey: API_KEY,
+        base_url: LLM_URL,
         model: selectedModel,
         stream: true,
         signal: controller.signal,
