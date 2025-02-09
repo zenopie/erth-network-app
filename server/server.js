@@ -12,6 +12,14 @@ const WEBHOOK_PORT = 5000; // Port for HTTPS
 const proxy = corsProxy.createServer({
   originWhitelist: [], // allow all origins
   removeHeaders: ["cookie", "cookie2"],
+  handleInitialRequest: (_req, res, location) => {
+    // Block if target hostname equals your server's hostname
+    if (location && location.hostname === "erth.network") {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Self referencing request blocked");
+      return true;
+    }
+  }
 });
 
 app.use("/api/cors", (req, res) => {
