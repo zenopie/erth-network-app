@@ -1,10 +1,10 @@
 import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 
 let secretjs = null;
-//const url = "https://erth.network/api/proxy";
+const url = "https://lcd.erth.network";
 //const url = "https://lcd.mainnet.secretsaturn.net";
 //const url = "https://erth.network/api/cors/https://lcd.archive.scrt.marionode.com";
-const url = "https://rpc.ankr.com/http/scrt_cosmos";
+//const url = "https://rpc.ankr.com/http/scrt_cosmos";
 //const url = "https://secretnetwork-api.lavenderfive.com:443";
 //const url = "https://secretnetwork-api.highstakes.ch:1317";
 
@@ -22,20 +22,21 @@ export async function connectKeplr() {
     const accounts = await keplrOfflineSigner.getAccounts();
     const address = accounts[0].address;
 
-    secretjs = new SecretNetworkClient({
-        url,
-        chainId: chainId,
-        wallet: keplrOfflineSigner,
-        walletAddress: address,
-        encryptionUtils: window.keplr.getEnigmaUtils(chainId),
-    });
+    try {
+        secretjs = new SecretNetworkClient({
+            url: url,
+            chainId: chainId,
+            wallet: keplrOfflineSigner,
+            walletAddress: address,
+            encryptionUtils: window.keplr.getEnigmaUtils(chainId),
+        });
+    } catch (error) {
+        console.error("Error creating SecretJS client:", error);
+    }
+    
 
     const walletName = await window.keplr.getKey(chainId);
-
-    let accountInfo = await secretjs.query.auth.account({
-        address: secretjs.address,
-      });
-      console.log('Account info:', accountInfo);     
+       
 
     return { secretjs, walletName: walletName.name.slice(0, 12) };
 }
