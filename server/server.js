@@ -88,6 +88,7 @@ async function contract_interaction(message_object) {
       gasLimit: 1_000_000,
       gasPriceInFeeDenom: 0.1,
       feeDenom: "uscrt",
+      broadcastMode: "Sync",
     });
 
     console.log(resp);

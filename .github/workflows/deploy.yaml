@@ -1,79 +1,74 @@
-name: Deploy to Remote Server
+- name: Deploy and Build on Remote Server
+  uses: appleboy/ssh-action@master
+  with:
+    script: |
+      # Define directories
+      HOME_DIR=/home/ubuntu/earth-mainnet-app
+      WWW_DIR=/var/www/earth-mainnet-app
+      SERVER_DIR=$HOME_DIR/server
 
-on:
-  push:
-    branches:
-      - main
+      # Create the home directory if it doesn't exist
+      if [ ! -d "$HOME_DIR" ]; then
+        mkdir -p $HOME_DIR
+      fi
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+      # Navigate to the home directory where the source code is stored
+      cd $HOME_DIR
+      
+      # Check if it's already a Git repository
+      if [ ! -d ".git" ]; then
+        git clone https://github.com/zenopie/erth-mainnet-app.git .
+      else
+        git pull origin main
+      fi
 
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
+      # Install frontend dependencies
+      if [ -f package.json ]; then
+        npm install
+        npm update
+      else
+        echo "Error: package.json not found in root!"
+        exit 1
+      fi
 
-    - name: Deploy and Build on Remote Server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.REMOTE_SERVER_HOST }}
-        username: ${{ secrets.REMOTE_SERVER_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # Define the directories
-          HOME_DIR=/home/ubuntu/earth-mainnet-app
-          WWW_DIR=/var/www/earth-mainnet-app
+      # Build the React frontend
+      npm run build
 
-          # Create the home directory if it doesn't exist
-          if [ ! -d "$HOME_DIR" ]; then
-            mkdir -p $HOME_DIR
-          fi
+      # Remove old files in the web directory
+      sudo rm -rf $WWW_DIR/*
 
-          # Navigate to the home directory where the source code is stored
-          cd $HOME_DIR
-          
-          # Check if it's already a Git repository
-          if [ ! -d ".git" ]; then
-            git clone https://github.com/zenopie/erth-mainnet-app.git .
-          else
-            git pull origin main
-          fi
+      # Move the build output to the web directory
+      sudo mv $HOME_DIR/build/* $WWW_DIR/
 
-          # Install dependencies in the home directory
-          if [ -f package.json ]; then
-            npm install
-          else
-            echo "Error: package.json not found!"
-            exit 1
-          fi
+      # Restart NGINX to apply the changes
+      sudo systemctl restart nginx
 
-          # Build the project in the home directory
-          npm run build
+      # Ensure the server dependencies are updated
+      cd $SERVER_DIR
 
-          # Remove old files in the web directory
-          sudo rm -rf $WWW_DIR/*
+      if [ -f package.json ]; then
+        npm install
+        npm update
+      else
+        echo "Error: package.json not found in server directory!"
+        exit 1
+      fi
 
-          # Move the build output to the web directory
-          sudo mv $HOME_DIR/build/* $WWW_DIR/
+      # Install PM2 globally if not installed
+      if ! command -v pm2 &> /dev/null; then
+        sudo npm install pm2 -g
+      fi
 
-          # Restart NGINX to apply the changes
-          sudo systemctl restart nginx
+      # Stop any existing instance of the server
+      pm2 stop erth-network-server || true
 
-          # Install PM2 globally if not installed
-          if ! command -v pm2 &> /dev/null; then
-            sudo npm install pm2 -g
-          fi
+      # Start the server with PM2
+      pm2 start $SERVER_DIR/server.js --name "erth-network-server"
 
-          # Stop any existing instance of the server
-          pm2 stop erth-network-server || true
+      # Save the PM2 process list
+      pm2 save
 
-          # Start the server with PM2
-          pm2 start $HOME_DIR/server/server.js --name "erth-network-server"
-
-          # Save the PM2 process list
-          pm2 save
-
-          # Ensure PM2 restarts on reboot
-          pm2 startup systemd
-          sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
-          sudo systemctl enable pm2-ubuntu
+      # Ensure PM2 restarts on reboot
+      pm2 startup systemd
+      sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+      sudo systemctl enable pm2-ubuntu

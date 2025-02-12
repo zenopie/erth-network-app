@@ -5,12 +5,15 @@ import LiquidityManagement from '../components/LiquidityManagement';
 import tokens from '../utils/tokens';
 import { contract } from '../utils/contractUtils';
 import contracts from '../utils/contracts';
+import StatusModal from '../components/StatusModal';  // Import StatusModal
 
 const ManageLP = ({ isKeplrConnected }) => {
     const [isManagingLiquidity, setIsManagingLiquidity] = useState(false);
     const [poolInfo, setPoolInfo] = useState(null);
     const [poolsWithRewards, setPoolsWithRewards] = useState({});
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [animationState, setAnimationState] = useState('loading');
 
     const tokenKeys = Object.keys(tokens).filter(token => token !== 'ERTH');
 
@@ -43,6 +46,9 @@ const ManageLP = ({ isKeplrConnected }) => {
             return;
         }
 
+        setIsModalOpen(true);  // Open the modal when the claim process starts
+        setAnimationState('loading');  // Set animation to loading
+
         try {
             const msg = {
                 claim: {
@@ -52,9 +58,11 @@ const ManageLP = ({ isKeplrConnected }) => {
 
             await contract(contracts.lpStaking.contract, contracts.lpStaking.hash, msg);
             console.log("All rewards claimed successfully!");
+            setAnimationState('success');  // Set animation to success
             setRefreshKey(prev => prev + 1);
         } catch (error) {
             console.error("Error claiming all rewards:", error);
+            setAnimationState('error');  // Set animation to error
         }
     };
 
@@ -62,6 +70,13 @@ const ManageLP = ({ isKeplrConnected }) => {
 
     return (
         <>
+            {isModalOpen && (
+                <StatusModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}  // Close the modal when done
+                    animationState={animationState}  // Control the animation state
+                />
+            )}
             {isManagingLiquidity ? (
                 <LiquidityManagement
                     toggleManageLiquidity={toggleManageLiquidity}

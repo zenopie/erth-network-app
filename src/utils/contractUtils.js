@@ -24,7 +24,7 @@ export async function connectKeplr() {
 
     try {
         secretjs = new SecretNetworkClient({
-            url: url,
+            url,
             chainId: chainId,
             wallet: keplrOfflineSigner,
             walletAddress: address,
