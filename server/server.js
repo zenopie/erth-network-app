@@ -5,6 +5,11 @@ const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
 const corsProxy = require("cors-anywhere");
+const {
+  initAnalytics,
+  getLatestData,
+  getAllData,
+} = require("./analyticsManager");
 
 const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
@@ -25,6 +30,16 @@ const proxy = corsProxy.createServer({
 app.use("/api/cors", (req, res) => {
   req.url = req.url.replace(/^\/api\/cors/, ""); // strip the /api/cors prefix
   proxy.emit("request", req, res);
+});
+
+// Initialize analytics
+initAnalytics();
+
+// Simple endpoint for front-end
+app.get("/api/analytics", (req, res) => {
+  const latest = getLatestData();
+  const history = getAllData();
+  res.json({ latest, history });
 });
 
 // Define contract address and hash for registration

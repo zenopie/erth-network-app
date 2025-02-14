@@ -9,6 +9,7 @@ import StakeErth from './pages/StakeErth';
 import PublicGoodsFund from './pages/PublicGoodsFund';
 import DeflationFund from './pages/DeflationFund';
 import SecretAIChat from './pages/SecretAIChat';
+import TOTPAuth from './pages/TOTPAuth';
 import './App.css';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/public-goods-fund" element={<Layout><PublicGoodsFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
           <Route path="/ai-chat" element={<Layout><SecretAIChat /></Layout>} />
+          <Route path="/totp-auth" element={<Layout><TOTPAuth /></Layout>} />
         </Routes>
       </div>
     </Router>
