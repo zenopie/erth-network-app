@@ -11,7 +11,10 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+      with:
+        clean: true
+
 
     - name: Deploy and Build on Remote Server
       uses: appleboy/ssh-action@master
