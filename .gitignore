@@ -15,6 +15,9 @@ package-lock.json
 #server
 /server/node_modules
 /server/package-lock.json
+/server/API_SECRET.txt
+/server/PENDING_VERIFS.txt
+/server/WALLET_KEY.txt
 
 # misc
 .DS_Store
