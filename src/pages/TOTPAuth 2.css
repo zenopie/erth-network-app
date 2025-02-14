@@ -1,0 +1,152 @@
+/* Container: mimics your old swap-box styling */
+.totp-box {
+    width: 100%;
+    max-width: 420px;
+    background-color: #ffffff;
+    padding: 40px 30px 30px 30px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin: 40px auto; /* center horizontally and add top/bottom spacing */
+    position: relative;
+  }
+  
+  /* Title */
+  .totp-title {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  /* Tab Navigation - similar to deflation fund’s tab styles */
+  .totp-tab {
+    display: flex;
+    justify-content: space-evenly;
+    margin-bottom: 20px;
+    width: 100%;
+    background-color: #F1F0EA;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  
+  .totp-tab button {
+    background-color: #F1F0EA;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    transition: background-color 0.3s ease;
+    font-size: 16px;
+    flex-grow: 1;
+    text-align: center;
+    color: #333;
+  }
+  
+  .totp-tab button:first-child {
+    border-radius: 20px 0 0 20px;
+  }
+  
+  .totp-tab button:last-child {
+    border-radius: 0 20px 20px 0;
+  }
+  
+  .totp-tab button.active {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  .totp-tab button:not(.active):hover {
+    background-color: #ddd;
+  }
+  
+  /* Buttons */
+  .totp-button {
+    width: 100%;
+    max-width: 400px;
+    padding: 15px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  
+  .totp-button:hover {
+    background-color: #45a049;
+  }
+  
+  /* Input group container */
+  .totp-input-group {
+    display: block;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  
+  /* Label wrapper */
+  .totp-label-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 8px;
+  }
+  
+  /* The label text */
+  .totp-input-label {
+    font-size: 16px;
+    margin-right: 8px;
+  }
+  
+  /* Input field wrapper */
+  .totp-input-wrapper {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    position: relative;
+  }
+  
+  /* Actual input styling */
+  .totp-input {
+    background-color: #F1F0EA;
+    width: 100%;
+    padding: 15px;
+    font-size: 14px;
+    border: none;
+    border-radius: 8px;
+    -moz-appearance: textfield;
+    text-align: right; /* default: right-aligned */
+  }
+  
+  .totp-input::-webkit-outer-spin-button,
+  .totp-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  /* Extra class to left-align text, used in TOTPAuth.js */
+  .totp-input-left {
+    text-align: left;
+  }
+  
+  /* Centering content (like QR code) */
+  .totp-center {
+    text-align: center;
+    margin: 20px 0;
+  }
+  
+  /* Success / Failure messages */
+  .totp-success {
+    margin-top: 20px;
+    text-align: center;
+    color: green;
+  }
+  
+  .totp-failure {
+    margin-top: 20px;
+    text-align: center;
+    color: red;
+  }
+  
