@@ -2,26 +2,59 @@
 
 const fs = require("fs");
 const path = require("path");
-const fetch = require("node-fetch"); // if needed
+const fetch = require("node-fetch");
 const { SecretNetworkClient } = require("secretjs");
 
-// Example token config
+// Use your token details from the front-end tokens file
 const tokens = {
   ERTH: {
-    contract: "secret1...",
-    hash: "xxx",
+    contract: "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
+    hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
     decimals: 6,
-    coingeckoId: "your-erth-id",
+    logo: "/images/logo.png"
+    // Optionally add a coingeckoId if available (e.g., "erth") if needed for pricing
   },
   ANML: {
-    contract: "secret1...",
-    hash: "xxx",
+    contract: "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
+    hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
     decimals: 6,
-    coingeckoId: "your-anml-id",
-    poolContract: "secret1poolcontract...",
-    poolHash: "yyy",
+    poolContract: "secret1dduup4qyg8qpt94gaf93e8nctzfnzy43gj7ky3",
+    poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
+    logo: "/images/anml.png",
+    lp: {
+      contract: "secret1ztcedff57xqmt4lwnpdrz865rtrst037n6d8tq",
+      hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+      decimals: 6,
+    },
   },
-  // etc...
+  FINA: {
+    contract: "secret1s3z9xkpdsrhk86300tqnv6u466jmdmlegew2ve",
+    hash: "cfecd51a022c520c55429d974363fd7f065d20474af6a362da8737f73b7d9e80",
+    decimals: 6,
+    poolContract: "secret1tfrkp459jtvlhkev39yr6avkq3qjmffu8sc6c7",
+    poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
+    logo: "/images/coin/FINA.webp",
+    coingeckoId: "fina",
+    lp: {
+      contract: "secret14ttyephg7pvzzt0n53y888rvmeec5hl0pnf5tw",
+      hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+      decimals: 6,
+    },
+  },
+  sSCRT: {
+    contract: "secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek",
+    hash: "af74387e276be8874f07bec3a87023ee49b0e7ebe08178c49d0a49c3c98ed60e",
+    decimals: 6,
+    poolContract: "secret1qp8ed8qdnf9q8l6w3jqehnda4d5m842ch79600",
+    poolHash: "c85cd2154b020b868c2e0790091cd092273c88fb35c6a560eaf24e3488c5a039",
+    logo: "/images/coin/SSCRT.png",
+    coingeckoId: "secret",
+    lp: {
+      contract: "secret1hk5lj62949s88q7kl892rkxyhxcxdpznzlw924",
+      hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+      decimals: 6,
+    },
+  },
 };
 
 // Where to store persistent data
@@ -30,15 +63,13 @@ const ANALYTICS_FILE = path.join(__dirname, "analyticsData.json");
 // In-memory history
 let analyticsHistory = [];
 
-// Secret client (use your actual settings)
-const WALLET_KEY = "your_key";
 const secretjs = new SecretNetworkClient({
-  url: "https://lcd.archive.scrt.marionode.com",
-  chainId: "secret-4",
-  walletAddress: "secret1...", // or create a Wallet and pass in
-});
+    url: "https://lcd.erth.network",
+    chainId: "secret-4",
+  });
+  
 
-// Load from file
+// Load analytics data from file
 function loadAnalyticsData() {
   try {
     if (fs.existsSync(ANALYTICS_FILE)) {
@@ -50,7 +81,7 @@ function loadAnalyticsData() {
   }
 }
 
-// Save to file
+// Save analytics data to file
 function saveAnalyticsData() {
   fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(analyticsHistory, null, 2), "utf8");
 }
@@ -60,7 +91,7 @@ async function updateErthValues() {
   try {
     console.log("[analyticsManager] Updating ERTH analytics...");
 
-    // 1) Coingecko
+    // 1) Fetch token prices from Coingecko (only tokens with coingeckoId)
     const tokenIds = Object.values(tokens)
       .filter(t => t.coingeckoId)
       .map(t => t.coingeckoId)
@@ -76,12 +107,12 @@ async function updateErthValues() {
       }
     }
 
-    // 2) ERTH supply
+    // 2) Query ERTH total supply
     const erthInfo = await secretjs.query.contractSmart(tokens.ERTH.contract, { token_info: {} });
     const totalSupplyRaw = erthInfo.token_info.total_supply;
-    const erthTotalSupply = parseInt(totalSupplyRaw) / 10 ** tokens.ERTH.decimals;
+    const erthTotalSupply = parseInt(totalSupplyRaw) / Math.pow(10, tokens.ERTH.decimals);
 
-    // 3) Pools -> ERTH price, TVL
+    // 3) Query pools and calculate ERTH price & TVL
     let poolData = [];
     let totalWeightedPrice = 0;
     let totalLiquidity = 0;
@@ -93,8 +124,8 @@ async function updateErthValues() {
         const st = poolRes.state;
         if (!st) continue;
 
-        const erthReserve = parseInt(st.token_erth_reserve) / 10 ** tokens.ERTH.decimals;
-        const tokenReserve = parseInt(st.token_b_reserve) / 10 ** tk.decimals;
+        const erthReserve = parseInt(st.token_erth_reserve) / Math.pow(10, tokens.ERTH.decimals);
+        const tokenReserve = parseInt(st.token_b_reserve) / Math.pow(10, tk.decimals);
 
         const poolPrice = (tokenReserve / erthReserve) * prices[key];
         const poolTVL = (tokenReserve * prices[key]) + (erthReserve * poolPrice);
@@ -109,7 +140,7 @@ async function updateErthValues() {
     const avgErthPrice = totalLiquidity ? totalWeightedPrice / totalLiquidity : 0;
     const erthMarketCap = avgErthPrice * erthTotalSupply;
 
-    // Build record
+    // Build a data record
     const dataPoint = {
       timestamp: Date.now(),
       erthPrice: avgErthPrice,
@@ -128,26 +159,22 @@ async function updateErthValues() {
   }
 }
 
-// Allow the server to initialize and schedule
+// Initialize analytics: load stored data, update immediately, then schedule every 5 minutes
 function initAnalytics() {
-  // 1) load from file
   loadAnalyticsData();
-  // 2) do immediate update
   updateErthValues();
-  // 3) schedule every 5 minutes
   setInterval(updateErthValues, 5 * 60 * 1000);
 }
 
-// For server endpoints
+// Endpoint helpers
 function getLatestData() {
-  if (!analyticsHistory.length) return null;
-  return analyticsHistory[analyticsHistory.length - 1];
+  return analyticsHistory.length ? analyticsHistory[analyticsHistory.length - 1] : null;
 }
 function getAllData() {
   return analyticsHistory;
 }
 
-// Export everything needed
+// Export functions for use in your server
 module.exports = {
   initAnalytics,
   getLatestData,
