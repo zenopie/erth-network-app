@@ -127,8 +127,8 @@ async function updateErthValues() {
 
     // 2) Query ERTH total supply
     const erthInfo = await secretjs.query.compute.queryContract({
-        contractAddress: tokens.ERTH.contract,
-        codeHash: tokens.ERTH.hash,
+        contract_address: tokens.ERTH.contract,
+        code_hash: tokens.ERTH.hash,
         query: { token_info: {} }
       });
       
@@ -144,8 +144,8 @@ async function updateErthValues() {
       const tk = tokens[key];
       if (key !== "ERTH" && tk.poolContract && prices[key]) {
         const poolRes = await secretjs.query.compute.queryContract({
-            contractAddress: tk.poolContract,
-            codeHash: tk.poolHash,
+            contract_address: tk.poolContract,
+            code_hash: tk.poolHash,
             query: { query_state: {} }
         });
         const st = poolRes.state;
