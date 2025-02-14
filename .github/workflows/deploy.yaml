@@ -39,7 +39,7 @@ jobs:
           if [ -d ".git" ]; then
             git fetch origin
             git reset --hard origin/main
-            git clean -fdx
+            git clean -fd
           else
             git clone https://github.com/zenopie/erth-mainnet-app.git .
           fi

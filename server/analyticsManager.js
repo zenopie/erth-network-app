@@ -108,7 +108,11 @@ async function updateErthValues() {
     }
 
     // 2) Query ERTH total supply
-    const erthInfo = await secretjs.query.contractSmart(tokens.ERTH.contract, { token_info: {} });
+    const erthInfo = await secretClient.query.compute.queryContract({
+        contractAddress: tokens.ERTH.contract,
+        query: { token_info: {} }
+      });
+      
     const totalSupplyRaw = erthInfo.token_info.total_supply;
     const erthTotalSupply = parseInt(totalSupplyRaw) / Math.pow(10, tokens.ERTH.decimals);
 
@@ -120,7 +124,11 @@ async function updateErthValues() {
     for (const key in tokens) {
       const tk = tokens[key];
       if (key !== "ERTH" && tk.poolContract && prices[key]) {
-        const poolRes = await secretjs.query.contractSmart(tk.poolContract, { query_state: {} });
+        const poolRes = await secretClient.query.compute.queryContract({
+            contractAddress: tk.poolContract,
+            query: { query_state: {} }
+          });
+          
         const st = poolRes.state;
         if (!st) continue;
 
