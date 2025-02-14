@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const fetch = require("node-fetch");
-const { SecretNetworkClient } = require("secretjs");
+const { Wallet, SecretNetworkClient } = require("secretjs");
 
 // Use your token details from the front-end tokens file
 const tokens = {
@@ -60,13 +60,29 @@ const tokens = {
 // Where to store persistent data
 const ANALYTICS_FILE = path.join(__dirname, "analyticsData.json");
 
+// Utility function to read file contents
+function get_value(file) {
+    const filePath = path.join(__dirname, file);
+    try {
+      const data = fs.readFileSync(filePath, "utf8");
+      return data.trim(); // Trim to remove any extra whitespace or newlines
+    } catch (err) {
+      console.error(err);
+      return null; // Handle the error as needed
+    }
+  }
+
 // In-memory history
 let analyticsHistory = [];
-
+const WALLET_KEY = get_value("WALLET_KEY.txt");
+// Initialize wallet and Secret Network client
+const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
-    url: "https://lcd.erth.network",
-    chainId: "secret-4",
-  });
+  url: "https://lcd.erth.network",
+  chainId: "secret-4",
+  wallet: wallet,
+  walletAddress: wallet.address,
+});
   
 
 // Load analytics data from file
@@ -80,6 +96,8 @@ function loadAnalyticsData() {
     console.error("Error loading analytics data:", err);
   }
 }
+
+
 
 // Save analytics data to file
 function saveAnalyticsData() {
@@ -110,6 +128,7 @@ async function updateErthValues() {
     // 2) Query ERTH total supply
     const erthInfo = await secretjs.query.compute.queryContract({
         contractAddress: tokens.ERTH.contract,
+        codeHash: tokens.ERTH.hash,
         query: { token_info: {} }
       });
       
@@ -126,9 +145,9 @@ async function updateErthValues() {
       if (key !== "ERTH" && tk.poolContract && prices[key]) {
         const poolRes = await secretjs.query.compute.queryContract({
             contractAddress: tk.poolContract,
+            codeHash: tk.poolHash,
             query: { query_state: {} }
-          });
-          
+        });
         const st = poolRes.state;
         if (!st) continue;
 

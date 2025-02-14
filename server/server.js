@@ -68,7 +68,7 @@ const WALLET_KEY = get_value("WALLET_KEY.txt");
 // Initialize wallet and Secret Network client
 const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
-  url: "https://lcd.archive.scrt.marionode.com",
+  url: "https://lcd.erth.network",
   chainId: "secret-4",
   wallet: wallet,
   walletAddress: wallet.address,
