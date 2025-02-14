@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto'; // For Chart.js v4
 import './Analytics.css';
+import { showLoadingScreen } from '../utils/uiUtils';
 
 const Analytics = () => {
   const [latest, setLatest] = useState(null);
@@ -15,6 +16,7 @@ const Analytics = () => {
         setHistory(data.history);
       })
       .catch(console.error);
+    showLoadingScreen(false);
   }, []);
 
   // Prepare chart data (e.g. x=timestamp, y=ERTH price)
