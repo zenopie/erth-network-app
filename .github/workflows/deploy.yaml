@@ -15,7 +15,6 @@ jobs:
       with:
         clean: true
 
-
     - name: Deploy and Build on Remote Server
       uses: appleboy/ssh-action@master
       with:
@@ -36,11 +35,13 @@ jobs:
           # Navigate to the home directory where the source code is stored
           cd $HOME_DIR
           
-          # Check if it's already a Git repository
-          if [ ! -d ".git" ]; then
-            git clone https://github.com/zenopie/erth-mainnet-app.git .
+          # Force reset local repository with remote state
+          if [ -d ".git" ]; then
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fdx
           else
-            git pull origin main
+            git clone https://github.com/zenopie/erth-mainnet-app.git .
           fi
 
           # Install frontend dependencies
@@ -77,7 +78,7 @@ jobs:
 
           # Install PM2 globally if not installed
           if ! command -v pm2 &> /dev/null; then
-            sudo npm install pm2 -g
+            sudo npm install -g pm2
           fi
 
           # Stop any existing instance of the server
