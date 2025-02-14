@@ -190,7 +190,7 @@ async function updateErthValues() {
 function initAnalytics() {
   loadAnalyticsData();
   updateErthValues();
-  setInterval(updateErthValues, 5 * 60 * 1000);
+  setInterval(updateErthValues,  24 * 60 * 60 * 1000);
 }
 
 // Endpoint helpers
