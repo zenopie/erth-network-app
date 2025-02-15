@@ -73,7 +73,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
   return chartData;
 };
 
-const PublicGoodsFund = ({ isKeplrConnected }) => {
+const PublicBenefitFund = ({ isKeplrConnected }) => {
   const [activeTab, setActiveTab] = useState('Actual');
   const [dataActual, setDataActual] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
@@ -309,4 +309,4 @@ const PublicGoodsFund = ({ isKeplrConnected }) => {
   );
 };
 
-export default PublicGoodsFund;
+export default PublicBenefitFund;
