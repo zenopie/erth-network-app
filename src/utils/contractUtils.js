@@ -1,4 +1,5 @@
 import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
+import contracts from './contracts';
 
 let secretjs = null;
 const url = "https://lcd.erth.network";
@@ -149,7 +150,7 @@ export async function requestViewingKey(token) {
 }
 
 
-export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, poolAddress, poolHash, amountErth, amountB) {
+export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, amountErth, amountB, stake) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
     }
@@ -162,7 +163,7 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             code_hash: tokenErthHash,
             msg: {
                 increase_allowance: {
-                    spender: poolAddress,
+                    spender: contracts.exchange.contract,
                     amount: amountErth.toString(),
                 },
             },
@@ -175,7 +176,7 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             code_hash: tokenBHash,
             msg: {
                 increase_allowance: {
-                    spender: poolAddress,
+                    spender: contracts.exchange.contract,
                     amount: amountB.toString(),
                 },
             },
@@ -184,12 +185,14 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
         // Step 3: Create add liquidity message
         let addLiquidityMsg = new MsgExecuteContract({
             sender: secretjs.address,
-            contract_address: poolAddress,
-            code_hash: poolHash,
+            contract_address: contracts.exchange.contract,
+            code_hash: contracts.exchange.hash,
             msg: {
                 add_liquidity: {
                     amount_erth: amountErth.toString(),
                     amount_b: amountB.toString(),
+                    pool: tokenBContract,
+                    stake,
                 },
             },
         });
