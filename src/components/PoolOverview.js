@@ -4,6 +4,7 @@ import { contract } from '../utils/contractUtils';
 import tokens from '../utils/tokens';
 import contracts from '../utils/contracts';
 import StatusModal from "./StatusModal";
+import { toMacroUnits } from '../utils/mathUtils';
 
 const PoolOverview = ({ tokenKey, poolData, toggleManageLiquidity, isKeplrConnected }) => {
   const [pendingRewards, setPendingRewards] = useState('-');
@@ -17,35 +18,60 @@ const PoolOverview = ({ tokenKey, poolData, toggleManageLiquidity, isKeplrConnec
 
   useEffect(() => {
     if (!poolData) return;
+
     const { pool_info, user_info } = poolData;
+
+    // --- 1) Pending Rewards
     if (user_info) {
-      setPendingRewards(Number(user_info.pending_rewards || 0).toLocaleString());
+      const pendingRewardsMacro = toMacroUnits(user_info.pending_rewards || 0, tokens.ERTH);
+      setPendingRewards(pendingRewardsMacro.toLocaleString());
     }
-    if (pool_info) {
-      setLiquidity(Number(pool_info.liquidity || 0).toLocaleString());
-      if (pool_info.daily_volumes) {
-        // Sum the volumes for the past 7 days
-        const totalVolume = pool_info.daily_volumes.slice(1, 8).reduce((a, v) => a + Number(v), 0);
-        setVolume(totalVolume.toLocaleString());
+
+    if (pool_info?.state) {
+      // --- 2) Liquidity in ERTH (double the ERTH reserve)
+      const erthReserveMicro = Number(pool_info.state.erth_reserve || 0);
+      const erthReserveMacro = toMacroUnits(erthReserveMicro, tokens.ERTH);
+      const totalLiquidityMacro = 2 * erthReserveMacro;
+      setLiquidity(totalLiquidityMacro.toLocaleString());
+
+      // --- 3) Volume (7 days)
+      if (Array.isArray(pool_info.state.daily_volumes)) {
+        const totalVolumeMicro = pool_info.state.daily_volumes
+          .slice(0, 7)
+          .reduce((acc, val) => acc + Number(val), 0);
+        const totalVolumeMacro = toMacroUnits(totalVolumeMicro, tokens.ERTH);
+        setVolume(totalVolumeMacro.toLocaleString());
       }
-      if (pool_info.daily_rewards && pool_info.total_shares && pool_info.total_staked) {
-        const lastWeek = pool_info.daily_rewards.slice(0, 7).reduce((a, r) => a + Number(r), 0);
-        const totalShares = Number(pool_info.total_shares);
-        const stakedShares = Number(pool_info.total_staked);
-        const erthPerShare = Number(pool_info.liquidity) / totalShares;
-        const aprValue = ((lastWeek * 52) / (stakedShares * erthPerShare)) * 100;
-        setApr(`${aprValue.toFixed(2)}%`);
+
+      // --- 4) APR
+      const dailyRewards = pool_info.state.daily_rewards || [];
+      const lastWeekMicro = dailyRewards
+        .slice(0, 7)
+        .reduce((acc, val) => acc + Number(val), 0);
+      const lastWeekMacro = toMacroUnits(lastWeekMicro, tokens.ERTH);
+
+      const totalShares = Number(pool_info.state.total_shares || 0);
+      const totalStaked = Number(pool_info.state.total_staked || 0);
+      const fractionStaked = totalShares ? totalStaked / totalShares : 0;
+      const stakedLiquidityMacro = totalLiquidityMacro * fractionStaked;
+
+      let aprValue = 0;
+      if (stakedLiquidityMacro > 0) {
+        aprValue = (lastWeekMacro / stakedLiquidityMacro) * 52 * 100;
       }
+      setApr(`${aprValue.toFixed(2)}%`);
     }
   }, [poolData]);
 
-  const handleManageLiquidity = e => {
+  // Manage Liquidity
+  const handleManageLiquidity = (e) => {
     e.stopPropagation();
-    // Pass tokenKey along with poolData
-    poolData && toggleManageLiquidity({ ...poolData, tokenKey });
+    if (!poolData) return;
+    toggleManageLiquidity(poolData);
   };
 
-  const handleClaimRewards = async e => {
+  // Claim Rewards
+  const handleClaimRewards = async (e) => {
     e.stopPropagation();
     if (!isKeplrConnected) return console.warn("Keplr not connected.");
     setIsModalOpen(true);
@@ -60,7 +86,8 @@ const PoolOverview = ({ tokenKey, poolData, toggleManageLiquidity, isKeplrConnec
     }
   };
 
-  const hasRewards = parseFloat(pendingRewards.replace(/,/g, '')) > 0;
+  // If user has any pending rewards
+  const hasRewards = parseFloat((pendingRewards || '0').replace(/,/g, '')) > 0;
 
   return (
     <div className={`pool-overview-box ${hasRewards ? 'green-outline' : ''}`}>
@@ -71,26 +98,32 @@ const PoolOverview = ({ tokenKey, poolData, toggleManageLiquidity, isKeplrConnec
       />
       <div className="info-row">
         <img src={token.logo} alt={`${tokenKey} logo`} className="coin-logo" />
+        
         <div className="info-item">
           <h2 className="pool-label">{tokenKey}</h2>
           <span className="info-label">/ERTH</span>
         </div>
+        
         <div className="info-item">
           <span className="info-value">{pendingRewards}</span>
           <span className="info-label">Rewards</span>
         </div>
+        
         <div className="info-item">
           <span className="info-value">{volume}</span>
-          <span className="info-label">Volume</span>
+          <span className="info-label">Volume (7d)</span>
         </div>
+
         <div className="info-item">
           <span className="info-value">{liquidity}</span>
           <span className="info-label">Liquidity</span>
         </div>
+
         <div className="info-item">
           <span className="info-value">{apr}</span>
           <span className="info-label">APR</span>
         </div>
+
         <div className="buttons-container">
           <button onClick={handleManageLiquidity} className="pool-overview-button reverse">
             Manage
