@@ -138,9 +138,9 @@ async function updateErthValues() {
     const poolAddresses = [];
     for (const key in tokens) {
       const tk = tokens[key];
-      if (key !== "ERTH" && tk.poolContract && prices[key]) {
+      if (key !== "ERTH" && tk.contract && prices[key]) {
         poolQueryTokens.push({ tokenKey: key, decimals: tk.decimals });
-        poolAddresses.push(tk.poolContract);
+        poolAddresses.push(tk.contract);
       }
     }
     console.log("[DEBUG] Pool addresses:", poolAddresses);
