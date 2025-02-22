@@ -112,6 +112,8 @@ async function updateErthValues() {
       .join(",");
     const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds}&vs_currencies=usd`);
     const priceData = await priceRes.json();
+    console.log("[DEBUG] Coingecko priceData:", priceData);
+
     const prices = {};
     for (const k in tokens) {
       const t = tokens[k];
@@ -119,6 +121,7 @@ async function updateErthValues() {
         prices[k] = priceData[t.coingeckoId].usd;
       }
     }
+    console.log("[DEBUG] Computed prices:", prices);
 
     // 2) Query ERTH total supply
     const erthInfo = await secretjs.query.compute.queryContract({
@@ -126,7 +129,9 @@ async function updateErthValues() {
       code_hash: tokens.ERTH.hash,
       query: { token_info: {} }
     });
+    console.log("[DEBUG] ERTH token info:", erthInfo);
     const erthTotalSupply = parseInt(erthInfo.token_info.total_supply) / Math.pow(10, tokens.ERTH.decimals);
+    console.log("[DEBUG] ERTH total supply:", erthTotalSupply);
 
     // 3) Build pool address list for tokens with pool info
     const poolQueryTokens = [];
@@ -138,13 +143,15 @@ async function updateErthValues() {
         poolAddresses.push(tk.poolContract);
       }
     }
-    
+    console.log("[DEBUG] Pool addresses:", poolAddresses);
+
     // Unified query call to fetch all pool info in one go
     const unifiedPoolRes = await secretjs.query.compute.queryContract({
       contract_address: UNIFIED_POOL_CONTRACT,
       code_hash: UNIFIED_POOL_HASH,
       query: { query_pool_info: { pools: poolAddresses } }
     });
+    console.log("[DEBUG] Unified pool response:", unifiedPoolRes);
 
     // 4) Process pool info to calculate ERTH price and TVL
     let poolData = [];
@@ -156,16 +163,29 @@ async function updateErthValues() {
       const tokenKey = poolQueryTokens[i].tokenKey;
       const tk = tokens[tokenKey];
 
-      const erthReserve = parseInt(st.token_erth_reserve) / Math.pow(10, tokens.ERTH.decimals);
-      const tokenReserve = parseInt(st.token_b_reserve) / Math.pow(10, tk.decimals);
+      const erthReserveRaw = st.token_erth_reserve;
+      const tokenReserveRaw = st.token_b_reserve;
+      const erthReserve = parseInt(erthReserveRaw) / Math.pow(10, tokens.ERTH.decimals);
+      const tokenReserve = parseInt(tokenReserveRaw) / Math.pow(10, tk.decimals);
+      console.log(`[DEBUG] Pool ${tokenKey}: erthReserveRaw=${erthReserveRaw}, tokenReserveRaw=${tokenReserveRaw}`);
+      console.log(`[DEBUG] Pool ${tokenKey}: erthReserve=${erthReserve}, tokenReserve=${tokenReserve}`);
+
+      if (erthReserve === 0) {
+        console.error(`[ERROR] Zero ERTH reserve for pool ${tokenKey}`);
+        continue;
+      }
+
       const poolPrice = (tokenReserve / erthReserve) * prices[tokenKey];
       const poolTVL = (tokenReserve * prices[tokenKey]) + (erthReserve * poolPrice);
+      console.log(`[DEBUG] Pool ${tokenKey}: poolPrice=${poolPrice}, poolTVL=${poolTVL}`);
 
       totalWeightedPrice += poolPrice * poolTVL;
       totalLiquidity += poolTVL;
 
       poolData.push({ token: tokenKey, erthPrice: poolPrice, tvl: poolTVL });
     }
+
+    console.log("[DEBUG] totalWeightedPrice:", totalWeightedPrice, "totalLiquidity:", totalLiquidity);
 
     const avgErthPrice = totalLiquidity ? totalWeightedPrice / totalLiquidity : 0;
     const erthMarketCap = avgErthPrice * erthTotalSupply;
@@ -187,7 +207,6 @@ async function updateErthValues() {
     console.error("[analyticsManager] Error updating analytics:", err);
   }
 }
-
 
 // Initialize analytics: load stored data, update immediately, then schedule every 5 minutes
 function initAnalytics() {
