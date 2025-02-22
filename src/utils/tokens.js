@@ -12,7 +12,7 @@ const tokens = {
         decimals: 6,
         logo: "/images/anml.png",
         lp: {
-            contract: 'secret1ztcedff57xqmt4lwnpdrz865rtrst037n6d8tq',
+            contract: 'secret1cqxxq586zl6g5zly3536rc7crwfcmeluuwehvx',
             hash: '638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e',
             decimals: 6,
         },
@@ -24,7 +24,7 @@ const tokens = {
         logo: "/images/coin/FINA.webp",
         coingeckoId: "fina",
         lp: {
-            contract: 'secret14ttyephg7pvzzt0n53y888rvmeec5hl0pnf5tw',
+            contract: 'secret1lzdf7fputcwun0cuapwurh7e6j2pzw8fyk046m',
             hash: '638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e',
             decimals: 6,
         },

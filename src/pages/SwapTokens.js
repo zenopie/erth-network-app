@@ -2,13 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { querySnipBalance, query, snip, requestViewingKey } from '../utils/contractUtils';
 import contracts from '../utils/contracts'; // e.g. { exchange: { contract, hash } }
 import tokens from '../utils/tokens';
-import {
-  getPoolDetails,            // If you still want to keep it for checking isHop
-  calculateOutput,
-  calculateInput,
-  calculateMinimumReceived,
-  calculateOutputWithHop,
-} from '../utils/swapTokensUtils';
+import { calculateMinimumReceived } from '../utils/swapTokensUtils'; // Only for minReceive
 import { showLoadingScreen } from '../utils/uiUtils';
 import { toMicroUnits } from '../utils/mathUtils';
 import StatusModal from '../components/StatusModal';
@@ -19,97 +13,29 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const [toToken, setToToken] = useState('ERTH');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
+
   const [fromBalance, setFromBalance] = useState(null);
   const [toBalance, setToBalance] = useState(null);
 
-  // Reserves & fees for each pool, e.g.: reserves["ANML-ERTH"] = { ANML: 1234, ERTH: 5678 }
-  const [reserves, setReserves] = useState({});
-  const [fees, setFees] = useState({});
-
-  // Keep existing states
-  const [slippage, setSlippage] = useState(1);  // Default slippage
-  const [poolDetails, setPoolDetails] = useState(null);  // We’ll set isHop, etc.
+  const [slippage, setSlippage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [animationState, setAnimationState] = useState('loading'); // 'loading', 'success', 'error'
+  const [animationState, setAnimationState] = useState('loading');
 
-  // ============== Fetch user balance & pool info ==============
+  // ========== FETCH USER BALANCE & Setup on load ==========
   const fetchData = useCallback(async () => {
     if (!isKeplrConnected) {
-      console.warn("Keplr is not connected.");
+      console.warn("Keplr not connected");
       return;
     }
     showLoadingScreen(true);
-
     try {
-      // 1) Fetch user wallet balances
-      const fromTokenBalance = await querySnipBalance(tokens[fromToken]);
-      const toTokenBalance = await querySnipBalance(tokens[toToken]);
-      setFromBalance(isNaN(fromTokenBalance) ? "Error" : parseFloat(fromTokenBalance));
-      setToBalance(isNaN(toTokenBalance) ? "Error" : parseFloat(toTokenBalance));
+      const fromBal = await querySnipBalance(tokens[fromToken]);
+      const toBal   = await querySnipBalance(tokens[toToken]);
 
-      // 2) Decide if it’s single-hop or double-hop
-      //    (If you’re still using getPoolDetails for that logic, do so here)
-      const details = getPoolDetails(fromToken, toToken);
-      if (!details) {
-        throw new Error('Invalid pool details.');
-      }
-      setPoolDetails(details);
-
-      // 3) Identify which pools we need to query from the unified exchange
-      //    If a token is “ERTH,” no separate pool needed. Otherwise, we need that token’s pool.
-      const tokensToQuery = [];
-      if (fromToken !== 'ERTH') tokensToQuery.push(tokens[fromToken].contract);
-      if (toToken !== 'ERTH')   tokensToQuery.push(tokens[toToken].contract);
-
-      const newReserves = {};
-      const newFees = {};
-
-      if (tokensToQuery.length > 0) {
-        // Query the unified exchange for pool info
-        const poolInfos = await query(contracts.exchange.contract, contracts.exchange.hash, {
-          query_pool_info: { pools: tokensToQuery },
-        });
-        // poolInfos is an array, each item looks like:
-        // {
-        //   state: {
-        //     erth_reserve: "6994179889999",
-        //     token_b_reserve: "51278261",
-        //     protocol_fee: "30", // or it might be in state or config
-        //     ...
-        //   },
-        //   config: {
-        //     token_b_contract: "secret14p6d...",
-        //     token_b_symbol: "ANML",
-        //     ...
-        //   }
-        // }
-
-        // 4) Convert these to your reserves/fees structure
-        poolInfos.forEach((info) => {
-          const sym = info.config.token_b_symbol;          // e.g. "ANML"
-          //const tokenAddr = info.config.token_b_contract;  // "secret14p6dh..."
-
-          // Pull reserves from "state"
-          const tReserve = parseInt(info.state.token_b_reserve);
-          const eReserve = parseInt(info.state.erth_reserve);
-
-          // If the fee is in "state.protocol_fee", parse it:
-          const protocolFee = info.state.protocol_fee
-            ? parseInt(info.state.protocol_fee)
-            : 0;
-
-          // Build the key "ANML-ERTH" or "FINA-ERTH", etc.
-          const poolKey = `${sym}-ERTH`;
-          newReserves[poolKey] = { [sym]: tReserve, ERTH: eReserve };
-          newFees[poolKey] = protocolFee;
-        });
-      }
-
-      setReserves(newReserves);
-      setFees(newFees);
-
+      setFromBalance(isNaN(fromBal) ? "Error" : parseFloat(fromBal));
+      setToBalance(isNaN(toBal) ? "Error" : parseFloat(toBal));
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("[fetchData] error:", err);
       setFromBalance("Error");
       setToBalance("Error");
     } finally {
@@ -117,179 +43,150 @@ const SwapTokens = ({ isKeplrConnected }) => {
     }
   }, [isKeplrConnected, fromToken, toToken]);
 
-  // On mount or token change, refetch
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ============== Local input => output calculations ==============
-  const handleFromAmountChange = (inputAmount) => {
-    setFromAmount(inputAmount);
+  // ========== Query the contract to simulate a swap ==========
+  const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
+    if (!isKeplrConnected) return '';
+    if (!inputAmount) return '';
 
-    if (!poolDetails) {
-      setToAmount('');
+    try {
+      // Build the query
+      // (We must pass token addresses, amounts in micro, etc. as required by contract)
+      const amountInMicro = toMicroUnits(parseFloat(inputAmount), tokens[fromTk]);
+
+      // The query contract expects { simulate_swap: { input_token, amount, output_token } }
+      const simulateMsg = {
+        simulate_swap: {
+          input_token: tokens[fromTk].contract, // e.g. "secret1xyz..."
+          amount: amountInMicro.toString(),
+          output_token: tokens[toTk].contract
+        }
+      };
+
+      const result = await query(
+        contracts.exchange.contract,
+        contracts.exchange.hash,
+        simulateMsg
+      );
+
+      // result => { output_amount, intermediate_amount, total_fee }
+      const out = result.output_amount;
+
+      // Convert out from micro to "macro"
+      const decimals = tokens[toTk].decimals || 6;
+      const power = 10 ** decimals;
+      const outNumber = parseFloat(out) / power;
+
+      return outNumber.toFixed(6);
+    } catch (err) {
+      console.error("[simulateSwapQuery] error:", err);
+      return '';
+    }
+  };
+
+  // ========== Handle From Amount Change => do a contract simulation ==========
+  const handleFromAmountChange = async (val) => {
+    setFromAmount(val);
+    setToAmount('');
+    if (!val || isNaN(val) || parseFloat(val) <= 0) {
       return;
     }
 
-    let outputAmount;
-    if (!poolDetails.isHop) {
-      // Single swap
-      outputAmount = calculateOutput(inputAmount, fromToken, toToken, reserves, fees);
-    } else {
-      // Double-hop
-      outputAmount = calculateOutputWithHop(inputAmount, fromToken, toToken, reserves, fees);
+    const simulated = await simulateSwapQuery(val, fromToken, toToken);
+    if (simulated) {
+      setToAmount(simulated);
     }
-    setToAmount(outputAmount);
   };
 
-  const handleToAmountChange = (e) => {
-    const outputAmount = e.target.value;
-    setToAmount(outputAmount);
-    const inputAmount = calculateInput(outputAmount, tokens[toToken], tokens[fromToken], reserves, fees);
-    setFromAmount(inputAmount);
-  };
-
-  // ============== UI handlers for token selects ==============
-  const handleFromTokenChange = (e) => {
-    const selectedToken = e.target.value;
-    if (selectedToken === toToken) {
-      setToToken(fromToken);
-    }
-    setFromToken(selectedToken);
-    setFromAmount('');
-    setToAmount('');
-  };
-
-  const handleToTokenChange = (e) => {
-    const selectedToken = e.target.value;
-    if (selectedToken === fromToken) {
-      setFromToken(toToken);
-    }
-    setToToken(selectedToken);
-    setFromAmount('');
-    setToAmount('');
-  };
-
-  // ============== SWAP button ==============
+  // ========== SWAP BUTTON ==========
   const handleSwap = async () => {
     if (!isKeplrConnected) {
-      console.warn("Keplr is not connected.");
+      console.warn("Keplr not connected.");
       return;
     }
-
     const inputAmount = parseFloat(fromAmount);
-    if (isNaN(inputAmount) || inputAmount <= 0) return;
+    if (isNaN(inputAmount) || inputAmount <= 0) {
+      console.warn("Invalid inputAmount");
+      return;
+    }
 
     setIsModalOpen(true);
     setAnimationState('loading');
 
     try {
-      // Compute min received for slippage
+      // Minimum received (slippage)
       const minReceived = calculateMinimumReceived(toAmount, slippage);
       const inputInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
-      const minInMicro   = toMicroUnits(minReceived, tokens[toToken]);
+      // optional:
+      const minInMicro = toMicroUnits(minReceived, tokens[toToken]);
 
-      // We now call the unified exchange, not a specific pool contract
-      const snipmsg = {
+      // 1) Build the swap message
+      const snipMsg = {
         swap: {
           output_token: tokens[toToken].contract,
-          //min_received: minInMicro.toString(),
-          // If needed, your contract might require "hop: true/false", etc.
+          // optionally pass min_received
+          // min_received: minInMicro.toString(),
         },
       };
 
-      // Approve & execute
+      // 2) Approve & Execute
       await snip(
         tokens[fromToken].contract,
         tokens[fromToken].hash,
-        contracts.exchange.contract,  // unified exchange
+        contracts.exchange.contract,
         contracts.exchange.hash,
-        snipmsg,
+        snipMsg,
         inputInMicro
       );
 
       setAnimationState('success');
       setFromAmount('');
       setToAmount('');
-    } catch (error) {
-      console.error('Error executing swap:', error);
+    } catch (err) {
+      console.error("[handleSwap] error:", err);
       setAnimationState('error');
     } finally {
-      // Reload user balances and pool info
+      // refresh balances
       fetchData();
     }
   };
 
-  // ============== Additional UI (max, viewing key, slippage, etc.) ==============
+  // ========== SWAP UI ==========
+
+  const handleFromTokenChange = (e) => {
+    const selected = e.target.value;
+    if (selected === toToken) {
+      setToToken(fromToken);
+    }
+    setFromToken(selected);
+    setFromAmount('');
+    setToAmount('');
+  };
+
+  const handleToTokenChange = (e) => {
+    const selected = e.target.value;
+    if (selected === fromToken) {
+      setFromToken(toToken);
+    }
+    setToToken(selected);
+    setFromAmount('');
+    setToAmount('');
+  };
+
   const handleMaxFromAmount = () => {
     if (typeof fromBalance === 'number') {
       handleFromAmountChange(fromBalance.toString());
     }
   };
 
-  const handleRequestViewingKey = async (token) => {
-    await requestViewingKey(token);
+  const handleRequestViewingKey = async (tk) => {
+    await requestViewingKey(tk);
     fetchData();
   };
 
-  // ============== Price Impact & Fee (optional) ==============
-  const calculatePriceImpact = () => {
-    // If missing data, just return ''
-    if (!fromAmount || !toAmount || !poolDetails) return '';
-    const inputNum = parseFloat(fromAmount);
-    if (isNaN(inputNum) || inputNum <= 0) return '';
-
-    // For single hop: key = "ANML-ERTH" or "ERTH-ANML"
-    // For double hop: you might need to do partial calculations
-    // (or just skip it or do it in the withHop style).
-    if (!poolDetails.isHop) {
-      // Single hop
-      const poolKey = fromToken === 'ERTH' 
-        ? `ERTH-${toToken}`
-        : `${fromToken}-ERTH`;
-
-      const pool = reserves[poolKey];
-      if (!pool) return '';
-
-      const fromReserve = pool[fromToken] || 0;
-      const toReserve   = pool[toToken]   || 0;
-
-      const inputMicro = toMicroUnits(fromAmount, tokens[fromToken]);
-      const outputMicro = toMicroUnits(toAmount, tokens[toToken]);
-
-      const newFromReserve = fromReserve + inputMicro;
-      const newToReserve   = toReserve - outputMicro;
-      if (fromReserve === 0 || toReserve === 0 || newToReserve <= 0) return '';
-
-      const originalPrice = fromReserve / toReserve;
-      const newPrice = newFromReserve / newToReserve;
-      const impact = ((newPrice - originalPrice) / originalPrice) * 100;
-      return `${impact.toFixed(2)}%`;
-    } else {
-      // Double-hop: you'd do partial for fromToken->ERTH, then ERTH->toToken
-      // or do some simplified approach. For brevity, returning '' or do your own logic.
-      return '';
-    }
-  };
-
-  const calculateTradeFee = () => {
-    if (!poolDetails || !fromAmount) return '';
-    const amt = parseFloat(fromAmount);
-    if (isNaN(amt) || amt <= 0) return '';
-
-    const poolKey = fromToken === 'ERTH'
-      ? `ERTH-${toToken}`
-      : `${fromToken}-ERTH`;
-
-    const protocolFee = fees[poolKey] || 0;
-    const feePercent = protocolFee / 10000; 
-    const feeAmount = feePercent * amt;
-    return `${feeAmount.toFixed(6)} ${fromToken}`;
-  };
-
-  // If user not connected
   if (!isKeplrConnected) {
-    return <div className="error-message">Keplr is not connected. Please connect to Keplr to proceed.</div>;
+    return <div className="error-message">Connect Keplr first</div>;
   }
 
   return (
@@ -299,9 +196,10 @@ const SwapTokens = ({ isKeplrConnected }) => {
         onClose={() => setIsModalOpen(false)}
         animationState={animationState}
       />
+
       <h2 className="swap-title">Swap Tokens</h2>
 
-      {/* FROM input section */}
+      {/* FROM */}
       <div className="input-group">
         <div className="label-wrapper">
           <label htmlFor="from-token" className="input-label">From</label>
@@ -311,14 +209,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
             value={fromToken}
             onChange={handleFromTokenChange}
           >
-            {Object.keys(tokens).map((tokenKey) => (
-              <option key={tokenKey} value={tokenKey}>
-                {tokenKey}
-              </option>
+            {Object.keys(tokens).map((tk) => (
+              <option key={tk} value={tk}>{tk}</option>
             ))}
           </select>
+
           <div className="token-balance">
-            {fromBalance === 'Error' ? (
+            {fromBalance === "Error" ? (
               <button
                 className="max-button"
                 onClick={() => handleRequestViewingKey(tokens[fromToken])}
@@ -327,20 +224,15 @@ const SwapTokens = ({ isKeplrConnected }) => {
               </button>
             ) : (
               <>
-                Balance: {fromBalance !== null ? fromBalance : 'N/A'}
-                <button className="max-button" onClick={handleMaxFromAmount}>
-                  Max
-                </button>
+                Balance: {fromBalance ?? '...'}
+                <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
               </>
             )}
           </div>
         </div>
+
         <div className="input-wrapper">
-          <img
-            src={tokens[fromToken].logo}
-            alt={`${fromToken} logo`}
-            className="input-logo"
-          />
+          <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className="input-logo" />
           <input
             type="number"
             className="swap-input"
@@ -351,7 +243,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
         </div>
       </div>
 
-      {/* TO input section */}
+      {/* TO (read‐only) */}
       <div className="input-group">
         <div className="label-wrapper">
           <label htmlFor="to-token" className="input-label">To</label>
@@ -361,14 +253,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
             value={toToken}
             onChange={handleToTokenChange}
           >
-            {Object.keys(tokens).map((tokenKey) => (
-              <option key={tokenKey} value={tokenKey}>
-                {tokenKey}
-              </option>
+            {Object.keys(tokens).map((tk) => (
+              <option key={tk} value={tk}>{tk}</option>
             ))}
           </select>
+
           <div className="token-balance">
-            {toBalance === 'Error' ? (
+            {toBalance === "Error" ? (
               <button
                 className="max-button"
                 onClick={() => handleRequestViewingKey(tokens[toToken])}
@@ -376,38 +267,28 @@ const SwapTokens = ({ isKeplrConnected }) => {
                 Get Viewing Key
               </button>
             ) : (
-              <>Balance: {toBalance !== null ? toBalance : 'N/A'}</>
+              <>Balance: {toBalance ?? '...'} </>
             )}
           </div>
         </div>
+
         <div className="input-wrapper">
-          <img
-            src={tokens[toToken].logo}
-            alt={`${toToken} logo`}
-            className="input-logo"
-          />
+          <img src={tokens[toToken].logo} alt={`${toToken} logo`} className="input-logo" />
           <input
             type="number"
             className="swap-input"
             placeholder="Amount"
             value={toAmount}
-            onChange={handleToAmountChange}
+            readOnly
           />
         </div>
       </div>
 
-      {/* SWAP button */}
-      <button className="swap-button" onClick={handleSwap}>
-        Swap
-      </button>
+      {/* SWAP BUTTON */}
+      <button className="swap-button" onClick={handleSwap}>Swap</button>
 
-      {/* Details for slippage, min received, fees, etc. */}
       <details className="expandable-info">
-        <summary>
-          <p>View Details</p>
-          <i className="bx bx-chevron-down chevron-icon"></i>
-        </summary>
-
+        <summary><p>View Details</p></summary>
         <div className="slippage-tolerance">
           <label htmlFor="slippage-input" className="slippage-label">
             Slippage Tolerance (%)
@@ -423,30 +304,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
             step="0.1"
           />
         </div>
-
         <div className="info-display">
           <div className="info-row">
             <span className="info-label">Minimum Received:</span>
-            <span className="info-value" id="min-received">
-              {toAmount && !isNaN(toAmount)
+            <span className="info-value">
+              {toAmount
                 ? calculateMinimumReceived(toAmount, slippage).toFixed(6)
                 : ''}
-            </span>
-          </div>
-
-          <div className="info-row">
-            <span className="info-label">Price Impact:</span>
-            <span className="info-value" id="price-impact">
-              {fromAmount && toAmount && !isNaN(fromAmount) && !isNaN(toAmount)
-                ? calculatePriceImpact()
-                : ''}
-            </span>
-          </div>
-
-          <div className="info-row">
-            <span className="info-label">Trade Fee:</span>
-            <span className="info-value" id="trade-fee">
-              {fromAmount && !isNaN(fromAmount) ? calculateTradeFee() : ''}
             </span>
           </div>
         </div>

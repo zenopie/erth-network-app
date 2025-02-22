@@ -22,6 +22,7 @@ const LiquidityManagement = ({
   poolData,         // { pool_info, user_info, tokenKey }
   refreshParent
 }) => {
+
   // Tabs
   const [activeTab, setActiveTab] = useState('Provide');
 
@@ -49,12 +50,14 @@ const LiquidityManagement = ({
   const tokenB = tokens[tokenKey];
 
   // Reserves, staked amounts
-  const erthReserve = Number(pool_info?.erth_reserve || 0);
-  const tokenBReserve = Number(pool_info?.token_b_reserve || 0);
+  const erthReserve = Number(pool_info?.state?.erth_reserve || 0);
+  const tokenBReserve = Number(pool_info?.state?.token_b_reserve || 0);
+  
   const stakedLpTokenBalance = toMacroUnits(
     user_info?.amount_staked || '0',
     tokenB.lp
   );
+
 
   // Local SNIP-20 balances
   const [erthBalance, setErthBalance] = useState(null);
@@ -62,7 +65,6 @@ const LiquidityManagement = ({
   const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null);
 
   // -------------------- Fetch Unbond Requests --------------------
-
   useEffect(() => {
     if (!isKeplrConnected || !poolData) return;
 
@@ -81,10 +83,9 @@ const LiquidityManagement = ({
         };
 
         const resp = await query(exchangeContract, exchangeHash, msg);
-        console.log("Unbond requests:", resp);
         setUnbondRequests(resp || []);
       } catch (err) {
-        console.error("Error fetching unbond requests:", err);
+        console.error("[LiquidityManagement] Error fetching unbond requests:", err);
       }
     };
 
@@ -103,8 +104,9 @@ const LiquidityManagement = ({
 
       const lpBal = await querySnipBalance(tokenB.lp);
       setLpTokenWalletBalance(lpBal);
+
     } catch (err) {
-      console.error("Error fetching SNIP-20 balances:", err);
+      console.error("[LiquidityManagement] Error fetching SNIP-20 balances:", err);
     }
   }, [isKeplrConnected, tokenErth, tokenB]);
 
@@ -120,6 +122,7 @@ const LiquidityManagement = ({
     try {
       setIsModalOpen(true);
       setAnimationState('loading');
+
 
       await provideLiquidity(
         tokenErth.contract,
@@ -137,7 +140,7 @@ const LiquidityManagement = ({
       refreshParent();
       refreshSnipBalances();
     } catch (error) {
-      console.error("Error providing liquidity:", error);
+      console.error("[LiquidityManagement] Error providing liquidity:", error);
       setAnimationState('error');
     }
   };
@@ -150,9 +153,10 @@ const LiquidityManagement = ({
       setIsModalOpen(true);
       setAnimationState('loading');
 
-      // Example: deposit LP tokens to exchange contract
       const inputAmount = toMicroUnits(lpTokenAmount, tokenB.lp);
-      const snipMsg = { deposit: {} };
+      const snipMsg = { deposit_lp_tokens: {
+        pool: tokenB.contract
+      } };
 
       await snip(
         tokenB.lp.contract,
@@ -168,13 +172,12 @@ const LiquidityManagement = ({
       refreshParent();
       refreshSnipBalances();
     } catch (error) {
-      console.error("Error staking LP:", error);
+      console.error("[LiquidityManagement] Error staking LP:", error);
       setAnimationState('error');
     }
   };
 
   // -------------------- Unstake staked LP --------------------
-
   const handleUnstakeLpTokens = async () => {
     if (!isKeplrConnected) return;
 
@@ -183,11 +186,9 @@ const LiquidityManagement = ({
       setAnimationState('loading');
 
       const inputAmount = toMicroUnits(unstakeAmount, tokenB.lp);
-      // Example message name "withdraw_lp_tokens" 
-      // (adjust to match your contract):
       const msg = {
         withdraw_lp_tokens: {
-          pool: tokenB.contract,   // <--- unify
+          pool: tokenB.contract,
           amount: inputAmount.toString(),
           unbond: unstakeUnbond
         },
@@ -204,13 +205,12 @@ const LiquidityManagement = ({
       refreshParent();
       refreshSnipBalances();
     } catch (error) {
-      console.error("Error unstaking LP:", error);
+      console.error("[LiquidityManagement] Error unstaking LP:", error);
       setAnimationState('error');
     }
   };
 
   // -------------------- Create Unbond Request from Wallet --------------------
-
   const handleCreateUnbondRequest = async () => {
     if (!isKeplrConnected) return;
 
@@ -219,21 +219,20 @@ const LiquidityManagement = ({
       setAnimationState('loading');
 
       const inputAmount = toMicroUnits(unbondAmount, tokenB.lp);
-
-      // Make sure "pool" matches that same address
       const snipMsg = {
         withdraw_liquidity: {
-          pool: tokenB.contract, // <--- unify
+          pool: tokenB.contract,
           amount: inputAmount.toString(),
           unbond: true,
         },
       };
 
+
       await snip(
         tokenB.lp.contract,
         tokenB.lp.hash,
-        tokenB.contract,   // same address
-        tokenB.poolHash,       // the contract code hash
+        tokenB.contract,
+        tokenB.poolHash,
         snipMsg,
         inputAmount
       );
@@ -243,7 +242,7 @@ const LiquidityManagement = ({
       refreshParent();
       refreshSnipBalances();
     } catch (error) {
-      console.error("Error creating unbond request:", error);
+      console.error("[LiquidityManagement] Error creating unbond request:", error);
       setAnimationState('error');
     }
   };
@@ -268,7 +267,7 @@ const LiquidityManagement = ({
       refreshParent();
       refreshSnipBalances();
     } catch (error) {
-      console.error("Error completing unbond:", error);
+      console.error("[LiquidityManagement] Error completing unbond:", error);
       setAnimationState('error');
     }
   };
@@ -277,8 +276,9 @@ const LiquidityManagement = ({
   const handleErthChange = (e) => {
     const val = e.target.value;
     setErthAmount(val);
-
     const parsed = parseFloat(val);
+
+
     if (!isNaN(parsed) && erthReserve && tokenBReserve) {
       const tokenBEquiv = (parsed * tokenBReserve) / erthReserve;
       setTokenBAmount(tokenBEquiv.toFixed(6));
@@ -291,8 +291,8 @@ const LiquidityManagement = ({
   const handleTokenBChange = (e) => {
     const val = e.target.value;
     setTokenBAmount(val);
-
     const parsed = parseFloat(val);
+
     if (!isNaN(parsed) && erthReserve && tokenBReserve) {
       const erthEquiv = (parsed * erthReserve) / tokenBReserve;
       setErthAmount(erthEquiv.toFixed(6));
@@ -383,7 +383,7 @@ const LiquidityManagement = ({
               <label>{tokenKey}</label>
               <div className="balance-container">
                 {tokenBBalance === 'Error' ? (
-                  <button onClick={() => handleRequestViewingKey(tokenB)}>
+                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB)}>
                     Get Viewing Key
                   </button>
                 ) : (
@@ -397,7 +397,6 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {/* Optional tokenB logo */}
               {tokenB.logo && (
                 <img
                   src={tokenB.logo}
@@ -421,7 +420,7 @@ const LiquidityManagement = ({
               <label>ERTH</label>
               <div className="balance-container">
                 {erthBalance === 'Error' ? (
-                  <button onClick={() => handleRequestViewingKey(tokenErth)}>
+                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenErth)}>
                     Get Viewing Key
                   </button>
                 ) : (
@@ -435,7 +434,6 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {/* Optional ERTH logo */}
               {tokenErth.logo && (
                 <img
                   src={tokenErth.logo}
@@ -482,7 +480,7 @@ const LiquidityManagement = ({
               <label>Deposit LP Tokens</label>
               <div className="balance-container">
                 {lpTokenWalletBalance === 'Error' ? (
-                  <button onClick={() => handleRequestViewingKey(tokenB.lp)}>
+                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
                     Get Viewing Key
                   </button>
                 ) : (
@@ -496,7 +494,6 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {/* LP token logo if available */}
               {tokenB.lp?.logo && (
                 <img
                   src={tokenB.lp.logo}
@@ -524,7 +521,7 @@ const LiquidityManagement = ({
               <label>Withdraw Staked LP</label>
               <div className="balance-container">
                 {stakedLpTokenBalance === 'Error' ? (
-                  <button onClick={() => handleRequestViewingKey(contracts.exchange.contract)}>
+                  <button className="max-button" onClick={() => handleRequestViewingKey(contracts.exchange.contract)}>
                     Get Viewing Key
                   </button>
                 ) : (
@@ -577,7 +574,7 @@ const LiquidityManagement = ({
               <label>Wallet LP Tokens</label>
               <div className="balance-container">
                 {lpTokenWalletBalance === 'Error' ? (
-                  <button onClick={() => handleRequestViewingKey(tokenB.lp)}>
+                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
                     Get Viewing Key
                   </button>
                 ) : (
@@ -613,13 +610,11 @@ const LiquidityManagement = ({
             Complete Unbond
           </button>
 
-          {/* Show local unbondRequests with known 10-min unbonding period */}
           {unbondRequests.length > 0 && (
             <div className="unbonding-requests">
               <h3>Unbonding Requests</h3>
               <ul>
                 {unbondRequests.map((req, i) => {
-                  // Typically have: { pool, amount, start_time }
                   const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
                   return (
                     <li key={i}>
