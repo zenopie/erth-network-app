@@ -105,7 +105,7 @@ async function updateErthValues() {
   try {
     console.log("[analyticsManager] Updating ERTH analytics...");
 
-    // 1) Fetch token prices from Coingecko
+    // 1) Fetch token prices from Coingecko (for tokens with coingeckoId)
     const tokenIds = Object.values(tokens)
       .filter(t => t.coingeckoId)
       .map(t => t.coingeckoId)
@@ -113,7 +113,6 @@ async function updateErthValues() {
     const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds}&vs_currencies=usd`);
     const priceData = await priceRes.json();
     console.log("[DEBUG] Coingecko priceData:", priceData);
-
     const prices = {};
     for (const k in tokens) {
       const t = tokens[k];
@@ -129,23 +128,23 @@ async function updateErthValues() {
       code_hash: tokens.ERTH.hash,
       query: { token_info: {} }
     });
-    console.log("[DEBUG] ERTH token info:", erthInfo);
     const erthTotalSupply = parseInt(erthInfo.token_info.total_supply) / Math.pow(10, tokens.ERTH.decimals);
     console.log("[DEBUG] ERTH total supply:", erthTotalSupply);
 
-    // 3) Build pool address list for tokens with pool info
+    // 3) Build pool addresses list using each token's contract (for pools)
     const poolQueryTokens = [];
     const poolAddresses = [];
     for (const key in tokens) {
       const tk = tokens[key];
-      if (key !== "ERTH" && tk.contract && prices[key]) {
+      // For pools we require a price (even if ANML doesn't have one, we check for its existence separately)
+      if (key !== "ERTH" && tk.contract && (prices[key] !== undefined || key === "ANML")) {
         poolQueryTokens.push({ tokenKey: key, decimals: tk.decimals });
         poolAddresses.push(tk.contract);
       }
     }
     console.log("[DEBUG] Pool addresses:", poolAddresses);
 
-    // Unified query call to fetch all pool info in one go
+    // 4) Unified query to fetch all pool info
     const unifiedPoolRes = await secretjs.query.compute.queryContract({
       contract_address: UNIFIED_POOL_CONTRACT,
       code_hash: UNIFIED_POOL_HASH,
@@ -153,60 +152,71 @@ async function updateErthValues() {
     });
     console.log("[DEBUG] Unified pool response:", unifiedPoolRes);
 
-    // 4) Process pool info to calculate ERTH price and TVL
-    let poolData = [];
     let totalWeightedPrice = 0;
     let totalLiquidity = 0;
+    let poolData = [];
+    let anmlPriceFinal = null;
+    let anmlTVL = 0;
+    let anmlData = null;
 
+    // Process each pool
     for (let i = 0; i < unifiedPoolRes.length; i++) {
       const st = unifiedPoolRes[i];
       const tokenKey = poolQueryTokens[i].tokenKey;
       const tk = tokens[tokenKey];
-
-      const erthReserveRaw = st.state.erth_reserve;
-      const tokenReserveRaw = st.state.token_b_reserve;
-      const erthReserve = parseInt(erthReserveRaw) / Math.pow(10, tokens.ERTH.decimals);
-      const tokenReserve = parseInt(tokenReserveRaw) / Math.pow(10, tk.decimals);
-      console.log(`[DEBUG] Pool ${tokenKey}: erthReserveRaw=${erthReserveRaw}, tokenReserveRaw=${tokenReserveRaw}`);
+      const erthReserve = parseInt(st.state.erth_reserve) / Math.pow(10, tokens.ERTH.decimals);
+      const tokenReserve = parseInt(st.state.token_b_reserve) / Math.pow(10, tk.decimals);
       console.log(`[DEBUG] Pool ${tokenKey}: erthReserve=${erthReserve}, tokenReserve=${tokenReserve}`);
-
       if (erthReserve === 0) {
         console.error(`[ERROR] Zero ERTH reserve for pool ${tokenKey}`);
         continue;
       }
-
-      const poolPrice = (tokenReserve / erthReserve) * prices[tokenKey];
-      const poolTVL = (tokenReserve * prices[tokenKey]) + (erthReserve * poolPrice);
-      console.log(`[DEBUG] Pool ${tokenKey}: poolPrice=${poolPrice}, poolTVL=${poolTVL}`);
-
-      totalWeightedPrice += poolPrice * poolTVL;
-      totalLiquidity += poolTVL;
-
-      poolData.push({ token: tokenKey, erthPrice: poolPrice, tvl: poolTVL });
+      if (tokenKey === "ANML") {
+        // Store ANML pool data for later processing (ANML doesn't have a Coingecko price)
+        anmlData = { tokenKey, tokenReserve, erthReserve };
+      } else {
+        // For non‑ANML pools, compute pool price from external token price
+        const poolPrice = (tokenReserve / erthReserve) * prices[tokenKey];
+        const poolTVL = (tokenReserve * prices[tokenKey]) + (erthReserve * poolPrice);
+        totalWeightedPrice += poolPrice * poolTVL;
+        totalLiquidity += poolTVL;
+        poolData.push({ token: tokenKey, erthPrice: poolPrice, tvl: poolTVL });
+      }
     }
 
-    console.log("[DEBUG] totalWeightedPrice:", totalWeightedPrice, "totalLiquidity:", totalLiquidity);
+    // 5) Compute global ERTH price from non‑ANML pools
+    const globalErthPrice = totalLiquidity ? totalWeightedPrice / totalLiquidity : 0;
+    console.log("[DEBUG] Global ERTH price:", globalErthPrice);
 
-    const avgErthPrice = totalLiquidity ? totalWeightedPrice / totalLiquidity : 0;
-    const erthMarketCap = avgErthPrice * erthTotalSupply;
+    // 6) Process ANML pool using its reserves and the global ERTH price
+    if (anmlData) {
+      // Derive ANML price from pool reserves: (ERTH reserve / ANML reserve) * global ERTH price
+      anmlPriceFinal = (anmlData.erthReserve / anmlData.tokenReserve) * globalErthPrice;
+      anmlTVL = (anmlData.tokenReserve * anmlPriceFinal) + (anmlData.erthReserve * globalErthPrice);
+      totalLiquidity += anmlTVL;
+      poolData.push({ token: "ANML", erthPrice: anmlPriceFinal, tvl: anmlTVL });
+      console.log(`[DEBUG] ANML pool: anmlPrice=${anmlPriceFinal}, anmlTVL=${anmlTVL}`);
+    }
 
-    // 5) Save analytics data
+    // 7) Create a single global data point including all pool data and total TVL, plus an explicit ANML price field
     const dataPoint = {
       timestamp: Date.now(),
-      erthPrice: avgErthPrice,
+      erthPrice: globalErthPrice,
       erthTotalSupply,
-      erthMarketCap,
+      erthMarketCap: globalErthPrice * erthTotalSupply,
       tvl: totalLiquidity,
-      pools: poolData
+      pools: poolData,
+      anmlPrice: anmlPriceFinal  // Explicit ANML price variable (null if no ANML data)
     };
 
     analyticsHistory.push(dataPoint);
     saveAnalyticsData();
-    console.log("[analyticsManager] Updated ERTH analytics:", dataPoint.erthPrice);
+    console.log("[analyticsManager] Updated global analytics:", dataPoint);
   } catch (err) {
     console.error("[analyticsManager] Error updating analytics:", err);
   }
 }
+
 
 // Initialize analytics: load stored data, update immediately, then schedule every 5 minutes
 function initAnalytics() {
