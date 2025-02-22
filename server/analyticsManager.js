@@ -163,7 +163,7 @@ async function updateErthValues() {
       const tokenKey = poolQueryTokens[i].tokenKey;
       const tk = tokens[tokenKey];
 
-      const erthReserveRaw = st.state.token_erth_reserve;
+      const erthReserveRaw = st.state.erth_reserve;
       const tokenReserveRaw = st.state.token_b_reserve;
       const erthReserve = parseInt(erthReserveRaw) / Math.pow(10, tokens.ERTH.decimals);
       const tokenReserve = parseInt(tokenReserveRaw) / Math.pow(10, tk.decimals);
