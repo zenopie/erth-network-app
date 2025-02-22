@@ -194,7 +194,7 @@ async function updateErthValues() {
       anmlPriceFinal = (anmlData.erthReserve / anmlData.tokenReserve) * globalErthPrice;
       anmlTVL = (anmlData.tokenReserve * anmlPriceFinal) + (anmlData.erthReserve * globalErthPrice);
       totalLiquidity += anmlTVL;
-      poolData.push({ token: "ANML", erthPrice: anmlPriceFinal, tvl: anmlTVL });
+      poolData.push({ token: "ANML", erthPrice: globalErthPrice, tvl: anmlTVL });
       console.log(`[DEBUG] ANML pool: anmlPrice=${anmlPriceFinal}, anmlTVL=${anmlTVL}`);
     }
 
