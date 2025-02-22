@@ -72,6 +72,13 @@ const Analytics = () => {
                 })}
               </span>
             </div>
+
+            <div className="analytics-row">
+              <span className="analytics-label">ANML Price:</span>
+              <span className="analytics-value">
+                ${latest.anmlPrice.toFixed(6)}
+              </span>
+            </div>
           </div>
 
           {/* Pools table */}
