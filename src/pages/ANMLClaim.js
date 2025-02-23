@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ANMLClaim.css';
+import contracts from '../utils/contracts';
 import { query, contract } from '../utils/contractUtils';
 import { showLoadingScreen } from '../utils/uiUtils';
 import { Veriff } from '@veriff/js-sdk'; // Import Veriff SDK
@@ -10,8 +11,8 @@ import passportImage from '../images/passport.png';
 import anmlImage from '../images/anml.png';
 import watermelonImage from '../images/watermelon.png';
 
-const REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const REGISTRATION_HASH = "2c0d1e6fa1fdf4899384107a3a2f0b7424143f65ebc975fa802ffe0926db4606";
+const REGISTRATION_CONTRACT = contracts.registration.contract;
+const REGISTRATION_HASH = contracts.registration.hash;
 
 
 const ANMLClaim = ({ isKeplrConnected }) => {
@@ -125,18 +126,18 @@ const ANMLClaim = ({ isKeplrConnected }) => {
 
     try {
       let tx = await contract(REGISTRATION_CONTRACT, REGISTRATION_HASH, contractmsg);
-      if (tx.arrayLog) {
-        setAnimationState('success'); // Set the animation state to success after a successful claim
+      if (tx.code === 0) {
+        setAnimationState('success');
         document.querySelector('#claim-box').classList.add('remove');
         document.querySelector("#complete-box").classList.remove("remove");
       } else {
-        // Manually throw an error to trigger the catch block
-        throw new Error("Claim transaction failed, no arrayLog.");
+        setAnimationState('error');
+        throw new Error(`Claim transaction failed with code ${tx.code}`);
       }
     } catch (error) {
       console.error("Error during claim:", error);
-      setAnimationState('error'); 
-    } 
+      setAnimationState('error');
+    }     
   };
 
 
