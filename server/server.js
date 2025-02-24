@@ -19,6 +19,7 @@ app.use(bodyParser.json());
 
 
 app.post("/api/save-conversation", async (req, res) => {
+  console.log("/api/save-conversation");
   // Check if req.body exists
   if (!req.body) {
     console.log("req body missing");
