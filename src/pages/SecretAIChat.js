@@ -45,14 +45,17 @@ const SecretAIChat = () => {
           user: userAddress,
           conversation: messages,
         });
-  
+    
+        const blob = new Blob([payload], { type: "application/json" });
+    
         // Use sendBeacon to ensure the request completes before the page unloads
-        navigator.sendBeacon("https://erth.network/api/save-conversation", payload);
+        navigator.sendBeacon("https://erth.network/api/save-conversation", blob);
       }
     };
-  
+    
     // Attach event listener for window close
     window.addEventListener("beforeunload", handleBeforeUnload);
+    
   
     // Connect to Keplr on testnet
     async function connectTestnetKeplr() {
