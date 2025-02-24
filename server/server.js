@@ -14,6 +14,46 @@ const {
 const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
 
+app.post("/api/save-conversation", async (req, res) => {
+  const { user, conversation } = req.body;
+
+  if (!user || !conversation || !conversation.length) {
+    return res.status(400).json({ error: "Invalid request data" });
+  }
+
+  try {
+    // Create a new SecretNetworkClient for Pulsar-3 (testnet)
+    const testnetWallet = new Wallet(WALLET_KEY); // Use same wallet but on testnet
+    const testnetClient = new SecretNetworkClient({
+      url: "https://pulsar.lcd.secretnodes.com",
+      chainId: "pulsar-3",
+      wallet: testnetWallet,
+      walletAddress: testnetWallet.address,
+    });
+
+    const msg = new MsgExecuteContract({
+      sender: testnetWallet.address,
+      contract_address: "secret1v47zuu6mnq9xzcps4fz7pnpr23d2sczmft26du", // Testnet storage contract
+      code_hash: "3545985756548d7d9b85a7a609040fd41a2a0eeba03f81fa166a8063569b01fd", // Testnet contract hash
+      msg: { save_conversation: { conversation } },
+    });
+
+    const tx = await testnetClient.tx.broadcast([msg], {
+      gasLimit: 200000,
+      gasPriceInFeeDenom: 0.1,
+      feeDenom: "uscrt",
+      broadcastMode: "Sync",
+    });
+
+    console.log("Pulsar-3 Transaction Result:", tx);
+    res.json({ success: true, txHash: tx.transactionHash });
+  } catch (error) {
+    console.error("Transaction Error on Pulsar-3:", error);
+    res.status(500).json({ error: "Failed to execute transaction on Pulsar-3" });
+  }
+});
+
+
 const proxy = corsProxy.createServer({
   originWhitelist: [], // allow all origins
   removeHeaders: ["cookie", "cookie2"],
