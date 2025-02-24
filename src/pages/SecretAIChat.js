@@ -38,32 +38,21 @@ const SecretAIChat = () => {
   const thinkingRef = useRef(null);
   const userInteracted = useRef(false);
 
-  // Connect to Keplr on testnet and store the signer and user's address.
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === "hidden" && messages.length > 0 && userAddress) {
-        try {
-          const response = await fetch("https://your-backend-url.com/api/save-conversation", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user: userAddress,
-              conversation: messages,
-            }),
-          });
+    const handleBeforeUnload = (event) => {
+      if (messages.length > 0 && userAddress) {
+        const payload = JSON.stringify({
+          user: userAddress,
+          conversation: messages,
+        });
   
-          const result = await response.json();
-          console.log("API Response:", result);
-        } catch (error) {
-          console.error("Error sending conversation to backend:", error);
-        }
+        // Use sendBeacon to ensure the request completes before the page unloads
+        navigator.sendBeacon("https://erth.network/api/save-conversation", payload);
       }
     };
   
-    // Attach event listener for visibility change
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // Attach event listener for window close
+    window.addEventListener("beforeunload", handleBeforeUnload);
   
     // Connect to Keplr on testnet
     async function connectTestnetKeplr() {
@@ -88,9 +77,10 @@ const SecretAIChat = () => {
   
     // Cleanup function to remove the event listener
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [messages, userAddress]);
+  
   
 
   // Define fetchModels.
