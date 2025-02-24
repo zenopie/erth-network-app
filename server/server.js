@@ -14,7 +14,16 @@ const {
 const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
 
+// Middleware to parse JSON requests
+app.use(bodyParser.json());
+
+
 app.post("/api/save-conversation", async (req, res) => {
+  // Check if req.body exists
+  if (!req.body) {
+    return res.status(400).json({ error: "Request body is missing" });
+  }
+
   const { user, conversation } = req.body;
 
   if (!user || !conversation || !conversation.length) {
@@ -170,9 +179,6 @@ function save_pending(array, file) {
   });
 }
 
-// Middleware to parse JSON requests
-app.use(bodyParser.json());
-// Serve static files from the 'public' directory
 
 // Function to generate HMAC signature
 function generateSignature(payload, secret) {
