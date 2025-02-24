@@ -99,7 +99,7 @@ function saveAnalyticsData() {
 
 // Add unified pool query constants
 const UNIFIED_POOL_CONTRACT = "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra"; // update this
-const UNIFIED_POOL_HASH = "7d302065a423d33a04d0d788305c4c9b67ad055af980c902a345f2791e95d849"; // update this
+const UNIFIED_POOL_HASH = "248a2eb24fa9ac793cd4a8e499fc5f2db6d7346522bb69679b49449171eeafe6"; // update this
 
 async function updateErthValues() {
   try {

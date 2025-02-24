@@ -39,25 +39,6 @@ const SecretAIChat = () => {
   const userInteracted = useRef(false);
 
   useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (messages.length > 0 && userAddress) {
-        const payload = JSON.stringify({
-          user: userAddress,
-          conversation: messages,
-        });
-    
-        const blob = new Blob([payload], { type: "application/json" });
-    
-        // Use sendBeacon to ensure the request completes before the page unloads
-        navigator.sendBeacon("https://erth.network/api/save-conversation", blob);
-      }
-    };
-    
-    // Attach event listener for window close
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    
-  
-    // Connect to Keplr on testnet
     async function connectTestnetKeplr() {
       const chainId = TESTNET_CHAIN_ID;
       if (!window.keplr) {
@@ -65,25 +46,45 @@ const SecretAIChat = () => {
         return;
       }
       try {
+        // Enable Keplr for the testnet
         await window.keplr.enable(chainId);
         const signer = window.getOfflineSignerOnlyAmino(chainId);
         setOfflineSigner(signer);
+  
         const accounts = await signer.getAccounts();
         setUserAddress(accounts[0].address);
-        console.log("Connected to testnet with account:", accounts[0].address);
-        fetchConversations();
+        console.log("Reconnected to testnet with account:", accounts[0].address);
+  
       } catch (error) {
-        console.error("Error connecting to testnet:", error);
+        console.error("Error reconnecting to testnet:", error);
       }
     }
   
-    connectTestnetKeplr();
+    // Ensure the connection is re-established after a refresh
+    if (!userAddress) {
+      connectTestnetKeplr();
+    }
+  }, [userAddress]); // Runs only if `userAddress` is empty
+
   
-    // Cleanup function to remove the event listener
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (messages.length > 0 && userAddress) {
+        const payload = JSON.stringify({ user: userAddress, conversation: messages });
+        const blob = new Blob([payload], { type: "application/json" });
+  
+        // Use sendBeacon to ensure the request completes before the page unloads
+        navigator.sendBeacon("https://erth.network/api/save-conversation", blob);
+      }
+    };
+  
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [messages, userAddress]);
+  
   
   
 
