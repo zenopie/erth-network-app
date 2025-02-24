@@ -21,12 +21,14 @@ app.use(bodyParser.json());
 app.post("/api/save-conversation", async (req, res) => {
   // Check if req.body exists
   if (!req.body) {
+    console.log("req body missing");
     return res.status(400).json({ error: "Request body is missing" });
   }
 
   const { user, conversation } = req.body;
 
   if (!user || !conversation || !conversation.length) {
+    console.log("invalide request data");
     return res.status(400).json({ error: "Invalid request data" });
   }
 
