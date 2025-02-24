@@ -71,6 +71,7 @@ const SecretAIChat = () => {
         const accounts = await signer.getAccounts();
         setUserAddress(accounts[0].address);
         console.log("Connected to testnet with account:", accounts[0].address);
+        fetchConversations();
       } catch (error) {
         console.error("Error connecting to testnet:", error);
       }
