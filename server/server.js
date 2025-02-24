@@ -27,9 +27,9 @@ app.post("/api/save-conversation", async (req, res) => {
   }
 
   const { user, conversation } = req.body;
-
   if (!user || !conversation || !conversation.length) {
     console.log("invalide request data");
+    console.log(req.body);
     return res.status(400).json({ error: "Invalid request data" });
   }
 
