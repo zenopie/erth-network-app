@@ -9,7 +9,7 @@ import './StakeErth.css';
 import StatusModal from '../components/StatusModal'; 
 
 const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const THIS_HASH = "5ddc47db84b244ff1c63c179f579d5f1f72c257e421f9d54c3e685c9e56af184";
+const THIS_HASH = "df9766e5327d6544c8110b7efce5d8a18ea43ad61d11877b888263e09811962b";
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const DAYS_PER_YEAR = 365;

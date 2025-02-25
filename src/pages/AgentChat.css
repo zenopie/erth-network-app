@@ -1,0 +1,180 @@
+/* Global Styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #f9fafb;
+  }
+  
+  /* Main Container */
+  .main-container {
+    width: 100%;
+    margin: auto;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    position: relative;
+  }
+  
+  /* Chat Container */
+  .chat-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 800px;
+    padding: 0 20px;
+    max-height: calc(100vh - 180px); /* Leaves space for input container */
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+  
+  /* Message Styling */
+  .message {
+    padding: 10px 0;
+    text-align: right; /* User messages aligned right by default */
+  }
+  
+  .message.assistant {
+    text-align: left; /* Assistant messages aligned left */
+  }
+  
+  .message-content {
+    display: inline-block;
+    max-width: 70%; /* Matches SecretAIChat's message width */
+    padding: 15px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: #ffffff; /* User message background */
+    border: 1px solid #e5e7eb;
+  }
+  
+  .message.assistant .message-content {
+    background: #f3faf7; /* Assistant message background */
+    border: 1px solid #2dc08d33; /* Subtle green border */
+  }
+  
+  /* Input Container */
+  .chat-input-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 800px;
+    padding: 15px 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+  }
+  
+  /* Chat Input */
+  .chat-input {
+    width: calc(100% - 70px); /* Space for send button and settings icon */
+    padding: 10px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    min-height: 50px;
+    resize: none;
+    color: #374151;
+    vertical-align: middle;
+  }
+  
+  /* Send Button */
+  .send-button {
+    position: absolute;
+    right: 60px;
+    bottom: 50%;
+    transform: translateY(50%);
+    background: #2dc08d;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .send-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  /* Settings Icon and Dropdown */
+  .settings-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #374151;
+  }
+  
+  .settings-dropdown {
+    position: absolute;
+    bottom: 100%;
+    right: 20px;
+    margin-bottom: 10px;
+    background: #ffffff;
+    padding: 10px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #374151;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+  
+  .settings-dropdown label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .settings-dropdown select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #fff;
+    color: #374151;
+    font-size: 14px;
+  }
+  
+  /* Loading Animation */
+  .loading-container {
+    padding: 15px;
+    color: #888;
+    text-align: center;
+    font-style: italic;
+  }
+  
+  @keyframes dot-flash {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+  
+  .loading-dots {
+    display: inline-flex;
+    gap: 4px;
+  }
+  
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: #888;
+    border-radius: 50%;
+    animation: dot-flash 1.4s infinite linear;
+  }
+  
+  .dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }

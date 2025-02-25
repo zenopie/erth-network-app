@@ -105,6 +105,9 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             <li>
               <Link to="/totp-auth">TOTP Auth</Link>
             </li>
+            <li>
+              <Link to="/agent-chat">Agent Chat</Link>
+            </li>
           </ul>
         </li>
       </ul>

@@ -10,6 +10,7 @@ import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
 import SecretAIChat from './pages/SecretAIChat';
 import TOTPAuth from './pages/TOTPAuth';
+import AgentChat from './pages/AgentChat';
 import './App.css';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
           <Route path="/ai-chat" element={<Layout><SecretAIChat /></Layout>} />
           <Route path="/totp-auth" element={<Layout><TOTPAuth /></Layout>} />
+          <Route path="/agent-chat" element={<Layout><AgentChat /></Layout>} />
         </Routes>
       </div>
     </Router>
