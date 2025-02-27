@@ -9,12 +9,12 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import "./SecretAIChat.css";
 
 // Testnet configuration for the AI chat page
-const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com"; // Replace with your testnet LCD endpoint
-const TESTNET_CHAIN_ID = "pulsar-3"; // Testnet chain ID
-const TESTNET_WORKER_SMART_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT; // Replace with your testnet contract address
-const TESTNET_WORKER_SMART_CONTRACT_HASH = "5aa970b41fd5514da7b7582cbf808815c20c8f92278ad88f98038e83526cdd12"; // Replace with your testnet contract hash
+const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
+const TESTNET_CHAIN_ID = "pulsar-3";
+const TESTNET_WORKER_SMART_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
+const TESTNET_WORKER_SMART_CONTRACT_HASH = "5aa970b41fd5514da7b7582cbf808815c20c8f92278ad88f98038e83526cdd12";
 const TESTNET_STORAGE_CONTRACT = "secret1v47zuu6mnq9xzcps4fz7pnpr23d2sczmft26du";
-const TESTNET_STORAGE_HASH =  "3545985756548d7d9b85a7a609040fd41a2a0eeba03f81fa166a8063569b01fd";
+const TESTNET_STORAGE_HASH = "3545985756548d7d9b85a7a609040fd41a2a0eeba03f81fa166a8063569b01fd";
 
 const API_KEY = "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1";
 
@@ -31,8 +31,8 @@ const SecretAIChat = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
   const [thinkingText, setThinkingText] = useState("");
-  const [userAddress, setUserAddress] = useState(""); // Keplr testnet address
-  const [offlineSigner, setOfflineSigner] = useState(null); // Keplr offline signer
+  const [userAddress, setUserAddress] = useState("");
+  const [offlineSigner, setOfflineSigner] = useState(null);
 
   const chatContainerRef = useRef(null);
   const thinkingRef = useRef(null);
@@ -46,49 +46,33 @@ const SecretAIChat = () => {
         return;
       }
       try {
-        // Enable Keplr for the testnet
         await window.keplr.enable(chainId);
         const signer = window.getOfflineSignerOnlyAmino(chainId);
         setOfflineSigner(signer);
-  
         const accounts = await signer.getAccounts();
         setUserAddress(accounts[0].address);
         console.log("Reconnected to testnet with account:", accounts[0].address);
-  
       } catch (error) {
         console.error("Error reconnecting to testnet:", error);
       }
     }
-  
-    // Ensure the connection is re-established after a refresh
     if (!userAddress) {
       connectTestnetKeplr();
     }
-  }, [userAddress]); // Runs only if `userAddress` is empty
+  }, [userAddress]);
 
-  
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (messages.length > 0 && userAddress) {
         const payload = JSON.stringify({ user: userAddress, conversation: messages });
         const blob = new Blob([payload], { type: "application/json" });
-  
-        // Use sendBeacon to ensure the request completes before the page unloads
         navigator.sendBeacon("https://erth.network/api/save-conversation", blob);
       }
     };
-  
     window.addEventListener("beforeunload", handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [messages, userAddress]);
-  
-  
-  
 
-  // Define fetchModels.
   const fetchModels = useCallback(async () => {
     try {
       const secretClient = new SecretNetworkClient({
@@ -110,7 +94,6 @@ const SecretAIChat = () => {
     }
   }, []);
 
-  // Define fetchUrls.
   const fetchUrls = async (model) => {
     try {
       const secretClient = new SecretNetworkClient({
@@ -132,9 +115,8 @@ const SecretAIChat = () => {
     }
   };
 
-  // Fetch saved conversations for the user.
   const fetchConversations = async () => {
-    if (!userAddress) return; // Wait until we have a connected address.
+    if (!userAddress) return;
     try {
       const secretClient = new SecretNetworkClient({
         url: TESTNET_NODE_URL,
@@ -152,7 +134,6 @@ const SecretAIChat = () => {
     }
   };
 
-  // Call functions after initialization.
   useEffect(() => {
     fetchModels();
   }, [fetchModels]);
@@ -163,7 +144,6 @@ const SecretAIChat = () => {
     }
   }, [userAddress]);
 
-  // Save the current conversation via tx to the contract using keplr's signer.
   const saveConversation = async () => {
     if (!messages.length || !userAddress || !offlineSigner) return;
     setLoading(true);
@@ -178,7 +158,7 @@ const SecretAIChat = () => {
         {
           sender: userAddress,
           contract_address: TESTNET_STORAGE_CONTRACT,
-          code_hash: TESTNET_STORAGE_HASH, // include the code hash for execution
+          code_hash: TESTNET_STORAGE_HASH,
           msg: { save_conversation: { conversation: messages } },
           sent_funds: [],
         },
@@ -192,9 +172,7 @@ const SecretAIChat = () => {
       setLoading(false);
     }
   };
-  
 
-  // Handle sending messages.
   const handleSendMessage = async () => {
     if (!input || !selectedUrl || !selectedModel) return;
     setLoading(true);
@@ -288,9 +266,9 @@ const SecretAIChat = () => {
       const match = /language-(\w+)/.exec(className || "");
       const text = String(children).replace(/\n$/, "");
       return !inline && match ? (
-        <div className="code-block-wrapper">
+        <div className="secret-code-block-wrapper">
           <div
-            className="copy-button"
+            className="secret-copy-button"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => copyToClipboard(text)}
           >
@@ -312,7 +290,7 @@ const SecretAIChat = () => {
         const thinkPattern = /<think>(.*?)<\/think>/s;
         if (thinkPattern.test(text)) {
           return (
-            <div className="think-box">
+            <div className="secret-think-box">
               🤔 <span>{text.replace(thinkPattern, "$1")}</span>
             </div>
           );
@@ -323,22 +301,21 @@ const SecretAIChat = () => {
   };
 
   return (
-    <div className="main-container">
+    <div className="secret-main-container">
       {/* Sidebar for past conversations */}
-      <div className="sidebar">
-        <button className="new-conversation-button" onClick={() => setMessages([])}>
+      <div className="secret-sidebar">
+        <button className="secret-new-conversation-button" onClick={() => setMessages([])}>
           New Conversation
         </button>
         <h3>Past Conversations</h3>
         {savedConversations.map((conv, idx) => (
-          <div key={idx} className="sidebar-item" onClick={() => setMessages(conv)}>
+          <div key={idx} className="secret-sidebar-item" onClick={() => setMessages(conv)}>
             {`Conversation ${idx + 1}`}
           </div>
         ))}
-
       </div>
       <div
-        className="chat-container"
+        className="secret-chat-container"
         ref={chatContainerRef}
         onScroll={() => {
           if (chatContainerRef.current) {
@@ -350,20 +327,23 @@ const SecretAIChat = () => {
         }}
       >
         {messages.map((msg, index) => (
-          <div key={index} className={`message ${msg.role}`}>
-            {msg.role === "assistant" && <div className="think-box" ref={thinkingRef}></div>}
-            <div className="message-content">
+          <div
+            key={index}
+            className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}
+          >
+            {msg.role === "assistant" && <div className="secret-think-box" ref={thinkingRef}></div>}
+            <div className="secret-message-content">
               <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
             </div>
           </div>
         ))}
       </div>
-      <div className="input-container">
-        <div className="settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
+      <div className="secret-input-container">
+        <div className="secret-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
           <FiSettings size={24} />
         </div>
         {settingsOpen && (
-          <div className="settings-dropdown">
+          <div className="secret-settings-dropdown">
             <label>AI Model:</label>
             <select
               value={selectedModel}
@@ -389,7 +369,7 @@ const SecretAIChat = () => {
           </div>
         )}
         <textarea
-          className="chat-input"
+          className="secret-chat-input"
           placeholder="Ask DeepSeek anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -400,11 +380,19 @@ const SecretAIChat = () => {
             }
           }}
         />
-        {abortController && <button className="stop-button" onClick={handleStopStreaming}>⏹ Stop</button>}
-        <button className="send-button" onClick={handleSendMessage} disabled={loading}>
+        {abortController && (
+          <button className="secret-stop-button" onClick={handleStopStreaming}>
+            ⏹ Stop
+          </button>
+        )}
+        <button className="secret-send-button" onClick={handleSendMessage} disabled={loading}>
           {loading ? "Sending..." : "Send"}
         </button>
-        <button className="save-button" onClick={saveConversation} disabled={loading || !messages.length}>
+        <button
+          className="secret-save-button"
+          onClick={saveConversation}
+          disabled={loading || !messages.length}
+        >
           Save Conversation
         </button>
       </div>

@@ -11,6 +11,7 @@ import DeflationFund from './pages/DeflationFund';
 import SecretAIChat from './pages/SecretAIChat';
 import TOTPAuth from './pages/TOTPAuth';
 import AgentChat from './pages/AgentChat';
+import ImageInterpret from './pages/ImageInterpret';
 import './App.css';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
           <Route path="/ai-chat" element={<Layout><SecretAIChat /></Layout>} />
           <Route path="/totp-auth" element={<Layout><TOTPAuth /></Layout>} />
           <Route path="/agent-chat" element={<Layout><AgentChat /></Layout>} />
+          <Route path="/image-interpret" element={<Layout><ImageInterpret /></Layout>} />
         </Routes>
       </div>
     </Router>

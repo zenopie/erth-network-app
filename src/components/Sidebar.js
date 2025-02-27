@@ -108,6 +108,9 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             <li>
               <Link to="/agent-chat">Agent Chat</Link>
             </li>
+            <li>
+              <Link to="/image-interpret">image-interpret</Link>
+            </li>
           </ul>
         </li>
       </ul>

@@ -12,9 +12,8 @@ const AgentChat = () => {
   const [walletProvider, setWalletProvider] = useState("cdp");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-
   useEffect(() => {
-    showLoadingScreen(false); 
+    showLoadingScreen(false);
   }, []);
 
   const handleSendMessage = async () => {
@@ -30,9 +29,8 @@ const AgentChat = () => {
       });
       const result = await response.json();
       const content = result.message
-      ? `${result.message}${result.txHash ? `\nTransaction: ${result.txHash}` : ''}`
-      : result.error || "Unexpected response";    
-    
+        ? `${result.message}${result.txHash ? `\nTransaction: ${result.txHash}` : ''}`
+        : result.error || "Unexpected response";
       setMessages((prev) => [...prev, { role: "assistant", content: content.trim() }]);
     } catch (error) {
       setMessages((prev) => [
@@ -45,29 +43,29 @@ const AgentChat = () => {
   };
 
   return (
-    <div className="main-container">
-      <div className="chat-container">
+    <div className="agent-main-container">
+      <div className="agent-chat-container">
         {messages.map((msg, index) => (
-          <div key={index} className={`message ${msg.role}`}>
-            <div className="message-content">
+          <div key={index} className={`agent-message ${msg.role}`}>
+            <div className="agent-message-content">
               <ReactMarkdown>{msg.content}</ReactMarkdown>
             </div>
           </div>
         ))}
         {loading && (
-          <div className="loading-container">
+          <div className="agent-loading-container">
             Thinking
-            <span className="loading-dots">
-              <span className="dot"></span>
-              <span className="dot"></span>
-              <span className="dot"></span>
+            <span className="agent-loading-dots">
+              <span className="agent-dot"></span>
+              <span className="agent-dot"></span>
+              <span className="agent-dot"></span>
             </span>
           </div>
         )}
       </div>
-      <div className="chat-input-container">
+      <div className="agent-input-container">
         <textarea
-          className="chat-input"
+          className="agent-chat-input"
           placeholder="Ask AI to send crypto..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -78,14 +76,14 @@ const AgentChat = () => {
             }
           }}
         />
-        <button className="send-button" onClick={handleSendMessage} disabled={loading}>
+        <button className="agent-send-button" onClick={handleSendMessage} disabled={loading}>
           <FiSend size={18} />
         </button>
-        <div className="settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
+        <div className="agent-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
           <FiSettings size={20} />
         </div>
         {settingsOpen && (
-          <div className="settings-dropdown">
+          <div className="agent-settings-dropdown">
             <label>
               <input
                 type="checkbox"
