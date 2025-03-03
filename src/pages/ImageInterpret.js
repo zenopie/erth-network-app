@@ -1,53 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { FiSettings, FiUpload } from "react-icons/fi";
-import ReactMarkdown from "react-markdown";
 import "./ImageInterpret.css";
 import { showLoadingScreen } from "../utils/uiUtils";
+import StatusModal from "../components/StatusModal";
 
 const ImageInterpret = () => {
-  const [messages, setMessages] = useState([]);
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [blockchainEnabled, setBlockchainEnabled] = useState(true);
-  const [walletProvider, setWalletProvider] = useState("cdp");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [animationState, setAnimationState] = useState("loading");
+  const [jsonResponse, setJsonResponse] = useState(null);
+  const [hasBlockchainError, setHasBlockchainError] = useState(false);
 
   useEffect(() => {
     showLoadingScreen(false);
   }, []);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       const validTypes = ["image/jpeg", "image/png"];
       if (!validTypes.includes(selectedFile.type)) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Error: Please upload a JPEG or PNG image." },
-        ]);
+        console.error("Invalid file type");
         return;
       }
       setFile(selectedFile);
+      await handleUploadImage(selectedFile);
     }
   };
 
-  const handleUploadImage = async () => {
-    if (!file) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Please select an image to upload." },
-      ]);
-      return;
-    }
-
-    setLoading(true);
-    setMessages((prev) => [...prev, { role: "user", content: "Processing uploaded image..." }]); // Fixed: Removed extra parenthesis
+  const handleUploadImage = async (selectedFile) => {
+    setIsModalOpen(true);
+    setAnimationState("loading");
+    setHasBlockchainError(false);
 
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("image", selectedFile);
 
     try {
-      const response = await fetch("http://localhost:3002/api/upload-image", {
+      const response = await fetch("http://localhost:3005/api/upload-image", {
         method: "POST",
         body: formData,
       });
@@ -58,105 +47,64 @@ const ImageInterpret = () => {
       }
 
       const result = await response.json();
+      console.log("Server response:", result);
 
-      // Validate and format the response
-      let content;
-      if (!result || typeof result !== "object") {
-        content = "Error: Invalid response from server.";
-      } else if (result.error) {
-        content = `Error: ${result.error}`;
-      } else if (result.message) {
-        const msg = result.message;
-        if (typeof msg === "string") {
-          content = msg;
-        } else if (msg.identity && "isIdentity" in msg) {
-          // Format identity object into a readable string
-          content = msg.isIdentity
-            ? `**Identity Extracted:**\n- Country: ${msg.identity.Country}\n- ID Number: ${msg.identity["ID Number"]}\n- Name: ${msg.identity.Name}`
-            : `Unable to interpret as a complete ID: ${msg.identity}`;
-        } else {
-          content = "Error: Unexpected response format.";
-        }
+      if (!result || typeof result !== "object" || !result.response) {
+        setAnimationState("error");
       } else {
-        content = "Error: No message received from server.";
+        setJsonResponse(result.response);
+        // Check for blockchain error
+        if (result.response.blockchain?.status === "error") {
+          setHasBlockchainError(true);
+        }
+        setAnimationState("success");
+        document.querySelector("#register-box").classList.add("remove");
+        document.querySelector("#complete-box").classList.remove("remove");
       }
-
-      setMessages((prev) => [...prev, { role: "assistant", content }]);
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Error: ${error.message}` },
-      ]);
+      console.error("Error:", error);
+      setAnimationState("error");
     } finally {
-      setLoading(false);
       setFile(null);
-      // Reset file input
       const fileInput = document.querySelector(".image-file-input");
       if (fileInput) fileInput.value = "";
     }
   };
 
   return (
-    <div className="image-main-container">
-      <div className="image-chat-container">
-        {messages.map((msg, index) => (
-          <div key={index} className={`image-message ${msg.role}`}>
-            <div className="image-message-content">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="image-loading-container">
-            Processing
-            <span className="image-loading-dots">
-              <span className="image-dot"></span>
-              <span className="image-dot"></span>
-              <span className="image-dot"></span>
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="image-input-container">
+    <>
+      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
+
+      <div id="register-box" className="test-box">
+        <img
+          src="/images/passport.png"
+          width={350}
+          alt="Passport"
+          style={{ filter: "drop-shadow(25px 25px 25px #aaa)" }}
+          className="logo-img"
+        />
         <input
           type="file"
           accept="image/jpeg,image/png"
           onChange={handleFileChange}
           className="image-file-input"
-          disabled={loading}
+          style={{ display: "none" }}
+          id="file-input"
         />
-        <button
-          className="image-send-button"
-          onClick={handleUploadImage}
-          disabled={loading || !file}
-        >
-          <FiUpload size={18} />
+        <button onClick={() => document.getElementById("file-input").click()} className="claim-button">
+          Register
         </button>
-        <div className="image-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
-          <FiSettings size={20} />
-        </div>
-        {settingsOpen && (
-          <div className="image-settings-dropdown">
-            <label>
-              <input
-                type="checkbox"
-                checked={blockchainEnabled}
-                onChange={(e) => setBlockchainEnabled(e.target.checked)}
-              />
-              Enable Blockchain Actions
-            </label>
-            <label>Wallet Provider:</label>
-            <select
-              value={walletProvider}
-              onChange={(e) => setWalletProvider(e.target.value)}
-            >
-              <option value="cdp">Coinbase CDP</option>
-              <option value="custom">Custom Wallet</option>
-            </select>
-          </div>
-        )}
       </div>
-    </div>
+
+      <div id="complete-box" className="test-box remove">
+        <img src="/images/anml.png" width={350} alt="ANML Token" className="logo-img" />
+        <span className="success-text">
+          {hasBlockchainError ? "Image processed but blockchain transaction failed" : "Image processed successfully!"}
+        </span>
+        {hasBlockchainError && <span className="error-text">Please try again later</span>}
+        {jsonResponse && <pre className="json-response">{JSON.stringify(jsonResponse, null, 2)}</pre>}
+      </div>
+    </>
   );
 };
 

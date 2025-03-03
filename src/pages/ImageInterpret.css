@@ -1,171 +1,85 @@
 /* ImageInterpret.css */
 
-/* Global Styles (assumed to be in a global stylesheet, included for reference) */
-html, body {
+/* Global Styles */
+html,
+body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   background: #f9fafb;
 }
 
-/* Main Container */
-.image-main-container {
-  width: 100%;
-  margin: auto;
-  font-family: 'Inter', sans-serif;
-  min-height: 100vh;
-  position: relative;
-}
-
-/* Chat Container */
-.image-chat-container {
-  position: fixed;
-  top: 20px;
+/* Box Styling */
+.test-box {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   width: 100%;
-  max-width: 800px;
-  padding: 0 20px;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-width: 400px;
   box-sizing: border-box;
 }
 
-/* Message Styling */
-.image-message {
-  padding: 10px;
-  text-align: right; /* User messages aligned right by default */
+.logo-img {
+  margin-bottom: 20px;
+  filter: drop-shadow(25px 25px 25px #aaa);
 }
 
-.image-message.assistant {
-  text-align: left; /* Assistant messages aligned left */
-}
-
-.image-message-content {
-  display: inline-block;
-  max-width: 100%;
-  padding: 20px;
-  border-radius: 12px;
-  font-size: 15px;
-  line-height: 1.6;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-}
-
-.image-message.assistant .image-message-content {
-  background: #f3faf7;
-  border: 1px solid #2dc08d30;
-}
-
-/* Input Container */
-.image-input-container {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 800px;
-  max-width: 80%;
-  padding: 12px 24px;
-}
-
-/* File Input */
-.image-file-input {
+.claim-button {
+  margin-top: 20px;
+  background-color: white;
+  border: 5px solid #4056a1;
+  font-size: 25px;
+  border-radius: 30px;
+  color: #293462;
+  padding: 5px 20px;
+  max-width: 200px;
   width: 100%;
-  padding: 12px 60px 12px 15px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #374151;
-  border-radius: 6px;
-  font-size: 15px;
-}
-
-/* Send Button */
-.image-send-button {
-  position: absolute;
-  right: 34px;
-  bottom: 25px;
-  background: #2dc08d;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.image-send-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* Settings Icon and Dropdown */
-.image-settings-icon {
-  position: absolute;
-  top: 20px;
-  right: 35px;
-  cursor: pointer;
-  color: #374151;
-}
-
-.image-settings-dropdown {
-  position: absolute;
-  bottom: 100%;
-  right: 35px;
-  margin-bottom: 8px;
-  background: #ffffff;
-  padding: 12px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #374151;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.image-settings-dropdown label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.image-settings-dropdown select {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  background: #fff;
-  color: #374151;
-  font-size: 14px;
-}
-
-/* Loading Animation */
-.image-loading-container {
-  padding: 15px;
-  color: #888;
+  box-sizing: border-box;
   text-align: center;
-  font-style: italic;
+  cursor: pointer;
 }
 
-@keyframes image-dot-flash {
-  0%, 80%, 100% { opacity: 0; }
-  40% { opacity: 1; }
+.claim-button:hover {
+  background-color: #eee;
+  transition: all 0.3s ease;
 }
 
-.image-loading-dots {
-  display: inline-flex;
-  gap: 4px;
+.success-text {
+  font-size: 25px;
+  font-weight: bold;
+  margin-top: 20px;
+  text-align: center;
 }
 
-.image-dot {
-  width: 6px;
-  height: 6px;
-  background: #888;
-  border-radius: 50%;
-  animation: image-dot-flash 1.4s infinite linear;
+.error-text {
+  color: #f13c20;
+  font-size: 18px;
+  margin-top: 10px;
+  text-align: center;
 }
 
-.image-dot:nth-child(2) {
-  animation-delay: 0.2s;
+.json-response {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.image-dot:nth-child(3) {
-  animation-delay: 0.4s;
+.remove {
+  display: none !important;
 }

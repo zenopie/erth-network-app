@@ -5,18 +5,13 @@ const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
 const corsProxy = require("cors-anywhere");
-const {
-  initAnalytics,
-  getLatestData,
-  getAllData,
-} = require("./analyticsManager");
+const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
 const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
 
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
-
 
 app.post("/api/save-conversation", async (req, res) => {
   console.log("/api/save-conversation");
@@ -65,7 +60,6 @@ app.post("/api/save-conversation", async (req, res) => {
   }
 });
 
-
 const proxy = corsProxy.createServer({
   originWhitelist: [], // allow all origins
   removeHeaders: ["cookie", "cookie2"],
@@ -76,7 +70,7 @@ const proxy = corsProxy.createServer({
       res.end("Self referencing request blocked");
       return true;
     }
-  }
+  },
 });
 
 app.use("/api/cors", (req, res) => {
@@ -114,8 +108,6 @@ function get_value(file) {
 // Retrieve secret values from files
 const API_SECRET = get_value("API_SECRET.txt");
 const WALLET_KEY = get_value("WALLET_KEY.txt");
-
-
 
 // Initialize wallet and Secret Network client
 const wallet = new Wallet(WALLET_KEY);
@@ -181,7 +173,6 @@ function save_pending(array, file) {
     console.log("Array written to file successfully.");
   });
 }
-
 
 // Function to generate HMAC signature
 function generateSignature(payload, secret) {
@@ -272,7 +263,7 @@ app.post("/api/veriff/decisions/", async (req, res) => {
         document_number: verification.document.number ? verification.document.number.value : "",
         id_type: verification.document.type ? verification.document.type.value : "",
         document_expiration: document_expiration ? parseInt(document_expiration) : 0,
-      };      
+      };
       console.log(userObject);
       const message_object = {
         register: {
@@ -328,8 +319,6 @@ app.get("/api/pending/:address", (req, res) => {
   const pending = pending_verifications.includes(address);
   res.json({ pending: pending });
 });
-
-
 
 // Start the server
 let server = require("http").Server(app);
