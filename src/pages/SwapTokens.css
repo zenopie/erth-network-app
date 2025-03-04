@@ -378,3 +378,11 @@
 .caret-icon.open {
   transform: rotate(180deg);
 }
+
+.swap-page-box h2 {
+  margin-bottom: 22px;
+  text-align: center;
+  font-size: 24px;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 600;
+}

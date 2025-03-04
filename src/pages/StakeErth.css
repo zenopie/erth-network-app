@@ -1,191 +1,432 @@
-/* Staking Page Styles */
+/* StakingErth Page Styling - Cleaner Style */
 
-/* Staking Page Box */
+/* Main Staking Container */
 .stake-page-box {
-    position: relative;
-    width: 100%;
-    max-width: 425px;
-    background-color: #ffffff;
-    padding: 30px; /* Reduced padding to make the box shorter */
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    margin: 0 auto;
+  width: 100%;
+  max-width: 450px;
+  background-color: #ffffff;
+  padding: 40px 30px 30px 30px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 /* Heading Styling */
 .stake-page-box h2 {
-    margin-bottom: 15px; /* Reduced margin to save space */
-    text-align: center;
-    font-size: 24px; /* Adjusted font size */
+  margin-bottom: 22px;
+  text-align: center;
+  font-size: 24px;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 600;
 }
 
 /* Tab Navigation Styling */
 .stake-page-tab {
-    display: flex;
-    justify-content: space-evenly;
-    margin-bottom: 25px; /* Reduced margin */
-    width: 100%;
-    background-color: #F1F0EA;
-    border-radius: 12px; /* Reduced border radius for a sleeker look */
-    overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 25px;
+  width: 100%;
+  background-color: #f1f0ea; /* Light beige */
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .stake-page-tab button {
-    background-color: #F1F0EA;
-    border: none;
-    outline: none;
-    cursor: pointer;
-    padding: 10px 15px; /* Reduced padding */
-    transition: background-color 0.3s ease;
-    font-size: 14px; /* Slightly smaller font size */
-    flex-grow: 1;
-    text-align: center;
-    color: #333;
-    position: relative;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 0;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  flex-grow: 1;
+  text-align: center;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 500;
+  border-radius: 0;
 }
 
 .stake-page-tab button:first-child {
-    border-radius: 12px 0 0 12px;
+  border-radius: 10px 0 0 10px;
 }
 
 .stake-page-tab button:last-child {
-    border-radius: 0 12px 12px 0;
+  border-radius: 0 10px 10px 0;
 }
 
 .stake-page-tab button.active {
-    background-color: #4CAF50;
-    color: white;
+  background-color: #4caf50;
+  color: white;
+  transform: none;
+  box-shadow: none;
 }
 
 .stake-page-tab button:not(.active):hover {
-    background-color: #ddd;
+  background-color: #ccc;
+  color: #1e3a8a; /* Keep royal blue on hover */
 }
 
-/* Tab Content Styling */
+/* Tab Content Styling - Fix display issue */
 .stake-page-tabcontent {
-    width: 100%;
-    padding: 0 10px; /* Reduced padding */
-    margin-top: -15px; /* Adjusted to overlap with tabs */
-    display: flex;
-    flex-direction: column;
+  width: 100%;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Input Group Styling */
-.stake-page-input-group {
-    margin-top: 15px; /* Reduced margin */
-    width: 100%;
-    display: flex;
-    flex-direction: column;
+.stake-page-tabcontent.active {
+  display: block;
 }
 
-/* Label Wrapper Styling */
-.stake-page-label-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 5px; /* Reduced margin */
-    width: 100%;
+/* Section Styling */
+.stake-page-section {
+  margin-bottom: 20px;
 }
 
-/* Input Label Styling */
-.stake-page-input-label {
-    font-size: 14px; /* Slightly smaller font size */
-    color: #333;
+.stake-page-section h3 {
+  font-size: 18px;
+  color: #1e3a8a; /* Royal blue */
+  margin-bottom: 15px;
+  text-align: center;
+  font-weight: 600;
 }
 
-/* Token Balance and Max Button */
-.stake-page-token-balance {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end; /* Align content to the right */
-    font-size: 12px; /* Reduced font size */
+/* Divider */
+.stake-page-divider {
+  height: 1px;
+  background-color: #e0e0e0; /* Lighter gray divider */
+  width: 100%;
+  margin: 24px 0;
 }
 
-.stake-page-token-balance span {
-    margin-right: 8px;
-}
-
-/* Max Button */
-.stake-page-max-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 4px 8px; /* Reduced padding */
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.stake-page-max-button:hover {
-    background-color: #45a049;
-}
-
-/* Input Wrapper Styling */
-.stake-page-input-wrapper {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Input Styling */
-.stake-page-input {
-    background-color: #F1F0EA;
-    width: 100%;
-    padding: 10px; /* Reduced padding */
-    font-size: 16px;
-    border: none;
-    text-align: right;
-    border-radius: 8px;
-    -moz-appearance: textfield;
-}
-
-.stake-page-input::-webkit-outer-spin-button,
-.stake-page-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-/* Button Styling */
-.stake-page-button {
-    width: 100%;
-    max-width: 400px;
-    padding: 12px; /* Reduced padding */
-    font-size: 16px; /* Slightly smaller font size */
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 15px; /* Reduced margin */
-}
-
-.stake-page-button:hover {
-    background-color: #45a049;
-}
-
-/* Result Styling */
-.stake-page-result {
-    margin-top: 15px; /* Reduced margin */
-    font-size: 14px; /* Slightly smaller font size */
-    color: #333;
-    text-align: center;
+/* Info Display Section */
+.stake-page-info-display {
+  background-color: transparent;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: none;
 }
 
 /* Info Row Styling */
 .stake-page-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px; /* Reduced margin */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.stake-page-info-row:last-child {
+  border-bottom: none;
 }
 
 .stake-page-info-label {
-    font-size: 14px; /* Adjusted font size */
-    font-weight: bold;
-    color: #333;
+  color: #1e3a8a; /* Royal blue */
+  font-size: 14px;
 }
 
 .stake-page-info-value {
-    font-size: 14px;
-    color: #333;
-    text-align: right;
+  font-size: 15px;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Input Group Styling */
+.stake-page-input-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Label Wrapper Styling */
+.stake-page-label-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* Input Label Styling */
+.stake-page-input-label {
+  font-size: 14px;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 500;
+}
+
+/* Token Balance and Max Button */
+.stake-page-token-balance {
+  display: flex;
+  align-items: center;
+}
+
+.stake-page-token-balance span {
+  font-size: 13px;
+  color: #555;
+}
+
+/* Max Button */
+.stake-page-max-button {
+  background-color: #66bb6a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.stake-page-max-button:hover {
+  background-color: #4caf50;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(76, 175, 80, 0.3);
+}
+
+/* Inline Button for viewing key */
+.stake-page-inline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background-color: #43a047;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stake-page-inline-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-1px);
+}
+
+/* Input Wrapper Styling */
+.stake-page-input-wrapper {
+  position: relative;
+}
+
+/* Input Styling */
+.stake-page-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 8px;
+  font-size: 16px;
+  color: #333;
+  background-color: #f1f0ea; /* Light beige */
+  transition: all 0.3s ease;
+}
+
+.stake-page-input:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+.stake-page-input::-webkit-outer-spin-button,
+.stake-page-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Note text */
+.stake-page-note {
+  text-align: center;
+  color: #1e3a8a; /* Royal blue */
+  font-size: 14px;
+  margin: 10px 0;
+  font-style: italic;
+}
+
+/* Button Styling */
+.stake-page-button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.stake-page-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.stake-page-button:disabled {
+  background-color: #4caf50;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.85;
+  position: relative;
+}
+
+.stake-page-button:disabled:hover {
+  background-color: #4caf50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  transform: none;
+}
+
+/* Tooltip styling for disabled buttons */
+.stake-page-button[title]:disabled:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-in forwards;
+}
+
+/* Arrow for the tooltip */
+.stake-page-button[title]:disabled:hover::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent;
+  margin-bottom: -2px;
+  z-index: 10;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Rewards Section Styling */
+.stake-page-rewards-section {
+  background-color: #f1f8e9; /* Light green */
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 20px;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.stake-page-rewards-section h3 {
+  font-size: 18px;
+  color: #1e3a8a; /* Royal blue */
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.rewards-value {
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 600;
+}
+
+.stake-page-rewards-section .stake-page-button {
+  background-color: #4caf50;
+}
+
+.stake-page-rewards-section .stake-page-button:hover {
+  background-color: #388e3c;
+}
+
+/* Unbonding Entries Section - Cleaner style without border */
+.unbonding-entries-section {
+  background-color: #f1f0ea; /* Light beige */
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 20px;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.unbonding-entries-section h3 {
+  font-size: 18px;
+  color: #1e3a8a; /* Royal blue */
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.unbonding-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.unbonding-item {
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: white;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.unbonding-item:last-child {
+  margin-bottom: 0;
+}
+
+.unbonding-amount,
+.unbonding-date {
+  display: flex;
+  align-items: center;
+}
+
+.unbonding-label {
+  color: #1e3a8a; /* Royal blue */
+  font-size: 14px;
+  margin-right: 5px;
+}
+
+.unbonding-value {
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .stake-page-box {
+    padding: 25px 20px;
+    border-radius: 15px;
+  }
+
+  .stake-page-box h2 {
+    font-size: 22px;
+  }
+
+  .stake-page-tab button {
+    font-size: 13px;
+    padding: 8px 0;
+  }
 }
