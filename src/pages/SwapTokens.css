@@ -38,12 +38,13 @@
   font-size: 14px;
   font-weight: 600;
   border-radius: 8px;
-  border: 1px solid #ccc;
+  border: none;
   background-color: #f9f9f9;
   outline: none;
   cursor: pointer;
-  margin-left: 8px; /* Add space between the label and dropdown */
-  flex-grow: 0; /* Prevent the dropdown from growing */
+  margin-left: 8px;
+  flex-grow: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .swap-token-balance {
@@ -58,9 +59,10 @@
   align-items: center;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #ccc;
-  margin-top: 10px; /* Add margin to create space between select and input */
+  border: none;
+  margin-top: 10px;
   position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .swap-input-logo {
@@ -149,10 +151,11 @@
   width: 60px;
   padding: 5px 8px;
   font-size: 14px;
-  border: 1px solid rgba(76, 175, 80, 0.5);
+  border: none;
   border-radius: 6px;
   text-align: center;
   background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .swap-price-info {
@@ -160,7 +163,7 @@
   padding: 0;
   background-color: #f8fbf8;
   border-radius: 12px;
-  border: 1px solid rgba(76, 175, 80, 0.2);
+  border: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   font-size: 14px;
   overflow: hidden;
@@ -240,12 +243,13 @@
   font-size: 14px;
   font-weight: 600;
   border-radius: 8px;
-  border: 1px solid #ccc;
+  border: none;
   background-color: #f9f9f9;
   outline: none;
   cursor: pointer;
-  margin-left: 8px; /* Add space between the label and dropdown */
-  flex-grow: 0; /* Prevent the dropdown from growing */
+  margin-left: 8px;
+  flex-grow: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Add styling for token balance display */
@@ -262,9 +266,10 @@
   align-items: center;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #ccc;
-  margin-top: 10px; /* Add margin to create space between select and input */
+  border: none;
+  margin-top: 10px;
   position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Input Logo Styling */

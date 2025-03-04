@@ -325,12 +325,12 @@
 
 /* Rewards Section Styling */
 .stake-page-rewards-section {
-  background-color: #f1f8e9; /* Light green */
+  background-color: #f8fbf8;
   border-radius: 12px;
   padding: 18px;
   margin-top: 20px;
   border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .stake-page-rewards-section h3 {
