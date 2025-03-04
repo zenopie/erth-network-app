@@ -1,25 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { querySnipBalance, query, snip, requestViewingKey } from '../utils/contractUtils';
-import contracts from '../utils/contracts'; // e.g. { exchange: { contract, hash } }
-import tokens from '../utils/tokens';
-import { calculateMinimumReceived } from '../utils/swapTokensUtils'; // Only for minReceive
-import { showLoadingScreen } from '../utils/uiUtils';
-import { toMicroUnits } from '../utils/mathUtils';
-import StatusModal from '../components/StatusModal';
-import './SwapTokens.css';
+import React, { useState, useEffect, useCallback } from "react";
+import { querySnipBalance, query, snip, requestViewingKey } from "../utils/contractUtils";
+import contracts from "../utils/contracts"; // e.g. { exchange: { contract, hash } }
+import tokens from "../utils/tokens";
+import { calculateMinimumReceived } from "../utils/swapTokensUtils"; // Only for minReceive
+import { showLoadingScreen } from "../utils/uiUtils";
+import { toMicroUnits } from "../utils/mathUtils";
+import StatusModal from "../components/StatusModal";
+import "./SwapTokens.css";
 
 const SwapTokens = ({ isKeplrConnected }) => {
-  const [fromToken, setFromToken] = useState('ANML');
-  const [toToken, setToToken] = useState('ERTH');
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
+  const [fromToken, setFromToken] = useState("ANML");
+  const [toToken, setToToken] = useState("ERTH");
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
 
   const [fromBalance, setFromBalance] = useState(null);
   const [toBalance, setToBalance] = useState(null);
 
   const [slippage, setSlippage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [animationState, setAnimationState] = useState('loading');
+  const [animationState, setAnimationState] = useState("loading");
+  const [showDetails, setShowDetails] = useState(false);
 
   // ========== FETCH USER BALANCE & Setup on load ==========
   const fetchData = useCallback(async () => {
@@ -30,7 +31,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
     showLoadingScreen(true);
     try {
       const fromBal = await querySnipBalance(tokens[fromToken]);
-      const toBal   = await querySnipBalance(tokens[toToken]);
+      const toBal = await querySnipBalance(tokens[toToken]);
 
       setFromBalance(isNaN(fromBal) ? "Error" : parseFloat(fromBal));
       setToBalance(isNaN(toBal) ? "Error" : parseFloat(toBal));
@@ -43,12 +44,14 @@ const SwapTokens = ({ isKeplrConnected }) => {
     }
   }, [isKeplrConnected, fromToken, toToken]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // ========== Query the contract to simulate a swap ==========
   const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
-    if (!isKeplrConnected) return '';
-    if (!inputAmount) return '';
+    if (!isKeplrConnected) return "";
+    if (!inputAmount) return "";
 
     try {
       // Build the query
@@ -60,15 +63,11 @@ const SwapTokens = ({ isKeplrConnected }) => {
         simulate_swap: {
           input_token: tokens[fromTk].contract, // e.g. "secret1xyz..."
           amount: amountInMicro.toString(),
-          output_token: tokens[toTk].contract
-        }
+          output_token: tokens[toTk].contract,
+        },
       };
 
-      const result = await query(
-        contracts.exchange.contract,
-        contracts.exchange.hash,
-        simulateMsg
-      );
+      const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
 
       // result => { output_amount, intermediate_amount, total_fee }
       const out = result.output_amount;
@@ -81,14 +80,14 @@ const SwapTokens = ({ isKeplrConnected }) => {
       return outNumber.toFixed(6);
     } catch (err) {
       console.error("[simulateSwapQuery] error:", err);
-      return '';
+      return "";
     }
   };
 
   // ========== Handle From Amount Change => do a contract simulation ==========
   const handleFromAmountChange = async (val) => {
     setFromAmount(val);
-    setToAmount('');
+    setToAmount("");
     if (!val || isNaN(val) || parseFloat(val) <= 0) {
       return;
     }
@@ -112,7 +111,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
     }
 
     setIsModalOpen(true);
-    setAnimationState('loading');
+    setAnimationState("loading");
 
     try {
       // Minimum received (slippage)
@@ -140,12 +139,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
         inputInMicro
       );
 
-      setAnimationState('success');
-      setFromAmount('');
-      setToAmount('');
+      setAnimationState("success");
+      setFromAmount("");
+      setToAmount("");
     } catch (err) {
       console.error("[handleSwap] error:", err);
-      setAnimationState('error');
+      setAnimationState("error");
     } finally {
       // refresh balances
       fetchData();
@@ -160,8 +159,8 @@ const SwapTokens = ({ isKeplrConnected }) => {
       setToToken(fromToken);
     }
     setFromToken(selected);
-    setFromAmount('');
-    setToAmount('');
+    setFromAmount("");
+    setToAmount("");
   };
 
   const handleToTokenChange = (e) => {
@@ -170,12 +169,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
       setFromToken(toToken);
     }
     setToToken(selected);
-    setFromAmount('');
-    setToAmount('');
+    setFromAmount("");
+    setToAmount("");
   };
 
   const handleMaxFromAmount = () => {
-    if (typeof fromBalance === 'number') {
+    if (typeof fromBalance === "number") {
       handleFromAmountChange(fromBalance.toString());
     }
   };
@@ -186,56 +185,50 @@ const SwapTokens = ({ isKeplrConnected }) => {
   };
 
   if (!isKeplrConnected) {
-    return <div className="error-message">Connect Keplr first</div>;
+    return <div className="swap-error-message">Connect Keplr first</div>;
   }
 
   return (
     <div className="swap-box">
-      <StatusModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        animationState={animationState}
-      />
+      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
 
       <h2 className="swap-title">Swap Tokens</h2>
 
       {/* FROM */}
-      <div className="input-group">
-        <div className="label-wrapper">
-          <label htmlFor="from-token" className="input-label">From</label>
-          <select
-            id="from-token"
-            className="token-select"
-            value={fromToken}
-            onChange={handleFromTokenChange}
-          >
+      <div className="swap-input-group">
+        <div className="swap-label-wrapper">
+          <label htmlFor="from-token" className="swap-input-label">
+            From
+          </label>
+          <select id="from-token" className="swap-token-select" value={fromToken} onChange={handleFromTokenChange}>
             {Object.keys(tokens).map((tk) => (
-              <option key={tk} value={tk}>{tk}</option>
+              <option key={tk} value={tk}>
+                {tk}
+              </option>
             ))}
           </select>
 
-          <div className="token-balance">
+          <div className="swap-token-balance">
             {fromBalance === "Error" ? (
-              <button
-                className="max-button"
-                onClick={() => handleRequestViewingKey(tokens[fromToken])}
-              >
+              <button className="swap-max-button" onClick={() => handleRequestViewingKey(tokens[fromToken])}>
                 Get Viewing Key
               </button>
             ) : (
               <>
-                Balance: {fromBalance ?? '...'}
-                <button className="max-button" onClick={handleMaxFromAmount}>Max</button>
+                Balance: {fromBalance ?? "..."}
+                <button className="swap-max-button" onClick={handleMaxFromAmount}>
+                  Max
+                </button>
               </>
             )}
           </div>
         </div>
 
-        <div className="input-wrapper">
-          <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className="input-logo" />
+        <div className="swap-input-wrapper">
+          <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className="swap-input-logo" />
           <input
             type="number"
-            className="swap-input"
+            className="swap-token-input"
             placeholder="Amount"
             value={fromAmount}
             onChange={(e) => handleFromAmountChange(e.target.value)}
@@ -244,77 +237,91 @@ const SwapTokens = ({ isKeplrConnected }) => {
       </div>
 
       {/* TO (read‐only) */}
-      <div className="input-group">
-        <div className="label-wrapper">
-          <label htmlFor="to-token" className="input-label">To</label>
-          <select
-            id="to-token"
-            className="token-select"
-            value={toToken}
-            onChange={handleToTokenChange}
-          >
+      <div className="swap-input-group">
+        <div className="swap-label-wrapper">
+          <label htmlFor="to-token" className="swap-input-label">
+            To
+          </label>
+          <select id="to-token" className="swap-token-select" value={toToken} onChange={handleToTokenChange}>
             {Object.keys(tokens).map((tk) => (
-              <option key={tk} value={tk}>{tk}</option>
+              <option key={tk} value={tk}>
+                {tk}
+              </option>
             ))}
           </select>
 
-          <div className="token-balance">
+          <div className="swap-token-balance">
             {toBalance === "Error" ? (
-              <button
-                className="max-button"
-                onClick={() => handleRequestViewingKey(tokens[toToken])}
-              >
+              <button className="swap-max-button" onClick={() => handleRequestViewingKey(tokens[toToken])}>
                 Get Viewing Key
               </button>
             ) : (
-              <>Balance: {toBalance ?? '...'} </>
+              <>Balance: {toBalance ?? "..."}</>
             )}
           </div>
         </div>
 
-        <div className="input-wrapper">
-          <img src={tokens[toToken].logo} alt={`${toToken} logo`} className="input-logo" />
+        <div className="swap-input-wrapper">
+          <img src={tokens[toToken].logo} alt={`${toToken} logo`} className="swap-input-logo" />
           <input
             type="number"
-            className="swap-input"
-            placeholder="Amount"
+            className="swap-token-input"
+            placeholder="Output amount"
             value={toAmount}
+            disabled
             readOnly
           />
         </div>
       </div>
 
-      {/* SWAP BUTTON */}
-      <button className="swap-button" onClick={handleSwap}>Swap</button>
+      {/* Swap Button */}
+      <button className="swap-button" onClick={handleSwap} disabled={!fromAmount || fromAmount <= 0 || !toAmount}>
+        Swap
+      </button>
 
-      <details className="expandable-info">
-        <summary><p>View Details</p></summary>
-        <div className="slippage-tolerance">
-          <label htmlFor="slippage-input" className="slippage-label">
-            Slippage Tolerance (%)
-          </label>
-          <input
-            type="number"
-            id="slippage-input"
-            className="slippage-input"
-            value={slippage}
-            onChange={(e) => setSlippage(e.target.value)}
-            min="0.1"
-            max="5"
-            step="0.1"
-          />
-        </div>
-        <div className="info-display">
-          <div className="info-row">
-            <span className="info-label">Minimum Received:</span>
-            <span className="info-value">
-              {toAmount
-                ? calculateMinimumReceived(toAmount, slippage).toFixed(6)
-                : ''}
+      {/* Details Toggle Button */}
+      {fromAmount && toAmount && (
+        <button className="swap-details-toggle" onClick={() => setShowDetails(!showDetails)}>
+          {showDetails ? "Hide Details" : "Show Details"}
+          <span className={`caret-icon ${showDetails ? "open" : ""}`}>▼</span>
+        </button>
+      )}
+
+      {/* Info & Notes */}
+      {fromAmount && toAmount && (
+        <div className={`swap-price-info ${showDetails ? "visible" : ""}`}>
+          <p>
+            <span>Rate:</span>
+            <span>
+              1 {fromToken} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken}
             </span>
+          </p>
+          <p>
+            <span>Minimum received:</span>
+            <span>
+              {calculateMinimumReceived(toAmount, slippage)} {toToken}
+            </span>
+          </p>
+          <div className="swap-slippage-tolerance">
+            <label htmlFor="slippage" className="swap-slippage-label">
+              Slippage Tolerance:
+            </label>
+            <div>
+              <input
+                id="slippage"
+                type="number"
+                className="swap-slippage-input"
+                value={slippage}
+                onChange={(e) => setSlippage(e.target.value)}
+                min="0.1"
+                max="50"
+                step="0.1"
+              />
+              <span>%</span>
+            </div>
           </div>
         </div>
-      </details>
+      )}
     </div>
   );
 };

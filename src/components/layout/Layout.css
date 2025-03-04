@@ -1,0 +1,33 @@
+/* Layout Styles */
+.layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+}
+
+/*--- Loading Screen Styling ---*/
+#loading-screen {
+  background: url("../../images/loading.gif") no-repeat center center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  background-size: 800px;
+  background-color: rgba(255, 255, 255, 0.9);
+}

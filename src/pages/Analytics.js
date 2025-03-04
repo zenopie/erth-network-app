@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Line } from 'react-chartjs-2';
-import 'chart.js/auto'; // For Chart.js v4
-import './Analytics.css';
-import { showLoadingScreen } from '../utils/uiUtils';
+import React, { useEffect, useState } from "react";
+import { Line } from "react-chartjs-2";
+import "chart.js/auto"; // For Chart.js v4
+import "./Analytics.css";
+import { showLoadingScreen } from "../utils/uiUtils";
 
 const Analytics = () => {
   const [latest, setLatest] = useState(null);
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    fetch('/api/analytics')
+    fetch("/api/analytics")
       .then((res) => res.json())
       .then((data) => {
         setLatest(data.latest);
@@ -24,60 +24,56 @@ const Analytics = () => {
     labels: history.map((d) => new Date(d.timestamp).toLocaleTimeString()),
     datasets: [
       {
-        label: 'ERTH Price (USD)',
+        label: "ERTH Price (USD)",
         data: history.map((d) => d.erthPrice),
         fill: false,
-        borderColor: 'blue',
-        tension: 0.1
-      }
-    ]
+        borderColor: "blue",
+        tension: 0.1,
+      },
+    ],
   };
 
   return (
     <div className="analytics-page">
       <h2>Analytics</h2>
       {!latest ? (
-        <p>Loading data...</p>
+        <p className="analytics-loading-message">Loading data...</p>
       ) : (
         <>
           <div className="analytics-info">
-            <div className="analytics-row">
-              <span className="analytics-label">ERTH Price:</span>
-              <span className="analytics-value">
-                ${latest.erthPrice.toFixed(6)}
-              </span>
+            <div className="analytics-info-item">
+              <span className="analytics-info-label">ERTH Price:</span>
+              <span className="analytics-info-value">${latest.erthPrice.toFixed(6)}</span>
             </div>
 
-            <div className="analytics-row">
-              <span className="analytics-label">Market Cap:</span>
-              <span className="analytics-value">
-                ${latest.erthMarketCap.toLocaleString(undefined, {
-                  maximumFractionDigits: 2
+            <div className="analytics-info-item">
+              <span className="analytics-info-label">Market Cap:</span>
+              <span className="analytics-info-value">
+                $
+                {latest.erthMarketCap.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
                 })}
               </span>
             </div>
 
-            <div className="analytics-row">
-              <span className="analytics-label">Total Supply:</span>
-              <span className="analytics-value">
-                {latest.erthTotalSupply.toLocaleString()} ERTH
-              </span>
+            <div className="analytics-info-item">
+              <span className="analytics-info-label">Total Supply:</span>
+              <span className="analytics-info-value">{latest.erthTotalSupply.toLocaleString()} ERTH</span>
             </div>
 
-            <div className="analytics-row">
-              <span className="analytics-label">TVL:</span>
-              <span className="analytics-value">
-                ${latest.tvl.toLocaleString(undefined, {
-                  maximumFractionDigits: 2
+            <div className="analytics-info-item">
+              <span className="analytics-info-label">TVL:</span>
+              <span className="analytics-info-value">
+                $
+                {latest.tvl.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
                 })}
               </span>
             </div>
 
-            <div className="analytics-row">
-              <span className="analytics-label">ANML Price:</span>
-              <span className="analytics-value">
-                ${latest.anmlPrice.toFixed(6)}
-              </span>
+            <div className="analytics-info-item">
+              <span className="analytics-info-label">ANML Price:</span>
+              <span className="analytics-info-value">${latest.anmlPrice.toFixed(6)}</span>
             </div>
           </div>
 
@@ -97,8 +93,9 @@ const Analytics = () => {
                     <td>ERTH-{pool.token}</td>
                     <td>${pool.erthPrice.toFixed(6)}</td>
                     <td>
-                      ${pool.tvl.toLocaleString(undefined, {
-                        maximumFractionDigits: 2
+                      $
+                      {pool.tvl.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
                       })}
                     </td>
                   </tr>
@@ -109,7 +106,7 @@ const Analytics = () => {
 
           {/* Chart */}
           {history.length > 1 && (
-            <div style={{ width: '80%', margin: '0 auto' }}>
+            <div className="analytics-chart-container">
               <Line data={chartData} />
             </div>
           )}

@@ -1,116 +1,197 @@
 /* Ensure the box is positioned relative to its container */
 .pool-overview-box {
-    position: relative;
-    width: 100%;
-    max-width: 850px; /* Adjust the width for a longer box */
-    background-color: #ffffff;
-    padding: 10px;
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1;
-    margin: 0 auto;
-    margin-bottom: 25px;
+  position: relative;
+  width: 100%;
+  max-width: 900px; /* Keep increased width */
+  background-color: #ffffff;
+  padding: 14px 20px; /* Reduced vertical padding, kept horizontal padding */
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+  margin: 0 auto;
+  margin-bottom: 25px;
+  box-sizing: border-box;
 }
 
-.green-outline {
-    outline: 2px solid #4CAF50;
+.pool-green-outline {
+  outline: 2px solid #4caf50;
 }
 
 /* Flexbox layout for the info-row */
-.info-row {
-    margin-bottom: 5px;
-    margin-left: 5px;
-    display: flex;
-    justify-content: space-between; /* Distribute elements across the row */
-    align-items: center; /* Vertically center items */
-    gap: 20px; /* Add spacing between the items */
+.pool-info-row {
+  display: flex;
+  justify-content: space-between; /* Distribute elements across the row */
+  align-items: center; /* Vertically center items */
+  gap: 10px; /* Reduce gap to prevent wrapping */
+  width: 100%;
+}
+
+/* Pair info container */
+.pool-pair-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 120px; /* Slightly reduce width */
+  flex-shrink: 0;
+  margin-right: 5px;
+}
+
+/* Token container with label and pair info */
+.pool-token-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Pair label styling */
+.pool-pair-label {
+  font-size: 12px;
+  color: #777;
+  margin-top: -2px;
+}
+
+/* Compact info container */
+.pool-compact-info {
+  display: flex;
+  gap: 20px; /* Reduce gap to prevent wrapping */
+  align-items: center;
+  flex-grow: 1;
+  flex-wrap: nowrap; /* Prevent wrapping */
+  justify-content: space-between; /* Distribute items evenly */
+  padding: 0;
 }
 
 /* Coin Logo Styling */
-.coin-logo {
-    width: 50px;
-    height: 50px;
-    object-fit: contain;
-    display: block;
+.pool-coin-logo {
+  width: 40px; /* Return to original size */
+  height: 40px; /* Return to original size */
+  object-fit: contain;
+  display: block;
 }
 
-
 /* Individual Info Item Styling */
-.info-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+.pool-info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 90px; /* Reduce width to prevent wrapping */
+  max-width: 120px; /* Add max-width to prevent items from getting too wide */
+  padding: 0;
 }
 
 /* Pool Label Styling */
 .pool-label {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-    margin: 0;
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+  line-height: 1.2;
 }
 
 /* Info Value Styling */
-.info-value {
-    font-size: 16px;
-    color: #333;
-    margin-bottom: 5px;
-    line-height: 1.2; /* Line height should match the font size */
+.pool-info-value {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+  line-height: 1.2;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 /* Info Label Styling */
-.info-label {
-    font-size: 14px;
-    color: #777;
-    line-height: 1.2;
+.pool-info-label {
+  font-size: 12px; /* Slightly reduce font size */
+  color: #777;
+  line-height: 1.2;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 /* Buttons container inside the info row */
-.buttons-container {
-    margin-right: 5px;
-    margin-bottom: 5px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center; /* Vertically center the buttons */
-    gap: 10px;
-    height: 100%; /* Make sure the container matches the height of other items */
+.pool-buttons-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center; /* Vertically center the buttons */
+  gap: 8px; /* Reduce gap slightly */
+  align-self: center;
+  flex-shrink: 0;
+  margin-left: 10px;
+  padding: 0;
 }
 
 /* First Button Styling */
 .pool-overview-button {
-    padding: 10px;
-    font-size: 18px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
-    display: flex;
-    align-items: center; /* Vertically center text within the button */
-    justify-content: center;
+  padding: 8px 10px; /* Slightly reduce horizontal padding */
+  font-size: 16px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
+  display: flex;
+  align-items: center; /* Vertically center text within the button */
+  justify-content: center;
+  min-width: 75px; /* Reduce slightly */
+  height: 36px;
 }
 
 .pool-overview-button:hover {
-    background-color: #45a049; /* Darker green on hover */
+  background-color: #45a049; /* Darker green on hover */
+}
+
+/* Disabled button styling */
+.pool-overview-button.disabled,
+.pool-overview-button:disabled {
+  background-color: #cccccc;
+  color: #888888;
+  cursor: not-allowed;
+}
+
+.pool-overview-button.disabled:hover,
+.pool-overview-button:disabled:hover {
+  background-color: #cccccc;
 }
 
 /* Second Button Styling (Reversed Colors) */
 .pool-overview-button.reverse {
-    background-color: white;
-    color: #4CAF50;
-    border: 2px solid #4CAF50;
-    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    display: flex;
-    align-items: center; /* Vertically center text within the button */
-    justify-content: center;
+  background-color: white;
+  color: #4caf50;
+  border: 2px solid #4caf50;
+  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease;
+  display: flex;
+  align-items: center; /* Vertically center text within the button */
+  justify-content: center;
 }
 
 .pool-overview-button.reverse:hover {
-    background-color: #f2f2f2;
-    border-color: #45a049;
-    color: #45a049;
+  background-color: #f2f2f2;
+  border-color: #45a049;
+  color: #45a049;
 }
 
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .pool-info-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
 
+  .pool-pair-info {
+    justify-content: center;
+    margin-right: 0;
+  }
+
+  .pool-compact-info {
+    justify-content: center;
+    flex-wrap: wrap; /* Allow wrapping on mobile */
+    gap: 15px;
+  }
+
+  .pool-buttons-container {
+    justify-content: center;
+    margin-right: 0;
+    margin-left: 0;
+  }
+}

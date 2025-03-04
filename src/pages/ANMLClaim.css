@@ -1,76 +1,75 @@
+/*---- ANMLClaim Page Styling ----*/
+
 /*---- Test Box Styling ----*/
-.test-box {
-    display: flex;
-    flex-direction: column;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%; 
-    max-width: 400px;
-    box-sizing: border-box;
+.anml-test-box {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
 }
 
 /*---- Status Icon Styling ----*/
-.bx-error-alt {
-    font-size: 50px;
-    padding-bottom: 10px;
-    color: #F13c20;
+.anml-bx-error-alt {
+  font-size: 50px;
+  padding-bottom: 10px;
+  color: #f13c20;
 }
 
 /*---- Disclaimer Text Styling ----*/
-.disclaimer-text {
-    font-size: 18px;
-    color: #F13c20;
-    margin-bottom: 20px;
-    padding: 10px;
+.anml-disclaimer-text {
+  font-size: 18px;
+  color: #f13c20;
+  margin-bottom: 20px;
+  padding: 10px;
 }
 
 /*---- Veriff Root Styling ----*/
-#veriff-root {
-    margin-top: 20px;
-    width: 100%; 
-    max-width: 350px;
-    height: 50px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 3;
+#anml-veriff-root {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 350px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3;
 }
 
 /*---- Claim Button Styling ----*/
-.claim-button {
-    margin-top: 20px;
-    background-color: white;
-    border: 5px solid #4056a1;
-    font-size: 25px;
-    border-radius: 30px;
-    color: #293462;
-    padding: 5px 20px;
-    max-width: 200px;
-    width: 100%;
-    box-sizing: border-box;
-    text-align: center;
-    cursor: pointer;
+.anml-claim-button {
+  margin-top: 20px;
+  background-color: white;
+  border: 5px solid #4056a1;
+  font-size: 25px;
+  border-radius: 30px;
+  color: #293462;
+  padding: 5px 20px;
+  max-width: 200px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
 }
 
-.claim-button:hover {
-    background-color: #eee;
-    transition: all 0.3s ease;
+.anml-claim-button:hover {
+  background-color: #eee;
+  transition: all 0.3s ease;
 }
 
 /*---- Success Text Styling ----*/
-.success-text {
-    font-size: 25px;
-    font-weight: bold;
-    margin-top: 20px; /* Add some space above the success text */
-    text-align: center;
+.anml-success-text {
+  font-size: 25px;
+  font-weight: bold;
+  margin-top: 20px; /* Add some space above the success text */
+  text-align: center;
 }
 
 /*---- Other Styles ----*/
-.remove {
-    display: none !important;
-}

@@ -1,119 +1,129 @@
-/* Analytics Page Styling */
+/*---- Analytics Page Styling ----*/
 .analytics-page {
-    width: 100%;
-    max-width: 600px; /* Wider than swap-box to accommodate more data */
-    background-color: #ffffff;
-    padding: 40px 30px 30px 30px;
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    margin: 40px auto; /* Center the box horizontally and add top margin */
+  width: 96%;
+  margin: auto;
+  background-color: rgba(209, 209, 209, 0.2);
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Title Styling */
-.analytics-page h2 {
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-/* Analytics Price Section Styling */
+/*---- Analytics Price Section Styling ----*/
 .analytics-price-section {
-    width: 100%;
-    max-width: 450px;
-    margin: 20px auto; /* Center the section horizontally */
-    padding: 20px;
-    background-color: #ffffff;
-    border-radius: 10px;
-
+  width: 96%;
+  margin: 25px auto;
+  background-color: rgba(209, 209, 209, 0.2);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/*---- Analytics Info Styling ----*/
 .analytics-info {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
 }
 
-.analytics-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
+/*---- Analytics Info Item Styling ----*/
+.analytics-info-item {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
 }
 
-.analytics-row:last-child {
-    border-bottom: none;
+.analytics-info-label {
+  font-weight: bold;
+  margin-right: 10px;
+  min-width: 150px;
 }
 
-.analytics-label {
-    font-weight: bold;
-    font-size: 16px;
-    color: #333;
+.analytics-info-value {
+  font-family: monospace;
 }
 
-.analytics-value {
-    font-size: 14px;
-    color: #333;
-    text-align: right;
+/*---- Analytics Section Styling ----*/
+.analytics-section {
+  margin-bottom: 30px;
 }
 
+.analytics-section-title {
+  font-size: 1.5em;
+  margin-bottom: 15px;
+  color: #333;
+}
 
-/* Analytics Table Styling */
+/*---- Analytics Table Styling ----*/
 .analytics-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+  overflow: hidden;
 }
 
 .analytics-table th,
 .analytics-table td {
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    text-align: center;
-    font-size: 16px;
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
 }
 
 .analytics-table th {
-    background-color: #f9f9f9;
-    font-weight: bold;
-}
-
-.analytics-table tr:nth-child(even) {
-    background-color: #f1f0ea;
+  background-color: #f8f8f8;
+  font-weight: bold;
+  color: #333;
 }
 
 .analytics-table tr:hover {
-    background-color: #f5f5f5;
+  background-color: #f1f1f1;
 }
 
-/* Responsive Design */
-@media screen and (max-width: 600px) {
-    .analytics-page {
-        padding: 20px;
-        margin: 20px auto;
-    }
-
-    .analytics-table th,
-    .analytics-table td {
-        padding: 10px;
-        font-size: 14px;
-    }
-
-    .erth-price-section h3 {
-        font-size: 18px;
-    }
+/*---- Analytics Loading State Styling ----*/
+.analytics-loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
 }
 
-/* Loading Message Styling */
-.loading-message {
-    text-align: center;
-    font-size: 18px;
-    margin-top: 50px;
+.analytics-loading-message,
+.analytics-error-message {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2em;
+  color: #666;
 }
 
-/* Error Message Styling */
-.error-message {
-    color: red;
-    text-align: center;
-    font-size: 18px;
-    margin-top: 50px;
+.analytics-error-message {
+  color: #e74c3c;
+}
+
+/*---- Analytics Chart Container Styling ----*/
+.analytics-chart-container {
+  height: 300px;
+  margin-top: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/*---- Responsive Design ----*/
+@media (max-width: 768px) {
+  .analytics-page {
+    width: 90%;
+    padding: 15px;
+  }
+
+  .analytics-info-label {
+    min-width: 120px;
+  }
+
+  .analytics-table th,
+  .analytics-table td {
+    padding: 8px 10px;
+    font-size: 0.9em;
+  }
 }

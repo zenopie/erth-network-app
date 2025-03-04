@@ -1,0 +1,192 @@
+/* Sidebar Component Styles */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 260px;
+  background: #27366b;
+  z-index: 100;
+  transition: all 0.5s ease;
+  overflow-y: auto;
+}
+
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar.collapsed .link_name,
+.sidebar.collapsed .arrow {
+  display: none;
+}
+
+/* Logo styling */
+.logo-details {
+  height: 80px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+}
+
+.logo-details .logo-img {
+  width: 40px;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .logo-details .logo-img {
+  margin-left: 5px;
+}
+
+/* Navigation links */
+.nav-links {
+  height: calc(100% - 150px);
+  padding: 0;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+
+.nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-links li {
+  position: relative;
+  list-style: none;
+  transition: all 0.4s ease;
+}
+
+.nav-links li:hover {
+  background: #1d284e;
+}
+
+.nav-links li i {
+  height: 50px;
+  min-width: 50px;
+  text-align: center;
+  line-height: 50px;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-links li a,
+.nav-links li a:hover {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: all 0.4s ease;
+}
+
+.nav-links li a .link_name {
+  font-size: 16px;
+  font-weight: 400;
+  color: #fff;
+  transition: all 0.4s ease;
+}
+
+/* Submenu styles */
+.sub-menu {
+  padding-left: 20px;
+  display: none;
+  transition: all 0.4s ease;
+}
+
+.sub-menu.open {
+  display: block;
+}
+
+.arrow {
+  margin-left: auto;
+  color: #fff;
+}
+
+.sub-menu li {
+  margin: 10px 0;
+}
+
+.sub-menu li a {
+  color: #fff;
+  font-size: 14px;
+  padding: 5px 0;
+  white-space: nowrap;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.sub-menu li a:hover {
+  opacity: 1;
+}
+
+/* Wallet container */
+.wallet-container {
+  position: fixed;
+  bottom: 0;
+  width: 260px;
+  background: #1d284e;
+  padding: 10px;
+  transition: all 0.5s ease;
+}
+
+.sidebar.collapsed .wallet-container {
+  width: 80px;
+}
+
+.wallet-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+}
+
+.wallet-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+.wallet-status {
+  font-size: 12px;
+  color: #ff5353;
+}
+
+.wallet-status.connected {
+  color: #4bb543;
+}
+
+.connect-wallet-btn {
+  margin-top: 5px;
+  padding: 5px 10px;
+  background: #4185f4;
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.keplr-icon {
+  width: 16px;
+  margin-right: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+
+  .sidebar.collapsed {
+    width: 100%;
+  }
+
+  .wallet-container {
+    position: relative;
+    width: 100%;
+  }
+}

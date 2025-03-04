@@ -75,13 +75,13 @@ const ImageInterpret = () => {
     <>
       <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
 
-      <div id="register-box" className="test-box">
+      <div id="register-box" className="img-test-box">
         <img
           src="/images/passport.png"
           width={350}
           alt="Passport"
           style={{ filter: "drop-shadow(25px 25px 25px #aaa)" }}
-          className="logo-img"
+          className="img-logo-img"
         />
         <input
           type="file"
@@ -91,18 +91,18 @@ const ImageInterpret = () => {
           style={{ display: "none" }}
           id="file-input"
         />
-        <button onClick={() => document.getElementById("file-input").click()} className="claim-button">
+        <button onClick={() => document.getElementById("file-input").click()} className="img-claim-button">
           Register
         </button>
       </div>
 
-      <div id="complete-box" className="test-box remove">
-        <img src="/images/anml.png" width={350} alt="ANML Token" className="logo-img" />
-        <span className="success-text">
+      <div id="complete-box" className="img-test-box remove">
+        <img src="/images/anml.png" width={350} alt="ANML Token" className="img-logo-img" />
+        <span className="img-success-text">
           {hasBlockchainError ? "Image processed but blockchain transaction failed" : "Image processed successfully!"}
         </span>
-        {hasBlockchainError && <span className="error-text">Please try again later</span>}
-        {jsonResponse && <pre className="json-response">{JSON.stringify(jsonResponse, null, 2)}</pre>}
+        {hasBlockchainError && <span className="img-error-text">Please try again later</span>}
+        {jsonResponse && <pre className="img-json-response">{JSON.stringify(jsonResponse, null, 2)}</pre>}
       </div>
     </>
   );

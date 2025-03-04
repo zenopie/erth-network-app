@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Legend } from 'recharts';
-import './DeflationFund.css';
-import { showLoadingScreen } from '../utils/uiUtils';
-import { query } from '../utils/contractUtils';
+import React, { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, Legend } from "recharts";
+import "./DeflationFund.css";
+import { showLoadingScreen } from "../utils/uiUtils";
+import { query } from "../utils/contractUtils";
 
 const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
 const this_hash = "df9766e5327d6544c8110b7efce5d8a18ea43ad61d11877b888263e09811962b";
 
-const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548']; // Colors for allocations
-const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated
+const COLORS = ["#4CAF50", "#8BC34A", "#FF9800", "#CDDC39", "#009688", "#795548"]; // Colors for allocations
+const UNALLOCATED_COLOR = "#B0B0B0"; // Grey color for Unallocated
 
 const allocationNames = [
-  { id: '1', name: 'LP Rewards' },
+  { id: "1", name: "LP Rewards" },
   // Add more allocation names here
 ];
 
@@ -22,27 +22,27 @@ const renderCustomLegend = (props, data) => {
   return (
     <ul
       style={{
-        listStyleType: 'none',
+        listStyleType: "none",
         margin: 0,
         padding: 0,
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
       }}
     >
       {payload.map((entry, index) => {
         const value = entry.payload.value || 0;
-        const name = entry.payload.name || 'N/A';
+        const name = entry.payload.name || "N/A";
         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-        const formattedPercentage = percentage.endsWith('.0') ? parseInt(percentage) : percentage;
+        const formattedPercentage = percentage.endsWith(".0") ? parseInt(percentage) : percentage;
 
         return (
           <li
             key={`item-${index}`}
             style={{
-              margin: '0 10px',
+              margin: "0 10px",
               color: entry.color,
-              whiteSpace: 'nowrap',
+              whiteSpace: "nowrap",
             }}
           >
             {`${name} ${formattedPercentage}%`}
@@ -56,7 +56,7 @@ const renderCustomLegend = (props, data) => {
 const getChartDataWithUnallocated = (allocations = []) => {
   const totalPercentage = allocations.reduce((acc, alloc) => acc + alloc.value, 0);
   const unallocatedPercentage = Math.max(100 - totalPercentage, 0);
-  
+
   const chartData = allocations.map((alloc) => ({
     ...alloc,
     value: alloc.value,
@@ -64,8 +64,8 @@ const getChartDataWithUnallocated = (allocations = []) => {
 
   if (unallocatedPercentage > 0) {
     chartData.push({
-      id: 'unallocated',
-      name: 'Unallocated',
+      id: "unallocated",
+      name: "Unallocated",
       value: unallocatedPercentage,
     });
   }
@@ -74,7 +74,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
 };
 
 const DeflationFund = ({ isKeplrConnected }) => {
-  const [activeTab, setActiveTab] = useState('Actual');
+  const [activeTab, setActiveTab] = useState("Actual");
   const [dataActual, setDataActual] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -82,9 +82,9 @@ const DeflationFund = ({ isKeplrConnected }) => {
 
   useEffect(() => {
     if (isKeplrConnected) {
-      if (activeTab === 'Actual') {
+      if (activeTab === "Actual") {
         fetchDataActual();
-      } else if (activeTab === 'Preferred') {
+      } else if (activeTab === "Preferred") {
         fetchUserInfo();
       }
     }
@@ -99,7 +99,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
   const fetchDataActual = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { get_allocation_options: {} }; 
+      const querymsg = { get_allocation_options: {} };
       const response = await query(this_contract, this_hash, querymsg);
 
       const transformedData = response.allocations.map((allocation) => {
@@ -121,7 +121,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
   const fetchUserInfo = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { get_user_info: { address: window.secretjs.address } }; 
+      const querymsg = { get_user_info: { address: window.secretjs.address } };
       const response = await query(this_contract, this_hash, querymsg);
       const transformedData = response.user_info.percentages.map((percentage) => {
         const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
@@ -159,7 +159,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
     const updatedAllocations = selectedAllocations.map((alloc) =>
       alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc
     );
-    
+
     // Update the state with the new allocations
     setSelectedAllocations(updatedAllocations);
   };
@@ -168,23 +168,20 @@ const DeflationFund = ({ isKeplrConnected }) => {
     <div className="deflation-fund-box">
       <h2>Deflation Fund</h2>
       <div className="deflation-fund-tab">
-        <button
-          className={`tablinks ${activeTab === 'Actual' ? 'active' : ''}`}
-          onClick={() => openTab('Actual')}
-        >
+        <button className={`tablinks ${activeTab === "Actual" ? "active" : ""}`} onClick={() => openTab("Actual")}>
           Actual Allocation
         </button>
         <button
-          className={`tablinks ${activeTab === 'Preferred' ? 'active' : ''}`}
-          onClick={() => openTab('Preferred')}
+          className={`tablinks ${activeTab === "Preferred" ? "active" : ""}`}
+          onClick={() => openTab("Preferred")}
         >
           Preferred Allocation
         </button>
       </div>
 
-      {activeTab === 'Actual' && (
-        <div className="chart-box">
-          <div className="canvas-container">
+      {activeTab === "Actual" && (
+        <div className="deflation-fund-chart-box">
+          <div className="deflation-fund-canvas-container">
             <PieChart width={350} height={350}>
               <Pie
                 data={dataActual}
@@ -203,21 +200,21 @@ const DeflationFund = ({ isKeplrConnected }) => {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Legend 
-                content={(props) => renderCustomLegend(props, dataActual)} 
-                layout="horizontal" 
-                align="center" 
-                verticalAlign="bottom" 
+              <Legend
+                content={(props) => renderCustomLegend(props, dataActual)}
+                layout="horizontal"
+                align="center"
+                verticalAlign="bottom"
               />
             </PieChart>
           </div>
         </div>
       )}
 
-      {activeTab === 'Preferred' && (
-        <div className="chart-box">
-          <div className="canvas-container">
-            <div style={{ position: 'relative', width: 350, height: 350 }}>
+      {activeTab === "Preferred" && (
+        <div className="deflation-fund-chart-box">
+          <div className="deflation-fund-canvas-container">
+            <div style={{ position: "relative", width: 350, height: 350 }}>
               <PieChart width={350} height={350}>
                 <Pie
                   data={getChartDataWithUnallocated(selectedAllocations)}
@@ -234,7 +231,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
                   isAnimationActive={false}
                 >
                   {getChartDataWithUnallocated(selectedAllocations).map((entry, index) => {
-                    if (entry.name === 'Unallocated') {
+                    if (entry.name === "Unallocated") {
                       return <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />;
                     } else {
                       return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
@@ -244,12 +241,12 @@ const DeflationFund = ({ isKeplrConnected }) => {
               </PieChart>
               <div
                 style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
                   fontSize: 24,
-                  color: totalPercentage === 100 ? 'green' : 'red',
+                  color: totalPercentage === 100 ? "green" : "red",
                 }}
               >
                 {`${totalPercentage}%`}
@@ -257,9 +254,9 @@ const DeflationFund = ({ isKeplrConnected }) => {
             </div>
           </div>
 
-          <div id="input-container">
+          <div id="deflation-fund-input-container">
             {selectedAllocations.map((alloc) => (
-              <div key={alloc.id} className="allocation-input-group">
+              <div key={alloc.id} className="deflation-fund-allocation-input-group">
                 <span>{alloc.name}</span>
                 <input
                   type="number"
@@ -267,26 +264,19 @@ const DeflationFund = ({ isKeplrConnected }) => {
                   onChange={(e) => handlePercentageChange(alloc.id, e.target.value)}
                   placeholder="%"
                 />
-                <button
-                  className="circle-button"
-                  onClick={() => removeAllocation(alloc.id)}
-                >
+                <button className="deflation-fund-circle-button" onClick={() => removeAllocation(alloc.id)}>
                   -
                 </button>
               </div>
             ))}
           </div>
-          <div className="dropdown-container">
-            <button className="circle-button" onClick={() => setShowDropdown(!showDropdown)}>
+          <div className="deflation-fund-dropdown-container">
+            <button className="deflation-fund-circle-button" onClick={() => setShowDropdown(!showDropdown)}>
               +
             </button>
             {showDropdown && (
               <select
-                onChange={(e) =>
-                  addAllocation(
-                    selectedAllocations.find((option) => option.id === e.target.value)
-                  )
-                }
+                onChange={(e) => addAllocation(selectedAllocations.find((option) => option.id === e.target.value))}
               >
                 <option value="">Select an option</option>
                 {allocationNames.map((option) => (
@@ -298,7 +288,7 @@ const DeflationFund = ({ isKeplrConnected }) => {
             )}
           </div>
           {selectedAllocations.length > 0 && (
-            <button onClick={() => console.log('Change Allocation')} className="claim-button">
+            <button onClick={() => console.log("Change Allocation")} className="deflation-fund-claim-button">
               Change
             </button>
           )}
