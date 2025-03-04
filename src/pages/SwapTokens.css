@@ -106,8 +106,13 @@
 }
 
 .swap-button:disabled {
-  background-color: #cccccc;
+  /* Keep the same green color as enabled buttons */
+  opacity: 0.9; /* Very slight opacity to subtly indicate disabled state */
   cursor: not-allowed;
+}
+
+.swap-button:disabled:hover {
+  background-color: #4caf50; /* Keep the same color on hover */
 }
 
 .swap-max-button {

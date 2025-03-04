@@ -142,14 +142,14 @@
 /* Disabled button styling */
 .pool-overview-button.disabled,
 .pool-overview-button:disabled {
-  background-color: #cccccc;
-  color: #888888;
+  /* Keep the same green color as enabled buttons */
+  opacity: 0.9; /* Very slight opacity to subtly indicate disabled state */
   cursor: not-allowed;
 }
 
 .pool-overview-button.disabled:hover,
 .pool-overview-button:disabled:hover {
-  background-color: #cccccc;
+  background-color: #4caf50; /* Keep the same color on hover */
 }
 
 /* Second Button Styling (Reversed Colors) */
