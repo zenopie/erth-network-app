@@ -1,18 +1,18 @@
 /* Google Fonts Import */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
 
 /* Global Styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 /* Home Section */
 .home-section {
   position: relative;
-  background: #F1F0EA;
+  background: #f1f0ea;
   height: 100vh;
   margin-left: 260px;
   width: calc(100% - 260px);
@@ -28,6 +28,50 @@
   width: calc(100% - 80px);
 }
 
+/* Mobile menu toggle button */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1001;
+  background: #27366b;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s, background-color 0.3s;
+}
+
+.mobile-menu-toggle:hover,
+.mobile-menu-toggle:active {
+  transform: scale(1.05);
+  background-color: #364b8e;
+}
+
+.close-mobile-menu {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #4056a1;
+  font-size: 24px;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 10px;
+  border-radius: 50%;
+  transition: background-color 0.3s;
+}
+
+.close-mobile-menu:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
 /* Sidebar */
 .sidebar {
   position: fixed;
@@ -36,8 +80,8 @@
   height: 100vh;
   width: 260px;
   background: #fff;
-  z-index: 1;
-  transition: width 0.5s ease;
+  z-index: 1000;
+  transition: width 0.5s ease, left 0.3s ease;
 }
 
 .sidebar.collapsed {
@@ -248,24 +292,193 @@
 }
 
 .socials-placeholder {
-  height: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .socials-link a {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   text-decoration: none;
-  transition: all 0.4s ease;
 }
 
 .socials-link i {
-  min-width: 30px;
-  text-align: center;
+  min-width: 42px;
+  font-size: 24px;
   color: #4056a1;
-  font-size: 20px;
-  cursor: pointer;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
 }
 
 .expanded-socials {
   display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 1024px) {
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
+  .close-mobile-menu {
+    display: block;
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    z-index: 1010;
+  }
+
+  .logo-details {
+    justify-content: center;
+    padding: 45px 0 35px 0;
+    position: relative;
+    border-bottom: none;
+    margin-bottom: 25px;
+  }
+
+  .logo-details .logo-img {
+    margin: 0 auto;
+    display: block;
+    width: 120px;
+  }
+
+  .sidebar.mobile {
+    left: -100%;
+    width: 100%;
+    max-width: 100vw;
+    overflow-y: auto;
+  }
+
+  .sidebar.mobile.mobile-open {
+    left: 0;
+    right: 0;
+    width: 100vw;
+  }
+
+  .sidebar.mobile .profile-container {
+    width: 100%;
+    position: relative;
+    bottom: auto;
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+  }
+
+  /* Adjust menu items for better mobile viewing */
+  .nav-links {
+    height: auto;
+    padding: 0 0 30px 0;
+  }
+
+  .nav-links li {
+    border-bottom: 1px solid rgba(238, 238, 238, 0.5);
+  }
+
+  /* Ensure perfect alignment between all menu items */
+  .nav-links li a,
+  .submenu .submenu-toggle {
+    justify-content: flex-start;
+    text-align: left;
+    padding: 15px 30px;
+    height: auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .submenu .submenu-toggle {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  /* Make all icons perfectly aligned */
+  .nav-links li i,
+  .submenu .submenu-toggle i {
+    min-width: 50px;
+    text-align: center;
+    font-size: 22px;
+    height: auto;
+    line-height: normal;
+    margin-right: 0;
+    display: inline-block;
+  }
+
+  /* Ensure identical spacing for all text in menu items */
+  .nav-links li a .link_name,
+  .submenu .submenu-toggle .link_name {
+    text-align: left;
+    font-size: 18px;
+    padding-left: 10px;
+    display: inline-block;
+  }
+
+  /* Adjust submenu items */
+  .submenu .submenu-list {
+    padding-left: 0;
+    text-align: left;
+    background: rgba(238, 238, 238, 0.2);
+  }
+
+  .submenu-list li {
+    border-bottom: none;
+    border-top: 1px solid rgba(238, 238, 238, 0.3);
+  }
+
+  .submenu-list li a {
+    justify-content: flex-start;
+    padding: 12px 30px 12px 80px;
+    font-size: 16px;
+    height: auto;
+    line-height: normal;
+  }
+
+  /* Ensure arrow is properly positioned */
+  .submenu .arrow {
+    position: absolute;
+    right: 30px;
+    line-height: normal;
+    font-size: 22px;
+  }
+
+  .home-section {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-top: 20px;
+  }
+
+  /* Improve profile section spacing */
+  .profile-details {
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* Fix social links in mobile mode */
+  .socials-link {
+    margin-top: 15px;
+    padding-bottom: 20px;
+  }
+
+  .socials-placeholder {
+    display: none;
+  }
+
+  .expanded-socials {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 0;
+  }
+
+  .expanded-socials a {
+    margin: 0 15px;
+  }
+
+  .expanded-socials i {
+    font-size: 28px;
+  }
 }

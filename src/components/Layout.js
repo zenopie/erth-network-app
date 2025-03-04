@@ -1,11 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import Sidebar from './Sidebar.js';
-import { connectKeplr } from '../utils/contractUtils';
-import './Layout.css'; // Ensure you import the global and layout-specific styles
+import React, { useEffect, useState } from "react";
+import Sidebar from "./Sidebar.js";
+import { connectKeplr } from "../utils/contractUtils";
+import "./Layout.css"; // Ensure you import the global and layout-specific styles
 
 const Layout = ({ children }) => {
-  const [walletName, setWalletName] = useState('');
+  const [walletName, setWalletName] = useState("");
   const [isKeplrConnected, setKeplrConnected] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 1024);
+    };
+
+    checkIfMobile();
+    window.addEventListener("resize", checkIfMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkIfMobile);
+    };
+  }, []);
 
   useEffect(() => {
     const connectWallet = async (retryCount = 0) => {
@@ -16,7 +31,8 @@ const Layout = ({ children }) => {
         setKeplrConnected(true);
         console.log("Keplr connected, retry count:", retryCount);
       } catch (error) {
-        if (retryCount < 5) { // Retry up to 5 times
+        if (retryCount < 5) {
+          // Retry up to 5 times
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
           console.log(`Retrying to connect to Keplr in ${delay / 1000} seconds...`);
           setTimeout(() => connectWallet(retryCount + 1), delay);
@@ -30,18 +46,15 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    <div className="layout">
+    <div className={`layout ${isMobile ? "mobile" : ""}`}>
       <Sidebar walletName={walletName} isKeplrConnected={isKeplrConnected} />
       <div className="home-section">
         {/* Loading Screen */}
         <div id="loading-screen" className="loading"></div>
-        <div className="home-content">
-          {React.cloneElement(children, { isKeplrConnected })}
-        </div>
+        <div className="home-content">{React.cloneElement(children, { isKeplrConnected })}</div>
       </div>
     </div>
   );
 };
 
 export default Layout;
-

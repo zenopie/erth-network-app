@@ -8,13 +8,24 @@
 .main-content {
   flex: 1;
   padding: 20px;
+  margin-left: 260px;
   transition: all 0.3s ease;
 }
 
+.sidebar.collapsed + .main-content {
+  margin-left: 80px;
+}
+
 /* Responsive adjustments */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .layout {
     flex-direction: column;
+  }
+
+  .layout.mobile .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 70px; /* Space for the hamburger menu */
   }
 }
 
