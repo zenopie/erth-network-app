@@ -11,12 +11,17 @@ import "./SecretAIChat.css";
 // Testnet configuration for the AI chat page
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
-const TESTNET_WORKER_SMART_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
-const TESTNET_WORKER_SMART_CONTRACT_HASH = "5aa970b41fd5514da7b7582cbf808815c20c8f92278ad88f98038e83526cdd12";
-const TESTNET_STORAGE_CONTRACT = "secret1v47zuu6mnq9xzcps4fz7pnpr23d2sczmft26du";
-const TESTNET_STORAGE_HASH = "3545985756548d7d9b85a7a609040fd41a2a0eeba03f81fa166a8063569b01fd";
+const TESTNET_WORKER_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
+// eslint-disable-next-line no-unused-vars
+const TESTNET_WORKER_CODE_HASH = "5aa970b41fd5514da7b7582cbf808815c20c8f92278ad88f98038e83526cdd12";
 
 const API_KEY = "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1";
+
+// Create a secretjs client outside the component
+const secretNetworkClient = new SecretNetworkClient({
+  url: TESTNET_NODE_URL,
+  chainId: TESTNET_CHAIN_ID,
+});
 
 const SecretAIChat = () => {
   const [models, setModels] = useState([]);
@@ -24,15 +29,15 @@ const SecretAIChat = () => {
   const [urls, setUrls] = useState([]);
   const [selectedUrl, setSelectedUrl] = useState("");
   const [messages, setMessages] = useState([]);
-  const [savedConversations, setSavedConversations] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [copiedText, setCopiedText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
-  const [thinkingText, setThinkingText] = useState("");
   const [userAddress, setUserAddress] = useState("");
+  // eslint-disable-next-line no-unused-vars
   const [offlineSigner, setOfflineSigner] = useState(null);
+  const [initAttempted, setInitAttempted] = useState(false);
 
   const chatContainerRef = useRef(null);
   const thinkingRef = useRef(null);
@@ -61,30 +66,17 @@ const SecretAIChat = () => {
     }
   }, [userAddress]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (messages.length > 0 && userAddress) {
-        const payload = JSON.stringify({ user: userAddress, conversation: messages });
-        const blob = new Blob([payload], { type: "application/json" });
-        navigator.sendBeacon("https://erth.network/api/save-conversation", blob);
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [messages, userAddress]);
-
   const fetchModels = useCallback(async () => {
     try {
-      const secretClient = new SecretNetworkClient({
-        url: TESTNET_NODE_URL,
-        chainId: TESTNET_CHAIN_ID,
-      });
-      const response = await secretClient.query.compute.queryContract({
-        contract_address: TESTNET_WORKER_SMART_CONTRACT,
-        code_hash: TESTNET_WORKER_SMART_CONTRACT_HASH,
+      console.log("Fetching models...");
+      const response = await secretNetworkClient.query.compute.queryContract({
+        contract_address: TESTNET_WORKER_CONTRACT,
         query: { get_models: {} },
       });
-      if (response.models.length > 0) {
+
+      console.log("Models response:", response);
+
+      if (response.models && response.models.length > 0) {
         setModels(response.models);
         setSelectedModel(response.models[0]);
         fetchUrls(response.models[0]);
@@ -96,16 +88,15 @@ const SecretAIChat = () => {
 
   const fetchUrls = async (model) => {
     try {
-      const secretClient = new SecretNetworkClient({
-        url: TESTNET_NODE_URL,
-        chainId: TESTNET_CHAIN_ID,
-      });
-      const response = await secretClient.query.compute.queryContract({
-        contract_address: TESTNET_WORKER_SMART_CONTRACT,
-        code_hash: TESTNET_WORKER_SMART_CONTRACT_HASH,
+      console.log("Fetching URLs for model:", model);
+      const response = await secretNetworkClient.query.compute.queryContract({
+        contract_address: TESTNET_WORKER_CONTRACT,
         query: { get_u_r_ls: { model } },
       });
-      if (response.urls.length > 0) {
+
+      console.log("URLs response:", response);
+
+      if (response.urls && response.urls.length > 0) {
         setUrls(response.urls);
         setSelectedUrl(response.urls[0]);
       }
@@ -115,66 +106,65 @@ const SecretAIChat = () => {
     }
   };
 
-  const fetchConversations = async () => {
-    if (!userAddress) return;
-    try {
-      const secretClient = new SecretNetworkClient({
-        url: TESTNET_NODE_URL,
-        chainId: TESTNET_CHAIN_ID,
-      });
-      const response = await secretClient.query.compute.queryContract({
-        contract_address: TESTNET_STORAGE_CONTRACT,
-        code_hash: TESTNET_STORAGE_HASH,
-        query: { query_conversation: { user: userAddress } },
-      });
-      console.log(response);
-      setSavedConversations(response || []);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-    }
-  };
-
+  // Initialization effect
   useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
+    if (initAttempted) return;
 
-  useEffect(() => {
-    if (userAddress) {
-      fetchConversations();
+    async function initializeApp() {
+      setInitAttempted(true);
+      try {
+        await fetchModels();
+      } catch (error) {
+        console.error("Error during app initialization:", error);
+      }
     }
-  }, [userAddress]);
 
-  const saveConversation = async () => {
-    if (!messages.length || !userAddress || !offlineSigner) return;
-    setLoading(true);
-    try {
-      const secretClient = new SecretNetworkClient({
-        url: TESTNET_NODE_URL,
-        chainId: TESTNET_CHAIN_ID,
-        wallet: offlineSigner,
-        walletAddress: userAddress,
-      });
-      const tx = await secretClient.tx.compute.executeContract(
-        {
-          sender: userAddress,
-          contract_address: TESTNET_STORAGE_CONTRACT,
-          code_hash: TESTNET_STORAGE_HASH,
-          msg: { save_conversation: { conversation: messages } },
-          sent_funds: [],
-        },
-        { gasLimit: 200000 }
-      );
-      console.log("Conversation saved:", tx);
-      fetchConversations();
-    } catch (error) {
-      console.error("Save error:", error);
-    } finally {
-      setLoading(false);
+    initializeApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Add auto-scroll effect when messages change or thinking content changes
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      // Check if user is already at the bottom or close to it
+      const isNearBottom =
+        chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
+        chatContainerRef.current.clientHeight + 100; // Allow 100px margin
+
+      // Auto-scroll if user is near bottom or hasn't interacted
+      if (isNearBottom || !userInteracted.current) {
+        // Use setTimeout to ensure this happens after render
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 0);
+      }
+    }
+  }, [messages]);
+
+  // Add additional auto-scroll effect for thinking box updates
+  const updateThinkingContent = (content) => {
+    if (thinkingRef.current) {
+      thinkingRef.current.style.display = "block";
+      thinkingRef.current.textContent = content;
+
+      // Trigger auto-scroll when thinking content updates
+      if (
+        chatContainerRef.current &&
+        (!userInteracted.current ||
+          chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
+            chatContainerRef.current.clientHeight + 100)
+      ) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
     }
   };
 
   const handleSendMessage = async () => {
-    if (!input || !selectedUrl || !selectedModel) return;
+    if (!input || !selectedModel) return;
+    // Reset user interaction when sending a new message
+    userInteracted.current = false;
     setLoading(true);
     let localIsThinking = false;
     const controller = new AbortController();
@@ -197,10 +187,7 @@ const SecretAIChat = () => {
             if (newContent.includes("<think>")) {
               localIsThinking = true;
               newContent = newContent.replace("<think>", "");
-              if (thinkingRef.current) {
-                thinkingRef.current.style.display = "block";
-                thinkingRef.current.textContent = "🤔 Thinking: " + newContent;
-              }
+              updateThinkingContent("🤔 Thinking: " + newContent);
               return;
             }
             if (newContent.includes("</think>")) {
@@ -208,14 +195,21 @@ const SecretAIChat = () => {
               newContent = newContent.replace("</think>", "");
               if (thinkingRef.current) {
                 thinkingRef.current.textContent += newContent;
+                // Trigger auto-scroll for final thinking update
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
               }
               return;
             }
             if (localIsThinking) {
               if (thinkingRef.current) {
                 thinkingRef.current.textContent += newContent;
+                // Trigger auto-scroll for continuous thinking updates
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
               }
-              setThinkingText((prev) => prev + newContent);
             } else {
               setMessages((prevMessages) => {
                 const lastMessage = prevMessages[prevMessages.length - 1];
@@ -302,18 +296,6 @@ const SecretAIChat = () => {
 
   return (
     <div className="secret-main-container">
-      {/* Sidebar for past conversations */}
-      <div className="secret-sidebar">
-        <button className="secret-new-conversation-button" onClick={() => setMessages([])}>
-          New Conversation
-        </button>
-        <h3>Past Conversations</h3>
-        {savedConversations.map((conv, idx) => (
-          <div key={idx} className="secret-sidebar-item" onClick={() => setMessages(conv)}>
-            {`Conversation ${idx + 1}`}
-          </div>
-        ))}
-      </div>
       <div
         className="secret-chat-container"
         ref={chatContainerRef}
@@ -387,13 +369,6 @@ const SecretAIChat = () => {
         )}
         <button className="secret-send-button" onClick={handleSendMessage} disabled={loading}>
           {loading ? "Sending..." : "Send"}
-        </button>
-        <button
-          className="secret-save-button"
-          onClick={saveConversation}
-          disabled={loading || !messages.length}
-        >
-          Save Conversation
         </button>
       </div>
     </div>
