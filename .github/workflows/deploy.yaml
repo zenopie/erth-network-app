@@ -10,87 +10,113 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-      with:
-        clean: true
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          clean: true
 
-    - name: Deploy and Build on Remote Server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.REMOTE_SERVER_HOST }}
-        username: ${{ secrets.REMOTE_SERVER_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # Define directories
-          HOME_DIR=/home/ubuntu/earth-mainnet-app
-          WWW_DIR=/var/www/earth-mainnet-app
-          SERVER_DIR=$HOME_DIR/server
+      - name: Deploy and Build on Remote Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_SERVER_HOST }}
+          username: ${{ secrets.REMOTE_SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Define directories
+            HOME_DIR=/home/ubuntu/earth-mainnet-app
+            WWW_DIR=/var/www/earth-mainnet-app
+            SERVER_DIR=$HOME_DIR/server
 
-          # Create the home directory if it doesn't exist
-          if [ ! -d "$HOME_DIR" ]; then
-            mkdir -p $HOME_DIR
-          fi
+            # Create the home directory if it doesn't exist
+            if [ ! -d "$HOME_DIR" ]; then
+              mkdir -p $HOME_DIR
+            fi
 
-          # Navigate to the home directory where the source code is stored
-          cd $HOME_DIR
-          
-          # Force reset local repository with remote state
-          if [ -d ".git" ]; then
-            git fetch origin
-            git reset --hard origin/main
-            git clean -fd
-          else
-            git clone https://github.com/zenopie/erth-mainnet-app.git .
-          fi
+            # Navigate to the home directory where the source code is stored
+            cd $HOME_DIR
 
-          # Install frontend dependencies
-          if [ -f package.json ]; then
-            npm install
-            npm update
-          else
-            echo "Error: package.json not found in root!"
-            exit 1
-          fi
+            # Force reset local repository with remote state
+            if [ -d ".git" ]; then
+              git fetch origin
+              git reset --hard origin/main
+              git clean -fd
+            else
+              git clone https://github.com/zenopie/erth-mainnet-app.git .
+            fi
 
-          # Build the React frontend
-          npm run build
+            # Install NVM (Node Version Manager) if not already installed
+            if [ ! -d "$HOME/.nvm" ]; then
+              echo "Installing NVM..."
+              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            else
+              echo "NVM is already installed"
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            fi
 
-          # Remove old files in the web directory
-          sudo rm -rf $WWW_DIR/*
+            # Install and use Node.js v18.20.7
+            echo "Installing and using Node.js v18.20.7..."
+            nvm install 18.20.7
+            nvm use 18.20.7
+            nvm alias default 18.20.7
 
-          # Move the build output to the web directory
-          sudo mv $HOME_DIR/build/* $WWW_DIR/
+            # Verify Node.js version
+            echo "Current Node.js version:"
+            node -v
 
-          # Restart NGINX to apply the changes
-          sudo systemctl restart nginx
+            # Install frontend dependencies
+            if [ -f package.json ]; then
+              npm install
+              npm update
+            else
+              echo "Error: package.json not found in root!"
+              exit 1
+            fi
 
-          # Ensure the server dependencies are updated
-          cd $SERVER_DIR
+            # Build the React frontend
+            npm run build
 
-          if [ -f package.json ]; then
-            npm install
-            npm update
-          else
-            echo "Error: package.json not found in server directory!"
-            exit 1
-          fi
+            # Remove old files in the web directory
+            sudo rm -rf $WWW_DIR/*
 
-          # Install PM2 globally if not installed
-          if ! command -v pm2 &> /dev/null; then
-            sudo npm install -g pm2
-          fi
+            # Move the build output to the web directory
+            sudo mv $HOME_DIR/build/* $WWW_DIR/
 
-          # Stop any existing instance of the server
-          pm2 stop erth-network-server || true
+            # Restart NGINX to apply the changes
+            sudo systemctl restart nginx
 
-          # Start the server with PM2
-          pm2 start $SERVER_DIR/server.js --name "erth-network-server"
+            # Ensure the server dependencies are updated
+            cd $SERVER_DIR
 
-          # Save the PM2 process list
-          pm2 save
+            if [ -f package.json ]; then
+              # Use the same Node.js version for server
+              echo "Using Node.js v18.20.7 for server..."
+              nvm use 18.20.7
+              npm install
+              npm update
+            else
+              echo "Error: package.json not found in server directory!"
+              exit 1
+            fi
 
-          # Ensure PM2 restarts on reboot
-          pm2 startup systemd
-          sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
-          sudo systemctl enable pm2-ubuntu
+            # Install PM2 globally if not installed
+            if ! command -v pm2 &> /dev/null; then
+              sudo npm install -g pm2
+            fi
+
+            # Stop any existing instance of the server
+            pm2 stop erth-network-server || true
+
+            # Start the server with PM2, ensuring it uses the correct Node.js version
+            NVM_BIN=$HOME/.nvm/versions/node/v18.20.7/bin
+            PATH=$NVM_BIN:$PATH pm2 start $SERVER_DIR/server.js --name "erth-network-server"
+
+            # Save the PM2 process list
+            pm2 save
+
+            # Ensure PM2 restarts on reboot
+            pm2 startup systemd
+            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+            sudo systemctl enable pm2-ubuntu
