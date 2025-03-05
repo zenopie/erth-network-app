@@ -352,7 +352,7 @@ const SecretAIChat = () => {
         )}
         <textarea
           className="secret-chat-input"
-          placeholder="Ask DeepSeek anything..."
+          placeholder="Ask Secret AI anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
