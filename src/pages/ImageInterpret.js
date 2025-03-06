@@ -15,16 +15,16 @@ const ImageInterpret = () => {
   }, []);
 
   const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      const validTypes = ["image/jpeg", "image/png"];
-      if (!validTypes.includes(selectedFile.type)) {
-        console.error("Invalid file type");
-        return;
-      }
-      setFile(selectedFile);
-      await handleUploadImage(selectedFile);
+    if (!e.target.files || e.target.files.length === 0) return;
+    // eslint-disable-next-line no-unused-vars
+    const file = e.target.files[0];
+    const validTypes = ["image/jpeg", "image/png"];
+    if (!validTypes.includes(file.type)) {
+      console.error("Invalid file type");
+      return;
     }
+    setFile(file);
+    await handleUploadImage(file);
   };
 
   const handleUploadImage = async (selectedFile) => {

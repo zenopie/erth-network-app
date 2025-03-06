@@ -1,8 +1,9 @@
 /* Global Styles */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   background: #f9fafb;
 }
 
@@ -10,7 +11,7 @@ html, body {
 .agent-main-container {
   width: 100%;
   margin: auto;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   min-height: 100vh;
   position: relative;
 }
@@ -54,6 +55,13 @@ html, body {
 .agent-message.assistant .agent-message-content {
   background: #f3faf7;
   border: 1px solid #2dc08d30;
+}
+
+.agent-message.system .agent-message-content {
+  background: #f7f9fa;
+  border: 1px solid #3b82f630;
+  color: #4b5563;
+  font-style: italic;
 }
 
 /* Input Container */
@@ -120,8 +128,14 @@ html, body {
 }
 
 @keyframes agent-dot-flash {
-  0%, 80%, 100% { opacity: 0; }
-  40% { opacity: 1; }
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 .agent-loading-dots {
