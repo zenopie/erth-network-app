@@ -4,8 +4,50 @@ import { ChatSecret, SECRET_AI_CONFIG } from "secretai";
 import { Tool } from "langchain/tools";
 import cors from "cors";
 import bodyParser from "body-parser";
+// Import tokens from the utils directory
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import fs from "fs";
 
 console.log("Starting server initialization...");
+
+// Get the current file path and directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Path to the tokens.js file in the utils directory
+const tokensPath = join(__dirname, "..", "src", "utils", "tokens.js");
+
+// Read and parse tokens.js file
+const tokenContent = fs.readFileSync(tokensPath, "utf8");
+const tokenMatch = tokenContent.match(/const tokens = \{([\s\S]*?)\};/);
+const tokensObject = {};
+
+if (tokenMatch && tokenMatch[1]) {
+  // Extract token definitions
+  const tokenDefs = tokenMatch[1].trim();
+  // This is a very simplified parser - in production code you'd want a more robust solution
+  const tokenRegex = /(\w+):\s*\{([^}]+)\}/g;
+  let match;
+
+  while ((match = tokenRegex.exec(tokenDefs)) !== null) {
+    const tokenSymbol = match[1];
+    const tokenProps = match[2];
+
+    const contractMatch = tokenProps.match(/contract:\s*"([^"]+)"/);
+    const hashMatch = tokenProps.match(/hash:\s*"([^"]+)"/);
+    const decimalsMatch = tokenProps.match(/decimals:\s*(\d+)/);
+
+    tokensObject[tokenSymbol] = {
+      symbol: tokenSymbol,
+      contract: contractMatch ? contractMatch[1] : "",
+      hash: hashMatch ? hashMatch[1] : "",
+      decimals: decimalsMatch ? parseInt(decimalsMatch[1]) : 6,
+    };
+  }
+}
+
+console.log("Loaded token information:", Object.keys(tokensObject));
 
 const app = express();
 
@@ -78,10 +120,19 @@ async function handleAgentRequest(message, userAddress, tokens = null) {
 
     // Add token information to the system message if available
     let tokenInfo = "";
+
+    // Add information from tokens.js
+    tokenInfo += "\n\nAvailable tokens on Secret Network:\n";
+    Object.values(tokensObject).forEach((token) => {
+      tokenInfo += `- ${token.symbol}: contract ${token.contract}, hash ${token.hash}, with ${token.decimals} decimals\n`;
+    });
+
+    // Add user's wallet token balances if available
     if (tokens && tokens.availableTokens && tokens.availableTokens.length > 0) {
-      tokenInfo = "\n\nAvailable tokens on Secret Network:\n";
+      tokenInfo += "\n\nToken balances in your wallet:\n";
       tokens.availableTokens.forEach((token) => {
-        tokenInfo += `- ${token.symbol}: contract ${token.contract} with ${token.decimals} decimals\n`;
+        const balanceInStandard = token.balance / Math.pow(10, token.decimals);
+        tokenInfo += `- ${token.symbol}: ${balanceInStandard} ${token.symbol}\n`;
       });
     }
 
@@ -107,6 +158,8 @@ How to trigger a Keplr action:
 - Only include <keplr-action> when certain an action should be taken
 - If unsure, ask for confirmation or more details
 - Provide clear feedback about what you're doing
+
+When a user mentions a token by symbol (like ERTH, ANML, FINA, sSCRT), you know the contract address and hash details.
 `;
 
     const messages = [
@@ -170,6 +223,19 @@ How to trigger a Keplr action:
       if (match) {
         const payload = JSON.parse(match[1]);
         console.log("Found Keplr action payload:", payload);
+
+        // Enhance the payload with token details if a token is specified
+        if (payload.token && tokensObject[payload.token]) {
+          const tokenDetails = tokensObject[payload.token];
+
+          // Add contract address and hash to the payload
+          payload.contract = tokenDetails.contract;
+          payload.hash = tokenDetails.hash;
+          payload.decimals = tokenDetails.decimals;
+
+          console.log("Enhanced payload with token details:", payload);
+        }
+
         return { response: response.replace(/<keplr-action>\{.*?\}/g, ""), keplrAction: payload };
       }
     }
@@ -200,6 +266,23 @@ app.post("/api/agent", async (req, res) => {
     console.error("Error processing request:", error);
     res.status(500).json({ error: "Failed to process request: " + error.message });
   }
+});
+
+// File upload endpoint
+app.post("/api/upload-image", async (req, res) => {
+  console.log("Received file upload request");
+  const ticket = req.query.ticket;
+
+  if (!ticket) {
+    return res.status(400).json({ error: "Upload ticket is required" });
+  }
+
+  // For now, just respond with a placeholder
+  // In a real implementation, you would process the file here
+  res.json({
+    success: true,
+    ocrResult: "This is a placeholder OCR result. File processing is not fully implemented yet.",
+  });
 });
 
 // Start server
