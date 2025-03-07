@@ -104,6 +104,7 @@
 .analytics-chart-container {
   height: 300px;
   margin-top: 15px;
+  margin-bottom: 20px; /* Add bottom margin to the chart */
   background-color: rgba(76, 175, 80, 0.05); /* Very light green background */
   border-radius: 10px;
   padding: 15px;
@@ -168,20 +169,31 @@
 
 /* Analytics Page Styling - Matches StakeErth Styling */
 
+/* Add styles to ensure the page is scrollable */
+body,
+html {
+  min-height: 100%;
+  height: 100%;
+  background-color: #f5f5f5; /* Light gray background for the page */
+}
+
+#root {
+  min-height: 100%;
+  overflow-y: auto; /* Enable scrolling on the main container */
+  background-color: #f5f5f5; /* Match body background */
+}
+
 /* Main Analytics Container */
 .analytics-page-box {
   width: 100%;
   max-width: 450px;
   background-color: #ffffff;
-  padding: 40px 30px 30px 30px;
+  padding: 40px 30px 50px 30px;
   border-radius: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin: 20px auto 40px; /* Add top and bottom margin */
+  margin: 40px auto 60px; /* Reasonable top margin */
   position: relative;
   z-index: 1;
-  max-height: 85vh; /* Limit max height to 85% of viewport height */
-  overflow-y: auto; /* Add scrolling if content is too tall */
-  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
 }
 
 /* Heading Styling */
@@ -239,11 +251,30 @@
   color: #1e3a8a; /* Keep royal blue on hover */
 }
 
-/* Tab Content Styling */
+/* Tab Content Styling with fixed height and scrolling */
 .analytics-page-tabcontent {
   width: 100%;
   animation: fadeIn 0.3s ease-in-out;
   display: none;
+  max-height: 400px; /* Reduce height from 500px to 400px */
+  overflow-y: auto; /* Add scrolling to tab content */
+  scrollbar-width: thin; /* Thin scrollbar for Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+}
+
+/* Custom scrollbar styling for tab content */
+.analytics-page-tabcontent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.analytics-page-tabcontent::-webkit-scrollbar-track {
+  background: rgba(76, 175, 80, 0.05);
+  border-radius: 10px;
+}
+
+.analytics-page-tabcontent::-webkit-scrollbar-thumb {
+  background-color: rgba(76, 175, 80, 0.3);
+  border-radius: 10px;
 }
 
 .analytics-page-tabcontent.active {
