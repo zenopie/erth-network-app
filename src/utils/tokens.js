@@ -21,7 +21,7 @@ const tokens = {
     contract: "secret1s3z9xkpdsrhk86300tqnv6u466jmdmlegew2ve",
     hash: "cfecd51a022c520c55429d974363fd7f065d20474af6a362da8737f73b7d9e80",
     decimals: 6,
-    logo: "/images/coin/FINA.webp",
+    logo: "/images/coin/FINA.png",
     coingeckoId: "fina",
     lp: {
       contract: "secret1lzdf7fputcwun0cuapwurh7e6j2pzw8fyk046m",
