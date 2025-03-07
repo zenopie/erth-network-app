@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
 const corsProxy = require("cors-anywhere");
+const cors = require("cors");
 const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
 const app = express();
@@ -12,6 +13,20 @@ const WEBHOOK_PORT = 5000; // Port for HTTPS
 
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
+
+// Enable CORS for all routes or specific origins
+const corsOptions = {
+  origin:
+    process.env.NODE_ENV === "development"
+      ? ["http://localhost:3000", "http://127.0.0.1:3000"] // Development origins
+      : "https://erth.network", // Production origin
+  methods: ["GET", "POST"],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+// Enable CORS for specific endpoints that need it for testing
+app.use("/api/analytics", cors(corsOptions));
 
 app.post("/api/save-conversation", async (req, res) => {
   console.log("/api/save-conversation");
