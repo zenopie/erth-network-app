@@ -11,7 +11,7 @@ const tokens = {
     contract: "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
     hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
     decimals: 6,
-    logo: "/images/logo.png"
+    logo: "/images/logo.png",
   },
   ANML: {
     contract: "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
@@ -55,15 +55,15 @@ const ANALYTICS_FILE = path.join(__dirname, "analyticsData.json");
 
 // Utility function to read file contents
 function get_value(file) {
-    const filePath = path.join(__dirname, file);
-    try {
-      const data = fs.readFileSync(filePath, "utf8");
-      return data.trim(); // Trim to remove any extra whitespace or newlines
-    } catch (err) {
-      console.error(err);
-      return null; // Handle the error as needed
-    }
+  const filePath = path.join(__dirname, file);
+  try {
+    const data = fs.readFileSync(filePath, "utf8");
+    return data.trim(); // Trim to remove any extra whitespace or newlines
+  } catch (err) {
+    console.error(err);
+    return null; // Handle the error as needed
   }
+}
 
 // In-memory history
 let analyticsHistory = [];
@@ -76,7 +76,6 @@ const secretjs = new SecretNetworkClient({
   wallet: wallet,
   walletAddress: wallet.address,
 });
-  
 
 // Load analytics data from file
 function loadAnalyticsData() {
@@ -84,13 +83,12 @@ function loadAnalyticsData() {
     if (fs.existsSync(ANALYTICS_FILE)) {
       const raw = fs.readFileSync(ANALYTICS_FILE, "utf8");
       analyticsHistory = JSON.parse(raw);
+      console.log(`[analyticsManager] Loaded ${analyticsHistory.length} historical data points`);
     }
   } catch (err) {
     console.error("Error loading analytics data:", err);
   }
 }
-
-
 
 // Save analytics data to file
 function saveAnalyticsData() {
@@ -107,8 +105,8 @@ async function updateErthValues() {
 
     // 1) Fetch token prices from Coingecko (for tokens with coingeckoId)
     const tokenIds = Object.values(tokens)
-      .filter(t => t.coingeckoId)
-      .map(t => t.coingeckoId)
+      .filter((t) => t.coingeckoId)
+      .map((t) => t.coingeckoId)
       .join(",");
     const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds}&vs_currencies=usd`);
     const priceData = await priceRes.json();
@@ -126,12 +124,21 @@ async function updateErthValues() {
     const erthInfo = await secretjs.query.compute.queryContract({
       contract_address: tokens.ERTH.contract,
       code_hash: tokens.ERTH.hash,
-      query: { token_info: {} }
+      query: { token_info: {} },
     });
     const erthTotalSupply = parseInt(erthInfo.token_info.total_supply) / Math.pow(10, tokens.ERTH.decimals);
     console.log("[DEBUG] ERTH total supply:", erthTotalSupply);
 
-    // 3) Build pool addresses list using each token's contract (for pools)
+    // 3) Query ANML total supply
+    const anmlInfo = await secretjs.query.compute.queryContract({
+      contract_address: tokens.ANML.contract,
+      code_hash: tokens.ANML.hash,
+      query: { token_info: {} },
+    });
+    const anmlTotalSupply = parseInt(anmlInfo.token_info.total_supply) / Math.pow(10, tokens.ANML.decimals);
+    console.log("[DEBUG] ANML total supply:", anmlTotalSupply);
+
+    // 4) Build pool addresses list using each token's contract (for pools)
     const poolQueryTokens = [];
     const poolAddresses = [];
     for (const key in tokens) {
@@ -144,11 +151,11 @@ async function updateErthValues() {
     }
     console.log("[DEBUG] Pool addresses:", poolAddresses);
 
-    // 4) Unified query to fetch all pool info
+    // 5) Unified query to fetch all pool info
     const unifiedPoolRes = await secretjs.query.compute.queryContract({
       contract_address: UNIFIED_POOL_CONTRACT,
       code_hash: UNIFIED_POOL_HASH,
-      query: { query_pool_info: { pools: poolAddresses } }
+      query: { query_pool_info: { pools: poolAddresses } },
     });
     console.log("[DEBUG] Unified pool response:", unifiedPoolRes);
 
@@ -177,28 +184,30 @@ async function updateErthValues() {
       } else {
         // For non‑ANML pools, compute pool price from external token price
         const poolPrice = (tokenReserve / erthReserve) * prices[tokenKey];
-        const poolTVL = (tokenReserve * prices[tokenKey]) + (erthReserve * poolPrice);
+        const poolTVL = tokenReserve * prices[tokenKey] + erthReserve * poolPrice;
         totalWeightedPrice += poolPrice * poolTVL;
         totalLiquidity += poolTVL;
         poolData.push({ token: tokenKey, erthPrice: poolPrice, tvl: poolTVL });
       }
     }
 
-    // 5) Compute global ERTH price from non‑ANML pools
+    // 6) Compute global ERTH price from non‑ANML pools
     const globalErthPrice = totalLiquidity ? totalWeightedPrice / totalLiquidity : 0;
     console.log("[DEBUG] Global ERTH price:", globalErthPrice);
 
-    // 6) Process ANML pool using its reserves and the global ERTH price
+    // 7) Process ANML pool using its reserves and the global ERTH price
+    let anmlMarketCap = 0;
     if (anmlData) {
       // Derive ANML price from pool reserves: (ERTH reserve / ANML reserve) * global ERTH price
       anmlPriceFinal = (anmlData.erthReserve / anmlData.tokenReserve) * globalErthPrice;
-      anmlTVL = (anmlData.tokenReserve * anmlPriceFinal) + (anmlData.erthReserve * globalErthPrice);
+      anmlTVL = anmlData.tokenReserve * anmlPriceFinal + anmlData.erthReserve * globalErthPrice;
+      anmlMarketCap = anmlPriceFinal * anmlTotalSupply;
       totalLiquidity += anmlTVL;
       poolData.push({ token: "ANML", erthPrice: globalErthPrice, tvl: anmlTVL });
-      console.log(`[DEBUG] ANML pool: anmlPrice=${anmlPriceFinal}, anmlTVL=${anmlTVL}`);
+      console.log(`[DEBUG] ANML pool: anmlPrice=${anmlPriceFinal}, anmlTVL=${anmlTVL}, anmlMarketCap=${anmlMarketCap}`);
     }
 
-    // 7) Create a single global data point including all pool data and total TVL, plus an explicit ANML price field
+    // 8) Create a single global data point including all pool data and total TVL, plus explicit ANML fields
     const dataPoint = {
       timestamp: Date.now(),
       erthPrice: globalErthPrice,
@@ -206,9 +215,12 @@ async function updateErthValues() {
       erthMarketCap: globalErthPrice * erthTotalSupply,
       tvl: totalLiquidity,
       pools: poolData,
-      anmlPrice: anmlPriceFinal  // Explicit ANML price variable (null if no ANML data)
+      anmlPrice: anmlPriceFinal, // Explicit ANML price
+      anmlTotalSupply, // Add ANML supply
+      anmlMarketCap, // Add ANML market cap
     };
 
+    // Add the new data point and trim history if needed
     analyticsHistory.push(dataPoint);
     saveAnalyticsData();
     console.log("[analyticsManager] Updated global analytics:", dataPoint);
@@ -217,18 +229,49 @@ async function updateErthValues() {
   }
 }
 
+// Schedule next update to occur at the next 5-minute interval
+function scheduleNextUpdate() {
+  const now = new Date();
+  const currentMinutes = now.getMinutes();
+  const currentSeconds = now.getSeconds();
 
-// Initialize analytics: load stored data, update immediately, then schedule every 5 minutes
+  // Calculate minutes until next 5-minute mark (0, 5, 10, 15, ...)
+  const minutesToAdd = 5 - (currentMinutes % 5);
+  // Milliseconds until next 5-minute mark
+  let delay = (minutesToAdd * 60 - currentSeconds) * 1000;
+
+  // If we're already at a 5-minute mark and just missed it by a few seconds,
+  // ensure we don't wait a full 5 minutes
+  if (currentMinutes % 5 === 0 && currentSeconds < 10) {
+    delay = (10 - currentSeconds) * 1000; // Just wait a few seconds to avoid repeating
+  }
+
+  console.log(`[analyticsManager] Scheduling next update in ${Math.floor(delay / 1000)} seconds`);
+
+  setTimeout(() => {
+    const updateTime = new Date();
+    console.log(`[analyticsManager] Running scheduled update at ${updateTime.toLocaleTimeString()}`);
+    updateErthValues().then(() => {
+      // Schedule the next update after this one completes
+      scheduleNextUpdate();
+    });
+  }, delay);
+}
+
+// Initialize analytics: load stored data, update immediately, then schedule for next 5-minute interval
 function initAnalytics() {
   loadAnalyticsData();
-  updateErthValues();
-  setInterval(updateErthValues,   1 * 60 * 60 * 1000);
+  updateErthValues().then(() => {
+    // After initial update, schedule subsequent updates at 5-minute intervals
+    scheduleNextUpdate();
+  });
 }
 
 // Endpoint helpers
 function getLatestData() {
   return analyticsHistory.length ? analyticsHistory[analyticsHistory.length - 1] : null;
 }
+
 function getAllData() {
   return analyticsHistory;
 }

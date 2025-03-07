@@ -103,11 +103,49 @@
 /*---- Analytics Chart Container Styling ----*/
 .analytics-chart-container {
   height: 300px;
-  margin-top: 20px;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 5px;
+  margin-top: 15px;
+  background-color: rgba(76, 175, 80, 0.05); /* Very light green background */
+  border-radius: 10px;
   padding: 15px;
+  padding-top: 30px; /* Add more padding on top for the title */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(76, 175, 80, 0.3); /* Subtle green border */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle green glow on hover */
+.analytics-chart-container:hover {
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+}
+
+/* Add section title inside chart area */
+.analytics-chart-container::before {
+  content: "ERTH Price";
+  position: absolute;
+  top: 8px;
+  left: 15px;
+  font-size: 12px;
+  color: #4caf50;
+  font-weight: 600;
+  z-index: 1; /* Ensure it's above the chart but not above other UI elements */
+  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ANML Chart specific styling */
+.analytics-chart-container.anml-chart::before {
+  content: "ANML Price";
+  color: #1e3a8a; /* Royal blue for ANML */
+}
+
+.analytics-chart-container.anml-chart {
+  border-color: rgba(30, 58, 138, 0.3); /* Blue border for ANML chart */
+}
+
+.analytics-chart-container.anml-chart:hover {
+  box-shadow: 0 0 15px rgba(30, 58, 138, 0.2); /* Blue glow for ANML chart */
 }
 
 /*---- Responsive Design ----*/
@@ -138,9 +176,12 @@
   padding: 40px 30px 30px 30px;
   border-radius: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin: 0 auto;
+  margin: 20px auto 40px; /* Add top and bottom margin */
   position: relative;
   z-index: 1;
+  max-height: 85vh; /* Limit max height to 85% of viewport height */
+  overflow-y: auto; /* Add scrolling if content is too tall */
+  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
 }
 
 /* Heading Styling */
@@ -150,6 +191,72 @@
   font-size: 24px;
   color: #1e3a8a; /* Royal blue */
   font-weight: 600;
+}
+
+/* Tab Navigation Styling */
+.analytics-page-tab {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 25px;
+  width: 100%;
+  background-color: #f1f0ea; /* Light beige */
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.analytics-page-tab button {
+  background-color: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 0;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  flex-grow: 1;
+  text-align: center;
+  color: #1e3a8a; /* Royal blue */
+  font-weight: 500;
+  border-radius: 0;
+}
+
+.analytics-page-tab button:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.analytics-page-tab button:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.analytics-page-tab button.active {
+  background-color: #4caf50;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+.analytics-page-tab button:not(.active):hover {
+  background-color: #ccc;
+  color: #1e3a8a; /* Keep royal blue on hover */
+}
+
+/* Tab Content Styling */
+.analytics-page-tabcontent {
+  width: 100%;
+  animation: fadeIn 0.3s ease-in-out;
+  display: none;
+}
+
+.analytics-page-tabcontent.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Section Styling */
@@ -233,16 +340,6 @@
   background-color: rgba(76, 175, 80, 0.05);
 }
 
-/* Analytics Chart Container Styling */
-.analytics-chart-container {
-  height: 300px;
-  margin-top: 15px;
-  background-color: #f1f0ea; /* Light beige */
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
 /* Loading and Error States */
 .analytics-loading-message,
 .analytics-error-message {
@@ -255,6 +352,15 @@
 
 .analytics-error-message {
   color: #e74c3c; /* Red */
+}
+
+/* Note text */
+.analytics-note {
+  text-align: center;
+  color: #1e3a8a; /* Royal blue */
+  font-size: 14px;
+  margin: 10px 0;
+  font-style: italic;
 }
 
 /* Responsive Design */
@@ -273,4 +379,37 @@
     padding: 8px 10px;
     font-size: 0.9em;
   }
+}
+
+/* Time Range Selector */
+.analytics-time-selector {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+  padding: 0 5px;
+}
+
+.analytics-time-selector button {
+  background-color: transparent;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  margin-left: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.analytics-time-selector button:hover {
+  background-color: rgba(76, 175, 80, 0.05);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.analytics-time-selector button.active {
+  background-color: rgba(76, 175, 80, 0.15);
+  border-color: #4caf50;
+  color: #4caf50;
+  font-weight: 600;
 }
