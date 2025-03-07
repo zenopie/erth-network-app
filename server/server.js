@@ -96,6 +96,21 @@ app.use("/api/cors", (req, res) => {
 // Initialize analytics
 initAnalytics();
 
+// Allow CORS for the analytics endpoint
+app.use("/api/analytics", (req, res, next) => {
+  // Allow both the production domain and localhost during development
+  const allowedOrigins = ["https://erth.network", "http://localhost:3000"];
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
 // Simple endpoint for front-end
 app.get("/api/analytics", (req, res) => {
   const latest = getLatestData();

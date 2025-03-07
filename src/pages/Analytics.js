@@ -4,19 +4,36 @@ import "chart.js/auto"; // For Chart.js v4
 import "./Analytics.css";
 import { showLoadingScreen } from "../utils/uiUtils";
 
+// Use the production URL - server now has CORS properly configured
+const API_URL = "https://erth.network/api/analytics";
+
 const Analytics = () => {
   const [latest, setLatest] = useState(null);
   const [history, setHistory] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/analytics")
-      .then((res) => res.json())
+    showLoadingScreen(true);
+
+    fetch(API_URL)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setLatest(data.latest);
         setHistory(data.history);
+        setError(null);
       })
-      .catch(console.error);
-    showLoadingScreen(false);
+      .catch((err) => {
+        console.error("Error fetching analytics data:", err);
+        setError("Failed to load analytics data. Please try again later.");
+      })
+      .finally(() => {
+        showLoadingScreen(false);
+      });
   }, []);
 
   // Prepare chart data (e.g. x=timestamp, y=ERTH price)
