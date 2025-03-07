@@ -437,43 +437,6 @@ const Analytics = () => {
           </div>
         );
 
-      case "Details":
-        return (
-          <div className="analytics-page-tabcontent active">
-            <div className="analytics-section">
-              <h3 className="analytics-section-title">Network Details</h3>
-              {latest && (
-                <div className="analytics-info-display">
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Circulating Supply:</span>
-                    <span className="analytics-info-value">
-                      {(latest.erthTotalSupply * 0.85).toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH
-                    </span>
-                  </div>
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Staked ERTH:</span>
-                    <span className="analytics-info-value">
-                      {(latest.erthTotalSupply * 0.25).toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH
-                    </span>
-                  </div>
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">24h Volume:</span>
-                    <span className="analytics-info-value">
-                      ${(latest.erthMarketCap * 0.12).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="analytics-divider"></div>
-
-              <p className="analytics-note">
-                Note: The information above is an estimate based on available data. Actual network metrics may vary.
-              </p>
-            </div>
-          </div>
-        );
-
       default:
         return <div className="analytics-page-tabcontent active">Tab content not found</div>;
     }
@@ -497,9 +460,6 @@ const Analytics = () => {
             </button>
             <button className={activeTab === "Pools" ? "active" : ""} onClick={() => setActiveTab("Pools")}>
               Pools
-            </button>
-            <button className={activeTab === "Details" ? "active" : ""} onClick={() => setActiveTab("Details")}>
-              Details
             </button>
           </div>
 

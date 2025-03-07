@@ -9,7 +9,8 @@ import StatusModal from "../components/StatusModal";
 // Import images
 import passportImage from "../images/passport.png";
 import anmlImage from "../images/anml.png";
-import watermelonImage from "../images/watermelon.png";
+// Import ANML token image for the food serving context
+import anmlCoinImage from "../images/anml.png";
 
 const REGISTRATION_CONTRACT = contracts.registration.contract;
 const REGISTRATION_HASH = contracts.registration.hash;
@@ -17,6 +18,40 @@ const REGISTRATION_HASH = contracts.registration.hash;
 const ANMLClaim = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading"); // 'loading', 'success', 'error'
+
+  // Select a food emoji based on the day of the week
+  const [foodEmoji] = useState(() => {
+    // Get current day of the week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = new Date().getDay();
+
+    // Food emojis grouped by days of the week
+    const weekdayFoods = {
+      // Sunday - Brunch day
+      0: ["🥞", "🧇", "🥐", "🍳", "🥯", "🍉", "☕"],
+
+      // Monday - Healthy start
+      1: ["🥗", "🥑", "🍉", "🍓", "🥝", "🥥", "🥦"],
+
+      // Tuesday - Taco Tuesday
+      2: ["🌮", "🌯", "🫔", "🥙", "🌶️", "🍹", "🧀"],
+
+      // Wednesday - Comfort food
+      3: ["🍲", "🍜", "🥘", "🍛", "🍝", "🥪", "🍚"],
+
+      // Thursday - International cuisine
+      4: ["🍣", "🥟", "🫕", "🍱", "🥡", "🥘", "🍛"],
+
+      // Friday - Party food
+      5: ["🍕", "🍔", "🍟", "🍉", "🍻", "🍿", "🌭"],
+
+      // Saturday - Dessert day
+      6: ["🍦", "🧁", "🎂", "🍰", "🍪", "🍫", "🍮"],
+    };
+
+    // Get array for current day and pick a random emoji from it
+    const todaysFoods = weekdayFoods[dayOfWeek];
+    return todaysFoods[Math.floor(Math.random() * todaysFoods.length)];
+  });
 
   // Function to check the verification status
   const checkVerificationStatus = async () => {
@@ -187,7 +222,10 @@ const ANMLClaim = ({ isKeplrConnected }) => {
       </div>
 
       <div id="complete-box" className="anml-test-box remove">
-        <img src={watermelonImage} width={350} alt="Logo" className="logo-img" />
+        <div className="horizon-container">
+          <div className="food-item">{foodEmoji}</div>
+          <div className="shadow-area"></div>
+        </div>
         <span className="anml-success-text">CLAIMED! see you tomorrow!</span>
       </div>
     </>

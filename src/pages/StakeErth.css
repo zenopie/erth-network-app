@@ -329,7 +329,7 @@
   border-radius: 12px;
   padding: 18px;
   margin-top: 20px;
-  border: none;
+  border: 1px solid #4caf50; /* Adding a tiny green outline */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -354,14 +354,14 @@
   background-color: #388e3c;
 }
 
-/* Unbonding Entries Section - Cleaner style without border */
+/* Unbonding Entries Section - Matching rewards section style */
 .unbonding-entries-section {
-  background-color: #f1f0ea; /* Light beige */
+  background-color: #f8fbf8; /* Light green background like rewards section */
   border-radius: 12px;
   padding: 18px;
   margin-top: 20px;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  border: 1px solid #4caf50; /* Adding a tiny green outline */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .unbonding-entries-section h3 {
