@@ -1,10 +1,10 @@
-// ESM Version of agent.mjs
 import express from "express";
-import { ChatSecret, SECRET_AI_CONFIG } from "secretai";
-import { Tool } from "langchain/tools";
+import { ChatSecret } from "secretai";
+import { create_react_agent } from "langchain/agents";
+import { AgentExecutor } from "langchain/agents";
+import { BufferMemory } from "langchain/memory";
 import cors from "cors";
 import bodyParser from "body-parser";
-// Import tokens from the utils directory
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";
@@ -24,9 +24,7 @@ const tokenMatch = tokenContent.match(/const tokens = \{([\s\S]*?)\};/);
 const tokensObject = {};
 
 if (tokenMatch && tokenMatch[1]) {
-  // Extract token definitions
   const tokenDefs = tokenMatch[1].trim();
-  // This is a very simplified parser - in production code you'd want a more robust solution
   const tokenRegex = /(\w+):\s*\{([^}]+)\}/g;
   let match;
 
@@ -55,7 +53,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(
   cors({
-    origin: "http://localhost:3000", // React default port
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
   })
@@ -63,39 +61,117 @@ app.use(
 
 const PORT = 5001;
 
-console.log("Setting up SecretAI and tools...");
+console.log("Setting up SecretAI, tools, and memory...");
 
-// SecretAI and LangChain setup with secretai v1.0.10
+// SecretAI and LangChain setup
 const API_KEY = "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1";
-const MODEL = "llama3.2-vision"; // Make sure this matches an available model
+const MODEL = "llama3.2-vision";
 
-// Custom tool for crafting Keplr actions
-class KeplrActionTool extends Tool {
-  name = "keplr_action";
-  description =
-    "Crafts Keplr wallet actions for Secret Network mainnet. Use <keplr-action>{type, recipient, amount} format.";
+// Custom KeplrActionTool as a plain class
+class KeplrActionTool {
+  constructor() {
+    this.name = "keplr_action";
+    this.description = `
+      Crafts Keplr wallet actions for Secret Network mainnet.
+      Input should be a JSON string or object with {type, recipient, amount, token (optional)}.
+      Types: "transfer" (requires recipient, amount, token), "balance" (token optional), "ping".
+      Returns a JSON string with action details.
+    `;
+  }
 
-  async _call(input) {
-    console.log("KeplrActionTool called with:", input);
-    if (input.includes("<keplr-action>")) {
-      const match = input.match(/<keplr-action>(\{.*?\})/);
-      if (match) {
-        try {
-          const payload = JSON.parse(match[1]);
-          console.log("Parsed Keplr action payload:", payload);
-          return JSON.stringify({
-            action: "keplr_prompt",
-            payload: payload,
-          });
-        } catch (error) {
-          console.error("Error parsing Keplr action:", error);
-          return "Error parsing Keplr action.";
-        }
+  async execute(input) {
+    console.log("KeplrActionTool executed with:", input);
+    try {
+      const payload = typeof input === "string" ? JSON.parse(input) : input;
+      console.log("Parsed Keplr action payload:", payload);
+
+      // Enhance payload with token details if applicable
+      if (payload.token && tokensObject[payload.token]) {
+        const tokenDetails = tokensObject[payload.token];
+        payload.contract = tokenDetails.contract;
+        payload.hash = tokenDetails.hash;
+        payload.decimals = tokenDetails.decimals;
       }
+
+      return JSON.stringify({
+        action: "keplr_prompt",
+        payload: payload,
+      });
+    } catch (error) {
+      console.error("Error in KeplrActionTool:", error);
+      return JSON.stringify({ error: "Invalid Keplr action input" });
     }
-    return "No Keplr action required.";
   }
 }
+
+// Adapt KeplrActionTool for LangChain
+const keplrToolInstance = new KeplrActionTool();
+const keplrTool = {
+  name: keplrToolInstance.name,
+  description: keplrToolInstance.description,
+  func: keplrToolInstance.execute.bind(keplrToolInstance), // Bind the execute method
+};
+
+// Initialize SecretAI LLM
+const secretAiLLM = new ChatSecret({
+  apiKey: API_KEY,
+  model: MODEL,
+  stream: false, // Disable streaming for simplicity with LangChain
+});
+
+// Memory setup
+const memory = new BufferMemory({
+  memoryKey: "chat_history",
+  inputKey: "input",
+  outputKey: "output",
+});
+
+// System prompt
+const systemPrompt = `
+You are an AI assistant integrated with Keplr wallet on Secret Network mainnet (secret-4). Your role is to:
+1. Interpret user requests related to blockchain interactions on mainnet
+2. Provide information about the user's mainnet wallet and network status
+3. Use the "keplr_action" tool to craft and trigger Keplr wallet actions when appropriate
+
+Keplr Wallet Context (Mainnet):
+- Address: {{userAddress}}
+Available tokens on Secret Network:
+${Object.values(tokensObject)
+  .map(
+    (token) =>
+      `- ${token.symbol}: contract ${token.contract}, hash ${token.hash}, decimals ${token.decimals}`
+  )
+  .join("\n")}
+
+Token balances in your wallet (if provided):
+{{tokenBalances}}
+
+Use the "keplr_action" tool for blockchain actions with these types:
+- Token transfer: {"type": "transfer", "recipient": "secret1...", "amount": "5000000", "token": "SYMBOL"}
+  * amount in token's smallest units (e.g., 1 SCRT = 1000000 uscrt)
+  * if token omitted, use sSCRT
+- Check balance: {"type": "balance", "token": "SYMBOL"}
+  * if token omitted, check native SCRT
+- Network ping: {"type": "ping"}
+
+Only use the tool when certain an action is needed. If unsure, ask for clarification.
+`;
+
+// Create the ReAct agent with tools
+const tools = [keplrTool];
+const agent = create_react_agent({
+  llm: secretAiLLM,
+  tools,
+  prompt: systemPrompt,
+});
+
+// Create the executor with memory
+const executor = AgentExecutor.fromAgentAndTools({
+  agent,
+  tools,
+  memory,
+  verbose: true,
+});
 
 // Agent handler function
 async function handleAgentRequest(message, userAddress, tokens = null) {
@@ -106,140 +182,47 @@ async function handleAgentRequest(message, userAddress, tokens = null) {
   }
 
   try {
-    // Initialize SecretAI instance for v1.0.10
-    console.log("Creating SecretAI LLM instance...");
-
-    // For v1.0.10, we don't need to specify the URL directly - the API key and config handle it
-    const secretAiLLM = new ChatSecret({
-      apiKey: API_KEY,
-      model: MODEL,
-      stream: true, // Using streaming like in SecretAIChat.js
-    });
-
-    console.log("SecretAI LLM instance created successfully");
-
-    // Add token information to the system message if available
-    let tokenInfo = "";
-
-    // Add information from tokens.js
-    tokenInfo += "\n\nAvailable tokens on Secret Network:\n";
-    Object.values(tokensObject).forEach((token) => {
-      tokenInfo += `- ${token.symbol}: contract ${token.contract}, hash ${token.hash}, with ${token.decimals} decimals\n`;
-    });
-
-    // Add user's wallet token balances if available
-    if (tokens && tokens.availableTokens && tokens.availableTokens.length > 0) {
-      tokenInfo += "\n\nToken balances in your wallet:\n";
-      tokens.availableTokens.forEach((token) => {
-        const balanceInStandard = token.balance / Math.pow(10, token.decimals);
-        tokenInfo += `- ${token.symbol}: ${balanceInStandard} ${token.symbol}\n`;
-      });
-    }
-
-    const systemMessage = `
-You are an AI assistant integrated with Keplr wallet on Secret Network mainnet (secret-4). Your role is to:
-1. Interpret user requests related to blockchain interactions on mainnet
-2. Provide information about the user's mainnet wallet and network status
-3. Craft and trigger Keplr wallet actions on mainnet when appropriate
-
-Keplr Wallet Context (Mainnet):
-- Address: ${userAddress || "Not connected"}
-${tokenInfo}
-
-How to trigger a Keplr action:
-- When a mainnet blockchain action is needed, respond with "<keplr-action>" followed by a JSON object
-- Supported actions (executed on mainnet):
-  - Token transfer: <keplr-action>{"type": "transfer", "recipient": "secret1...", "amount": "5000000", "token": "SYMBOL"}
-    * amount should be specified in the token's small units (e.g., uscrt for SCRT, where 1 SCRT = 1000000 uscrt)
-    * if token is not specified, sSCRT (wrapped SCRT) will be used by default
-  - Check balance: <keplr-action>{"type": "balance", "token": "SYMBOL"}
-    * if token is not specified, native SCRT balance will be checked
-  - Network ping: <keplr-action>{"type": "ping"}
-- Only include <keplr-action> when certain an action should be taken
-- If unsure, ask for confirmation or more details
-- Provide clear feedback about what you're doing
-
-When a user mentions a token by symbol (like ERTH, ANML, FINA, sSCRT), you know the contract address and hash details.
-`;
-
-    const messages = [
-      { role: "system", content: systemMessage },
-      { role: "user", content: message },
-    ];
-
-    console.log("Sending messages to SecretAI chat...");
-    let response = "";
-
-    // Using Promise to handle completion
-    const chatPromise = new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error("SecretAI API request timed out after 120 seconds"));
-      }, 120000);
-
-      // For v1.0.10, the API interface might have changed
-      secretAiLLM
-        .chat(messages, {
-          onMessage: (data) => {
-            console.log("Message received from SecretAI:", JSON.stringify(data).substring(0, 200) + "...");
-            if (data.message?.content) {
-              response += data.message.content;
-            }
-          },
-          onComplete: () => {
-            console.log("Chat completed with response length:", response.length);
-            if (response.length > 200) {
-              console.log("Response preview:", response.substring(0, 200) + "...");
-            } else {
-              console.log("Response:", response);
-            }
-            clearTimeout(timeoutId);
-            resolve();
-          },
-          onError: (error) => {
-            console.error("SecretAI chat error:", error);
-            clearTimeout(timeoutId);
-            reject(error);
-          },
+    // Prepare token balances string
+    let tokenBalances = "";
+    if (tokens?.availableTokens?.length > 0) {
+      tokenBalances = tokens.availableTokens
+        .map((token) => {
+          const balanceInStandard = token.balance / Math.pow(10, token.decimals);
+          return `- ${token.symbol}: ${balanceInStandard} ${token.symbol}`;
         })
-        .catch((error) => {
-          console.error("Exception in SecretAI chat:", error);
-          clearTimeout(timeoutId);
-          reject(error);
-        });
-    });
-
-    try {
-      await chatPromise;
-      console.log("Chat promise resolved successfully");
-    } catch (error) {
-      console.error("Chat promise rejected:", error);
-      throw error;
+        .join("\n");
     }
 
-    // Check for Keplr action
-    console.log("Checking for Keplr action in response...");
-    if (response.includes("<keplr-action>")) {
-      const match = response.match(/<keplr-action>(\{.*?\})/);
-      if (match) {
-        const payload = JSON.parse(match[1]);
-        console.log("Found Keplr action payload:", payload);
+    // Replace placeholders in the prompt
+    const formattedPrompt = systemPrompt
+      .replace("{{userAddress}}", userAddress || "Not connected")
+      .replace("{{tokenBalances}}", tokenBalances || "No balances provided");
 
-        // Enhance the payload with token details if a token is specified
-        if (payload.token && tokensObject[payload.token]) {
-          const tokenDetails = tokensObject[payload.token];
+    // Execute the agent with memory
+    const result = await executor.run({
+      input: message,
+      prompt: formattedPrompt,
+    });
 
-          // Add contract address and hash to the payload
-          payload.contract = tokenDetails.contract;
-          payload.hash = tokenDetails.hash;
-          payload.decimals = tokenDetails.decimals;
+    console.log("Agent result:", result);
 
-          console.log("Enhanced payload with token details:", payload);
+    // Parse the result for Keplr actions (if any)
+    let response = result.output || result;
+    let keplrAction = null;
+
+    if (typeof response === "string" && response.includes("keplr_prompt")) {
+      try {
+        const parsed = JSON.parse(response);
+        if (parsed.action === "keplr_prompt") {
+          keplrAction = parsed.payload;
+          response = "Keplr action prepared.";
         }
-
-        return { response: response.replace(/<keplr-action>\{.*?\}/g, ""), keplrAction: payload };
+      } catch (error) {
+        console.error("Error parsing Keplr action from response:", error);
       }
     }
-    return { response };
+
+    return { response, keplrAction };
   } catch (error) {
     console.error("Agent error:", error);
     throw error;
@@ -277,8 +260,6 @@ app.post("/api/upload-image", async (req, res) => {
     return res.status(400).json({ error: "Upload ticket is required" });
   }
 
-  // For now, just respond with a placeholder
-  // In a real implementation, you would process the file here
   res.json({
     success: true,
     ocrResult: "This is a placeholder OCR result. File processing is not fully implemented yet.",
