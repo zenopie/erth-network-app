@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Legend } from 'recharts';
-import './DeflationFund.css';
-import { showLoadingScreen } from '../utils/uiUtils';
-import { query } from '../utils/contractUtils';
+import React, { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, Legend } from "recharts";
+import "./PublicBenefitFund.css";
+import { showLoadingScreen } from "../utils/uiUtils";
+import { query } from "../utils/contractUtils";
 
 const this_contract = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
 const this_hash = "2c0d1e6fa1fdf4899384107a3a2f0b7424143f65ebc975fa802ffe0926db4606";
 
-const COLORS = ['#4CAF50', '#8BC34A', '#FF9800', '#CDDC39', '#009688', '#795548'];
-const UNALLOCATED_COLOR = '#B0B0B0'; // Grey color for Unallocated
+const COLORS = ["#4CAF50", "#8BC34A", "#FF9800", "#CDDC39", "#009688", "#795548"];
+const UNALLOCATED_COLOR = "#B0B0B0"; // Grey color for Unallocated
 
 const allocationNames = [
-  { id: '1', name: 'Registration Rewards' },
+  { id: "1", name: "Registration Rewards" },
   // Add more allocation names here
 ];
 
@@ -22,27 +22,27 @@ const renderCustomLegend = (props, data) => {
   return (
     <ul
       style={{
-        listStyleType: 'none',
+        listStyleType: "none",
         margin: 0,
         padding: 0,
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
       }}
     >
       {payload.map((entry, index) => {
         const value = entry.payload.value || 0;
-        const name = entry.payload.name || 'N/A';
+        const name = entry.payload.name || "N/A";
         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-        const formattedPercentage = percentage.endsWith('.0') ? parseInt(percentage) : percentage;
+        const formattedPercentage = percentage.endsWith(".0") ? parseInt(percentage) : percentage;
 
         return (
           <li
             key={`item-${index}`}
             style={{
-              margin: '0 10px',
+              margin: "0 10px",
               color: entry.color,
-              whiteSpace: 'nowrap',
+              whiteSpace: "nowrap",
             }}
           >
             {`${name} ${formattedPercentage}%`}
@@ -56,7 +56,7 @@ const renderCustomLegend = (props, data) => {
 const getChartDataWithUnallocated = (allocations = []) => {
   const totalPercentage = allocations.reduce((acc, alloc) => acc + alloc.value, 0);
   const unallocatedPercentage = Math.max(100 - totalPercentage, 0);
-  
+
   const chartData = allocations.map((alloc) => ({
     ...alloc,
     value: alloc.value,
@@ -64,8 +64,8 @@ const getChartDataWithUnallocated = (allocations = []) => {
 
   if (unallocatedPercentage > 0) {
     chartData.push({
-      id: 'unallocated',
-      name: 'Unallocated',
+      id: "unallocated",
+      name: "Unallocated",
       value: unallocatedPercentage,
     });
   }
@@ -74,7 +74,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
 };
 
 const PublicBenefitFund = ({ isKeplrConnected }) => {
-  const [activeTab, setActiveTab] = useState('Actual');
+  const [activeTab, setActiveTab] = useState("Actual");
   const [dataActual, setDataActual] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -82,9 +82,9 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
 
   useEffect(() => {
     if (isKeplrConnected) {
-      if (activeTab === 'Actual') {
+      if (activeTab === "Actual") {
         fetchDataActual();
-      } else if (activeTab === 'Preferred') {
+      } else if (activeTab === "Preferred") {
         fetchUserInfo();
       }
     }
@@ -159,32 +159,29 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
     const updatedAllocations = selectedAllocations.map((alloc) =>
       alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc
     );
-    
+
     // Update the state with the new allocations
     setSelectedAllocations(updatedAllocations);
   };
 
   return (
-    <div className="deflation-fund-box">
-      <h2>Public Goods Fund</h2>
-      <div className="deflation-fund-tab">
-        <button
-          className={`tablinks ${activeTab === 'Actual' ? 'active' : ''}`}
-          onClick={() => openTab('Actual')}
-        >
+    <div className="public-benefit-box">
+      <h2>Public Benefit Fund</h2>
+      <div className="public-benefit-tab">
+        <button className={`tablinks ${activeTab === "Actual" ? "active" : ""}`} onClick={() => openTab("Actual")}>
           Actual Allocation
         </button>
         <button
-          className={`tablinks ${activeTab === 'Preferred' ? 'active' : ''}`}
-          onClick={() => openTab('Preferred')}
+          className={`tablinks ${activeTab === "Preferred" ? "active" : ""}`}
+          onClick={() => openTab("Preferred")}
         >
           Preferred Allocation
         </button>
       </div>
 
-      {activeTab === 'Actual' && (
-        <div className="chart-box">
-          <div className="canvas-container">
+      {activeTab === "Actual" && (
+        <div className="public-benefit-chart-box">
+          <div className="public-benefit-canvas-container">
             <PieChart width={350} height={350}>
               <Pie
                 data={dataActual}
@@ -204,7 +201,7 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
                 ))}
               </Pie>
               <Legend
-                content={(props) => renderCustomLegend(props, dataActual)} 
+                content={(props) => renderCustomLegend(props, dataActual)}
                 layout="horizontal"
                 align="center"
                 verticalAlign="bottom"
@@ -214,10 +211,10 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
         </div>
       )}
 
-      {activeTab === 'Preferred' && (
-        <div className="chart-box">
-          <div className="canvas-container">
-            <div style={{ position: 'relative', width: 350, height: 350 }}>
+      {activeTab === "Preferred" && (
+        <div className="public-benefit-chart-box">
+          <div className="public-benefit-canvas-container">
+            <div style={{ position: "relative", width: 350, height: 350 }}>
               <PieChart width={350} height={350}>
                 <Pie
                   data={getChartDataWithUnallocated(selectedAllocations)}
@@ -234,7 +231,7 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
                   isAnimationActive={false}
                 >
                   {getChartDataWithUnallocated(selectedAllocations).map((entry, index) => {
-                    if (entry.name === 'Unallocated') {
+                    if (entry.name === "Unallocated") {
                       return <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />;
                     } else {
                       return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
@@ -244,12 +241,12 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
               </PieChart>
               <div
                 style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
                   fontSize: 24,
-                  color: totalPercentage === 100 ? 'green' : 'red',
+                  color: totalPercentage === 100 ? "green" : "red",
                 }}
               >
                 {`${totalPercentage}%`}
@@ -257,9 +254,9 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
             </div>
           </div>
 
-          <div id="input-container">
+          <div id="public-benefit-input-container">
             {selectedAllocations.map((alloc) => (
-              <div key={alloc.id} className="allocation-input-group">
+              <div key={alloc.id} className="public-benefit-allocation-input-group">
                 <span>{alloc.name}</span>
                 <input
                   type="number"
@@ -267,28 +264,19 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
                   onChange={(e) => handlePercentageChange(alloc.id, e.target.value)}
                   placeholder="%"
                 />
-                <button
-                  className="circle-button"
-                  onClick={() => removeAllocation(alloc.id)}
-                >
+                <button className="public-benefit-circle-button" onClick={() => removeAllocation(alloc.id)}>
                   -
                 </button>
               </div>
             ))}
           </div>
 
-          <div className="dropdown-container">
-            <button className="circle-button" onClick={() => setShowDropdown(!showDropdown)}>
+          <div className="public-benefit-dropdown-container">
+            <button className="public-benefit-circle-button" onClick={() => setShowDropdown(!showDropdown)}>
               +
             </button>
             {showDropdown && (
-              <select
-                onChange={(e) =>
-                  addAllocation(
-                    selectedAllocations.find((option) => option.id === e.target.value)
-                  )
-                }
-              >
+              <select onChange={(e) => addAllocation(allocationNames.find((option) => option.id === e.target.value))}>
                 <option value="">Select an option</option>
                 {allocationNames.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -299,7 +287,7 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
             )}
           </div>
           {selectedAllocations.length > 0 && (
-            <button onClick={() => console.log('Change Allocation')} className="claim-button">
+            <button onClick={() => console.log("Change Allocation")} className="public-benefit-claim-button">
               Change
             </button>
           )}

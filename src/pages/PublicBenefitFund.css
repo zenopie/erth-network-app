@@ -1,0 +1,147 @@
+/* General Styling */
+.public-benefit-box {
+  position: relative;
+  width: 100%;
+  max-width: 450px;
+  background-color: #ffffff;
+  padding: 30px 30px 30px 30px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+  margin: 0 auto;
+}
+
+/* Add some space between the heading and the tabs */
+.public-benefit-box h2 {
+  margin-bottom: 20px;
+  text-align: center;
+  margin-top: 0;
+}
+
+/* Tab Navigation Styling */
+.public-benefit-tab {
+  display: flex;
+  justify-content: space-evenly;
+  margin-bottom: 20px;
+  width: 100%;
+  background-color: #f1f0ea;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.public-benefit-tab button {
+  background-color: #f1f0ea;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 20px;
+  transition: background-color 0.3s ease;
+  font-size: 16px;
+  flex-grow: 1;
+  text-align: center;
+  color: #333;
+  position: relative;
+}
+
+/* Rounded corners only on the outer edges */
+.public-benefit-tab button:first-child {
+  border-radius: 20px 0 0 20px;
+}
+
+.public-benefit-tab button:last-child {
+  border-radius: 0 20px 20px 0;
+}
+
+.public-benefit-tab button.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+.public-benefit-tab button:not(.active):hover {
+  background-color: #ddd;
+}
+
+/* Chart Box Styling */
+.public-benefit-chart-box {
+  border-radius: 0 0 20px 20px;
+}
+
+/* Canvas Container Styling */
+.public-benefit-canvas-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.public-benefit-canvas-container canvas {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Allocation Inputs */
+.public-benefit-allocation-input-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.public-benefit-allocation-input-group input {
+  width: 50px;
+  margin-right: 10px;
+  padding: 5px;
+  text-align: right;
+}
+
+.public-benefit-circle-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.public-benefit-circle-button:hover {
+  background-color: #45a049;
+}
+
+/* Dropdown Container */
+.public-benefit-dropdown-container {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.public-benefit-dropdown-container select {
+  margin-left: 10px;
+  padding: 5px;
+}
+
+/* Input Container Styling */
+#public-benefit-input-container {
+  margin-top: 20px;
+}
+
+/* Claim Button */
+.public-benefit-claim-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+  width: 100%;
+  transition: background-color 0.3s;
+}
+
+.public-benefit-claim-button:hover {
+  background-color: #45a049;
+}
