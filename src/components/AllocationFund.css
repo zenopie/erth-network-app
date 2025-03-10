@@ -1,25 +1,18 @@
 /* General Styling */
-.public-benefit-box {
+.allocation-fund-box {
   position: relative;
   width: 100%;
   max-width: 450px;
   background-color: #ffffff;
-  padding: 30px 30px 30px 30px;
+  padding: 30px;
   border-radius: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1;
   margin: 0 auto;
 }
 
-/* Add some space between the heading and the tabs */
-.public-benefit-box h2 {
-  margin-bottom: 20px;
-  text-align: center;
-  margin-top: 0;
-}
-
 /* Tab Navigation Styling */
-.public-benefit-tab {
+.allocation-fund-tab {
   display: flex;
   justify-content: space-evenly;
   margin-bottom: 20px;
@@ -29,7 +22,7 @@
   overflow: hidden;
 }
 
-.public-benefit-tab button {
+.allocation-fund-tab button {
   background-color: #f1f0ea;
   border: none;
   outline: none;
@@ -44,56 +37,56 @@
 }
 
 /* Rounded corners only on the outer edges */
-.public-benefit-tab button:first-child {
+.allocation-fund-tab button:first-child {
   border-radius: 20px 0 0 20px;
 }
 
-.public-benefit-tab button:last-child {
+.allocation-fund-tab button:last-child {
   border-radius: 0 20px 20px 0;
 }
 
-.public-benefit-tab button.active {
+.allocation-fund-tab button.active {
   background-color: #4caf50;
   color: white;
 }
 
-.public-benefit-tab button:not(.active):hover {
+.allocation-fund-tab button:not(.active):hover {
   background-color: #ddd;
 }
 
 /* Chart Box Styling */
-.public-benefit-chart-box {
+.allocation-fund-chart-box {
   border-radius: 0 0 20px 20px;
 }
 
 /* Canvas Container Styling */
-.public-benefit-canvas-container {
+.allocation-fund-canvas-container {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
 }
 
-.public-benefit-canvas-container canvas {
+.allocation-fund-canvas-container canvas {
   width: 100%;
   max-width: 400px;
 }
 
 /* Allocation Inputs */
-.public-benefit-allocation-input-group {
+.allocation-fund-input-group {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
-.public-benefit-allocation-input-group input {
+.allocation-fund-input-group input {
   width: 50px;
   margin-right: 10px;
   padding: 5px;
   text-align: right;
 }
 
-.public-benefit-circle-button {
+.allocation-fund-circle-button {
   background-color: #4caf50;
   color: white;
   border: none;
@@ -107,29 +100,29 @@
   cursor: pointer;
 }
 
-.public-benefit-circle-button:hover {
+.allocation-fund-circle-button:hover {
   background-color: #45a049;
 }
 
 /* Dropdown Container */
-.public-benefit-dropdown-container {
+.allocation-fund-dropdown-container {
   display: flex;
   align-items: center;
   margin-top: 10px;
 }
 
-.public-benefit-dropdown-container select {
+.allocation-fund-dropdown-container select {
   margin-left: 10px;
   padding: 5px;
 }
 
 /* Input Container Styling */
-#public-benefit-input-container {
+.allocation-fund-input-container {
   margin-top: 20px;
 }
 
 /* Claim Button */
-.public-benefit-claim-button {
+.allocation-fund-claim-button {
   background-color: #4caf50;
   color: white;
   border: none;
@@ -142,16 +135,45 @@
   transition: background-color 0.3s;
 }
 
-.public-benefit-claim-button:hover {
+.allocation-fund-claim-button:hover {
   background-color: #45a049;
 }
 
-/* Page-specific container */
-.public-benefit-container {
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 20px 0;
+/* Message Styling */
+.allocation-fund-error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px;
+  text-align: center;
+  font-size: 14px;
 }
 
-/* Additional page-specific styles can be added here */
+.allocation-fund-success-message {
+  background-color: #e8f5e9;
+  color: #388e3c;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Disable button styling */
+.allocation-fund-claim-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+  .allocation-fund-box {
+    padding: 20px 15px;
+  }
+
+  .allocation-fund-canvas-container canvas {
+    width: 100%;
+    max-width: 300px;
+  }
+}

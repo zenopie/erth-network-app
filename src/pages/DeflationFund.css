@@ -211,3 +211,13 @@
     padding-right: 15px;
   }
 }
+
+/* Page-specific container */
+.deflation-fund-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+/* Additional page-specific styles can be added here */
