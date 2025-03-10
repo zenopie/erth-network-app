@@ -1,70 +1,176 @@
-# Getting Started with Create React App
+# ERTH Network Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack decentralized application for the ERTH Network ecosystem that provides token management, staking, swapping, and analytics functionalities.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+ERTH Network is a blockchain-based platform built on the Secret Network that offers various decentralized finance (DeFi) capabilities including token swapping, staking, liquidity provision, and analytics tracking. This application serves as the main interface for users to interact with the ERTH ecosystem.
 
-### `npm start`
+## Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Token Swapping**: Exchange ERTH, ANML, and other tokens directly through the interface
+- **Staking**: Stake ERTH tokens to earn rewards
+- **Liquidity Management**: Add or remove liquidity to various token pairs
+- **Analytics Dashboard**: Monitor token prices, market cap, and TVL (Total Value Locked)
+- **TOTP Authentication**: Secure access with time-based one-time passwords
+- **Secret AI Chat**: Interact with AI powered by Secret Network's privacy features
+- **Agent Chat**: Communicate with specialized AI agents
+- **Public Benefit Fund**: Interface for interacting with the network's public benefit fund
+- **Deflation Fund**: Track and interact with the network's deflation mechanism
+- **ANML Token Claiming**: Claim ANML tokens through the dedicated interface
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Technical Architecture
 
-### `npm test`
+### Frontend
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The frontend is built using React.js with the following structure:
 
-### `npm run build`
+- **pages/**: Main application pages (Analytics, StakeErth, SwapTokens, etc.)
+- **components/**: Reusable UI components
+- **utils/**: Utility functions for common operations
+- **styles/**: CSS and style-related files
+- **images/**: Static image assets
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Backend
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+The Node.js backend provides the following services:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **API Endpoints**: RESTful services for frontend data requests
+- **Blockchain Interaction**: Communication with Secret Network using secretjs
+- **Analytics Management**: Collection and serving of token and market analytics
+- **CORS Proxy**: Handling cross-origin requests for development
 
-### `npm run eject`
+## Getting Started
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Prerequisites
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- Node.js v18.20.7 or later
+- npm package manager
+- Secret Network wallet (for blockchain interactions)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Installation
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. Clone the repository:
 
-## Learn More
+   ```
+   git clone https://github.com/zenopie/erth-mainnet-app.git
+   cd erth-mainnet-app
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+2. Install frontend dependencies:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+   ```
+   npm install
+   ```
 
-### Code Splitting
+3. Install server dependencies:
+   ```
+   cd server
+   npm install
+   cd ..
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Development
 
-### Analyzing the Bundle Size
+1. Start the frontend development server:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+   ```
+   npm start
+   ```
 
-### Making a Progressive Web App
+   This runs the app in development mode at [http://localhost:3000](http://localhost:3000)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+2. Start the backend server (in a separate terminal):
+   ```
+   cd server
+   node server.js
+   ```
 
-### Advanced Configuration
+### Building for Production
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Build the frontend for production:
 
-### Deployment
+```
+npm run build
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+This creates optimized production files in the `build` folder.
 
-### `npm run build` fails to minify
+## Analytics Management
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+The application includes an analytics system that tracks token prices, market caps, and other metrics over time.
+
+### Analytics Features
+
+- Daily data collection at midnight
+- Historical data visualization with various time ranges (1W, 1M, All)
+- Price change calculation and display
+- Support for multiple tokens (ERTH, ANML)
+
+### Analytics Management Scripts
+
+- **Reset Analytics**: `node server/reset-analytics.js` - Resets all analytics data
+- **Migrate Analytics**: `node server/migrate-analytics.js` - Converts existing analytics data to new format with one entry per day
+
+## Deployment
+
+The application is configured for deployment using GitHub Actions. The workflow automatically:
+
+1. Checks out the repository
+2. Deploys to a remote server via SSH
+3. Builds the frontend
+4. Installs dependencies
+5. Restarts the server using PM2
+
+For manual deployment, follow these steps:
+
+1. Build the frontend: `npm run build`
+2. Copy the build files to your web server
+3. Set up the Node.js server with PM2: `pm2 start server/server.js --name "erth-network-server"`
+
+## Project Structure
+
+```
+erth-network-app/
+├── .github/workflows/    # GitHub Actions deployment workflow
+├── public/              # Static public assets
+├── server/              # Backend Node.js server
+│   ├── analyticsManager.js    # Analytics data management
+│   ├── migrate-analytics.js   # Analytics migration script
+│   ├── reset-analytics.js     # Analytics reset script
+│   └── server.js        # Main server file
+├── src/                 # Frontend React application
+│   ├── components/      # Reusable UI components
+│   ├── pages/           # Application pages
+│   ├── utils/           # Utility functions
+│   └── App.js           # Main React component
+└── package.json         # Project dependencies and scripts
+```
+
+## License
+
+MIT License
+
+Copyright (c) 2023-2024 ERTH Network
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Contact
+
+For more information, visit [https://erth.network](https://erth.network)
