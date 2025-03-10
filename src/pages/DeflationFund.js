@@ -3,7 +3,7 @@ import "./DeflationFund.css";
 import AllocationFund from "../components/AllocationFund";
 
 const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const this_hash = "df9766e5327d6544c8110b7efce5d8a18ea43ad61d11877b888263e09811962b";
+const this_hash = "fd4e5f3c57244f50845f15dc92ef6a11127d4fedf1fd338a47127f799e12e723";
 
 const allocationNames = [
   { id: "1", name: "LP Rewards" },
