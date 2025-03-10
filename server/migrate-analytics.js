@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 // Use the same analytics file path as in the main analyticsManager
-const ANALYTICS_FILE = path.join(__dirname, "../data/analytics.json");
+const ANALYTICS_FILE = path.join(__dirname, "analyticsData.json");
 
 console.log("[Migration] Starting analytics data migration...");
 
