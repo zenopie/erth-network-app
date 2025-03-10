@@ -9,7 +9,6 @@ const API_URL = "https://erth.network/api/analytics";
 
 // Time range options
 const TIME_RANGES = [
-  { id: "1d", label: "1D", points: 24 },
   { id: "1w", label: "1W", points: 7 * 24 },
   { id: "1m", label: "1M", points: 30 * 24 },
   { id: "all", label: "All", points: Infinity },
@@ -20,7 +19,7 @@ const Analytics = () => {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("ERTH"); // Default to ERTH tab
-  const [timeRange, setTimeRange] = useState("1d"); // Default to 1 day view
+  const [timeRange, setTimeRange] = useState("1w"); // Default changed to 1 week view
 
   useEffect(() => {
     showLoadingScreen(true);
@@ -67,10 +66,7 @@ const Analytics = () => {
       const date = new Date(d.timestamp);
 
       // Format date based on timeRange for better intuition
-      if (timeRange === "1d") {
-        // For 1 day view, just show hours - more intuitive
-        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      } else if (timeRange === "1w") {
+      if (timeRange === "1w") {
         // For 1 week view, show day of week
         const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         return days[date.getDay()];
@@ -78,8 +74,8 @@ const Analytics = () => {
         // For 1 month view, show date in shorter format
         return `${date.getMonth() + 1}/${date.getDate()}`;
       } else {
-        // For all time, show month/date
-        return `${date.getMonth() + 1}/${date.getDate()}`;
+        // For all-time view, show more complete date
+        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().substr(2, 2)}`;
       }
     });
   };
@@ -105,8 +101,6 @@ const Analytics = () => {
   // Get time range label for price change
   const getPriceChangeLabel = () => {
     switch (timeRange) {
-      case "1d":
-        return "24h";
       case "1w":
         return "7d";
       case "1m":
@@ -114,7 +108,7 @@ const Analytics = () => {
       case "all":
         return "All Time";
       default:
-        return "24h";
+        return "7d";
     }
   };
 
@@ -183,7 +177,7 @@ const Analytics = () => {
             size: 10,
           },
           maxRotation: 0,
-          maxTicksLimit: timeRange === "1d" ? 6 : timeRange === "1w" ? 7 : 10,
+          maxTicksLimit: timeRange === "1w" ? 7 : 10,
         },
       },
       y: {

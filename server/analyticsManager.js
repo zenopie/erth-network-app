@@ -95,6 +95,14 @@ function saveAnalyticsData() {
   fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(analyticsHistory, null, 2), "utf8");
 }
 
+// Reset analytics data
+function resetAnalyticsData() {
+  console.log("[analyticsManager] Resetting analytics data");
+  analyticsHistory = [];
+  saveAnalyticsData();
+  console.log("[analyticsManager] Analytics data has been reset");
+}
+
 // Add unified pool query constants
 const UNIFIED_POOL_CONTRACT = "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra"; // Exchange contract
 const UNIFIED_POOL_HASH = "3f15639c67a22ea023384d901820ddb67bb716bf4a119fa517c63e68b1432dbe"; // Correct exchange contract hash
@@ -208,8 +216,12 @@ async function updateErthValues() {
     }
 
     // 8) Create a single global data point including all pool data and total TVL, plus explicit ANML fields
+    const now = new Date();
+    // Set time to midnight (00:00:00) to store only the date part
+    now.setHours(0, 0, 0, 0);
+
     const dataPoint = {
-      timestamp: Date.now(),
+      timestamp: now.getTime(), // Use midnight timestamp to represent just the date
       erthPrice: globalErthPrice,
       erthTotalSupply,
       erthMarketCap: globalErthPrice * erthTotalSupply,
@@ -229,24 +241,20 @@ async function updateErthValues() {
   }
 }
 
-// Schedule next update to occur at the next 5-minute interval
+// Schedule next update to occur once per day at midnight
 function scheduleNextUpdate() {
   const now = new Date();
-  const currentMinutes = now.getMinutes();
-  const currentSeconds = now.getSeconds();
+  // Set target time to next midnight
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
 
-  // Calculate minutes until next 5-minute mark (0, 5, 10, 15, ...)
-  const minutesToAdd = 5 - (currentMinutes % 5);
-  // Milliseconds until next 5-minute mark
-  let delay = (minutesToAdd * 60 - currentSeconds) * 1000;
+  // Calculate delay until next midnight
+  const delay = tomorrow.getTime() - now.getTime();
 
-  // If we're already at a 5-minute mark and just missed it by a few seconds,
-  // ensure we don't wait a full 5 minutes
-  if (currentMinutes % 5 === 0 && currentSeconds < 10) {
-    delay = (10 - currentSeconds) * 1000; // Just wait a few seconds to avoid repeating
-  }
-
-  console.log(`[analyticsManager] Scheduling next update in ${Math.floor(delay / 1000)} seconds`);
+  console.log(
+    `[analyticsManager] Scheduling next update in ${Math.floor(delay / (1000 * 60 * 60))} hours (at midnight)`
+  );
 
   setTimeout(() => {
     const updateTime = new Date();
@@ -258,13 +266,42 @@ function scheduleNextUpdate() {
   }, delay);
 }
 
-// Initialize analytics: load stored data, update immediately, then schedule for next 5-minute interval
-function initAnalytics() {
-  loadAnalyticsData();
-  updateErthValues().then(() => {
-    // After initial update, schedule subsequent updates at 5-minute intervals
+// Initialize analytics: load stored data, check if update is needed, then schedule for next day
+function initAnalytics(resetData = false) {
+  if (resetData) {
+    resetAnalyticsData();
+  } else {
+    loadAnalyticsData();
+  }
+
+  // Check if we need to update (if no data or last entry is older than 1 day)
+  const shouldUpdate = () => {
+    if (analyticsHistory.length === 0) return true;
+
+    const lastEntry = analyticsHistory[analyticsHistory.length - 1];
+    const lastUpdateTime = new Date(lastEntry.timestamp);
+    const now = new Date();
+
+    // Calculate difference in days
+    const diffTime = Math.abs(now - lastUpdateTime);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    console.log(`[analyticsManager] Last update was ${diffDays} day(s) ago`);
+    return diffDays >= 1;
+  };
+
+  // Always update after a reset or if data is stale
+  if (resetData || shouldUpdate()) {
+    console.log("[analyticsManager] Updating analytics data");
+    updateErthValues().then(() => {
+      // After update, schedule next one for tomorrow
+      scheduleNextUpdate();
+    });
+  } else {
+    console.log("[analyticsManager] Analytics data is recent, scheduling next update for tomorrow");
+    // Just schedule next update without updating now
     scheduleNextUpdate();
-  });
+  }
 }
 
 // Endpoint helpers
@@ -281,4 +318,5 @@ module.exports = {
   initAnalytics,
   getLatestData,
   getAllData,
+  resetAnalyticsData,
 };
