@@ -159,21 +159,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
                   Analytics
                 </Link>
               </li>
-              <li>
-                <Link to="/totp-auth" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  TOTP Auth
-                </Link>
-              </li>
-              <li>
-                <Link to="/agent-chat" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Agent Chat
-                </Link>
-              </li>
-              <li>
-                <Link to="/image-interpret" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  image-interpret
-                </Link>
-              </li>
+
             </ul>
           </li>
         </ul>
