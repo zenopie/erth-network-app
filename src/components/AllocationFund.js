@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, Legend } from "recharts";
 import "./AllocationFund.css";
 import { showLoadingScreen } from "../utils/uiUtils";
 import { query, contract } from "../utils/contractUtils";
+import StatusModal from "../components/StatusModal";
 
 // Colors for the pie chart
 const COLORS = ["#4CAF50", "#8BC34A", "#FF9800", "#CDDC39", "#009688", "#795548"];
@@ -73,8 +74,8 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
   const [showDropdown, setShowDropdown] = useState(false);
   const [totalPercentage, setTotalPercentage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [animationState, setAnimationState] = useState("loading");
 
   useEffect(() => {
     if (isKeplrConnected) {
@@ -179,7 +180,14 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
   };
 
   const addAllocation = (option) => {
-    if (!selectedAllocations.find((alloc) => alloc.id === option.id)) {
+    // Check if the option is already selected
+    if (!option) return;
+
+    // Check if this allocation is already in the selectedAllocations array
+    // Using strict comparison with the ID to ensure no duplicates
+    const isDuplicate = selectedAllocations.some((alloc) => String(alloc.id) === String(option.id));
+
+    if (!isDuplicate) {
       setSelectedAllocations([...selectedAllocations, { ...option, value: 0 }]);
     }
     setShowDropdown(false);
@@ -201,17 +209,17 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
 
   const handleSetAllocation = async () => {
     if (totalPercentage !== 100) {
-      setErrorMessage("Total allocation must equal 100%");
-      setTimeout(() => setErrorMessage(""), 5000);
+      // Show modal with error
+      setIsModalOpen(true);
+      setAnimationState("error");
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      showLoadingScreen(true);
-      setErrorMessage("");
-      setSuccessMessage("");
+    setIsModalOpen(true);
+    setAnimationState("loading");
+    setIsSubmitting(true);
 
+    try {
       // Format allocations as expected by the contracts
       const formattedAllocations = selectedAllocations.map((alloc) => ({
         allocation_id: alloc.id,
@@ -220,7 +228,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
 
       // Create message structure
       const contractMsg = {
-        set_allocations: {
+        set_allocation: {
           percentages: formattedAllocations,
         },
       };
@@ -232,18 +240,15 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
         throw new Error(`Transaction failed with code ${response.code}: ${response.rawLog || "No error details"}`);
       }
 
-      setSuccessMessage("Allocation successfully updated!");
-      setTimeout(() => setSuccessMessage(""), 5000);
+      setAnimationState("success");
 
       // Refresh the preferred tab data
       fetchUserInfo();
     } catch (error) {
       console.error(`Error setting allocation for ${title}:`, error);
-      setErrorMessage(error.message || "Failed to set allocation. Please try again.");
-      setTimeout(() => setErrorMessage(""), 5000);
+      setAnimationState("error");
     } finally {
       setIsSubmitting(false);
-      showLoadingScreen(false);
     }
   };
 
@@ -359,20 +364,29 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
               +
             </button>
             {showDropdown && (
-              <select onChange={(e) => addAllocation(allocationNames.find((option) => option.id === e.target.value))}>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const selectedOption = allocationNames.find(
+                      (option) => String(option.id) === String(e.target.value)
+                    );
+                    if (selectedOption) {
+                      addAllocation(selectedOption);
+                    }
+                  }
+                }}
+              >
                 <option value="">Select an option</option>
-                {allocationNames.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
+                {allocationNames
+                  .filter((option) => !selectedAllocations.some((alloc) => String(alloc.id) === String(option.id)))
+                  .map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
               </select>
             )}
           </div>
-
-          {errorMessage && <div className="allocation-fund-error-message">{errorMessage}</div>}
-
-          {successMessage && <div className="allocation-fund-success-message">{successMessage}</div>}
 
           {selectedAllocations.length > 0 && (
             <button
@@ -385,6 +399,8 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
           )}
         </div>
       )}
+
+      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
     </div>
   );
 };
