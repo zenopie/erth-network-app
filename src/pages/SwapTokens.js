@@ -87,8 +87,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
   // ========== Handle From Amount Change => do a contract simulation ==========
   const handleFromAmountChange = async (val) => {
     setFromAmount(val);
-    setToAmount("");
+
     if (!val || isNaN(val) || parseFloat(val) <= 0) {
+      setToAmount("");
       return;
     }
 
