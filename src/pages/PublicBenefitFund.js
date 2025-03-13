@@ -1,9 +1,11 @@
 import React from "react";
 import "./PublicBenefitFund.css";
 import AllocationFund from "../components/AllocationFund";
+import contracts from "../utils/contracts";
 
-const this_contract = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p";
-const this_hash = "2c0d1e6fa1fdf4899384107a3a2f0b7424143f65ebc975fa802ffe0926db4606";
+// Using the registration contract from contracts.js utility
+const this_contract = contracts.registration.contract;
+const this_hash = contracts.registration.hash;
 
 const allocationNames = [
   { id: "1", name: "Registration Rewards" },

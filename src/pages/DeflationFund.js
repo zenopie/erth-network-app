@@ -1,9 +1,11 @@
 import React from "react";
 import "./DeflationFund.css";
 import AllocationFund from "../components/AllocationFund";
+import contracts from "../utils/contracts";
 
-const this_contract = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const this_hash = "1927483d3ffff57a3a6ccf37644277cdc68499c1d3a1d7fbb9211e4dc545ec4c";
+// Using the staking contract from contracts.js utility
+const this_contract = contracts.staking.contract;
+const this_hash = contracts.staking.hash;
 
 const allocationNames = [
   { id: "1", name: "LP Rewards" },

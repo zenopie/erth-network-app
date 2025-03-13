@@ -4,12 +4,14 @@ import React, { useState, useEffect } from "react";
 import { query, contract, snip, querySnipBalance, requestViewingKey } from "../utils/contractUtils";
 import { toMicroUnits, toMacroUnits } from "../utils/mathUtils.js";
 import tokens from "../utils/tokens.js";
+import contracts from "../utils/contracts.js";
 import { showLoadingScreen } from "../utils/uiUtils";
 import "./StakeErth.css";
 import StatusModal from "../components/StatusModal";
 
-const THIS_CONTRACT = "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5";
-const THIS_HASH = "1927483d3ffff57a3a6ccf37644277cdc68499c1d3a1d7fbb9211e4dc545ec4c";
+// Using the staking contract from contracts.js utility
+const THIS_CONTRACT = contracts.staking.contract;
+const THIS_HASH = contracts.staking.hash;
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const DAYS_PER_YEAR = 365;
