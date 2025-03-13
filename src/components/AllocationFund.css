@@ -11,6 +11,10 @@
   margin: 0 auto;
 }
 
+.allocation-fund-box h2 {
+  margin-bottom: 15px;
+}
+
 /* Tab Navigation Styling */
 .allocation-fund-tab {
   display: flex;

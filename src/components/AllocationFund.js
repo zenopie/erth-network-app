@@ -96,30 +96,43 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
   const fetchDataActual = async () => {
     try {
       showLoadingScreen(true);
-      const querymsg = { get_allocation_options: {} };
+      const querymsg = { query_allocation_options: {} };
       const response = await query(contractAddress, contractHash, querymsg);
 
       // Process allocations from response
       let transformedData = [];
 
-      if (response.allocations) {
-        // DeflationFund style response
+      if (Array.isArray(response)) {
+        // Check if it's the new direct vector format or PublicBenefitFund style response
+        if (response.length > 0 && response[0].allocation_id !== undefined) {
+          // Direct vector response (new format)
+          transformedData = response.map((allocation) => {
+            const nameMatch = allocationNames.find((item) => item.id === String(allocation.allocation_id));
+            return {
+              id: allocation.allocation_id,
+              name: nameMatch ? nameMatch.name : `Unknown (${allocation.allocation_id})`,
+              value: parseInt(allocation.amount_allocated, 10),
+            };
+          });
+        } else if (response.length > 0 && response[0].state) {
+          // PublicBenefitFund style response
+          transformedData = response.map((allocation) => {
+            const nameMatch = allocationNames.find((item) => item.id === String(allocation.state?.allocation_id));
+            return {
+              id: allocation.state?.allocation_id,
+              name: nameMatch ? nameMatch.name : `Unknown (${allocation.state?.allocation_id})`,
+              value: parseInt(allocation.state?.amount_allocated, 10),
+            };
+          });
+        }
+      } else if (response && response.allocations) {
+        // DeflationFund style response (old format)
         transformedData = response.allocations.map((allocation) => {
           const nameMatch = allocationNames.find((item) => item.id === String(allocation.allocation_id));
           return {
             id: allocation.allocation_id,
             name: nameMatch ? nameMatch.name : `Unknown (${allocation.allocation_id})`,
             value: parseInt(allocation.amount_allocated, 10),
-          };
-        });
-      } else if (Array.isArray(response)) {
-        // PublicBenefitFund style response
-        transformedData = response.map((allocation) => {
-          const nameMatch = allocationNames.find((item) => item.id === String(allocation.state?.allocation_id));
-          return {
-            id: allocation.state?.allocation_id,
-            name: nameMatch ? nameMatch.name : `Unknown (${allocation.state?.allocation_id})`,
-            value: parseInt(allocation.state?.amount_allocated, 10),
           };
         });
       }
@@ -222,7 +235,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
     try {
       // Format allocations as expected by the contracts
       const formattedAllocations = selectedAllocations.map((alloc) => ({
-        allocation_id: alloc.id,
+        allocation_id: Number(alloc.id),
         percentage: alloc.value.toString(),
       }));
 
