@@ -149,7 +149,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
     try {
       showLoadingScreen(true);
       const querymsg = {
-        get_user_info: {
+        query_user_allocations: {
           address: window.secretjs.address,
         },
       };
@@ -158,18 +158,8 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
       // Process user allocations from response
       let transformedData = [];
 
-      if (response.user_info && response.user_info.percentages) {
-        // DeflationFund style response
-        transformedData = response.user_info.percentages.map((percentage) => {
-          const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
-          return {
-            id: percentage.allocation_id,
-            name: nameMatch ? nameMatch.name : `Unknown (${percentage.allocation_id})`,
-            value: parseInt(percentage.percentage, 10),
-          };
-        });
-      } else if (Array.isArray(response)) {
-        // PublicBenefitFund style response
+      if (Array.isArray(response)) {
+        // New direct array response format from query_user_allocations
         transformedData = response.map((percentage) => {
           const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
           return {
