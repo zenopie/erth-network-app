@@ -36,7 +36,7 @@ const tokens = {
     logo: "/images/coin/SSCRT.png",
     coingeckoId: "secret",
     lp: {
-      contract: "secret1hk5lj62949s88q7kl892rkxyhxcxdpznzlw924",
+      contract: "secret1lqmvkxrhqfjj64ge8cr9v8pwnz4enhw7f6hdys",
       hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
       decimals: 6,
     },
