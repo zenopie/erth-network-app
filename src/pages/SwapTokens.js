@@ -21,7 +21,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
   const [showDetails, setShowDetails] = useState(false);
-  const [priceImpact, setPriceImpact] = useState(null);
 
   // ========== FETCH USER BALANCE & Setup on load ==========
   const fetchData = useCallback(async () => {
@@ -48,40 +47,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // ========== Calculate Price Impact ==========
-  const calculatePriceImpact = (inputAmount, outputAmount, result) => {
-    try {
-      // If the contract returns more detailed information about the swap including fees,
-      // we can calculate a more accurate price impact
-      if (result && result.total_fee) {
-        const totalFee = parseFloat(result.total_fee);
-        const intermediateAmount = parseFloat(result.intermediate_amount || 0);
-
-        // Price impact can be calculated as the percentage of fees relative to the intermediate amount
-        // This is a simplified approach - the exact calculation depends on the AMM model
-        if (intermediateAmount > 0) {
-          return ((totalFee / intermediateAmount) * 100).toFixed(2);
-        }
-      }
-
-      // Fallback: simple estimate based on the ratio of expected vs actual output
-      // The actual formula would depend on the specific AMM model used
-      const inputValue = parseFloat(inputAmount);
-      const outputValue = parseFloat(outputAmount);
-
-      if (inputValue > 0 && outputValue > 0) {
-        // Simple estimation - may need to be adjusted based on pool sizes and specific AMM model
-        const sizeFactor = Math.min(1, inputValue / 1000); // Adjust based on typical trade size
-        return (sizeFactor * 2).toFixed(2); // Simple estimation, replace with actual formula
-      }
-
-      return "0.00";
-    } catch (err) {
-      console.error("[calculatePriceImpact] error:", err);
-      return "0.00";
-    }
-  };
 
   // ========== Query the contract to simulate a swap ==========
   const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
@@ -112,14 +77,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
       const power = 10 ** decimals;
       const outNumber = parseFloat(out) / power;
 
-      // Calculate price impact
-      const impact = calculatePriceImpact(inputAmount, outNumber.toFixed(6), result);
-      setPriceImpact(impact);
-
       return outNumber.toFixed(6);
     } catch (err) {
       console.error("[simulateSwapQuery] error:", err);
-      setPriceImpact(null);
       return "";
     }
   };
@@ -130,7 +90,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
 
     if (!val || isNaN(val) || parseFloat(val) <= 0) {
       setToAmount("");
-      setPriceImpact(null);
       return;
     }
 
@@ -184,7 +143,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
       setAnimationState("success");
       setFromAmount("");
       setToAmount("");
-      setPriceImpact(null);
     } catch (err) {
       console.error("[handleSwap] error:", err);
       setAnimationState("error");
@@ -204,7 +162,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
     setFromToken(selected);
     setFromAmount("");
     setToAmount("");
-    setPriceImpact(null);
   };
 
   const handleToTokenChange = (e) => {
@@ -215,7 +172,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
     setToToken(selected);
     setFromAmount("");
     setToAmount("");
-    setPriceImpact(null);
   };
 
   const handleMaxFromAmount = () => {
@@ -346,10 +302,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
             <span>
               {calculateMinimumReceived(toAmount, slippage)} {toToken}
             </span>
-          </p>
-          <p>
-            <span>Price Impact:</span>
-            <span className={parseFloat(priceImpact) > 3 ? "high-impact" : ""}>{priceImpact || "0.00"}%</span>
           </p>
           <div className="swap-slippage-tolerance">
             <label htmlFor="slippage" className="swap-slippage-label">
