@@ -118,7 +118,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
       // Minimum received (slippage)
       const minReceived = calculateMinimumReceived(toAmount, slippage);
       const inputInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
-      // eslint-disable-next-line no-unused-vars
       const minInMicro = toMicroUnits(minReceived, tokens[toToken]);
 
       // 1) Build the swap message
@@ -126,7 +125,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
         swap: {
           output_token: tokens[toToken].contract,
           // optionally pass min_received
-          // min_received: minInMicro.toString(),
+          min_received: minInMicro.toString(),
         },
       };
 
@@ -300,7 +299,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
           <p>
             <span>Minimum received:</span>
             <span>
-              {calculateMinimumReceived(toAmount, slippage)} {toToken}
+              {parseFloat(calculateMinimumReceived(toAmount, slippage)).toFixed(tokens[toToken].decimals)} {toToken}
             </span>
           </p>
           <div className="swap-slippage-tolerance">
