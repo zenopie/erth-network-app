@@ -280,6 +280,13 @@ const Analytics = () => {
     };
   };
 
+  // Calculate total TVL from all pools
+  const calculateTotalTVL = () => {
+    if (!latest || !latest.pools || !latest.pools.length) return 0;
+
+    return latest.pools.reduce((total, pool) => total + pool.tvl, 0);
+  };
+
   // Render tab content based on active tab
   const renderTabContent = () => {
     switch (activeTab) {
@@ -447,7 +454,22 @@ const Analytics = () => {
       case "Pools":
         return (
           <div className="analytics-page-tabcontent active">
-            <div className="analytics-section">
+            {/* Total TVL Summary */}
+            {latest && latest.pools && latest.pools.length > 0 && (
+              <div className="analytics-summary-container">
+                <div className="analytics-info-row">
+                  <span className="analytics-tvl-label">Total Value Locked:</span>
+                  <span className="analytics-tvl-value">
+                    $
+                    {calculateTotalTVL().toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="analytics-section pool-section">
               <h3 className="analytics-section-title">Liquidity Pools</h3>
               {latest && latest.pools && latest.pools.length > 0 ? (
                 <table className="analytics-table">

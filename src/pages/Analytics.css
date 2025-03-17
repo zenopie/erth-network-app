@@ -444,3 +444,53 @@ html {
   color: #4caf50;
   font-weight: 600;
 }
+
+/* Analytics Summary Container for TVL */
+.analytics-summary-container {
+  background-color: #f8fbf8; /* Light green background */
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+  border: 1px solid #4caf50; /* Green outline */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.analytics-tvl-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e3a8a; /* Royal blue */
+}
+
+.analytics-tvl-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4caf50; /* Green for positive value emphasis */
+}
+
+/* Pool Section Styling */
+.pool-section {
+  background-color: #f8fbf8; /* Light green background */
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #4caf50; /* Green outline */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pool-section .analytics-section-title {
+  color: #1e3a8a;
+  margin-bottom: 15px;
+}
+
+/* Override table styling in pool section */
+.pool-section .analytics-table {
+  background-color: transparent; /* Remove beige background */
+}
+
+.pool-section .analytics-table th {
+  background-color: transparent; /* Remove beige background from headers */
+  color: #1e3a8a; /* Keep royal blue color */
+}
+
+.pool-section .analytics-table tr:hover {
+  background-color: rgba(76, 175, 80, 0.1); /* Lighter green hover effect */
+}
