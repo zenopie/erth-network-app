@@ -8,16 +8,11 @@ import { FiCopy, FiCheck, FiSettings } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
 import "./SecretAIChat.css";
 
-// Testnet configuration for the AI chat page
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
-// eslint-disable-next-line no-unused-vars
-const TESTNET_WORKER_CODE_HASH = "5aa970b41fd5514da7b7582cbf808815c20c8f92278ad88f98038e83526cdd12";
-
 const API_KEY = "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1";
 
-// Create a secretjs client outside the component
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
   chainId: TESTNET_CHAIN_ID,
@@ -30,18 +25,18 @@ const SecretAIChat = () => {
   const [selectedUrl, setSelectedUrl] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [pendingImage, setPendingImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copiedText, setCopiedText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
   const [userAddress, setUserAddress] = useState("");
-  // eslint-disable-next-line no-unused-vars
-  const [offlineSigner, setOfflineSigner] = useState(null);
   const [initAttempted, setInitAttempted] = useState(false);
 
   const chatContainerRef = useRef(null);
   const thinkingRef = useRef(null);
   const userInteracted = useRef(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     async function connectTestnetKeplr() {
@@ -53,7 +48,6 @@ const SecretAIChat = () => {
       try {
         await window.keplr.enable(chainId);
         const signer = window.getOfflineSignerOnlyAmino(chainId);
-        setOfflineSigner(signer);
         const accounts = await signer.getAccounts();
         setUserAddress(accounts[0].address);
         console.log("Reconnected to testnet with account:", accounts[0].address);
@@ -73,9 +67,7 @@ const SecretAIChat = () => {
         contract_address: TESTNET_WORKER_CONTRACT,
         query: { get_models: {} },
       });
-
       console.log("Models response:", response);
-
       if (response.models && response.models.length > 0) {
         setModels(response.models);
         setSelectedModel(response.models[0]);
@@ -93,9 +85,7 @@ const SecretAIChat = () => {
         contract_address: TESTNET_WORKER_CONTRACT,
         query: { get_u_r_ls: { model } },
       });
-
       console.log("URLs response:", response);
-
       if (response.urls && response.urls.length > 0) {
         setUrls(response.urls);
         setSelectedUrl(response.urls[0]);
@@ -106,10 +96,8 @@ const SecretAIChat = () => {
     }
   };
 
-  // Initialization effect
   useEffect(() => {
     if (initAttempted) return;
-
     async function initializeApp() {
       setInitAttempted(true);
       try {
@@ -118,22 +106,15 @@ const SecretAIChat = () => {
         console.error("Error during app initialization:", error);
       }
     }
-
     initializeApp();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchModels, initAttempted]);
 
-  // Add auto-scroll effect when messages change or thinking content changes
   useEffect(() => {
     if (chatContainerRef.current) {
-      // Check if user is already at the bottom or close to it
       const isNearBottom =
         chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
-        chatContainerRef.current.clientHeight + 100; // Allow 100px margin
-
-      // Auto-scroll if user is near bottom or hasn't interacted
+        chatContainerRef.current.clientHeight + 100;
       if (isNearBottom || !userInteracted.current) {
-        // Use setTimeout to ensure this happens after render
         setTimeout(() => {
           if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -143,13 +124,10 @@ const SecretAIChat = () => {
     }
   }, [messages]);
 
-  // Add additional auto-scroll effect for thinking box updates
   const updateThinkingContent = (content) => {
     if (thinkingRef.current) {
       thinkingRef.current.style.display = "block";
       thinkingRef.current.textContent = content;
-
-      // Trigger auto-scroll when thinking content updates
       if (
         chatContainerRef.current &&
         (!userInteracted.current ||
@@ -161,27 +139,58 @@ const SecretAIChat = () => {
     }
   };
 
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      console.log("Uploading image:", file.name);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64ImageWithPrefix = e.target.result;
+        const base64Image = base64ImageWithPrefix.split(',')[1];
+        console.log("Base64 image (no prefix):", base64Image.slice(0, 50) + "...");
+        setPendingImage(base64Image);
+        setInput((prev) => (prev ? `${prev}\n[Image attached]` : "[Image attached]"));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input || !selectedModel) return;
-    // Reset user interaction when sending a new message
+
     userInteracted.current = false;
     setLoading(true);
     let localIsThinking = false;
     const controller = new AbortController();
     setAbortController(controller);
+
+    const messageToSend = {
+      role: "user",
+      content: input,
+      ...(pendingImage && { images: [pendingImage] }),
+    };
+    const updatedMessages = [...messages, messageToSend];
+    console.log("Messages to send:", JSON.stringify(updatedMessages, null, 2));
+    setMessages(updatedMessages);
+    setInput("");
+    setPendingImage(null);
+
     try {
       const secretAiLLM = new ChatSecret({
         apiKey: API_KEY,
         model: selectedModel,
+        base_url: selectedUrl,
         stream: true,
         signal: controller.signal,
       });
-      const updatedMessages = [...messages, { role: "user", content: input }];
-      setMessages(updatedMessages);
-      setInput("");
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      setMessages((prev) => {
+        const withAssistant = [...prev, { role: "assistant", content: "" }];
+        console.log("Added empty assistant message:", JSON.stringify(withAssistant, null, 2));
+        return withAssistant;
+      });
       await secretAiLLM.chat(updatedMessages, {
         onMessage: (data) => {
+          console.log("Received streaming data:", JSON.stringify(data, null, 2));
           if (data.message?.content) {
             let newContent = data.message.content;
             if (newContent.includes("<think>")) {
@@ -195,7 +204,6 @@ const SecretAIChat = () => {
               newContent = newContent.replace("</think>", "");
               if (thinkingRef.current) {
                 thinkingRef.current.textContent += newContent;
-                // Trigger auto-scroll for final thinking update
                 if (chatContainerRef.current) {
                   chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
                 }
@@ -205,7 +213,6 @@ const SecretAIChat = () => {
             if (localIsThinking) {
               if (thinkingRef.current) {
                 thinkingRef.current.textContent += newContent;
-                // Trigger auto-scroll for continuous thinking updates
                 if (chatContainerRef.current) {
                   chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
                 }
@@ -214,27 +221,55 @@ const SecretAIChat = () => {
               setMessages((prevMessages) => {
                 const lastMessage = prevMessages[prevMessages.length - 1];
                 if (lastMessage?.role === "assistant") {
-                  return [
+                  const updated = [
                     ...prevMessages.slice(0, -1),
                     { role: "assistant", content: lastMessage.content + newContent },
                   ];
+                  console.log("Updated assistant message:", JSON.stringify(updated, null, 2));
+                  return updated;
                 } else {
-                  return [...prevMessages, { role: "assistant", content: newContent }];
+                  const updated = [...prevMessages, { role: "assistant", content: newContent }];
+                  console.log("Added new assistant message:", JSON.stringify(updated, null, 2));
+                  return updated;
                 }
               });
             }
           }
         },
         onComplete: () => {
+          console.log("Streaming completed.");
           setAbortController(null);
         },
-        onError: (error) => console.error("Streaming error:", error),
+        onError: async (error) => {
+          console.error("Streaming error:", error);
+          if (error.message.includes("HTTP error")) {
+            try {
+              const response = await fetch(`${selectedUrl}/api/chat`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: selectedModel,
+                  temperature: 1.0,
+                  messages: updatedMessages,
+                  stream: true,
+                }),
+              });
+              const errorText = await response.text();
+              console.error("Server error details:", errorText);
+            } catch (fetchError) {
+              console.error("Failed to fetch error details:", fetchError);
+            }
+          }
+        },
       });
     } catch (error) {
       if (error.name === "AbortError") {
         console.log("Streaming stopped.");
       } else {
-        console.error("Error:", error);
+        console.error("Error in handleSendMessage:", error);
       }
     } finally {
       setLoading(false);
@@ -321,8 +356,28 @@ const SecretAIChat = () => {
         ))}
       </div>
       <div className="secret-input-container">
-        <div className="secret-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
-          <FiSettings size={24} />
+        <div className="secret-settings-container">
+          {selectedModel === "llama3.2-vision" && (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleImageUpload}
+              />
+              <button
+                className="secret-upload-button"
+                onClick={() => fileInputRef.current.click()}
+                style={{ backgroundColor: "#ffeb3b", color: "#000", marginRight: "8px" }}
+              >
+                📷 Upload Image
+              </button>
+            </>
+          )}
+          <div className="secret-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
+            <FiSettings size={24} />
+          </div>
         </div>
         {settingsOpen && (
           <div className="secret-settings-dropdown">
@@ -332,6 +387,7 @@ const SecretAIChat = () => {
               onChange={(e) => {
                 setSelectedModel(e.target.value);
                 fetchUrls(e.target.value);
+                setPendingImage(null); // Clear pending image when model changes
               }}
             >
               {models.map((model, index) => (
