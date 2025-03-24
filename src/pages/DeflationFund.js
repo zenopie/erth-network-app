@@ -9,7 +9,8 @@ const this_hash = contracts.staking.hash;
 
 const allocationNames = [
   { id: "1", name: "LP Rewards" },
-  { id: "2", name: "SCRT Labs R&D" },
+  { id: "2", name: "SCRT Labs" },
+  { id: "3", name: "ERTH Labs" },
   // Add more allocation names here
 ];
 
