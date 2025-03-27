@@ -8,7 +8,7 @@ import ManageLP from './pages/ManageLP';
 import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
-import SecretAIChat from './pages/SecretAIChat';
+import LilaChat from './pages/LilaChat';
 import TOTPAuth from './pages/TOTPAuth';
 import AgentChat from './pages/AgentChat';
 import ImageInterpret from './pages/ImageInterpret';
@@ -27,7 +27,7 @@ function App() {
           <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
-          <Route path="/ai-chat" element={<Layout><SecretAIChat /></Layout>} />
+          <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
           <Route path="/totp-auth" element={<Layout><TOTPAuth /></Layout>} />
           <Route path="/agent-chat" element={<Layout><AgentChat /></Layout>} />
           <Route path="/image-interpret" element={<Layout><ImageInterpret /></Layout>} />

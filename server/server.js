@@ -188,166 +188,102 @@ async function contract_interaction(message_object) {
   }
 }
 
-// Retrieve and parse the list of pending verifications
-let pending_verifications = JSON.parse(get_value("PENDING_VERIFS.txt"));
+function generateHash(data) {
+  return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
 
-// Utility function to save the pending verifications array to a file
-function save_pending(array, file) {
-  const filePath = path.join(__dirname, file);
-  const arrayAsString = JSON.stringify(array, null, 2);
-  fs.writeFile(filePath, arrayAsString, "utf8", (err) => {
-    if (err) {
-      console.error(`Error writing file: ${err}`);
-      return;
-    }
-    console.log("Array written to file successfully.");
+async function processImagesWithSecretAI(idImage, selfieImage, address) {
+  const secretAiLLM = new ChatSecret({
+    apiKey: API_KEY,
+    model: "llama3.2-vision", // Vision-capable model
+    base_url: SECRET_AI_CONFIG.DEFAULT_LLM_URL,
+    temperature: 0,
+    max_tokens: 1000,
   });
-}
 
-// Function to generate HMAC signature
-function generateSignature(payload, secret) {
-  if (payload.constructor === Object) {
-    payload = JSON.stringify(payload);
-  }
+  const systemPrompt = `
+    IMPORTANT: You are a JSON-only responder. Output ONLY a JSON object with no additional text or markers.
 
-  if (payload.constructor !== Buffer) {
-    payload = Buffer.from(payload, "utf8");
-  }
+    Process the provided ID image and selfie image to create an identity JSON and detect fakes:
+    - From the ID image, extract: Country, ID Number, Name, Date of Birth (convert to Unix timestamp in seconds), Document Expiration (convert to Unix timestamp in seconds).
+    - From the selfie, verify liveness (e.g., check for natural appearance, not a photo of a photo) and consistency with the ID.
+    - Detect fakes: Check for inconsistencies (e.g., mismatched data, blurry text, static selfie, or signs of tampering).
 
-  const signature = crypto.createHmac("sha256", secret);
-  signature.update(payload);
-  return signature.digest("hex");
-}
-
-// Function to validate HMAC signature
-function isSignatureValid(data) {
-  const { signature, secret } = data;
-  let { payload } = data;
-
-  if (data.payload.constructor === Object) {
-    payload = JSON.stringify(data.payload);
-  }
-  if (payload.constructor !== Buffer) {
-    payload = Buffer.from(payload, "utf8");
-  }
-  const hash = crypto.createHmac("sha256", secret);
-  hash.update(payload);
-  const digest = hash.digest("hex");
-  console.log("Generated hash:", digest);
-  console.log("Provided signature:", signature.toLowerCase());
-  return digest === signature.toLowerCase();
-}
-
-// Function to parse the result attribute from the logs
-function parseResultFromLogs(logs) {
-  for (const log of logs) {
-    for (const event of log.events) {
-      if (event.type === "wasm") {
-        for (const attribute of event.attributes) {
-          if (attribute.key === "result" && attribute.value === "registered") {
-            return true;
-          }
-        }
-      }
+    Expected JSON structure:
+    {
+      "identity": {
+        "country": "string",
+        "id_number": "string",
+        "name": "string",
+        "date_of_birth": number, // Unix timestamp in seconds
+        "document_expiration": number, // Unix timestamp in seconds
+      },
+      "is_fake": boolean,
+      "fake_reason": "string or null",
     }
-  }
-  return false;
-}
+  `;
 
-function convertToSecondsString(dateString) {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    {
+      role: "user",
+      content: "Analyze the following images to extract identity data and detect fakes:",
+      images: [idImage, selfieImage], // Base64-encoded images
+    },
+  ];
+
   try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return null; // Return null if the date is invalid
+    const response = await secretAiLLM.chat(messages);
+    const result = JSON.parse(response.message?.content || response.content);
+
+    if (!result.identity || typeof result.is_fake === "undefined" || !result.hash) {
+      throw new Error("Invalid response structure from SecretAI Vision");
     }
-    const seconds = Math.floor(date.getTime() / 1000); // Convert milliseconds to seconds
-    return seconds.toString();
+
+    return result;
   } catch (error) {
-    return null; // Return null if any other error occurs
+    console.error("SecretAI Vision error:", error);
+    return {
+      identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0, address },
+      is_fake: true,
+      fake_reason: "Failed to process images: " + error.message,
+      hash: generateHash({ country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0, address }),
+    };
   }
 }
 
-// Webhook endpoint for Veriff decisions
-app.post("/api/veriff/decisions/", async (req, res) => {
-  const signature = req.get("x-hmac-signature");
-  const payload = req.body;
-  const secret = API_SECRET;
+app.post("/api/register", async (req, res) => {
+  const { address, idImage, selfieImage } = req.body;
+  if (!address || !idImage || !selfieImage) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
-  console.log("Received a decisions webhook");
-  const isValid = isSignatureValid({ signature, secret, payload });
-  console.log("Validated signature:", isValid);
-  console.log("Payload", JSON.stringify(req.body, null, 4));
-  res.json({ status: "success" });
+  try {
+    const { identity, is_fake, fake_reason, hash } = await processImagesWithSecretAI(idImage, selfieImage, address);
 
-  if (isValid) {
-    const verification = req.body.data.verification;
-    if (verification.decision === "approved" && verification.document && verification.person) {
-      let document_expiration = convertToSecondsString(verification.document.validUntil.value);
-      let date_of_birth = convertToSecondsString(verification.person.dateOfBirth.value);
-      const userObject = {
-        country: verification.document.country ? verification.document.country.value : "",
-        address: req.body.vendorData ? req.body.vendorData : "",
-        first_name: verification.person.firstName ? verification.person.firstName.value : "",
-        last_name: verification.person.lastName ? verification.person.lastName.value : "",
-        date_of_birth: date_of_birth ? parseInt(date_of_birth) : 0,
-        document_number: verification.document.number ? verification.document.number.value : "",
-        id_type: verification.document.type ? verification.document.type.value : "",
-        document_expiration: document_expiration ? parseInt(document_expiration) : 0,
-      };
-      console.log(userObject);
-      const message_object = {
-        register: {
-          user_object: userObject,
-        },
-      };
-
-      try {
-        const resp = await contract_interaction(message_object);
-
-        // Parse the logs for the 'result' attribute
-        if (parseResultFromLogs(resp.logs)) {
-          let find_address = pending_verifications.indexOf(req.body.vendorData);
-          if (find_address != -1) {
-            pending_verifications.splice(find_address, 1);
-            save_pending(pending_verifications, "PENDING_VERIFS.txt");
-            console.log("Spliced address", pending_verifications);
-          } else {
-            console.log("Error finding address in pending verifications");
-          }
-        } else {
-          console.log("Contract interaction failed or document already registered", resp);
-        }
-      } catch (error) {
-        console.error("Contract interaction error:", error);
-      }
+    if (is_fake) {
+      return res.status(400).json({ error: "Fake identity detected", reason: fake_reason });
     }
+
+    const message_object = {
+      register: {
+        user_object: identity,
+        hash,
+      },
+    };
+
+    res.json({ success: true, hash });
+
+    // const resp = await contract_interaction(message_object);
+    // if (resp.code === 0) {
+    //   res.json({ success: true, hash });
+    // } else {
+    //   throw new Error("Contract interaction failed with code: " + resp.code);
+    // }
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Registration failed: " + error.message });
   }
-});
-
-// Webhook endpoint for Veriff events
-app.post("/api/veriff/events/", (req, res) => {
-  const signature = req.get("x-hmac-signature");
-  const payload = req.body;
-  const secret = API_SECRET;
-  const isValid = isSignatureValid({ signature, secret, payload });
-
-  console.log("Received an events webhook");
-  console.log("Validated signature:", isValid);
-  console.log("Payload", JSON.stringify(req.body, null, 4));
-  res.json({ status: "success" });
-
-  if (isValid && req.body.action === "submitted") {
-    pending_verifications.push(req.body.vendorData);
-    save_pending(pending_verifications, "PENDING_VERIFS.txt");
-    console.log("Pushed address", pending_verifications);
-  }
-});
-
-// Endpoint to check if an address has pending verifications
-app.get("/api/pending/:address", (req, res) => {
-  const address = req.params.address;
-  const pending = pending_verifications.includes(address);
-  res.json({ pending: pending });
 });
 
 // Start the server

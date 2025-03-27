@@ -6,7 +6,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiSettings } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
-import "./SecretAIChat.css";
+import "./LilaChat.css";
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
@@ -18,7 +18,7 @@ const secretNetworkClient = new SecretNetworkClient({
   chainId: TESTNET_CHAIN_ID,
 });
 
-const SecretAIChat = () => {
+const LilaChat = () => {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("");
   const [urls, setUrls] = useState([]);
@@ -408,7 +408,7 @@ const SecretAIChat = () => {
         )}
         <textarea
           className="secret-chat-input"
-          placeholder="Ask Secret AI anything..."
+          placeholder="Ask Lila(लीला) anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -431,4 +431,4 @@ const SecretAIChat = () => {
   );
 };
 
-export default SecretAIChat;
+export default LilaChat;
