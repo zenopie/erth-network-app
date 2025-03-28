@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
-import { ChatSecret, SECRET_AI_CONFIG } from "secretai";
+const { ChatSecret, SECRET_AI_CONFIG } = require("secretai");
 const cors = require("cors");
 const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
