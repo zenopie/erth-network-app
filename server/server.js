@@ -11,7 +11,7 @@ const app = express();
 const WEBHOOK_PORT = 5000; // Port for HTTPS
 
 // Middleware to parse JSON requests
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "50mb" }));
 
 // Enable CORS for all routes or specific origins
 const corsOptions = {
