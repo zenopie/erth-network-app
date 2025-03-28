@@ -169,6 +169,8 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
       selfieImage: selfieImage.slice(0, 50) + "...",
     });
     const response = await secretAiLLM.chat(messages);
+    console.log("Raw SecretAI response:", JSON.stringify(response, null, 2));
+    
     const result = JSON.parse(response.message?.content || response.content);
 
     if (!result.identity || typeof result.is_fake === "undefined") {
