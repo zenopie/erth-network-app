@@ -183,11 +183,12 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
     };
   } catch (error) {
     console.error("SecretAI Vision error:", error);
-    console.error("Error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
+    // Log the full error object as a stringified JSON to see all properties
+    console.error("Full error object:", JSON.stringify(error, null, 2));
+    // If error.response exists (e.g., from an HTTP library), log it
+    if (error.response) {
+      console.error("Error response body:", error.response);
+    }
     return {
       response: null,
       identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0 },
