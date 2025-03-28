@@ -4,7 +4,6 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
-const corsProxy = require("cors-anywhere");
 const cors = require("cors");
 const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
@@ -27,66 +26,8 @@ const corsOptions = {
 
 // Enable CORS for specific endpoints that need it for testing
 app.use("/api/analytics", cors(corsOptions));
+app.use("/api/register", cors(corsOptions));
 
-app.post("/api/save-conversation", async (req, res) => {
-  console.log("/api/save-conversation");
-  // Check if req.body exists
-  if (!req.body) {
-    console.log("req body missing");
-    return res.status(400).json({ error: "Request body is missing" });
-  }
-
-  const { user, conversation } = req.body;
-  if (!user || !conversation || !conversation.length) {
-    console.log("invalide request data");
-    console.log(req.body);
-    return res.status(400).json({ error: "Invalid request data" });
-  }
-
-  try {
-    // Create a new SecretNetworkClient for Pulsar-3 (testnet)
-    const testnetWallet = new Wallet(WALLET_KEY); // Use same wallet but on testnet
-    const testnetClient = new SecretNetworkClient({
-      url: "https://pulsar.lcd.secretnodes.com",
-      chainId: "pulsar-3",
-      wallet: testnetWallet,
-      walletAddress: testnetWallet.address,
-    });
-
-    const msg = new MsgExecuteContract({
-      sender: testnetWallet.address,
-      contract_address: "secret1v47zuu6mnq9xzcps4fz7pnpr23d2sczmft26du", // Testnet storage contract
-      code_hash: "3545985756548d7d9b85a7a609040fd41a2a0eeba03f81fa166a8063569b01fd", // Testnet contract hash
-      msg: { save_conversation: { conversation } },
-    });
-
-    const tx = await testnetClient.tx.broadcast([msg], {
-      gasLimit: 200000,
-      gasPriceInFeeDenom: 0.1,
-      feeDenom: "uscrt",
-      broadcastMode: "Sync",
-    });
-
-    console.log("Pulsar-3 Transaction Result:", tx);
-    res.json({ success: true, txHash: tx.transactionHash });
-  } catch (error) {
-    console.error("Transaction Error on Pulsar-3:", error);
-    res.status(500).json({ error: "Failed to execute transaction on Pulsar-3" });
-  }
-});
-
-const proxy = corsProxy.createServer({
-  originWhitelist: [], // allow all origins
-  removeHeaders: ["cookie", "cookie2"],
-  handleInitialRequest: (_req, res, location) => {
-    // Block if target hostname equals your server's hostname
-    if (location && location.hostname === "erth.network") {
-      res.writeHead(400, { "Content-Type": "text/plain" });
-      res.end("Self referencing request blocked");
-      return true;
-    }
-  },
-});
 
 app.use("/api/cors", (req, res) => {
   req.url = req.url.replace(/^\/api\/cors/, ""); // strip the /api/cors prefix
@@ -136,7 +77,6 @@ function get_value(file) {
 }
 
 // Retrieve secret values from files
-const API_SECRET = get_value("API_SECRET.txt");
 const WALLET_KEY = get_value("WALLET_KEY.txt");
 
 // Initialize wallet and Secret Network client
@@ -194,11 +134,10 @@ function generateHash(data) {
 
 async function processImagesWithSecretAI(idImage, selfieImage, address) {
   const secretAiLLM = new ChatSecret({
-    apiKey: API_KEY,
+    apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision", // Vision-capable model
     base_url: SECRET_AI_CONFIG.DEFAULT_LLM_URL,
     temperature: 0,
-    max_tokens: 1000,
   });
 
   const systemPrompt = `
@@ -272,7 +211,7 @@ app.post("/api/register", async (req, res) => {
       },
     };
 
-    res.json({ success: true, hash });
+    res.json({ success: true, identity, is_fake, fake_reason, hash });
 
     // const resp = await contract_interaction(message_object);
     // if (resp.code === 0) {
