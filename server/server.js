@@ -125,6 +125,8 @@ function generateHash(data) {
 async function processImagesWithSecretAI(idImage, selfieImage) {
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
+  console.log("SECRET_AI_CONFIG:", SECRET_AI_CONFIG.DEFAULT_LLM_URL);
+
   const secretAiLLM = new ChatSecret({
     apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision",
