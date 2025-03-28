@@ -122,7 +122,7 @@ function generateHash(data) {
   return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
 
-async function processImagesWithSecretAI(idImage, selfieImage, address) {
+async function processImagesWithSecretAI(idImage, selfieImage) {
 
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
@@ -172,14 +172,18 @@ async function processImagesWithSecretAI(idImage, selfieImage, address) {
       throw new Error("Invalid response structure from SecretAI Vision");
     }
 
-    return { ...result, hash: generateHash(result.identity) }; // Add hash here since SecretAI doesn't return it
+    return { 
+      response: response, 
+      identity: result.identity, 
+      is_fake: result.is_fake, 
+      fake_reason: result.fake_reason };
   } catch (error) {
     console.error("SecretAI Vision error:", error);
     return {
+      response: response,
       identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0, address },
       is_fake: true,
       fake_reason: "Failed to process images: " + error.message,
-      hash: generateHash({ country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0, address }),
     };
   }
 }
@@ -191,20 +195,20 @@ app.post("/api/register", async (req, res) => {
   }
 
   try {
-    const { identity, is_fake, fake_reason, hash } = await processImagesWithSecretAI(idImage, selfieImage, address);
+    const { response, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage, selfieImage);
 
-    if (is_fake) {
-      return res.status(400).json({ error: "Fake identity detected", reason: fake_reason });
-    }
+    // if (is_fake) {
+    //   return res.status(400).json({ error: "Fake identity detected", reason: fake_reason });
+    // }
 
-    const message_object = {
-      register: {
-        user_object: identity,
-        hash,
-      },
-    };
+    // const message_object = {
+    //   register: {
+    //     user_object: identity,
+    //     hash,
+    //   },
+    // };
 
-    res.json({ success: true, identity, is_fake, fake_reason, hash });
+    res.json({ response, identity, is_fake, fake_reason});
     // Uncomment when ready to interact with contract
     // const resp = await contract_interaction(message_object);
     // if (resp.code === 0) {
