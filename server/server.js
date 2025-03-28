@@ -4,7 +4,6 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
-const { ChatSecret, SECRET_AI_CONFIG } = require("secretai");
 const cors = require("cors");
 const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
@@ -124,6 +123,9 @@ function generateHash(data) {
 }
 
 async function processImagesWithSecretAI(idImage, selfieImage, address) {
+
+  const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
+
   const secretAiLLM = new ChatSecret({
     apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision",
