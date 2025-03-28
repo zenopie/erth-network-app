@@ -170,7 +170,7 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
     });
     const response = await secretAiLLM.chat(messages);
     console.log("Raw SecretAI response:", JSON.stringify(response, null, 2));
-    
+
     const result = JSON.parse(response.message?.content || response.content);
 
     if (!result.identity || typeof result.is_fake === "undefined") {
@@ -184,8 +184,6 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
       fake_reason: result.fake_reason 
     };
   } catch (error) {
-    console.error("SecretAI Vision error:", error);
-    // Log the full error object as a stringified JSON to see all properties
     console.error("Full error object:", JSON.stringify(error, null, 2));
     // If error.response exists (e.g., from an HTTP library), log it
     if (error.response) {
