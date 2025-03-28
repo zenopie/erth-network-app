@@ -68,13 +68,13 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     console.log("Exiting checkVerificationStatus");
   };
 
-  // Handle file upload and convert to base64
   const handleFileUpload = (event, setImage) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result); // Base64 string
+        const base64String = reader.result.split(',')[1]; // Strip prefix
+        setImage(base64String);
       };
       reader.readAsDataURL(file);
     }

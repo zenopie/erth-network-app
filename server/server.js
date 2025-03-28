@@ -123,7 +123,6 @@ function generateHash(data) {
 }
 
 async function processImagesWithSecretAI(idImage, selfieImage) {
-
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
   const secretAiLLM = new ChatSecret({
@@ -165,6 +164,10 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
   ];
 
   try {
+    console.log("Sending images to SecretAI:", {
+      idImage: idImage.slice(0, 50) + "...",
+      selfieImage: selfieImage.slice(0, 50) + "...",
+    });
     const response = await secretAiLLM.chat(messages);
     const result = JSON.parse(response.message?.content || response.content);
 
@@ -176,12 +179,18 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
       response: response, 
       identity: result.identity, 
       is_fake: result.is_fake, 
-      fake_reason: result.fake_reason };
+      fake_reason: result.fake_reason 
+    };
   } catch (error) {
     console.error("SecretAI Vision error:", error);
+    console.error("Error details:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
     return {
-      response: response,
-      identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0, address },
+      response: null,
+      identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0 },
       is_fake: true,
       fake_reason: "Failed to process images: " + error.message,
     };
