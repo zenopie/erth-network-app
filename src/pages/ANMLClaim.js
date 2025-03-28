@@ -108,6 +108,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
       });
 
       const data = await response.json();
+      console.log("Registration response:", data);
       if (!response.ok) {
         throw new Error(data.error || "Registration failed");
       }
