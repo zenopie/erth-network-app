@@ -16,9 +16,8 @@
     "crypto": "^1.0.1",
     "express": "^4.21.2",
     "fs": "^0.0.1-security",
-    "langchain": "^0.0.173",
     "path": "^0.12.7",
-    "secretai": "^1.0.10",
+    "secretai": "1.0.16",
     "secretjs": "^1.15.1"
   }
 }

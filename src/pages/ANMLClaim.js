@@ -91,6 +91,9 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     setIsModalOpen(true);
     setAnimationState("loading");
 
+    console.log("ID Image size:", idImage.length / 1024 / 1024, "MB");
+    console.log("Selfie Image size:", selfieImage.length / 1024 / 1024, "MB");
+
     try {
       const response = await fetch("/api/register", {
         method: "POST",

@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
 const { Wallet, SecretNetworkClient, MsgExecuteContract } = require("secretjs");
+import { ChatSecret, SECRET_AI_CONFIG } from "secretai";
 const cors = require("cors");
 const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager");
 
@@ -126,7 +127,7 @@ async function processImagesWithSecretAI(idImage, selfieImage, address) {
   const secretAiLLM = new ChatSecret({
     apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision",
-    base_url: "https://api.secret.ai", // Ensure this is correct; was undefined before
+    base_url: SECRET_AI_CONFIG.DEFAULT_BASE_URL,
     temperature: 0,
   });
 
