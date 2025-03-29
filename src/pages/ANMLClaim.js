@@ -4,8 +4,6 @@ import contracts from "../utils/contracts";
 import { query, contract } from "../utils/contractUtils";
 import { showLoadingScreen } from "../utils/uiUtils";
 import StatusModal from "../components/StatusModal";
-
-// Import images
 import passportImage from "../images/passport.png";
 import anmlImage from "../images/anml.png";
 
@@ -16,10 +14,8 @@ const ANMLClaim = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
   const [idImage, setIdImage] = useState(null);
-  const [selfieImage, setSelfieImage] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Food emoji selection
   const [foodEmoji] = useState(() => {
     const dayOfWeek = new Date().getDay();
     const weekdayFoods = {
@@ -35,7 +31,6 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     return todaysFoods[Math.floor(Math.random() * todaysFoods.length)];
   });
 
-  // Check verification status
   const checkVerificationStatus = async () => {
     console.log("Entering checkVerificationStatus");
     showLoadingScreen(true);
@@ -73,17 +68,16 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result.split(',')[1]; // Strip prefix
+        const base64String = reader.result.split(",")[1]; // Strip prefix
         setImage(base64String);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Handle registration with SecretAI
   const registerButton = async () => {
-    if (!idImage || !selfieImage) {
-      alert("Please upload both ID and selfie images");
+    if (!idImage) {
+      alert("Please upload an ID image");
       return;
     }
 
@@ -92,7 +86,6 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     setAnimationState("loading");
 
     console.log("ID Image size:", idImage.length / 1024 / 1024, "MB");
-    console.log("Selfie Image size:", selfieImage.length / 1024 / 1024, "MB");
 
     try {
       const response = await fetch("/api/register", {
@@ -103,7 +96,6 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         body: JSON.stringify({
           address: window.secretjs.address,
           idImage,
-          selfieImage,
         }),
       });
 
@@ -127,7 +119,6 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     }
   };
 
-  // Claim button
   const claimButton = async () => {
     setIsModalOpen(true);
     setAnimationState("loading");
@@ -176,21 +167,11 @@ const ANMLClaim = ({ isKeplrConnected }) => {
               disabled={isRegistering}
             />
           </label>
-          <br />
-          <label>
-            Upload Selfie:
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload(e, setSelfieImage)}
-              disabled={isRegistering}
-            />
-          </label>
         </div>
         <button
           onClick={registerButton}
           className="anml-claim-button"
-          disabled={!idImage || !selfieImage || isRegistering}
+          disabled={!idImage || isRegistering}
         >
           {isRegistering ? "Registering..." : "Register"}
         </button>

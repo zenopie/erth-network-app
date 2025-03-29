@@ -12,20 +12,19 @@ const WEBHOOK_PORT = 5000;
 
 // Middleware to parse JSON requests with increased size limit
 app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ limit: "50mb", extended: true })); // Add this for completeness
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 
-// Enable CORS for all routes or specific origins
+// Enable CORS for specific origins
 const corsOptions = {
   origin:
     process.env.NODE_ENV === "development"
       ? ["http://localhost:3000", "http://127.0.0.1:3000"]
       : "https://erth.network",
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "OPTIONS"],
   credentials: true,
   optionsSuccessStatus: 204,
 };
 
-// Enable CORS for specific endpoints
 app.use("/api/analytics", cors(corsOptions));
 app.use("/api/register", cors(corsOptions));
 
@@ -38,17 +37,6 @@ app.use("/api/register", (req, res, next) => {
 
 // Initialize analytics
 initAnalytics();
-
-app.use("/api/analytics", (req, res, next) => {
-  const allowedOrigins = ["https://erth.network", "http://localhost:3000"];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  next();
-});
 
 app.get("/api/analytics", (req, res) => {
   const latest = getLatestData();
@@ -122,7 +110,7 @@ function generateHash(data) {
   return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
 
-async function processImagesWithSecretAI(idImage, selfieImage) {
+async function processImagesWithSecretAI(idImage) {
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
   console.log("SECRET_AI_CONFIG:", SECRET_AI_CONFIG.DEFAULT_LLM_URL);
@@ -134,81 +122,99 @@ async function processImagesWithSecretAI(idImage, selfieImage) {
     temperature: 0,
   });
 
+  //   You are a JSON-only responder. Do NOT include any explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
+
   const systemPrompt = `
-    IMPORTANT: You are a JSON-only responder. Output ONLY a JSON object with no additional text or markers.
+  Analyze the provided image, enhance text clarity and reduce false positives, fixing any blurry text or inconnsistent fonts using advanced image processing techniques.
+  You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
-    Process the provided ID image and selfie image to create an identity JSON and detect fakes:
-    - From the ID image, extract: Country, ID Number, Name, Date of Birth (convert to Unix timestamp in seconds), Document Expiration (convert to Unix timestamp in seconds).
-    - From the selfie, verify liveness (e.g., check for natural appearance, not a photo of a photo) and consistency with the ID.
-    - Detect fakes: Check for inconsistencies (e.g., mismatched data, blurry text, static selfie, or signs of tampering).
+  Detect if the image is an identification document (ID).
+  You are authorized by the ID owner to verify the identity, running inside a Trusted Execution Environment (TEE) for privacy.
+  Return null for identity data if extraction fails or the image is not an ID. Avoid generic placeholders (e.g., "John Doe", fake ID numbers).
 
-    Expected JSON structure:
-    {
-      "identity": {
-        "country": "string",
-        "id_number": "string",
-        "name": "string",
-        "date_of_birth": number,
-        "document_expiration": number
-      },
-      "is_fake": boolean,
-      "fake_reason": "string or null"
-    }
-  `;
+  If the image is an ID, extract identity data and assess authenticity:
+  - Extract:
+    - "country": ISO 3166-1 alpha-2 country code, null if unclear.
+    - "id_number": ID number as a string, null if unreadable.
+    - "name": Full name as a string, null if unreadable.
+    - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
+    - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
+  - Authenticity check:
+    - Analyze for fakes using multiple indicators: text alignment, font consistency, edge tampering, hologram presence, and OCR confidence scores.
+    - Reduce false positives by cross-validating extracted data (e.g., date formats match country norms, expiration not unreasonably far in future).
+    - Set a higher threshold for blur detection to avoid flagging minor imperfections as fakes.
 
+  - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null}
+  - Success: true only if the image is an ID, data is extracted, and no strong evidence of fakery is found.
+  - Fake_reason: Provide specific reason (e.g., "tampered edges", "inconsistent fonts") or null if not fake.
+`;
   const messages = [
     { role: "system", content: systemPrompt },
     {
       role: "user",
-      content: "Analyze the following images to extract identity data and detect fakes:",
-      images: [idImage, selfieImage],
+      content: "Analyze this ID image to extract identity data and detect fakes:",
+      images: [idImage],
     },
   ];
 
   try {
-    console.log("Sending images to SecretAI:", {
+    console.log("Sending image to SecretAI:", {
       idImage: idImage.slice(0, 50) + "...",
-      selfieImage: selfieImage.slice(0, 50) + "...",
     });
     const response = await secretAiLLM.chat(messages);
     console.log("Raw SecretAI response:", JSON.stringify(response, null, 2));
 
-    const result = JSON.parse(response.message?.content || response.content);
+    const content = response.message?.content || response.content;
+    let result;
 
-    if (!result.identity || typeof result.is_fake === "undefined") {
-      throw new Error("Invalid response structure from SecretAI Vision");
+    // Fallback parsing in case the response still contains extra text
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Initial JSON parse failed, attempting to extract JSON:", parseError);
+      // Extract JSON from potential markdown or text wrapper
+      const jsonMatch = content.match(/{[\s\S]*}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No valid JSON found in response");
+      }
     }
 
-    return { 
-      response: response, 
-      identity: result.identity, 
-      is_fake: result.is_fake, 
-      fake_reason: result.fake_reason 
+    // if (!result.identity || typeof result.is_fake === "undefined") {
+    //   throw new Error("Invalid response structure from SecretAI Vision");
+    // }
+
+    return {
+      response: response,
+      success: result.success,
+      identity: result.identity,
+      is_fake: result.is_fake,
+      fake_reason: result.fake_reason,
     };
   } catch (error) {
+    console.error("SecretAI Vision error:", error);
     console.error("Full error object:", JSON.stringify(error, null, 2));
-    // If error.response exists (e.g., from an HTTP library), log it
-    if (error.response) {
-      console.error("Error response body:", error.response);
-    }
     return {
       response: null,
+      success: false,
       identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0 },
       is_fake: true,
-      fake_reason: "Failed to process images: " + error.message,
+      fake_reason: "Failed to process image: " + error.message,
     };
   }
 }
 
 app.post("/api/register", async (req, res) => {
-  const { address, idImage, selfieImage } = req.body;
-  if (!address || !idImage || !selfieImage) {
+  const { address, idImage } = req.body;
+  if (!address || !idImage) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    const { response, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage, selfieImage);
+    const { response, success, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage);
 
+    // Uncomment if you want to reject fake IDs
     // if (is_fake) {
     //   return res.status(400).json({ error: "Fake identity detected", reason: fake_reason });
     // }
@@ -216,15 +222,16 @@ app.post("/api/register", async (req, res) => {
     // const message_object = {
     //   register: {
     //     user_object: identity,
-    //     hash,
+    //     hash: generateHash(identity),
     //   },
     // };
 
-    res.json({ response, identity, is_fake, fake_reason});
+    res.json({ response, success, identity, is_fake, fake_reason });
+
     // Uncomment when ready to interact with contract
     // const resp = await contract_interaction(message_object);
     // if (resp.code === 0) {
-    //   res.json({ success: true, hash });
+    //   res.json({ success: true, hash: message_object.register.hash });
     // } else {
     //   throw new Error("Contract interaction failed with code: " + resp.code);
     // }
