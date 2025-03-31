@@ -6,7 +6,7 @@ const contracts = {
   },
   registration: {
     contract: "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p",
-    hash: "32cd885fe0753693d976ae405c1f098a1bacc49b6eceb7251fb31bacecfe5eb9",
+    hash: "04bd5177bad4c7846e97a9e3d345cf9e3e7fca5969f90ac20f3a5afc5b471cd5",
   },
   staking: {
     contract: "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5",

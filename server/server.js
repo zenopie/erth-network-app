@@ -214,27 +214,29 @@ app.post("/api/register", async (req, res) => {
   try {
     const { response, success, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage);
 
-    // Uncomment if you want to reject fake IDs
-    // if (is_fake) {
-    //   return res.status(400).json({ error: "Fake identity detected", reason: fake_reason });
-    // }
+    if (!success) {
+      return res.status(400).json({ 
+        error: "Identity verification failed", 
+        is_fake: is_fake || true,  
+        reason: fake_reason || "Unable to verify identity"
+      });
+    }
 
-    // const message_object = {
-    //   register: {
-    //     user_object: identity,
-    //     hash: generateHash(identity),
-    //   },
-    // };
+    const message_object = {
+      register: {
+        address: address,
+        id_hash: generateHash(identity),
+      }
+    };
 
-    res.json({ response, success, identity, is_fake, fake_reason });
+    //res.json({ response, success, identity, is_fake, fake_reason });
 
-    // Uncomment when ready to interact with contract
-    // const resp = await contract_interaction(message_object);
-    // if (resp.code === 0) {
-    //   res.json({ success: true, hash: message_object.register.hash });
-    // } else {
-    //   throw new Error("Contract interaction failed with code: " + resp.code);
-    // }
+    const resp = await contract_interaction(message_object);
+    if (resp.code === 0) {
+      res.json({ success: true, hash: message_object.register.hash, response: resp });
+    } else {
+      throw new Error("Contract interaction failed with code: " + resp.code);
+    }
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ error: "Registration failed: " + error.message });
