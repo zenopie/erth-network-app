@@ -235,7 +235,7 @@ app.post("/api/register", async (req, res) => {
     if (resp.code === 0) {
       res.json({ success: true, hash: message_object.register.hash, response: resp });
     } else {
-      throw new Error("Contract interaction failed with code: " + resp.code);
+      throw new Error("Contract interaction failed with: " + resp);
     }
   } catch (error) {
     console.error("Registration error:", error);
