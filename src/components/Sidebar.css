@@ -120,7 +120,7 @@
 .nav-links {
   height: calc(100vh - 150px);
   padding: 0 0 150px 0;
-  overflow: auto;
+  overflow-x: hidden; /* Add this */
 }
 
 .nav-links::-webkit-scrollbar {
