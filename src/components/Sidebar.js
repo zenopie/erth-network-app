@@ -151,7 +151,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             <ul className="submenu-list">
               <li>
                 <Link to="/lila-chat" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  ask Lila
+                  Ask Lila
                 </Link>
               </li>
               <li>
