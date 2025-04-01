@@ -9,9 +9,6 @@ import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
 import LilaChat from './pages/LilaChat';
-import TOTPAuth from './pages/TOTPAuth';
-import AgentChat from './pages/AgentChat';
-import ImageInterpret from './pages/ImageInterpret';
 import './App.css';
 
 function App() {
@@ -28,9 +25,6 @@ function App() {
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
           <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
-          <Route path="/totp-auth" element={<Layout><TOTPAuth /></Layout>} />
-          <Route path="/agent-chat" element={<Layout><AgentChat /></Layout>} />
-          <Route path="/image-interpret" element={<Layout><ImageInterpret /></Layout>} />
         </Routes>
       </div>
     </Router>
