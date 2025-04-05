@@ -22,20 +22,14 @@ jobs:
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Define directories
             HOME_DIR=/home/secret/earth-mainnet-app
             BUILD_DIR=$HOME_DIR/build
             SERVER_DIR=$HOME_DIR/server
+            DEPLOY_DIR=/var/www/erth
 
-            # Create the home directory if it doesn't exist
-            if [ ! -d "$HOME_DIR" ]; then
-              mkdir -p $HOME_DIR
-            fi
+            mkdir -p $HOME_DIR
 
-            # Navigate to the home directory where the source code is stored
             cd $HOME_DIR
-
-            # Force reset local repository with remote state
             if [ -d ".git" ]; then
               git fetch origin
               git reset --hard origin/main
@@ -44,72 +38,44 @@ jobs:
               git clone https://github.com/zenopie/erth-mainnet-app.git .
             fi
 
-            # Install NVM (Node Version Manager) if not already installed
-            if [ ! -d "$HOME/.nvm" ]; then
-              echo "Installing NVM..."
+            export NVM_DIR="$HOME/.nvm"
+            if [ ! -d "$NVM_DIR" ]; then
               curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-              export NVM_DIR="$HOME/.nvm"
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            else
-              echo "NVM is already installed"
-              export NVM_DIR="$HOME/.nvm"
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             fi
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-            # Install and use Node.js v18.20.7
-            echo "Installing and using Node.js v18.20.7..."
             nvm install 18.20.7
             nvm use 18.20.7
             nvm alias default 18.20.7
 
-            # Verify Node.js version
-            echo "Current Node.js version:"
-            node -v
-
-            # Install frontend dependencies
             if [ -f package.json ]; then
               npm install
               npm update
+              npm run build
             else
-              echo "Error: package.json not found in root!"
+              echo "package.json not found!"
               exit 1
             fi
 
-            # Build the React frontend
-            npm run build
+            # Copy to /var/www/erth
+            rm -rf $DEPLOY_DIR/*
+            cp -r $BUILD_DIR/* $DEPLOY_DIR/
 
-            # Restart NGINX to apply the changes (no sudo)
-            systemctl restart nginx
+            # Restart NGINX (assuming systemd user service or already running and auto-refreshing)
+            systemctl --user restart nginx || echo "Restart NGINX manually if needed"
 
-            # Ensure the server dependencies are updated
+            # Backend
             cd $SERVER_DIR
+            nvm use 18.20.7
+            npm install
+            npm update
 
-            if [ -f package.json ]; then
-              # Use the same Node.js version for server
-              echo "Using Node.js v18.20.7 for server..."
-              nvm use 18.20.7
-              npm install
-              npm update
-            else
-              echo "Error: package.json not found in server directory!"
-              exit 1
-            fi
-
-            # Install PM2 globally if not installed (no sudo)
             if ! command -v pm2 &> /dev/null; then
               npm install -g pm2
             fi
 
-            # Stop any existing instance of the server
             pm2 stop erth-network-server || true
-
-            # Start the server with PM2, ensuring it uses the correct Node.js version
-            NVM_BIN=$HOME/.nvm/versions/node/v18.20.7/bin
-            PATH=$NVM_BIN:$PATH pm2 start $SERVER_DIR/server.js --name "erth-network-server"
-
-            # Save the PM2 process list
+            pm2 start $SERVER_DIR/server.js --name "erth-network-server"
             pm2 save
-
-            # Ensure PM2 restarts on reboot (no sudo)
             pm2 startup systemd
             env PATH=$PATH:/usr/bin pm2 startup systemd -u secret --hp /home/secret
