@@ -2,36 +2,54 @@ import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 import contracts from './contracts';
 
 let secretjs = null;
-const grpcUrl = "https://grpc.erth.network"; // Public gRPC endpoint for browser
+const grpcUrl = "https://grpc.erth.network"; // Public gRPC endpoint
 
 console.log("gRPC url = " + grpcUrl);
 
 export async function connectKeplr() {
     const chainId = 'secret-4';  // Mainnet chain ID
 
-    if (!window.getOfflineSigner || !window.keplr) {
+    if (!window.keplr) {
         throw new Error("Keplr extension is not installed.");
     }
 
-    await window.keplr.enable(chainId);
-    const keplrOfflineSigner = window.getOfflineSignerOnlyAmino(chainId);
-    const accounts = await keplrOfflineSigner.getAccounts();
-    const address = accounts[0].address;
+    if (!window.getOfflineSigner) {
+        throw new Error("Keplr offline signer not available.");
+    }
 
     try {
+        // Enable Keplr for the chain
+        await window.keplr.enable(chainId);
+        const keplrOfflineSigner = window.getOfflineSignerOnlyAmino(chainId);
+        const accounts = await keplrOfflineSigner.getAccounts();
+
+        if (!accounts || accounts.length === 0) {
+            throw new Error("No accounts found in Keplr.");
+        }
+
+        const address = accounts[0].address;
+        const enigmaUtils = window.keplr.getEnigmaUtils(chainId);
+
+        if (!enigmaUtils) {
+            console.warn("EnigmaUtils not available for chainId:", chainId);
+            // Fallback: Proceed without encryptionUtils if not critical
+        }
+
         secretjs = new SecretNetworkClient({
             grpcUrl,
             chainId: chainId,
             wallet: keplrOfflineSigner,
             walletAddress: address,
-            encryptionUtils: window.keplr.getEnigmaUtils(chainId),
+            encryptionUtils: enigmaUtils || undefined, // Allow undefined
         });
+
+        console.log("SecretJS client initialized successfully");
     } catch (error) {
         console.error("Error creating SecretJS client:", error);
+        throw error; // Re-throw to let callers handle failure
     }
 
     const walletName = await window.keplr.getKey(chainId);
-
     return { secretjs, walletName: walletName.name.slice(0, 12) };
 }
 
@@ -41,7 +59,7 @@ export async function query(contract, hash, querymsg) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
     }
 
-    console.time("Query Time"); // Measure gRPC query speed
+    console.time("Query Time");
     let resp = await secretjs.query.compute.queryContract({
         contract_address: contract,
         code_hash: hash,
@@ -101,11 +119,16 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         broadcastMode: "Sync",
     });
     console.log("Snip: ", resp);
-    return resp; // Added return
+    return resp;
 }
 
 // Query SNIP-20 balance
 export async function querySnipBalance(token) {
+    if (!secretjs) {
+        console.error("SecretJS not initialized in querySnipBalance");
+        return "Error";
+    }
+
     try {
         const chainId = window.secretjs.chainId;
         let viewing_key = await window.keplr.getSecret20ViewingKey(chainId, token.contract);
@@ -136,6 +159,11 @@ export async function querySnipBalance(token) {
 
 // Request viewing key
 export async function requestViewingKey(token) {
+    if (!secretjs) {
+        console.error("SecretJS not initialized in requestViewingKey");
+        return;
+    }
+
     try {
         const chainId = window.secretjs.chainId;
         await window.keplr.suggestToken(chainId, token.contract);
