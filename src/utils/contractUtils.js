@@ -44,7 +44,8 @@ export async function connectKeplr() {
 
         // Query client (gRPC for queries)
         queryClient = new SecretNetworkClient({
-            url: grpcUrl,              // gRPC endpoint only
+            url,
+            grpcUrl,              // gRPC endpoint only
             chainId: chainId,
         });
 
