@@ -25,6 +25,7 @@ jobs:
             # Define directories
             HOME_DIR=/home/secret/earth-mainnet-app
             BUILD_DIR=$HOME_DIR/build
+            SERVER_DIR=$HOME_DIR/server
 
             # Create the home directory if it doesn't exist
             if [ ! -d "$HOME_DIR" ]; then
