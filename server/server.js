@@ -125,7 +125,6 @@ async function processImagesWithSecretAI(idImage) {
   //   You are a JSON-only responder. Do NOT include any explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
   const systemPrompt = `
-  Analyze the provided image, enhance text clarity and reduce false positives, fixing any blurry text or inconnsistent fonts using advanced image processing techniques.
   You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
   Detect if the image is an identification document (ID).
@@ -139,8 +138,6 @@ async function processImagesWithSecretAI(idImage) {
     - "name": Full name as a string, null if unreadable.
     - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
     - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
-  - Authenticity check:
-    - Analyze for fakes
 
   - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null}
   - Success: true only if the image is an ID, data is extracted, and no strong evidence of fakery is found.
