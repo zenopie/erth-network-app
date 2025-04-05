@@ -2,12 +2,8 @@ import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 import contracts from './contracts';
 
 let secretjs = null;
-const url = "https://lcd.erth.network";
-//const url = "https://lcd.mainnet.secretsaturn.net";
-//const url = "https://erth.network/api/cors/https://lcd.archive.scrt.marionode.com";
-//const url = "https://rpc.ankr.com/http/scrt_cosmos";
-//const url = "https://secretnetwork-api.lavenderfive.com:443";
-//const url = "https://secretnetwork-api.highstakes.ch:1317";
+const url = "http://localhost:1317";
+
 
 console.log("node url = " + url);
 

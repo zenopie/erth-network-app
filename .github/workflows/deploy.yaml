@@ -75,6 +75,3 @@ jobs:
 
             pm2 stop erth-network-server || true
             pm2 start $SERVER_DIR/server.js --name "erth-network-server"
-            pm2 save
-            pm2 startup systemd
-            env PATH=$PATH:/usr/bin pm2 startup systemd -u secret --hp /home/secret
