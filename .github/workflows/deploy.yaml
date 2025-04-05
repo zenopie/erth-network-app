@@ -23,7 +23,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Define directories
-            HOME_DIR=/home/ubuntu/earth-mainnet-app
+            HOME_DIR=/home/secret/earth-mainnet-app
             WWW_DIR=/var/www/earth-mainnet-app
             SERVER_DIR=$HOME_DIR/server
 
@@ -118,5 +118,6 @@ jobs:
 
             # Ensure PM2 restarts on reboot
             pm2 startup systemd
-            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
-            sudo systemctl enable pm2-ubuntu
+            sudo systemctl enable pm2-secret
+            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u secret --hp /home/secret
+
