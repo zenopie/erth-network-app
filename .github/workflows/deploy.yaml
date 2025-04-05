@@ -24,8 +24,7 @@ jobs:
           script: |
             # Define directories
             HOME_DIR=/home/secret/earth-mainnet-app
-            WWW_DIR=/var/www/earth-mainnet-app
-            SERVER_DIR=$HOME_DIR/server
+            BUILD_DIR=$HOME_DIR/build
 
             # Create the home directory if it doesn't exist
             if [ ! -d "$HOME_DIR" ]; then
@@ -78,14 +77,8 @@ jobs:
             # Build the React frontend
             npm run build
 
-            # Remove old files in the web directory
-            sudo rm -rf $WWW_DIR/*
-
-            # Move the build output to the web directory
-            sudo mv $HOME_DIR/build/* $WWW_DIR/
-
-            # Restart NGINX to apply the changes
-            sudo systemctl restart nginx
+            # Restart NGINX to apply the changes (no sudo)
+            systemctl restart nginx
 
             # Ensure the server dependencies are updated
             cd $SERVER_DIR
@@ -101,9 +94,9 @@ jobs:
               exit 1
             fi
 
-            # Install PM2 globally if not installed
+            # Install PM2 globally if not installed (no sudo)
             if ! command -v pm2 &> /dev/null; then
-              sudo npm install -g pm2
+              npm install -g pm2
             fi
 
             # Stop any existing instance of the server
@@ -116,8 +109,6 @@ jobs:
             # Save the PM2 process list
             pm2 save
 
-            # Ensure PM2 restarts on reboot
+            # Ensure PM2 restarts on reboot (no sudo)
             pm2 startup systemd
-            sudo systemctl enable pm2-secret
-            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u secret --hp /home/secret
-
+            env PATH=$PATH:/usr/bin pm2 startup systemd -u secret --hp /home/secret
