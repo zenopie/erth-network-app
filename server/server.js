@@ -119,7 +119,7 @@ async function processImagesWithSecretAI(idImage) {
     apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision",
     base_url: SECRET_AI_CONFIG.DEFAULT_LLM_URL,
-    temperature: 0.5,
+    temperature: 1,
   });
 
   //   You are a JSON-only responder. Do NOT include any explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
