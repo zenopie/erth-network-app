@@ -1,11 +1,10 @@
-import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
+import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 import contracts from './contracts';
 
 let secretjs = null;
-const url = "https://lcd.erth.network";
+const grpcUrl = "https://grpc.erth.network"; // Public gRPC endpoint for browser
 
-
-console.log("node url = " + url);
+console.log("gRPC url = " + grpcUrl);
 
 export async function connectKeplr() {
     const chainId = 'secret-4';  // Mainnet chain ID
@@ -21,7 +20,7 @@ export async function connectKeplr() {
 
     try {
         secretjs = new SecretNetworkClient({
-            url,
+            grpcUrl,
             chainId: chainId,
             wallet: keplrOfflineSigner,
             walletAddress: address,
@@ -30,25 +29,25 @@ export async function connectKeplr() {
     } catch (error) {
         console.error("Error creating SecretJS client:", error);
     }
-    
 
     const walletName = await window.keplr.getKey(chainId);
-       
 
     return { secretjs, walletName: walletName.name.slice(0, 12) };
 }
 
-// Query function
+// Query function with timing
 export async function query(contract, hash, querymsg) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
     }
 
+    console.time("Query Time"); // Measure gRPC query speed
     let resp = await secretjs.query.compute.queryContract({
         contract_address: contract,
         code_hash: hash,
         query: querymsg,
     });
+    console.timeEnd("Query Time");
     console.log("Query: ", resp);
     return resp;
 }
@@ -102,8 +101,10 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         broadcastMode: "Sync",
     });
     console.log("Snip: ", resp);
+    return resp; // Added return
 }
 
+// Query SNIP-20 balance
 export async function querySnipBalance(token) {
     try {
         const chainId = window.secretjs.chainId;
@@ -125,16 +126,15 @@ export async function querySnipBalance(token) {
             },
         });
 
-        // Handle micro units conversion to standard units
         const snip_balance = snip_info.balance.amount / Math.pow(10, token.decimals);
         return parseFloat(snip_balance);
     } catch (error) {
         console.error(`Error querying SNIP balance for ${token.contract}:`, error);
-        return "Error";  // Set balance to "Error" when an issue occurs
+        return "Error";
     }
 }
 
-
+// Request viewing key
 export async function requestViewingKey(token) {
     try {
         const chainId = window.secretjs.chainId;
@@ -145,14 +145,13 @@ export async function requestViewingKey(token) {
     }
 }
 
-
+// Provide liquidity
 export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, amountErth, amountB, stake) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
     }
 
     try {
-        // Step 1: Create allowance message for ERTH token
         let erthAllowanceMsg = new MsgExecuteContract({
             sender: secretjs.address,
             contract_address: tokenErthContract,
@@ -165,7 +164,6 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             },
         });
 
-        // Step 2: Create allowance message for B token
         let bAllowanceMsg = new MsgExecuteContract({
             sender: secretjs.address,
             contract_address: tokenBContract,
@@ -178,7 +176,6 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             },
         });
 
-        // Step 3: Create add liquidity message
         let addLiquidityMsg = new MsgExecuteContract({
             sender: secretjs.address,
             contract_address: contracts.exchange.contract,
@@ -193,12 +190,10 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             },
         });
 
-        // Combine all messages into a single array
         let msgs = [erthAllowanceMsg, bAllowanceMsg, addLiquidityMsg];
 
-        // Send all messages in a single transaction
         let resp = await secretjs.tx.broadcast(msgs, {
-            gasLimit: 1_000_000, // Adjust the gas limit as needed
+            gasLimit: 1_000_000,
             gasPriceInFeeDenom: 0.1,
             feeDenom: "uscrt",
             broadcastMode: "Sync",
