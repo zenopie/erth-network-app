@@ -2,8 +2,10 @@ import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 import contracts from './contracts';
 
 let secretjs = null;
-const grpcUrl = "https://grpc.erth.network"; // Public gRPC endpoint
+const url = "https://lcd.erth.network";      // REST endpoint for Keplr
+const grpcUrl = "https://grpc.erth.network"; // Optional gRPC endpoint for queries
 
+console.log("REST url = " + url);
 console.log("gRPC url = " + grpcUrl);
 
 export async function connectKeplr() {
@@ -18,7 +20,7 @@ export async function connectKeplr() {
     }
 
     try {
-        // Enable Keplr for the chain
+        // Enable Keplr for the chain (assumes secret-4 is known)
         await window.keplr.enable(chainId);
         const keplrOfflineSigner = window.getOfflineSignerOnlyAmino(chainId);
         const accounts = await keplrOfflineSigner.getAccounts();
@@ -30,23 +32,19 @@ export async function connectKeplr() {
         const address = accounts[0].address;
         const enigmaUtils = window.keplr.getEnigmaUtils(chainId);
 
-        if (!enigmaUtils) {
-            console.warn("EnigmaUtils not available for chainId:", chainId);
-            // Fallback: Proceed without encryptionUtils if not critical
-        }
-
         secretjs = new SecretNetworkClient({
-            grpcUrl,
+            url,                   // REST endpoint for Keplr compatibility
+            grpcUrl,              // gRPC for queries (optional)
             chainId: chainId,
             wallet: keplrOfflineSigner,
             walletAddress: address,
-            encryptionUtils: enigmaUtils || undefined, // Allow undefined
+            encryptionUtils: enigmaUtils, // Should work with secret-4
         });
 
         console.log("SecretJS client initialized successfully");
     } catch (error) {
         console.error("Error creating SecretJS client:", error);
-        throw error; // Re-throw to let callers handle failure
+        throw error; // Let callers handle failure
     }
 
     const walletName = await window.keplr.getKey(chainId);
