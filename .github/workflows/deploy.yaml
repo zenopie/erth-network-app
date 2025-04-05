@@ -51,13 +51,15 @@ jobs:
             if [ -f package.json ]; then
               npm install
               npm update
+              # Clean the build directory before running the build
+              rm -rf $BUILD_DIR/*
               npm run build
             else
               echo "package.json not found!"
               exit 1
             fi
 
-            # Copy to /var/www/erth (no sudo, relies on pre-configured permissions)
+            # Copy to /var/www/erth (assuming permissions are pre-configured)
             rm -rf $DEPLOY_DIR/*
             cp -r $BUILD_DIR/* $DEPLOY_DIR/
 
