@@ -57,12 +57,9 @@ jobs:
               exit 1
             fi
 
-            # Copy to /var/www/erth
+            # Copy to /var/www/erth (no sudo, relies on pre-configured permissions)
             rm -rf $DEPLOY_DIR/*
             cp -r $BUILD_DIR/* $DEPLOY_DIR/
-
-            # Restart NGINX (assuming systemd user service or already running and auto-refreshing)
-            systemctl --user restart nginx || echo "Restart NGINX manually if needed"
 
             # Backend
             cd $SERVER_DIR
