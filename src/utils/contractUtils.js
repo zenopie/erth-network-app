@@ -2,7 +2,7 @@ import { SecretNetworkClient, MsgExecuteContract} from 'secretjs';
 import contracts from './contracts';
 
 let secretjs = null;
-const url = "http://localhost:1317";
+const url = "https://lcd.erth.network";
 
 
 console.log("node url = " + url);
