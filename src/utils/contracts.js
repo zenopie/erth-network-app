@@ -10,7 +10,7 @@ const contracts = {
   },
   staking: {
     contract: "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5",
-    hash: "c7121dc3d2da3a30e68aff1b36451c2bd05f03805f60d0e16aae484e56b56b6e",
+    hash: "5a3555625d56907fca04a8084848fc2f8cb1307a28c10ac08b56ecbc02582f24",
   },
 };
 
