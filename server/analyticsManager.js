@@ -105,7 +105,7 @@ function resetAnalyticsData() {
 
 // Add unified pool query constants
 const UNIFIED_POOL_CONTRACT = "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra"; // Exchange contract
-const UNIFIED_POOL_HASH = "0fd6192aa984bb6a8c4433de0193f98d8f96e47f75c59aeea252fe7189f514f8"; // Correct exchange contract hash
+const UNIFIED_POOL_HASH = "e315297d0a37ee79da761d2bd2709fb35d6a879080a8b7bd74d098dc743809d5"; // Correct exchange contract hash
 
 async function updateErthValues() {
   try {
