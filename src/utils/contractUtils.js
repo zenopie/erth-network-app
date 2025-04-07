@@ -11,12 +11,13 @@ console.log("REST url = " + url);
 console.log("gRPC url = " + grpcUrl);
 
 // Helper function to log transactions to browser storage
-function logTransaction(contract_address, hash, resp) {
+function logTransaction(contract_address, hash, msg, resp) {
     const timestamp = new Date().toISOString();
     const logEntry = {
         user_address: secretjs.address,
         contract_address,
         contract_hash: hash,
+        msg: msg,
         tx_hash: resp.transactionHash,
         response: resp,
         timestamp
@@ -113,7 +114,7 @@ export async function contract(contract, hash, contractmsg) {
         broadcastMode: "Sync",
     });
     console.log("Contract: ", resp);
-    logTransaction(contract, hash, resp);
+    logTransaction(contract, hash, contractmsg, resp);
     return resp;
 }
 
@@ -144,7 +145,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         broadcastMode: "Sync",
     });
     console.log("Snip: ", resp);
-    logTransaction(token_contract, token_hash, resp);
+    logTransaction(token_contract, token_hash, snipmsg, resp);
     return resp;
 }
 
@@ -230,18 +231,20 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             },
         });
 
+        let contractmsg = {
+            add_liquidity: {
+                amount_erth: amountErth.toString(),
+                amount_b: amountB.toString(),
+                pool: tokenBContract,
+                stake,
+            },
+        };
+
         let addLiquidityMsg = new MsgExecuteContract({
             sender: secretjs.address,
             contract_address: contracts.exchange.contract,
             code_hash: contracts.exchange.hash,
-            msg: {
-                add_liquidity: {
-                    amount_erth: amountErth.toString(),
-                    amount_b: amountB.toString(),
-                    pool: tokenBContract,
-                    stake,
-                },
-            },
+            msg: contractmsg,
         });
 
         let msgs = [erthAllowanceMsg, bAllowanceMsg, addLiquidityMsg];
@@ -254,7 +257,7 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
         });
 
         console.log("Liquidity provide:", resp);
-        logTransaction(contracts.exchange.contract, contracts.exchange.hash, resp);
+        logTransaction(contracts.exchange.contract, contracts.exchange.hash, contractmsg, resp);
         return resp;
     } catch (error) {
         console.error("Error providing liquidity:", error);

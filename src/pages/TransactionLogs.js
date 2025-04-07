@@ -64,6 +64,14 @@ const TransactionLogs = ({ isKeplrConnected }) => {
           ? new Date(b[field]) - new Date(a[field])
           : new Date(a[field]) - new Date(b[field]);
       }
+      // Special handling for msg (convert to string for comparison)
+      if (field === "msg") {
+        const aMsg = JSON.stringify(a[field] || "");
+        const bMsg = JSON.stringify(b[field] || "");
+        return newDirection === "desc" 
+          ? bMsg.localeCompare(aMsg)
+          : aMsg.localeCompare(bMsg);
+      }
       return newDirection === "desc" 
         ? (b[field] || "").localeCompare(a[field] || "")
         : (a[field] || "").localeCompare(b[field] || "");
@@ -78,9 +86,10 @@ const TransactionLogs = ({ isKeplrConnected }) => {
     setInvalidLogs([]);
   };
 
-  // Helper to safely truncate strings
-  const truncate = (str, startLen = 10, endLen = 4) => {
-    if (!str || typeof str !== 'string') return "N/A";
+  // Helper to safely truncate strings or objects
+  const truncate = (value, startLen = 10, endLen = 4) => {
+    if (!value) return "N/A";
+    const str = typeof value === 'string' ? value : JSON.stringify(value);
     if (str.length <= startLen + endLen) return str;
     return `${str.slice(0, startLen)}...${str.slice(-endLen)}`;
   };
@@ -130,6 +139,9 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                     <th onClick={() => handleSort("tx_hash")}>
                       Tx Hash {sortField === "tx_hash" && (sortDirection === "desc" ? "↓" : "↑")}
                     </th>
+                    <th onClick={() => handleSort("msg")}>
+                      Message {sortField === "msg" && (sortDirection === "desc" ? "↓" : "↑")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,6 +152,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                       <td>{truncate(log.contract_address)}</td>
                       <td>{truncate(log.contract_hash)}</td>
                       <td>{truncate(log.tx_hash)}</td>
+                      <td>{truncate(log.msg)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -159,6 +172,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                     <th>Contract Address</th>
                     <th>Contract Hash</th>
                     <th>Tx Hash</th>
+                    <th>Message</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,6 +183,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                       <td>{truncate(log.contract_address)}</td>
                       <td>{truncate(log.contract_hash)}</td>
                       <td>{truncate(log.tx_hash)}</td>
+                      <td>{truncate(log.msg)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -187,6 +202,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                   <p><strong>Contract Address:</strong> {selectedLog.contract_address || "N/A"}</p>
                   <p><strong>Contract Hash:</strong> {selectedLog.contract_hash || "N/A"}</p>
                   <p><strong>Tx Hash:</strong> {selectedLog.tx_hash || "N/A"}</p>
+                  <p><strong>Message:</strong> <pre>{JSON.stringify(selectedLog.msg || "N/A", null, 2)}</pre></p>
                   {selectedLog.response && (
                     <p><strong>Response:</strong> <pre>{JSON.stringify(selectedLog.response, null, 2)}</pre></p>
                   )}
