@@ -159,6 +159,11 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
                   Analytics
                 </Link>
               </li>
+              <li>
+                <Link to="/transaction-logs" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Transaction Logs
+                </Link>
+              </li>
 
             </ul>
           </li>

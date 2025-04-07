@@ -10,6 +10,23 @@ const chainId = 'secret-4';                  // Mainnet chain ID
 console.log("REST url = " + url);
 console.log("gRPC url = " + grpcUrl);
 
+// Helper function to log transactions to browser storage
+function logTransaction(contract_address, hash, resp) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+        user_address: secretjs.address,
+        contract_address,
+        contract_hash: hash,
+        tx_hash: resp.transactionHash,
+        response: resp,
+        timestamp
+    };
+    
+    const existingLogs = JSON.parse(localStorage.getItem('transactionLogs') || '[]');
+    existingLogs.push(logEntry);
+    localStorage.setItem('transactionLogs', JSON.stringify(existingLogs));
+}
+
 // Initialize both clients
 export async function connectKeplr() {
     if (!window.keplr) {
@@ -96,6 +113,7 @@ export async function contract(contract, hash, contractmsg) {
         broadcastMode: "Sync",
     });
     console.log("Contract: ", resp);
+    logTransaction(contract, hash, resp);
     return resp;
 }
 
@@ -126,6 +144,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         broadcastMode: "Sync",
     });
     console.log("Snip: ", resp);
+    logTransaction(token_contract, token_hash, resp);
     return resp;
 }
 
@@ -234,7 +253,8 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
             broadcastMode: "Sync",
         });
 
-        console.log("Liquidity provided successfully:", resp);
+        console.log("Liquidity provide:", resp);
+        logTransaction(contracts.exchange.contract, contracts.exchange.hash, resp);
         return resp;
     } catch (error) {
         console.error("Error providing liquidity:", error);
