@@ -64,7 +64,6 @@ const TransactionLogs = ({ isKeplrConnected }) => {
           ? new Date(b[field]) - new Date(a[field])
           : new Date(a[field]) - new Date(b[field]);
       }
-      // Special handling for msg (convert to string for comparison)
       if (field === "msg") {
         const aMsg = JSON.stringify(a[field] || "");
         const bMsg = JSON.stringify(b[field] || "");
@@ -197,14 +196,30 @@ const TransactionLogs = ({ isKeplrConnected }) => {
               <div className="log-modal" onClick={(e) => e.stopPropagation()}>
                 <h3>Log Details</h3>
                 <div className="log-details">
-                  <p><strong>Time:</strong> {new Date(selectedLog.timestamp).toLocaleString()}</p>
-                  <p><strong>User Address:</strong> {selectedLog.user_address || "N/A"}</p>
-                  <p><strong>Contract Address:</strong> {selectedLog.contract_address || "N/A"}</p>
-                  <p><strong>Contract Hash:</strong> {selectedLog.contract_hash || "N/A"}</p>
-                  <p><strong>Tx Hash:</strong> {selectedLog.tx_hash || "N/A"}</p>
-                  <p><strong>Message:</strong> <pre>{JSON.stringify(selectedLog.msg || "N/A", null, 2)}</pre></p>
+                  <div className="log-detail-item">
+                    <strong>Time:</strong> <span>{new Date(selectedLog.timestamp).toLocaleString()}</span>
+                  </div>
+                  <div className="log-detail-item">
+                    <strong>User Address:</strong> <span>{selectedLog.user_address || "N/A"}</span>
+                  </div>
+                  <div className="log-detail-item">
+                    <strong>Contract Address:</strong> <span>{selectedLog.contract_address || "N/A"}</span>
+                  </div>
+                  <div className="log-detail-item">
+                    <strong>Contract Hash:</strong> <span>{selectedLog.contract_hash || "N/A"}</span>
+                  </div>
+                  <div className="log-detail-item">
+                    <strong>Tx Hash:</strong> <span>{selectedLog.tx_hash || "N/A"}</span>
+                  </div>
+                  <div className="log-detail-item">
+                    <strong>Message:</strong>
+                    <pre>{JSON.stringify(selectedLog.msg || "N/A", null, 2)}</pre>
+                  </div>
                   {selectedLog.response && (
-                    <p><strong>Response:</strong> <pre>{JSON.stringify(selectedLog.response, null, 2)}</pre></p>
+                    <div className="log-detail-item">
+                      <strong>Response:</strong>
+                      <pre>{JSON.stringify(selectedLog.response, null, 2)}</pre>
+                    </div>
                   )}
                 </div>
                 <button onClick={closeModal} className="close-modal-button">Close</button>
