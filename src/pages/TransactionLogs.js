@@ -17,26 +17,14 @@ const TransactionLogs = ({ isKeplrConnected }) => {
       return;
     }
     try {
-      const storedLogs = JSON.parse(localStorage.getItem('transactionLogs') || '[]');
+      const storedLogs = JSON.parse(localStorage.getItem("transactionLogs") || "[]");
       console.log("Raw stored logs:", storedLogs);
 
-      const validLogs = storedLogs.filter(log => 
-        log && 
-        log.user_address && 
-        log.contract_address && 
-        log.contract_hash && 
-        log.tx_hash && 
-        log.timestamp
+      const validLogs = storedLogs.filter(
+        (log) => log && log.user_address && log.contract_address && log.contract_hash && log.tx_hash && log.timestamp
       );
-      const invalidLogs = storedLogs.filter(log => 
-        !(
-          log && 
-          log.user_address && 
-          log.contract_address && 
-          log.contract_hash && 
-          log.tx_hash && 
-          log.timestamp
-        )
+      const invalidLogs = storedLogs.filter(
+        (log) => !(log && log.user_address && log.contract_address && log.contract_hash && log.tx_hash && log.timestamp)
       );
 
       console.log("Valid logs:", validLogs);
@@ -60,18 +48,16 @@ const TransactionLogs = ({ isKeplrConnected }) => {
 
     const sortedLogs = [...logs].sort((a, b) => {
       if (field === "timestamp") {
-        return newDirection === "desc" 
+        return newDirection === "desc"
           ? new Date(b[field]) - new Date(a[field])
           : new Date(a[field]) - new Date(b[field]);
       }
       if (field === "msg") {
         const aMsg = JSON.stringify(a[field] || "");
         const bMsg = JSON.stringify(b[field] || "");
-        return newDirection === "desc" 
-          ? bMsg.localeCompare(aMsg)
-          : aMsg.localeCompare(bMsg);
+        return newDirection === "desc" ? bMsg.localeCompare(aMsg) : aMsg.localeCompare(bMsg);
       }
-      return newDirection === "desc" 
+      return newDirection === "desc"
         ? (b[field] || "").localeCompare(a[field] || "")
         : (a[field] || "").localeCompare(b[field] || "");
     });
@@ -80,7 +66,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
 
   // Clear all logs
   const handleClearLogs = () => {
-    localStorage.setItem('transactionLogs', JSON.stringify([]));
+    localStorage.setItem("transactionLogs", JSON.stringify([]));
     setLogs([]);
     setInvalidLogs([]);
   };
@@ -88,7 +74,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
   // Helper to safely truncate strings or objects
   const truncate = (value, startLen = 10, endLen = 4) => {
     if (!value) return "N/A";
-    const str = typeof value === 'string' ? value : JSON.stringify(value);
+    const str = typeof value === "string" ? value : JSON.stringify(value);
     if (str.length <= startLen + endLen) return str;
     return `${str.slice(0, startLen)}...${str.slice(-endLen)}`;
   };
@@ -106,7 +92,7 @@ const TransactionLogs = ({ isKeplrConnected }) => {
   return (
     <div className="transaction-logs-container">
       <h2>Transaction Logs</h2>
-      {(logs.length === 0 && invalidLogs.length === 0) ? (
+      {logs.length === 0 && invalidLogs.length === 0 ? (
         <p>No transactions logged yet.</p>
       ) : (
         <>
@@ -115,80 +101,82 @@ const TransactionLogs = ({ isKeplrConnected }) => {
               Clear Logs
             </button>
           </div>
-          
-          {/* Valid Logs Table */}
-          {logs.length > 0 && (
-            <>
-              <h3>Valid Logs</h3>
-              <table className="logs-table">
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort("timestamp")}>
-                      Time {sortField === "timestamp" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th onClick={() => handleSort("user_address")}>
-                      User Address {sortField === "user_address" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th onClick={() => handleSort("contract_address")}>
-                      Contract Address {sortField === "contract_address" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th onClick={() => handleSort("contract_hash")}>
-                      Contract Hash {sortField === "contract_hash" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th onClick={() => handleSort("tx_hash")}>
-                      Tx Hash {sortField === "tx_hash" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th onClick={() => handleSort("msg")}>
-                      Message {sortField === "msg" && (sortDirection === "desc" ? "↓" : "↑")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log, index) => (
-                    <tr key={`valid-${index}`} onClick={() => handleRowClick(log)} className="clickable-row">
-                      <td>{new Date(log.timestamp).toLocaleString()}</td>
-                      <td>{truncate(log.user_address)}</td>
-                      <td>{truncate(log.contract_address)}</td>
-                      <td>{truncate(log.contract_hash)}</td>
-                      <td>{truncate(log.tx_hash)}</td>
-                      <td>{truncate(log.msg)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
 
-          {/* Invalid Logs Table */}
-          {invalidLogs.length > 0 && (
-            <>
-              <h3>Invalid Logs</h3>
-              <table className="logs-table invalid-logs-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>User Address</th>
-                    <th>Contract Address</th>
-                    <th>Contract Hash</th>
-                    <th>Tx Hash</th>
-                    <th>Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invalidLogs.map((log, index) => (
-                    <tr key={`invalid-${index}`} onClick={() => handleRowClick(log)} className="clickable-row">
-                      <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : "N/A"}</td>
-                      <td>{truncate(log.user_address)}</td>
-                      <td>{truncate(log.contract_address)}</td>
-                      <td>{truncate(log.contract_hash)}</td>
-                      <td>{truncate(log.tx_hash)}</td>
-                      <td>{truncate(log.msg)}</td>
+          <div className="logs-content">
+            {/* Valid Logs Table */}
+            {logs.length > 0 && (
+              <>
+                <h3>Valid Logs</h3>
+                <table className="logs-table">
+                  <thead>
+                    <tr>
+                      <th onClick={() => handleSort("timestamp")}>
+                        Time {sortField === "timestamp" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
+                      <th onClick={() => handleSort("user_address")}>
+                        User Address {sortField === "user_address" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
+                      <th onClick={() => handleSort("contract_address")}>
+                        Contract Address {sortField === "contract_address" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
+                      <th onClick={() => handleSort("contract_hash")}>
+                        Contract Hash {sortField === "contract_hash" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
+                      <th onClick={() => handleSort("tx_hash")}>
+                        Tx Hash {sortField === "tx_hash" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
+                      <th onClick={() => handleSort("msg")}>
+                        Message {sortField === "msg" && (sortDirection === "desc" ? "↓" : "↑")}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
+                  </thead>
+                  <tbody>
+                    {logs.map((log, index) => (
+                      <tr key={`valid-${index}`} onClick={() => handleRowClick(log)} className="clickable-row">
+                        <td>{new Date(log.timestamp).toLocaleString()}</td>
+                        <td>{truncate(log.user_address)}</td>
+                        <td>{truncate(log.contract_address)}</td>
+                        <td>{truncate(log.contract_hash)}</td>
+                        <td>{truncate(log.tx_hash)}</td>
+                        <td>{truncate(log.msg)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {/* Invalid Logs Table */}
+            {invalidLogs.length > 0 && (
+              <>
+                <h3>Invalid Logs</h3>
+                <table className="logs-table invalid-logs-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>User Address</th>
+                      <th>Contract Address</th>
+                      <th>Contract Hash</th>
+                      <th>Tx Hash</th>
+                      <th>Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invalidLogs.map((log, index) => (
+                      <tr key={`invalid-${index}`} onClick={() => handleRowClick(log)} className="clickable-row">
+                        <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : "N/A"}</td>
+                        <td>{truncate(log.user_address)}</td>
+                        <td>{truncate(log.contract_address)}</td>
+                        <td>{truncate(log.contract_hash)}</td>
+                        <td>{truncate(log.tx_hash)}</td>
+                        <td>{truncate(log.msg)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
 
           {/* Modal for full log details */}
           {selectedLog && (
@@ -222,7 +210,9 @@ const TransactionLogs = ({ isKeplrConnected }) => {
                     </div>
                   )}
                 </div>
-                <button onClick={closeModal} className="close-modal-button">Close</button>
+                <button onClick={closeModal} className="close-modal-button">
+                  Close
+                </button>
               </div>
             </div>
           )}

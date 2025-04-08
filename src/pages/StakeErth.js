@@ -93,7 +93,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
       // Fetch unstaked balance (user's ERTH balance)
       const erthBalance = await querySnipBalance(tokens["ERTH"]);
-
       if (isNaN(erthBalance) || erthBalance === "Error") {
         setUnstakedBalance("Error");
       } else {
@@ -242,6 +241,34 @@ const StakingManagement = ({ isKeplrConnected }) => {
     }
   };
 
+  const handleCancelUnbond = async (entry) => {
+    if (!isKeplrConnected) {
+      console.warn("Keplr is not connected yet.");
+      return;
+    }
+
+    try {
+      setIsModalOpen(true);
+      setAnimationState("loading");
+
+      const msg = {
+        cancel_unbond: {
+          amount: entry.amount, // Use exact amount from query (micro units)
+          unbonding_time: entry.unbonding_time, // Use exact timestamp from query (in nanoseconds)
+        },
+      };
+
+      await contract(THIS_CONTRACT, THIS_HASH, msg);
+
+      setAnimationState("success");
+    } catch (error) {
+      console.error("Error canceling unbonding:", error);
+      setAnimationState("error");
+    } finally {
+      fetchStakingRewards();
+    }
+  };
+
   const handleRequestViewingKey = async (token) => {
     await requestViewingKey(token);
     fetchStakingRewards(); // Refresh balances after viewing key is set
@@ -308,7 +335,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
           {/* Staking Rewards Display and Claim Section */}
           {stakingRewards > 0 ? (
             <div className="stake-page-rewards-section">
-              <h3>Available Rewards</h3>
+              <h3>Flexible Rewards</h3>
               <div className="stake-page-info-row">
                 <span className="stake-page-info-label">Staking Rewards Due:</span>
                 <span className="stake-page-info-value rewards-value">
@@ -454,6 +481,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
                 {unbondingEntries.map((entry, index) => {
                   const availableDate = new Date(entry.unbonding_time / 1e6).toLocaleString();
                   const amount = toMacroUnits(entry.amount, tokens["ERTH"]);
+                  const isMatured = new Date() >= new Date(entry.unbonding_time / 1e6);
                   return (
                     <li key={index} className="unbonding-item">
                       <div className="unbonding-amount">
@@ -464,15 +492,25 @@ const StakingManagement = ({ isKeplrConnected }) => {
                         <span className="unbonding-label">Available:</span>
                         <span className="unbonding-value">{availableDate}</span>
                       </div>
-                      {new Date() >= new Date(entry.unbonding_time / 1e6) && (
-                        <button
-                          onClick={handleClaimUnbonded}
-                          className="stake-page-button"
-                          title="Claim your unbonded tokens"
-                        >
-                          Claim
-                        </button>
-                      )}
+                      <div className="unbonding-actions">
+                        {isMatured ? (
+                          <button
+                            onClick={handleClaimUnbonded}
+                            className="stake-page-button"
+                            title="Claim your unbonded tokens"
+                          >
+                            Claim
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleCancelUnbond(entry)}
+                            className="stake-page-button cancel-button"
+                            title="Cancel this unbonding and return to stake"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

@@ -415,6 +415,24 @@
   font-size: 14px;
 }
 
+/* Unbonding Actions Container */
+.unbonding-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Cancel Button Styling */
+.stake-page-button.cancel-button {
+  background-color: #ef5350; /* Red to indicate cancellation */
+  box-shadow: 0 2px 8px rgba(239, 83, 80, 0.3);
+}
+
+.stake-page-button.cancel-button:hover {
+  background-color: #d32f2f; /* Darker red on hover */
+  box-shadow: 0 4px 12px rgba(239, 83, 80, 0.4);
+}
+
 /* Responsive Adjustments */
 @media (max-width: 480px) {
   .stake-page-box {
@@ -429,5 +447,14 @@
   .stake-page-tab button {
     font-size: 13px;
     padding: 8px 0;
+  }
+
+  .unbonding-item {
+    padding: 10px;
+  }
+
+  .unbonding-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
