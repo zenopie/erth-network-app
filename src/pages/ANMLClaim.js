@@ -10,11 +10,20 @@ import anmlImage from "../images/anml.png";
 const REGISTRATION_CONTRACT = contracts.registration.contract;
 const REGISTRATION_HASH = contracts.registration.hash;
 
+// Bech32 validation for Secret Network addresses
+const isValidSecretAddress = (address) => {
+  if (!address) return true; // Empty is valid since it's optional
+  const secretAddressRegex = /^secret1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{38}$/;
+  return typeof address === 'string' && secretAddressRegex.test(address);
+};
+
 const ANMLClaim = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
   const [idImage, setIdImage] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [referredBy, setReferredBy] = useState("");
+  const [isReferredByValid, setIsReferredByValid] = useState(null);
 
   const [foodEmoji] = useState(() => {
     const dayOfWeek = new Date().getDay();
@@ -22,7 +31,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
       0: ["🥞", "🧇", "🥐", "🍳", "🥯", "🍉", "☕"],
       1: ["🥗", "🥑", "🍉", "🍓", "🥝", "🥥", "🥦"],
       2: ["🌮", "🌯", "🫔", "🥙", "🌶️", "🍹", "🧀"],
-      3: ["🍲", "🍜", "🥘", "🍛", "🍝", "🥪", "🍚"],
+      3: ["🍲", "🍜", "🍝", "🍛", "🥪", "🍚"],
       4: ["🍣", "🥟", "🫕", "🍱", "🥡", "🥘", "🍛"],
       5: ["🍕", "🍔", "🍟", "🍉", "🍻", "🍿", "🌭"],
       6: ["🍦", "🧁", "🎂", "🍰", "🍪", "🍫", "🍮"],
@@ -75,10 +84,19 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     }
   };
 
+  const handleReferredByChange = (e) => {
+    const address = e.target.value;
+    setReferredBy(address);
+    setIsReferredByValid(isValidSecretAddress(address));
+  };
+
   const registerButton = async () => {
     if (!idImage) {
-      alert("Please upload an ID image");
-      return;
+      return; // Silently fail if no ID image
+    }
+
+    if (referredBy && !isReferredByValid) {
+      return; // Silently fail if referral address is invalid
     }
 
     setIsRegistering(true);
@@ -96,6 +114,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         body: JSON.stringify({
           address: window.secretjs.address,
           idImage,
+          referredBy: referredBy || null, // Send null if empty
         }),
       });
 
@@ -157,15 +176,37 @@ const ANMLClaim = ({ isKeplrConnected }) => {
           style={{ filter: "drop-shadow(25px 25px 25px #aaa)" }}
           className="logo-img"
         />
-        <div style={{ margin: "20px 0" }}>
-          <label>
+        <div className="anml-input-container">
+          <label className="anml-input-label">
             Upload ID:
             <input
               type="file"
               accept="image/*"
               onChange={(e) => handleFileUpload(e, setIdImage)}
               disabled={isRegistering}
+              className="anml-input-field"
             />
+          </label>
+        </div>
+        <div className="anml-input-container">
+          <label className="anml-input-label">
+            Referred by (optional):
+            <div className="anml-validation-container">
+              <input
+                type="text"
+                value={referredBy}
+                onChange={handleReferredByChange}
+                placeholder="secret1..."
+                disabled={isRegistering}
+                className="anml-input-field"
+              />
+              {referredBy && isReferredByValid === true && (
+                <span className="anml-validation-check">✓</span>
+              )}
+            </div>
+            {referredBy && isReferredByValid === false && (
+              <div className="anml-validation-error">✗ Not valid</div>
+            )}
           </label>
         </div>
         <button

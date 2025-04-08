@@ -130,3 +130,67 @@
   text-align: center;
   color: #293462; /* Match button color for consistency */
 }
+
+/*---- Input Container Styling ----*/
+.anml-input-container {
+  margin: 10px 0;
+  width: 100%;
+  max-width: 300px;
+}
+
+/*---- Input Label Styling ----*/
+.anml-input-label {
+  display: block;
+  font-size: 18px;
+  color: #293462;
+  margin-bottom: 5px;
+}
+
+/*---- Input Field Styling ----*/
+.anml-input-field {
+  width: 100%;
+  padding: 8px;
+  font-size: 16px;
+  border: 3px solid #4056a1;
+  border-radius: 15px;
+  background-color: white;
+  color: #293462;
+  box-sizing: border-box;
+}
+
+.anml-input-field[type="text"] {
+  padding-right: 30px; /* Space for validation icon */
+}
+
+.anml-input-field:disabled {
+  cursor: not-allowed;
+}
+
+.anml-input-field[type="file"] {
+  cursor: pointer;
+}
+
+.anml-input-field[type="text"]:not(:disabled) {
+  cursor: text;
+}
+
+/*---- Validation Feedback Styling ----*/
+.anml-validation-container {
+  position: relative;
+}
+
+.anml-validation-check {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #2ecc71;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.anml-validation-error {
+  color: #f13c20;
+  font-size: 14px;
+  margin-top: 5px;
+}

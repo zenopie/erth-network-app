@@ -179,9 +179,9 @@ async function processImagesWithSecretAI(idImage) {
       }
     }
 
-    // if (!result.identity || typeof result.is_fake === "undefined") {
-    //   throw new Error("Invalid response structure from SecretAI Vision");
-    // }
+    if (!result.success || !result.identity || typeof result.is_fake === "undefined") {
+      throw new Error("Invalid response structure from SecretAI Vision");
+    }
 
     return {
       response: response,
@@ -204,7 +204,7 @@ async function processImagesWithSecretAI(idImage) {
 }
 
 app.post("/api/register", async (req, res) => {
-  const { address, idImage } = req.body;
+  const { address, idImage, referredBy } = req.body;
   if (!address || !idImage) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -224,14 +224,14 @@ app.post("/api/register", async (req, res) => {
       register: {
         address: address,
         id_hash: generateHash(identity),
+        affiliate: referredBy || null,
       }
     };
 
-    //res.json({ response, success, identity, is_fake, fake_reason });
 
     const resp = await contract_interaction(message_object);
     if (resp.code === 0) {
-      res.json({ success: true, hash: message_object.register.hash, response: resp });
+      res.json({ success: true, hash: message_object.register.id_hash, response: resp });
     } else {
       return res.status(400).json({ error: "Contract interaction failed", response: resp });
     }
