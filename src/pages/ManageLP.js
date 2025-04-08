@@ -16,11 +16,10 @@ const ManageLP = ({ isKeplrConnected }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
+  const [activePoolKey, setActivePoolKey] = useState(null);
 
-  // Filter out "ERTH" from displayed tokens
   const tokenKeys = useMemo(() => Object.keys(tokens).filter((t) => t !== "ERTH"), []);
 
-  // Fetch user info (pool_info + user_info) for each pool
   useEffect(() => {
     if (!isKeplrConnected) return;
     showLoadingScreen(true);
@@ -48,13 +47,11 @@ const ManageLP = ({ isKeplrConnected }) => {
     setIsManagingLiquidity((prev) => !prev);
   };
 
-  // Sum up all pending rewards in macro units
   const totalRewards = Object.values(allPoolsData).reduce(
     (sum, d) => sum + toMacroUnits(d?.user_info?.pending_rewards || 0, tokens.ERTH),
     0
   );
 
-  // Handle "Claim All"
   const handleClaimAll = async () => {
     if (!isKeplrConnected) return console.warn("Keplr not connected.");
     const poolsWithRewards = tokenKeys.filter((key) => Number(allPoolsData[key]?.user_info?.pending_rewards) > 0);
@@ -62,6 +59,7 @@ const ManageLP = ({ isKeplrConnected }) => {
 
     setIsModalOpen(true);
     setAnimationState("loading");
+    setActivePoolKey(null);
     try {
       const msg = {
         claim_rewards: { pools: poolsWithRewards.map((k) => tokens[k].contract) },
@@ -75,17 +73,43 @@ const ManageLP = ({ isKeplrConnected }) => {
     }
   };
 
+  const handleClaimStart = (poolKey) => {
+    setIsModalOpen(true);
+    setAnimationState("loading");
+    setActivePoolKey(poolKey);
+  };
+
+  const handleClaimSuccess = () => {
+    setAnimationState("success");
+  };
+
+  const handleClaimError = () => {
+    setAnimationState("error");
+  };
+
+  const handleClaimComplete = (poolKey, updatedPoolData) => {
+    setAllPoolsData((prev) => ({
+      ...prev,
+      [poolKey]: { ...updatedPoolData, tokenKey: poolKey },
+    }));
+  };
+
   return (
     <>
-      {isModalOpen && (
-        <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
-      )}
+      <StatusModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setActivePoolKey(null);
+        }}
+        animationState={animationState}
+      />
 
       {isManagingLiquidity ? (
         <LiquidityManagement
           toggleManageLiquidity={toggleManageLiquidity}
           isKeplrConnected={isKeplrConnected}
-          poolData={poolInfo} // includes { pool_info, user_info, tokenKey }
+          poolData={poolInfo}
           refreshParent={refreshParent}
         />
       ) : (
@@ -106,6 +130,10 @@ const ManageLP = ({ isKeplrConnected }) => {
               poolData={allPoolsData[key]}
               toggleManageLiquidity={toggleManageLiquidity}
               isKeplrConnected={isKeplrConnected}
+              onClaimStart={() => handleClaimStart(key)}
+              onClaimSuccess={handleClaimSuccess}
+              onClaimError={handleClaimError}
+              onClaimComplete={handleClaimComplete} // New callback
             />
           ))}
         </>
