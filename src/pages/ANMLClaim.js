@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./ANMLClaim.css";
 import contracts from "../utils/contracts";
 import { query, contract } from "../utils/contractUtils";
@@ -21,9 +21,16 @@ const ANMLClaim = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
   const [idImage, setIdImage] = useState(null);
+  const [selfieImage, setSelfieImage] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [referredBy, setReferredBy] = useState("");
   const [isReferredByValid, setIsReferredByValid] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const idInputRef = useRef(null);
 
   const [foodEmoji] = useState(() => {
     const dayOfWeek = new Date().getDay();
@@ -72,15 +79,65 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     console.log("Exiting checkVerificationStatus");
   };
 
-  const handleFileUpload = (event, setImage) => {
+  const startCamera = async () => {
+    try {
+      console.log("Requesting camera access");
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user" } 
+      });
+      console.log("Got stream", stream);
+      setStream(stream);
+      setIsCameraActive(true);
+      setCameraError(null);
+    } catch (error) {
+      console.error("Camera access error:", error);
+      setCameraError("Failed to access camera. Please allow camera permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      console.log("Stopping stream");
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const captureSelfie = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0);
+      const base64Image = canvasRef.current.toDataURL('image/jpeg').split(',')[1];
+      setSelfieImage(base64Image);
+      stopCamera();
+    }
+  };
+
+  const handleIdUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result.split(",")[1]; // Strip prefix
-        setImage(base64String);
+        const base64String = reader.result.split(",")[1];
+        setIdImage(base64String);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleIdClick = () => {
+    if (!isRegistering && idInputRef.current) {
+      idInputRef.current.click();
+    }
+  };
+
+  const handleSelfieClick = () => {
+    if (!isRegistering) {
+      console.log("Starting camera");
+      startCamera();
     }
   };
 
@@ -91,13 +148,8 @@ const ANMLClaim = ({ isKeplrConnected }) => {
   };
 
   const registerButton = async () => {
-    if (!idImage) {
-      return; // Silently fail if no ID image
-    }
-
-    if (referredBy && !isReferredByValid) {
-      return; // Silently fail if referral address is invalid
-    }
+    if (!idImage) return; // Only require idImage for now
+    if (referredBy && !isReferredByValid) return;
 
     setIsRegistering(true);
     setIsModalOpen(true);
@@ -113,8 +165,8 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         },
         body: JSON.stringify({
           address: window.secretjs.address,
-          idImage,
-          referredBy: referredBy || null, // Send null if empty
+          idImage, // Only sending idImage as per server
+          referredBy: referredBy || null,
         }),
       });
 
@@ -162,7 +214,21 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     if (isKeplrConnected) {
       checkVerificationStatus();
     }
+    return () => stopCamera();
   }, [isKeplrConnected]);
+
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      console.log("Setting stream to video element");
+      videoRef.current.srcObject = stream;
+    }
+    return () => {
+      if (stream) {
+        console.log("Stopping stream in cleanup");
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isCameraActive, stream]);
 
   return (
     <>
@@ -172,22 +238,45 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         <img
           src={passportImage}
           width={350}
-          alt="Logo"
+          alt="Passport"
           style={{ filter: "drop-shadow(25px 25px 25px #aaa)" }}
           className="logo-img"
         />
-        <div className="anml-input-container">
-          <label className="anml-input-label">
-            Upload ID:
+        <div className="anml-upload-container">
+          <div className="anml-upload-button-group">
+            <button
+              onClick={handleIdClick}
+              className="anml-upload-button"
+              disabled={isRegistering}
+            >
+              {idImage ? "✔" : "+"}
+            </button>
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => handleFileUpload(e, setIdImage)}
+              onChange={handleIdUpload}
               disabled={isRegistering}
-              className="anml-input-field"
+              ref={idInputRef}
+              style={{ display: 'none' }}
             />
-          </label>
+            <span className="anml-upload-label">Upload ID</span>
+          </div>
+          <div className="anml-upload-button-group">
+            <button
+              onClick={handleSelfieClick}
+              className="anml-upload-button"
+              disabled={isRegistering}
+            >
+              {selfieImage ? "✔" : "+"}
+            </button>
+            <span className="anml-upload-label">Take Selfie</span>
+          </div>
         </div>
+
+        {cameraError && (
+          <div className="anml-validation-error">{cameraError}</div>
+        )}
+
         <div className="anml-input-container">
           <label className="anml-input-label">
             Referred by (optional):
@@ -209,17 +298,43 @@ const ANMLClaim = ({ isKeplrConnected }) => {
             )}
           </label>
         </div>
+
         <button
           onClick={registerButton}
           className="anml-claim-button"
-          disabled={!idImage || isRegistering}
+          disabled={!idImage || isRegistering} // Only idImage required for registration
         >
           {isRegistering ? "Registering..." : "Register"}
         </button>
+
+        {isCameraActive && (
+          <div className="anml-modal-overlay">
+            <video 
+              className="anml-video-preview" 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+            />
+            <div className="anml-modal-buttons">
+              <button 
+                onClick={captureSelfie} 
+                className="anml-claim-button anml-capture-button"
+              >
+                Capture
+              </button>
+              <button 
+                onClick={stopCamera} 
+                className="anml-claim-button anml-cancel-button"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div id="claim-box" className="anml-test-box remove">
-        <img src={anmlImage} alt="Logo" className="logo-img" />
+        <img src={anmlImage} alt="ANML" className="logo-img" />
         <button onClick={claimButton} className="anml-claim-button">
           Claim
         </button>
@@ -232,6 +347,8 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         </div>
         <span className="anml-success-text">CLAIMED! see you tomorrow!</span>
       </div>
+
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
     </>
   );
 };
