@@ -20,9 +20,7 @@ const LiquidityManagement = ({
   isKeplrConnected,
   toggleManageLiquidity,
   poolData,         // { pool_info, user_info, tokenKey }
-  refreshParent
 }) => {
-
   // Tabs
   const [activeTab, setActiveTab] = useState('Provide');
 
@@ -44,20 +42,20 @@ const LiquidityManagement = ({
   const [provideStake, setProvideStake] = useState(true);
   const [unstakeUnbond, setUnstakeUnbond] = useState(true);
 
-  // Extract from parent
-  const { pool_info, user_info, tokenKey } = poolData || {};
+  // Local pool state (replacing prop dependency)
+  const [poolInfo, setPoolInfo] = useState(poolData?.pool_info || {});
+  const [userInfo, setUserInfo] = useState(poolData?.user_info || {});
+  const tokenKey = poolData?.tokenKey || '';
   const tokenErth = tokens.ERTH;
   const tokenB = tokens[tokenKey];
 
-  // Reserves, staked amounts
-  const erthReserve = Number(pool_info?.state?.erth_reserve || 0);
-  const tokenBReserve = Number(pool_info?.state?.token_b_reserve || 0);
-  
+  // Reserves, staked amounts (now derived from local state)
+  const erthReserve = Number(poolInfo?.state?.erth_reserve || 0);
+  const tokenBReserve = Number(poolInfo?.state?.token_b_reserve || 0);
   const stakedLpTokenBalance = toMacroUnits(
-    user_info?.amount_staked || '0',
-    tokenB.lp
+    userInfo?.amount_staked || '0',
+    tokenB?.lp
   );
-
 
   // Local SNIP-20 balances
   const [erthBalance, setErthBalance] = useState(null);
@@ -65,36 +63,31 @@ const LiquidityManagement = ({
   const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null);
 
   // -------------------- Fetch Unbond Requests --------------------
+  const refreshUnbondRequests = useCallback(async () => {
+    if (!isKeplrConnected || !tokenB?.contract) return;
+    try {
+      const exchangeContract = contracts.exchange.contract;
+      const exchangeHash = contracts.exchange.hash;
+      const msg = {
+        query_unbonding_requests: {
+          pool: tokenB.contract,
+          user: window.secretjs.address,
+        },
+      };
+      const resp = await query(exchangeContract, exchangeHash, msg);
+      setUnbondRequests(resp || []);
+    } catch (err) {
+      console.error("[LiquidityManagement] Error fetching unbond requests:", err);
+    }
+  }, [isKeplrConnected, tokenB]);
+
   useEffect(() => {
-    if (!isKeplrConnected || !poolData) return;
+    refreshUnbondRequests();
+  }, [refreshUnbondRequests]);
 
-    const fetchUnbondRequests = async () => {
-      try {
-        // We assume unbond data is in the "exchange" contract
-        const exchangeContract = contracts.exchange.contract;
-        const exchangeHash = contracts.exchange.hash;
-
-        // Example query message:
-        const msg = {
-          query_unbonding_requests: {
-            pool: tokenB.contract,     
-            user: window.secretjs.address,
-          },
-        };
-
-        const resp = await query(exchangeContract, exchangeHash, msg);
-        setUnbondRequests(resp || []);
-      } catch (err) {
-        console.error("[LiquidityManagement] Error fetching unbond requests:", err);
-      }
-    };
-
-    fetchUnbondRequests();
-  }, [isKeplrConnected, poolData, tokenB]);
-
-  // -------------------- Fetch SNIP-20 Balances --------------------
+  // -------------------- Fetch NORTH-20 Balances --------------------
   const refreshSnipBalances = useCallback(async () => {
-    if (!isKeplrConnected) return;
+    if (!isKeplrConnected || !tokenKey) return;
     try {
       const erthBal = await querySnipBalance(tokenErth);
       setErthBalance(erthBal);
@@ -104,16 +97,38 @@ const LiquidityManagement = ({
 
       const lpBal = await querySnipBalance(tokenB.lp);
       setLpTokenWalletBalance(lpBal);
-
     } catch (err) {
-      console.error("[LiquidityManagement] Error fetching SNIP-20 balances:", err);
+      console.error("[LiquidityManagement] Error fetching NORTH-20 balances:", err);
     }
-  }, [isKeplrConnected, tokenErth, tokenB]);
+  }, [isKeplrConnected, tokenErth, tokenB, tokenKey]);
 
-  // Run on mount & whenever poolData changes
+  // -------------------- Query Pool Data --------------------
+  const refreshPoolData = useCallback(async () => {
+    if (!isKeplrConnected || !tokenB?.contract) return;
+    try {
+      const msg = {
+        query_user_info: {
+          pools: [tokenB.contract],
+          user: window.secretjs.address,
+        },
+      };
+      const result = await query(contracts.exchange.contract, contracts.exchange.hash, msg);
+      const updatedData = result[0];
+      if (updatedData) {
+        setPoolInfo(updatedData.pool_info || {});
+        setUserInfo(updatedData.user_info || {});
+        await refreshSnipBalances(); // Also refresh balances
+      }
+    } catch (err) {
+      console.error("[LiquidityManagement] Error refreshing pool data:", err);
+    }
+  }, [isKeplrConnected, tokenB, refreshSnipBalances]);
+
+  // Run on mount
   useEffect(() => {
     refreshSnipBalances();
-  }, [refreshSnipBalances, poolData]);
+    refreshPoolData(); // Initial fetch to ensure latest data
+  }, [refreshSnipBalances, refreshPoolData]);
 
   // -------------------- Provide Liquidity --------------------
   const handleProvideLiquidity = async () => {
@@ -123,7 +138,6 @@ const LiquidityManagement = ({
       setIsModalOpen(true);
       setAnimationState('loading');
 
-
       await provideLiquidity(
         tokenErth.contract,
         tokenErth.hash,
@@ -131,14 +145,13 @@ const LiquidityManagement = ({
         tokenB.hash,
         toMicroUnits(erthAmount, tokenErth),
         toMicroUnits(tokenBAmount, tokenB),
-        provideStake // true => auto-stake LP
+        provideStake
       );
 
-      setAnimationState('success');
+      await refreshPoolData(); // Wait for data refresh before showing success
       setErthAmount('');
       setTokenBAmount('');
-      refreshParent();
-      refreshSnipBalances();
+      setAnimationState('success');
     } catch (error) {
       console.error("[LiquidityManagement] Error providing liquidity:", error);
       setAnimationState('error');
@@ -154,9 +167,7 @@ const LiquidityManagement = ({
       setAnimationState('loading');
 
       const inputAmount = toMicroUnits(lpTokenAmount, tokenB.lp);
-      const snipMsg = { deposit_lp_tokens: {
-        pool: tokenB.contract
-      } };
+      const snipMsg = { deposit_lp_tokens: { pool: tokenB.contract } };
 
       await snip(
         tokenB.lp.contract,
@@ -167,10 +178,9 @@ const LiquidityManagement = ({
         inputAmount
       );
 
-      setAnimationState('success');
+      await refreshPoolData(); // Wait for data refresh before showing success
       setLpTokenAmount('');
-      refreshParent();
-      refreshSnipBalances();
+      setAnimationState('success');
     } catch (error) {
       console.error("[LiquidityManagement] Error staking LP:", error);
       setAnimationState('error');
@@ -200,10 +210,10 @@ const LiquidityManagement = ({
         msg
       );
 
-      setAnimationState('success');
+      await refreshPoolData(); // Wait for data refresh before showing success
+      if (unstakeUnbond) await refreshUnbondRequests(); // Refresh unbond requests if unbonding was triggered
       setUnstakeAmount('');
-      refreshParent();
-      refreshSnipBalances();
+      setAnimationState('success');
     } catch (error) {
       console.error("[LiquidityManagement] Error unstaking LP:", error);
       setAnimationState('error');
@@ -227,7 +237,6 @@ const LiquidityManagement = ({
         },
       };
 
-
       await snip(
         tokenB.lp.contract,
         tokenB.lp.hash,
@@ -237,10 +246,10 @@ const LiquidityManagement = ({
         inputAmount
       );
 
-      setAnimationState('success');
+      await refreshPoolData(); // Wait for pool data refresh
+      await refreshUnbondRequests(); // Refresh unbond requests after creating one
       setUnbondAmount('');
-      refreshParent();
-      refreshSnipBalances();
+      setAnimationState('success');
     } catch (error) {
       console.error("[LiquidityManagement] Error creating unbond request:", error);
       setAnimationState('error');
@@ -263,9 +272,9 @@ const LiquidityManagement = ({
 
       await contract(contracts.exchange.contract, contracts.exchange.hash, msg);
 
+      await refreshPoolData(); // Wait for pool data refresh
+      await refreshUnbondRequests(); // Refresh unbond requests after completion
       setAnimationState('success');
-      refreshParent();
-      refreshSnipBalances();
     } catch (error) {
       console.error("[LiquidityManagement] Error completing unbond:", error);
       setAnimationState('error');
@@ -277,7 +286,6 @@ const LiquidityManagement = ({
     const val = e.target.value;
     setErthAmount(val);
     const parsed = parseFloat(val);
-
 
     if (!isNaN(parsed) && erthReserve && tokenBReserve) {
       const tokenBEquiv = (parsed * tokenBReserve) / erthReserve;
@@ -388,7 +396,7 @@ const LiquidityManagement = ({
                   </button>
                 ) : (
                   <>
-                    Balance: {tokenBBalance ?? 'N/A'}
+                    Balance: {tokenBBalance ?? '...'}
                     <button className="max-button" onClick={handleMaxTokenBAmount}>
                       Max
                     </button>
@@ -397,7 +405,7 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {tokenB.logo && (
+              {tokenB?.logo && (
                 <img
                   src={tokenB.logo}
                   alt={`${tokenKey} logo`}
@@ -425,7 +433,7 @@ const LiquidityManagement = ({
                   </button>
                 ) : (
                   <>
-                    Balance: {erthBalance ?? 'N/A'}
+                    Balance: {erthBalance ?? '...'}
                     <button className="max-button" onClick={handleMaxErthAmount}>
                       Max
                     </button>
@@ -434,7 +442,7 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {tokenErth.logo && (
+              {tokenErth?.logo && (
                 <img
                   src={tokenErth.logo}
                   alt="ERTH logo"
@@ -485,7 +493,7 @@ const LiquidityManagement = ({
                   </button>
                 ) : (
                   <>
-                    Balance: {lpTokenWalletBalance ?? 'N/A'}
+                    Balance: {lpTokenWalletBalance ?? '...'}
                     <button className="max-button" onClick={handleMaxLpTokenWalletBalance}>
                       Max
                     </button>
@@ -494,7 +502,7 @@ const LiquidityManagement = ({
               </div>
             </div>
             <div className="liquidity-management-input-wrapper">
-              {tokenB.lp?.logo && (
+              {tokenB?.lp?.logo && (
                 <img
                   src={tokenB.lp.logo}
                   alt={`${tokenKey} LP logo`}
@@ -526,7 +534,7 @@ const LiquidityManagement = ({
                   </button>
                 ) : (
                   <>
-                    Balance: {stakedLpTokenBalance ?? 'N/A'}
+                    Balance: {stakedLpTokenBalance ?? '...'}
                     <button className="max-button" onClick={handleMaxStakedLpTokenBalance}>
                       Max
                     </button>
@@ -579,7 +587,7 @@ const LiquidityManagement = ({
                   </button>
                 ) : (
                   <>
-                    Balance: {lpTokenWalletBalance ?? 'N/A'}
+                    Balance: {lpTokenWalletBalance ?? '...'}
                     <button className="max-button" onClick={handleMaxUnbondAmount}>
                       Max
                     </button>
