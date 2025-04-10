@@ -10,6 +10,10 @@ const { initAnalytics, getLatestData, getAllData } = require("./analyticsManager
 const app = express();
 const WEBHOOK_PORT = 5000;
 
+// In-memory store for IP tracking (use Redis or a DB in production)
+const registrationTracker = new Map(); // { ip: { lastRegistration: timestamp, count: number } }
+const ONE_WEEK_MS = 6 * 24 * 60 * 60 * 1000; // 6 days in milliseconds
+
 // Middleware to parse JSON requests with increased size limit
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
@@ -122,8 +126,6 @@ async function processImagesWithSecretAI(idImage) {
     temperature: 1,
   });
 
-  //   You are a JSON-only responder. Do NOT include any explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
-
   const systemPrompt = `
   You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
@@ -140,7 +142,6 @@ async function processImagesWithSecretAI(idImage) {
     - "name": Full name as a string, null if unreadable.
     - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
     - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
-
 
   - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null}
   - Success: true only if the image is an ID, data is extracted, and no strong evidence of fakery is found.
@@ -165,12 +166,10 @@ async function processImagesWithSecretAI(idImage) {
     const content = response.message?.content || response.content;
     let result;
 
-    // Fallback parsing in case the response still contains extra text
     try {
       result = JSON.parse(content);
     } catch (parseError) {
       console.error("Initial JSON parse failed, attempting to extract JSON:", parseError);
-      // Extract JSON from potential markdown or text wrapper
       const jsonMatch = content.match(/{[\s\S]*}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
@@ -203,7 +202,29 @@ async function processImagesWithSecretAI(idImage) {
   }
 }
 
-app.post("/api/register", async (req, res) => {
+// Middleware to enforce one registration per IP per week
+const restrictRegistrationByIP = (req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress; // Get client IP
+  const now = Date.now();
+  const ipData = registrationTracker.get(ip) || { lastRegistration: 0, count: 0 };
+
+  // Check if a registration has occurred within the last week
+  if (ipData.lastRegistration && now - ipData.lastRegistration < ONE_WEEK_MS) {
+    const timeLeft = ONE_WEEK_MS - (now - ipData.lastRegistration);
+    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
+    return res.status(429).json({
+      error: `Only one registration allowed per IP per week. Try again in ${daysLeft} day(s).`,
+    });
+  }
+
+  // Pass IP data to the next handler
+  req.ipData = ipData;
+  req.clientIp = ip;
+  next();
+};
+
+// Apply the restriction middleware to the /api/register endpoint
+app.post("/api/register", restrictRegistrationByIP, async (req, res) => {
   const { address, idImage, referredBy } = req.body;
   if (!address || !idImage) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -213,10 +234,10 @@ app.post("/api/register", async (req, res) => {
     const { response, success, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage);
 
     if (!success) {
-      return res.status(400).json({ 
-        error: "Identity verification failed", 
-        is_fake: is_fake || true,  
-        reason: fake_reason || "Unable to verify identity"
+      return res.status(400).json({
+        error: "Identity verification failed",
+        is_fake: is_fake || true,
+        reason: fake_reason || "Unable to verify identity",
       });
     }
 
@@ -225,12 +246,16 @@ app.post("/api/register", async (req, res) => {
         address: address,
         id_hash: generateHash(identity),
         affiliate: referredBy || null,
-      }
+      },
     };
-
 
     const resp = await contract_interaction(message_object);
     if (resp.code === 0) {
+      // Update the registration tracker after successful registration
+      registrationTracker.set(req.clientIp, {
+        lastRegistration: Date.now(),
+        count: (req.ipData.count || 0) + 1,
+      });
       res.json({ success: true, hash: message_object.register.id_hash, response: resp });
     } else {
       return res.status(400).json({ error: "Contract interaction failed", response: resp });
