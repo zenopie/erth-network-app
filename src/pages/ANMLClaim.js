@@ -309,25 +309,27 @@ const ANMLClaim = ({ isKeplrConnected }) => {
 
         {isCameraActive && (
           <div className="anml-modal-overlay">
-            <video 
-              className="anml-video-preview" 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-            />
-            <div className="anml-modal-buttons">
-              <button 
-                onClick={captureSelfie} 
-                className="anml-claim-button anml-capture-button"
-              >
-                Capture
-              </button>
-              <button 
-                onClick={stopCamera} 
-                className="anml-claim-button anml-cancel-button"
-              >
-                Cancel
-              </button>
+            <div className="anml-modal-content">
+              <video 
+                className="anml-video-preview" 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+              />
+              <div className="anml-modal-buttons">
+                <button 
+                  onClick={captureSelfie} 
+                  className="anml-claim-button anml-capture-button"
+                >
+                  Capture
+                </button>
+                <button 
+                  onClick={stopCamera} 
+                  className="anml-claim-button anml-cancel-button"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
