@@ -252,10 +252,10 @@ app.post("/api/register", restrictRegistrationByIP, async (req, res) => {
     const resp = await contract_interaction(message_object);
     if (resp.code === 0) {
       // Update the registration tracker after successful registration
-      registrationTracker.set(req.clientIp, {
-        lastRegistration: Date.now(),
-        count: (req.ipData.count || 0) + 1,
-      });
+      // registrationTracker.set(req.clientIp, {
+      //   lastRegistration: Date.now(),
+      //   count: (req.ipData.count || 0) + 1,
+      // });
       res.json({ success: true, hash: message_object.register.id_hash, response: resp });
     } else {
       return res.status(400).json({ error: "Contract interaction failed", response: resp });
