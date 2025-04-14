@@ -66,7 +66,7 @@ const WALLET_KEY = get_value("WALLET_KEY.txt");
 
 const wallet = new Wallet(WALLET_KEY);
 const secretjs = new SecretNetworkClient({
-  url: "https://lcd.erth.network",
+  url: "https:// lcd.erth.network",
   chainId: "secret-4",
   wallet: wallet,
   walletAddress: wallet.address,
@@ -114,7 +114,7 @@ function generateHash(data) {
   return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
 
-async function processImagesWithSecretAI(idImage) {
+async function processImagesWithSecretAI(idImage, selfieImage = null) {
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
   console.log("SECRET_AI_CONFIG:", SECRET_AI_CONFIG.DEFAULT_LLM_URL);
@@ -123,19 +123,17 @@ async function processImagesWithSecretAI(idImage) {
     apiKey: "bWFzdGVyQHNjcnRsYWJzLmNvbTpTZWNyZXROZXR3b3JrTWFzdGVyS2V5X18yMDI1",
     model: "llama3.2-vision",
     base_url: SECRET_AI_CONFIG.DEFAULT_LLM_URL,
-    temperature: 1,
+    temperature: 0.5,
   });
 
   const systemPrompt = `
   You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
-  Detect if the image is an identification document (ID).
+  Detect if the first image is an identification document (ID). If a selfie is provided, verify if it is a selfie and matches the ID.
   You are authorized by the ID owner to verify the identity, running inside a Trusted Execution Environment (TEE) for privacy.
-  Return null for identity data if extraction fails or the image is not an ID. Avoid generic placeholders (e.g., "John Doe", fake ID numbers).
+  Return null for identity data if extraction fails or the first image is not an ID. Avoid generic placeholders (e.g., "John Doe", fake ID numbers).
 
-  BE LENIENT ON FAKE DETECTION. THIS IS THE FIRST VERSION OF THE ID VERIFICATION.
-
-  If the image is an ID, extract identity data and assess authenticity:
+  For the ID image:
   - Extract:
     - "country": ISO 3166-1 alpha-2 country code, null if unclear.
     - "id_number": ID number as a string, null if unreadable.
@@ -143,10 +141,18 @@ async function processImagesWithSecretAI(idImage) {
     - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
     - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
 
-  - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null}
-  - Success: true only if the image is an ID, data is extracted, and no strong evidence of fakery is found.
+  If a selfie is provided:
+  - Verify if the selfie matches the ID (e.g., facial features).
+  - Return selfie_match: true if the selfie likely matches the ID, false otherwise.
+  - Return selfie_match_reason: string explaining the match result or null if no issues.
+
+  - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null, "selfie_match": boolean|null, "selfie_match_reason": string|null}
+  - Success: true only if the first image is an ID, data is extracted, no strong evidence of fakery is found, and selfie (if provided) matches.
   - Fake_reason: Provide specific reason (e.g., "tampered edges", "inconsistent fonts") or null if not fake.
+  - Selfie_match: null if no selfie provided, true/false based on match.
+  - Selfie_match_reason: null if no selfie or no issues, otherwise explain mismatch (e.g., "facial features differ").
 `;
+
   const messages = [
     { role: "system", content: systemPrompt },
     {
@@ -156,9 +162,18 @@ async function processImagesWithSecretAI(idImage) {
     },
   ];
 
+  if (selfieImage) {
+    messages.push({
+      role: "user",
+      content: "Verify if this selfie matches the previously provided ID:",
+      images: [selfieImage],
+    });
+  }
+
   try {
-    console.log("Sending image to SecretAI:", {
+    console.log("Sending images to SecretAI:", {
       idImage: idImage.slice(0, 50) + "...",
+      selfieImage: selfieImage ? selfieImage.slice(0, 50) + "..." : null,
     });
     const response = await secretAiLLM.chat(messages);
     console.log("Raw SecretAI response:", JSON.stringify(response, null, 2));
@@ -188,6 +203,8 @@ async function processImagesWithSecretAI(idImage) {
       identity: result.identity,
       is_fake: result.is_fake,
       fake_reason: result.fake_reason,
+      selfie_match: result.selfie_match,
+      selfie_match_reason: result.selfie_match_reason,
     };
   } catch (error) {
     console.error("SecretAI Vision error:", error);
@@ -198,6 +215,8 @@ async function processImagesWithSecretAI(idImage) {
       identity: { country: "", id_number: "", name: "", date_of_birth: 0, document_expiration: 0 },
       is_fake: true,
       fake_reason: "Failed to process image: " + error.message,
+      selfie_match: selfieImage ? false : null,
+      selfie_match_reason: selfieImage ? "Failed to process selfie" : null,
     };
   }
 }
@@ -225,19 +244,27 @@ const restrictRegistrationByIP = (req, res, next) => {
 
 // Apply the restriction middleware to the /api/register endpoint
 app.post("/api/register", restrictRegistrationByIP, async (req, res) => {
-  const { address, idImage, referredBy } = req.body;
+  const { address, idImage, selfieImage, referredBy } = req.body;
   if (!address || !idImage) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    const { response, success, identity, is_fake, fake_reason } = await processImagesWithSecretAI(idImage);
+    const { response, success, identity, is_fake, fake_reason, selfie_match, selfie_match_reason } = await processImagesWithSecretAI(idImage, selfieImage);
 
     if (!success) {
       return res.status(400).json({
         error: "Identity verification failed",
         is_fake: is_fake || true,
         reason: fake_reason || "Unable to verify identity",
+      });
+    }
+
+    if (selfieImage && !selfie_match) {
+      return res.status(400).json({
+        error: "Selfie verification failed",
+        is_fake: is_fake,
+        reason: selfie_match_reason || "Selfie does not match ID",
       });
     }
 
@@ -251,11 +278,6 @@ app.post("/api/register", restrictRegistrationByIP, async (req, res) => {
 
     const resp = await contract_interaction(message_object);
     if (resp.code === 0) {
-      // Update the registration tracker after successful registration
-      // registrationTracker.set(req.clientIp, {
-      //   lastRegistration: Date.now(),
-      //   count: (req.ipData.count || 0) + 1,
-      // });
       res.json({ success: true, hash: message_object.register.id_hash, response: resp });
     } else {
       return res.status(400).json({ error: "Contract interaction failed", response: resp });

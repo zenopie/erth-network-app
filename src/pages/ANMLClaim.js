@@ -148,7 +148,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
   };
 
   const registerButton = async () => {
-    if (!idImage) return; // Only require idImage for now
+    if (!idImage || !selfieImage) return; // Require both idImage and selfieImage
     if (referredBy && !isReferredByValid) return;
 
     setIsRegistering(true);
@@ -156,6 +156,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     setAnimationState("loading");
 
     console.log("ID Image size:", idImage.length / 1024 / 1024, "MB");
+    console.log("Selfie Image size:", selfieImage.length / 1024 / 1024, "MB");
 
     try {
       const response = await fetch("/api/register", {
@@ -165,7 +166,8 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         },
         body: JSON.stringify({
           address: window.secretjs.address,
-          idImage, // Only sending idImage as per server
+          idImage,
+          selfieImage,
           referredBy: referredBy || null,
         }),
       });
@@ -302,7 +304,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
         <button
           onClick={registerButton}
           className="anml-claim-button"
-          disabled={!idImage || isRegistering} // Only idImage required for registration
+          disabled={!idImage || !selfieImage || isRegistering}
         >
           {isRegistering ? "Registering..." : "Register"}
         </button>
