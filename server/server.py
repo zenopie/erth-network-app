@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
-from secret_sdk.core.wasm.msg_execute_contract import MsgExecuteContract
+from secret_sdk.core.wasm import MsgExecuteContract
 from secret_ai import ChatSecret
 import aiofiles
 import aiohttp
