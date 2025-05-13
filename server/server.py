@@ -10,7 +10,7 @@ from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
-from secret_ai import ChatSecret
+from secret_ai_sdk.secret_ai import ChatSecret
 import aiofiles
 import aiohttp
 import schedule
