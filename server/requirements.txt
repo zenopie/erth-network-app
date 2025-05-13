@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+secret_sdk
+secret-ai-sdk
+aiofiles
+python-dotenv
+schedule
+aiohttp
