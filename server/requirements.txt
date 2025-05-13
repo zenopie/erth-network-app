@@ -7,3 +7,4 @@ python-dotenv
 schedule
 aiohttp
 setuptools
+langchain-ollama
