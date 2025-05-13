@@ -81,13 +81,13 @@ jobs:
             eval "$(pyenv init --path)"
             eval "$(pyenv init -)"
 
-            pyenv install 3.11.0 -s || { echo "Python 3.11.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
-            pyenv global 3.11.0
+            pyenv install 3.12.0 -s || { echo "Python 3.12.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
+            pyenv global 3.12.0
 
             # Install Python dependencies
             if [ -f requirements.txt ]; then
-              $HOME/.pyenv/versions/3.11.0/bin/pip install --upgrade pip
-              $HOME/.pyenv/versions/3.11.0/bin/pip install -r requirements.txt
+              $HOME/.pyenv/versions/3.12.0/bin/pip install --upgrade pip
+              $HOME/.pyenv/versions/3.12.0/bin/pip install -r requirements.txt
             else
               echo "requirements.txt not found!"
               exit 1
@@ -102,7 +102,7 @@ jobs:
             SUPERVISOR_CONF=/etc/supervisor/conf.d/erth-network-server.conf
             echo "[program:erth-network-server]" | sudo -n tee $SUPERVISOR_CONF
             echo "directory=$SERVER_DIR" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "command=$HOME/.pyenv/versions/3.11.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "command=$HOME/.pyenv/versions/3.12.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo -n tee -a $SUPERVISOR_CONF
             echo "autostart=true" | sudo -n tee -a $SUPERVISOR_CONF
             echo "autorestart=true" | sudo -n tee -a $SUPERVISOR_CONF
             echo "user=$USER" | sudo -n tee -a $SUPERVISOR_CONF
