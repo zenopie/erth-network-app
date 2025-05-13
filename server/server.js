@@ -117,7 +117,6 @@ function generateHash(data) {
 async function processImagesWithSecretAI(idImage, selfieImage = null) {
   const { ChatSecret, SECRET_AI_CONFIG } = await import("secretai");
 
-  console.log("SECRET_AI_CONFIG:", SECRET_AI_CONFIG.DEFAULT_LLM_URL);
 
   const secretAiLLM = new ChatSecret({
     apiKey: "sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx",
@@ -207,8 +206,7 @@ async function processImagesWithSecretAI(idImage, selfieImage = null) {
       selfie_match_reason: result.selfie_match_reason,
     };
   } catch (error) {
-    console.error("SecretAI Vision error:", error);
-    console.error("Full error object:", JSON.stringify(error, null, 2));
+    console.error(error);
     return {
       response: null,
       success: false,
