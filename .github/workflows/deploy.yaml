@@ -22,6 +22,8 @@ jobs:
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e  # Exit on error
+
             HOME_DIR=/home/secret/earth-mainnet-app
             BUILD_DIR=$HOME_DIR/build
             SERVER_DIR=$HOME_DIR/server
@@ -65,6 +67,10 @@ jobs:
             rm -rf $DEPLOY_DIR/*
             cp -r $BUILD_DIR/* $DEPLOY_DIR/
 
+            # Install build dependencies for Python
+            sudo -n apt-get update
+            sudo -n apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config
+
             # Install Python environment for server
             cd $SERVER_DIR
             export PYENV_ROOT="$HOME/.pyenv"
@@ -75,13 +81,13 @@ jobs:
             eval "$(pyenv init --path)"
             eval "$(pyenv init -)"
 
-            pyenv install 3.11.0 -s
+            pyenv install 3.11.0 -s || { echo "Python 3.11.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
             pyenv global 3.11.0
 
             # Install Python dependencies
             if [ -f requirements.txt ]; then
-              pip install --upgrade pip
-              pip install -r requirements.txt
+              $HOME/.pyenv/versions/3.11.0/bin/pip install --upgrade pip
+              $HOME/.pyenv/versions/3.11.0/bin/pip install -r requirements.txt
             else
               echo "requirements.txt not found!"
               exit 1
@@ -89,22 +95,21 @@ jobs:
 
             # Install supervisor if not present
             if ! command -v supervisorctl &> /dev/null; then
-              sudo apt-get update
-              sudo apt-get install -y supervisor
+              sudo -n apt-get install -y supervisor
             fi
 
             # Configure supervisor for uvicorn
             SUPERVISOR_CONF=/etc/supervisor/conf.d/erth-network-server.conf
-            echo "[program:erth-network-server]" | sudo tee $SUPERVISOR_CONF
-            echo "directory=$SERVER_DIR" | sudo tee -a $SUPERVISOR_CONF
-            echo "command=$HOME/.pyenv/versions/3.11.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo tee -a $SUPERVISOR_CONF
-            echo "autostart=true" | sudo tee -a $SUPERVISOR_CONF
-            echo "autorestart=true" | sudo tee -a $SUPERVISOR_CONF
-            echo "user=$USER" | sudo tee -a $SUPERVISOR_CONF
-            echo "stdout_logfile=$SERVER_DIR/erth-network-server.log" | sudo tee -a $SUPERVISOR_CONF
-            echo "stderr_logfile=$SERVER_DIR/erth-network-server.err" | sudo tee -a $SUPERVISOR_CONF
+            echo "[program:erth-network-server]" | sudo -n tee $SUPERVISOR_CONF
+            echo "directory=$SERVER_DIR" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "command=$HOME/.pyenv/versions/3.11.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "autostart=true" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "autorestart=true" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "user=$USER" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "stdout_logfile=$SERVER_DIR/erth-network-server.log" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "stderr_logfile=$SERVER_DIR/erth-network-server.err" | sudo -n tee -a $SUPERVISOR_CONF
 
             # Restart supervisor to apply changes
-            sudo supervisorctl reread
-            sudo supervisorctl update
-            sudo supervisorctl restart erth-network-server
+            sudo -n supervisorctl reread
+            sudo -n supervisorctl update
+            sudo -n supervisorctl restart erth-network-server
