@@ -122,7 +122,7 @@ async function processImagesWithSecretAI(idImage, selfieImage = null) {
   const secretAiLLM = new ChatSecret({
     apiKey: "sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx",
     model: "llama3.2-vision",
-    base_url: SECRET_AI_CONFIG.DEFAULT_LLM_URL,
+    base_url: "https://secretai-zqtr.scrtlabs.com:21434",
     temperature: 0,
   });
 
