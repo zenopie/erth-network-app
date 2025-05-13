@@ -11,7 +11,7 @@ import "./LilaChat.css";
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
-const API_KEY = "sk-7lSWmmwys_BsN6vBibrC89_5i1mf2qxA94WmO-bNBbtgOk4AheWJmzVvZM3pK569pOmL5V1s";
+const API_KEY = "sk-ap56G2W9I7sYAG3-3wBP6ZqLxD2iwhMaejL5xluwon7k7LareUY5bPyWovIslOUbSD4Tr-4J";
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
