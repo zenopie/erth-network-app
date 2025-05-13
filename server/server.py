@@ -331,6 +331,6 @@ async def register(address: str, idImage: str, selfieImage: Optional[str] = None
 
 # Start server
 if __name__ == "__main__":
-    init_analytics()
+    # init_analytics()
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=WEBHOOK_PORT)
