@@ -11,7 +11,7 @@ import "./LilaChat.css";
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
-const API_KEY = "sk-ap56G2W9I7sYAG3-3wBP6ZqLxD2iwhMaejL5xluwon7k7LareUY5bPyWovIslOUbSD4Tr-4J";
+const API_KEY = "sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx";
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
@@ -181,7 +181,6 @@ const LilaChat = () => {
         model: selectedModel,
         base_url: selectedUrl,
         stream: true,
-        signal: controller.signal,
       });
       setMessages((prev) => {
         const withAssistant = [...prev, { role: "assistant", content: "" }];

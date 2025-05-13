@@ -219,26 +219,6 @@ async function processImagesWithSecretAI(idImage, selfieImage = null) {
   }
 }
 
-// Middleware to enforce one registration per IP per week
-const restrictRegistrationByIP = (req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress; // Get client IP
-  const now = Date.now();
-  const ipData = registrationTracker.get(ip) || { lastRegistration: 0, count: 0 };
-
-  // Check if a registration has occurred within the last week
-  if (ipData.lastRegistration && now - ipData.lastRegistration < ONE_WEEK_MS) {
-    const timeLeft = ONE_WEEK_MS - (now - ipData.lastRegistration);
-    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
-    return res.status(429).json({
-      error: `Only one registration allowed per IP per week. Try again in ${daysLeft} day(s).`,
-    });
-  }
-
-  // Pass IP data to the next handler
-  req.ipData = ipData;
-  req.clientIp = ip;
-  next();
-};
 
 // Apply the restriction middleware to the /api/register endpoint
 app.post("/api/register", restrictRegistrationByIP, async (req, res) => {
