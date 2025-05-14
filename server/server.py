@@ -250,7 +250,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         )
 
     try:
-        response = await secret_ai_llm.chat(messages)
+        response = await secret_ai_llm.invoke(messages)
         result = json.loads(response["message"]["content"])
         return {
             "success": result["success"],
