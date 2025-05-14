@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -14,13 +14,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and WALLET_KEY.txt
 COPY . .
 
-# Create and set permissions for WALLET_KEY.txt
-ARG WALLET_MNEMONIC
-RUN echo "$WALLET_MNEMONIC" > WALLET_KEY.txt \
-    && chmod 644 WALLET_KEY.txt \
+# Set permissions for WALLET_KEY.txt
+RUN chmod 644 WALLET_KEY.txt \
     && chown 1000:1000 WALLET_KEY.txt
 
 # Run Uvicorn

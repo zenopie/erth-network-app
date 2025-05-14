@@ -78,7 +78,11 @@ jobs:
 
             # Build and run Docker container
             cd $SERVER_DIR
-            docker build --build-arg WALLET_MNEMONIC="${{ secrets.WALLET_MNEMONIC }}" -t erth-network-server .
+            if [ ! -f WALLET_KEY.txt ]; then
+              echo "WALLET_KEY.txt not found in $SERVER_DIR!"
+              exit 1
+            fi
+            docker build -t erth-network-server .
             docker stop erth-network-server || true
             docker rm erth-network-server || true
             docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
