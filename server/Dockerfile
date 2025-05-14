@@ -4,11 +4,18 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libssl-dev \
-    libsecp256k1-dev \
-    libsqlite3-dev \
-    liblzma-dev \
-    && rm -rf /var/lib/apt/lists/*
+  build-essential \
+  libtool \
+  autotools-dev \
+  automake \
+  pkg-config \
+  libffi-dev \
+  libgmp-dev \
+  python3-dev \
+  git \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
 
 # Copy requirements and install
 COPY requirements.txt .
