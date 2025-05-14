@@ -8,3 +8,4 @@ schedule
 aiohttp
 setuptools
 langchain-ollama
+secp256k1
