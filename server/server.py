@@ -14,6 +14,7 @@ from secret_ai_sdk.secret_ai import ChatSecret
 import aiofiles
 import aiohttp
 import schedule
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -305,11 +306,19 @@ async def get_analytics():
     history = analytics_history
     return {"latest": latest, "history": history}
 
-@app.post("/api/register")
-async def register(address: str, idImage: str, selfieImage: Optional[str] = None, referredBy: Optional[str] = None):
-    if not address or not idImage:
-        raise HTTPException(status_code=400, detail="Missing required fields")
 
+class RegisterRequest(BaseModel):
+    address: str
+    idImage: str
+    selfieImage: Optional[str] = None
+    referredBy: Optional[str] = None
+
+@app.post("/api/register")
+async def register(req: RegisterRequest):
+    address    = req.address
+    id_image   = req.idImage
+    selfie     = req.selfieImage
+    referred   = req.referredBy
     try:
         result = await process_images_with_secret_ai(idImage, selfieImage)
         if not result["success"]:
