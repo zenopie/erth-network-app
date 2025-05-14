@@ -83,10 +83,7 @@ jobs:
               exit 1
             fi
 
-            # run all docker commands under the docker group
-            sg docker -c "
-              docker build -t erth-network-server .
-              docker stop erth-network-server || true
-              docker rm erth-network-server   || true
-              docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
-            "
+            docker build -t erth-network-server .
+            docker stop erth-network-server || true
+            docker rm erth-network-server   || true
+            docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
