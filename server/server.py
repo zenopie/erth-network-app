@@ -50,19 +50,15 @@ WALLET_KEY = get_value("WALLET_KEY.txt")
 if not WALLET_KEY:
     raise Exception("Wallet key not found")
 
-# Declare a global placeholder
-secretjs: SigningCosmWasmClient
+secretjs: LCDClient
+wallet           # will hold the Wallet instance
 
-# Initialize client at startup
 @app.on_event("startup")
 async def startup():
-    global secretjs
-    wallet = MnemonicKey(mnemonic=WALLET_KEY)
-    secretjs = await SigningCosmWasmClient.new(
-        url="https://lcd.erth.network",
-        chain_id="secret-4",
-        wallet=wallet,
-    )
+    global secretjs, wallet
+    secretjs = LCDClient("https://lcd.erth.network", "secret-4")
+    mk = MnemonicKey(mnemonic=WALLET_KEY)
+    wallet = secretjs.wallet(mk)
 
 # Analytics data
 analytics_history = []
@@ -278,17 +274,24 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 async def contract_interaction(message_object: Dict):
     try:
         msg = MsgExecuteContract(
-            sender=wallet.address,
+            sender=wallet.key.acc_address,
             contract_address=REGISTRATION_CONTRACT,
             msg=message_object,
             code_hash=REGISTRATION_HASH,
         )
-        resp = await secretjs.tx.broadcast([msg], gas_limit=1_000_000, fee=Coins.from_str("100000uscrt"))
-        print(f"Contract response: {resp}")
+        resp = wallet.create_and_broadcast_tx(
+            msg_list=[msg],
+            memo="",
+            gas=1_000_000
+        )
         return resp
     except Exception as e:
         print(f"RPC error during contract interaction: {e}")
-        raise HTTPException(status_code=500, detail="Contract interaction failed due to RPC error")
+        raise HTTPException(
+            status_code=500,
+            detail="Contract interaction failed due to RPC error"
+        )
+
 
 # Hash generation
 def generate_hash(data: Dict) -> str:
