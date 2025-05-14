@@ -315,39 +315,64 @@ class RegisterRequest(BaseModel):
 
 @app.post("/api/register")
 async def register(req: RegisterRequest):
-    address    = req.address
-    id_image   = req.idImage
-    selfie     = req.selfieImage
-    referred   = req.referredBy
+    address  = req.address
+    id_image = req.idImage
+    selfie   = req.selfieImage
+    referred = req.referredBy
+
     try:
-        result = await process_images_with_secret_ai(idImage, selfieImage)
+        result = await process_images_with_secret_ai(id_image, selfie)
         if not result["success"]:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "Identity verification failed", "is_fake": result["is_fake"], "reason": result["fake_reason"]}
+                detail={
+                  "error": "Identity verification failed",
+                  "is_fake": result["is_fake"],
+                  "reason": result["fake_reason"],
+                }
             )
-        if selfieImage and not result["selfie_match"]:
+        if selfie and not result["selfie_match"]:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "Selfie verification failed", "is_fake": result["is_fake"], "reason": result["selfie_match_reason"]}
+                detail={
+                  "error": "Selfie verification failed",
+                  "is_fake": result["is_fake"],
+                  "reason": result["selfie_match_reason"],
+                }
             )
 
         message_object = {
             "register": {
                 "address": address,
                 "id_hash": generate_hash(result["identity"]),
-                "affiliate": referredBy,
+                "affiliate": referred,
             }
         }
         resp = await contract_interaction(message_object)
         if resp.code == 0:
-            return {"success": True, "hash": message_object["register"]["id_hash"], "response": resp.raw_log}
+            return {
+              "success": True,
+              "hash": message_object["register"]["id_hash"],
+              "response": resp.raw_log
+            }
         else:
-            raise HTTPException(status_code=400, detail={"error": "Contract interaction failed", "response": resp.raw_log})
+            raise HTTPException(
+              status_code=400,
+              detail={
+                "error": "Contract interaction failed",
+                "response": resp.raw_log
+              }
+            )
+
+    except HTTPException:
+        # re‑raise HTTPExceptions so FastAPI handles status codes correctly
+        raise
     except Exception as e:
         print(f"Registration error: {e}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
-
+        raise HTTPException(
+          status_code=500,
+          detail=f"Registration failed: {str(e)}"
+        )
 # Start server
 if __name__ == "__main__":
     # init_analytics()
