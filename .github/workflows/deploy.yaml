@@ -76,13 +76,17 @@ jobs:
               sudo usermod -aG docker secret
             fi
 
-            # Build and run Docker container
+            # Build and run Docker container as group “docker”
             cd $SERVER_DIR
             if [ ! -f WALLET_KEY.txt ]; then
               echo "WALLET_KEY.txt not found in $SERVER_DIR!"
               exit 1
             fi
-            docker build -t erth-network-server .
-            docker stop erth-network-server || true
-            docker rm erth-network-server || true
-            docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
+
+            # run all docker commands under the docker group
+            sg docker -c "
+              docker build -t erth-network-server .
+              docker stop erth-network-server || true
+              docker rm erth-network-server   || true
+              docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
+            "
