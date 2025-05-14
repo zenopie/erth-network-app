@@ -208,7 +208,6 @@ def init_analytics(reset_data: bool = False):
 # Secret AI image processing
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
-        api_key="sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx",
         model="llama3.2-vision",
         base_url="https://secretai-zqtr.scrtlabs.com:21434",
         temperature=0,

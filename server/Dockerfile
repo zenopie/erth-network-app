@@ -28,5 +28,8 @@ COPY . .
 RUN chmod 644 WALLET_KEY.txt \
     && chown 1000:1000 WALLET_KEY.txt
 
+# Env
+ENV SECRET_AI_API_KEY="sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx"
+
 # Run Uvicorn
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "5000"]
