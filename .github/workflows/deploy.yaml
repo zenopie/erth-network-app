@@ -81,8 +81,8 @@ jobs:
             eval "$(pyenv init --path)"
             eval "$(pyenv init -)"
             export PYTHON_CONFIGURE_OPTS="--with-openssl=/usr --with-openssl-rpath=auto --enable-optimizations"
-            pyenv install 3.12.0 -s || { echo "Python 3.12.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
-            pyenv global 3.12.0
+            pyenv install 3.11 -s || { echo "Python 3.11 installation failed"; cat /tmp/python-build.*.log; exit 1; }
+            pyenv global 3.11
 
             # Ensure WALLET_KEY.txt exists
             if [ ! -f $SERVER_DIR/WALLET_KEY.txt ]; then
@@ -93,8 +93,8 @@ jobs:
 
             # Install Python dependencies
             if [ -f $SERVER_DIR/requirements.txt ]; then
-              $HOME/.pyenv/versions/3.12.0/bin/pip install --upgrade pip
-              $HOME/.pyenv/versions/3.12.0/bin/pip install -r $SERVER_DIR/requirements.txt
+              $HOME/.pyenv/versions/3.11/bin/pip install --upgrade pip
+              $HOME/.pyenv/versions/3.11/bin/pip install -r $SERVER_DIR/requirements.txt
             else
               echo "requirements.txt not found!"
               exit 1
@@ -109,7 +109,7 @@ jobs:
             SUPERVISOR_CONF=/etc/supervisor/conf.d/erth-network-server.conf
             echo "[program:erth-network-server]" | sudo tee $SUPERVISOR_CONF
             echo "directory=$SERVER_DIR" | sudo tee -a $SUPERVISOR_CONF
-            echo "command=$HOME/.pyenv/versions/3.12.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo tee -a $SUPERVISOR_CONF
+            echo "command=$HOME/.pyenv/versions/3.11/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo tee -a $SUPERVISOR_CONF
             echo "autostart=true" | sudo tee -a $SUPERVISOR_CONF
             echo "autorestart=true" | sudo tee -a $SUPERVISOR_CONF
             echo "user=secret" | sudo tee -a $SUPERVISOR_CONF
