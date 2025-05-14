@@ -6,7 +6,7 @@ import time
 from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from secret_sdk.client.lcd import LCDClient
+from secret_sdk.client.lcd import SigningCosmWasmClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
@@ -50,13 +50,19 @@ WALLET_KEY = get_value("WALLET_KEY.txt")
 if not WALLET_KEY:
     raise Exception("Wallet key not found")
 
-# Secret Network client setup
-wallet = MnemonicKey(mnemonic=WALLET_KEY)
-secretjs = LCDClient(
-    url="https://lcd.erth.network",
-    chain_id="secret-4",
-    wallet=wallet,
-)
+# Declare a global placeholder
+secretjs: SigningCosmWasmClient
+
+# Initialize client at startup
+@app.on_event("startup")
+async def startup():
+    global secretjs
+    wallet = MnemonicKey(mnemonic=WALLET_KEY)
+    secretjs = await SigningCosmWasmClient.new(
+        url="https://lcd.erth.network",
+        chain_id="secret-4",
+        wallet=wallet,
+    )
 
 # Analytics data
 analytics_history = []
