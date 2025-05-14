@@ -52,7 +52,7 @@ jobs:
             nvm use 18.20.7
             nvm alias default 18.20.7
 
-            # Build front-end (assuming package.json exists for front-end)
+            # Build front-end
             if [ -f package.json ]; then
               npm install
               npm update
@@ -68,8 +68,8 @@ jobs:
             cp -r $BUILD_DIR/* $DEPLOY_DIR/
 
             # Install build dependencies for Python
-            sudo -n apt-get update
-            sudo -n apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config libsecp256k1-dev
+            sudo apt-get update
+            sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config libsecp256k1-dev python3-dev
 
             # Install Python environment for server
             cd $SERVER_DIR
@@ -80,22 +80,21 @@ jobs:
             export PATH="$PYENV_ROOT/bin:$PATH"
             eval "$(pyenv init --path)"
             eval "$(pyenv init -)"
-            export PYTHON_CONFIGURE_OPTS="--with-openssl=/usr"
+            export PYTHON_CONFIGURE_OPTS="--with-openssl=/usr --with-openssl-rpath=auto --enable-optimizations"
             pyenv install 3.12.0 -s || { echo "Python 3.12.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
             pyenv global 3.12.0
 
             # Ensure WALLET_KEY.txt exists
-            if [ ! -f /home/secret/earth-mainnet-app/server/WALLET_KEY.txt ]; then
-              echo "WALLET_KEY.txt not found, creating placeholder (replace with valid mnemonic)"
-              echo "${{ secrets.WALLET_MNEMONIC }}" > /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
-              chmod 644 /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
-              chown secret:secret /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
+            if [ ! -f $SERVER_DIR/WALLET_KEY.txt ]; then
+              echo "${{ secrets.WALLET_MNEMONIC }}" > $SERVER_DIR/WALLET_KEY.txt
+              chmod 644 $SERVER_DIR/WALLET_KEY.txt
+              chown secret:secret $SERVER_DIR/WALLET_KEY.txt
             fi
 
             # Install Python dependencies
-            if [ -f requirements.txt ]; then
+            if [ -f $SERVER_DIR/requirements.txt ]; then
               $HOME/.pyenv/versions/3.12.0/bin/pip install --upgrade pip
-              $HOME/.pyenv/versions/3.12.0/bin/pip install -r requirements.txt
+              $HOME/.pyenv/versions/3.12.0/bin/pip install -r $SERVER_DIR/requirements.txt
             else
               echo "requirements.txt not found!"
               exit 1
@@ -103,21 +102,21 @@ jobs:
 
             # Install supervisor if not present
             if ! command -v supervisorctl &> /dev/null; then
-              sudo -n apt-get install -y supervisor
+              sudo apt-get install -y supervisor
             fi
 
             # Configure supervisor for uvicorn
             SUPERVISOR_CONF=/etc/supervisor/conf.d/erth-network-server.conf
-            echo "[program:erth-network-server]" | sudo -n tee $SUPERVISOR_CONF
-            echo "directory=$SERVER_DIR" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "command=$HOME/.pyenv/versions/3.12.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "autostart=true" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "autorestart=true" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "user=$USER" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "stdout_logfile=$SERVER_DIR/erth-network-server.log" | sudo -n tee -a $SUPERVISOR_CONF
-            echo "stderr_logfile=$SERVER_DIR/erth-network-server.err" | sudo -n tee -a $SUPERVISOR_CONF
+            echo "[program:erth-network-server]" | sudo tee $SUPERVISOR_CONF
+            echo "directory=$SERVER_DIR" | sudo tee -a $SUPERVISOR_CONF
+            echo "command=$HOME/.pyenv/versions/3.12.0/bin/uvicorn server:app --host 0.0.0.0 --port 5000" | sudo tee -a $SUPERVISOR_CONF
+            echo "autostart=true" | sudo tee -a $SUPERVISOR_CONF
+            echo "autorestart=true" | sudo tee -a $SUPERVISOR_CONF
+            echo "user=secret" | sudo tee -a $SUPERVISOR_CONF
+            echo "stdout_logfile=$SERVER_DIR/erth-network-server.log" | sudo tee -a $SUPERVISOR_CONF
+            echo "stderr_logfile=$SERVER_DIR/erth-network-server.err" | sudo tee -a $SUPERVISOR_CONF
 
             # Restart supervisor to apply changes
-            sudo -n supervisorctl reread
-            sudo -n supervisorctl update
-            sudo -n supervisorctl restart erth-network-server
+            sudo supervisorctl reread
+            sudo supervisorctl update
+            sudo supervisorctl restart erth-network-server
