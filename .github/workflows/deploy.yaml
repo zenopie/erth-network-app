@@ -69,7 +69,7 @@ jobs:
 
             # Install build dependencies for Python
             sudo -n apt-get update
-            sudo -n apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config
+            sudo -n apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config libsecp256k1-dev
 
             # Install Python environment for server
             cd $SERVER_DIR
@@ -80,9 +80,17 @@ jobs:
             export PATH="$PYENV_ROOT/bin:$PATH"
             eval "$(pyenv init --path)"
             eval "$(pyenv init -)"
-
+            export PYTHON_CONFIGURE_OPTS="--with-openssl=/usr"
             pyenv install 3.12.0 -s || { echo "Python 3.12.0 installation failed"; cat /tmp/python-build.*.log; exit 1; }
             pyenv global 3.12.0
+
+            # Ensure WALLET_KEY.txt exists
+            if [ ! -f /home/secret/earth-mainnet-app/server/WALLET_KEY.txt ]; then
+              echo "WALLET_KEY.txt not found, creating placeholder (replace with valid mnemonic)"
+              echo "${{ secrets.WALLET_MNEMONIC }}" > /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
+              chmod 644 /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
+              chown secret:secret /home/secret/earth-mainnet-app/server/WALLET_KEY.txt
+            fi
 
             # Install Python dependencies
             if [ -f requirements.txt ]; then
