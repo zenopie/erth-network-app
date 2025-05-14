@@ -69,7 +69,7 @@ jobs:
 
             # Install build dependencies for Python
             sudo apt-get update
-            sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config libsecp256k1-dev python3-dev
+            sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config libsecp256k1-dev python3-dev libsqlite3-dev liblzma-dev
 
             # Install Python environment for server
             cd $SERVER_DIR
@@ -94,7 +94,7 @@ jobs:
             # Install Python dependencies
             if [ -f $SERVER_DIR/requirements.txt ]; then
               $HOME/.pyenv/versions/3.11/bin/pip install --upgrade pip
-              $HOME/.pyenv/versions/3.11/bin/pip install -r $SERVER_DIR/requirements.txt
+              $HOME/.pyenv/versions/3.11/bin/pip install -r $SERVER_DIR/requirements.txt || { echo "pip install failed"; exit 1; }
             else
               echo "requirements.txt not found!"
               exit 1
