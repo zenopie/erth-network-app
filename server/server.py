@@ -50,8 +50,9 @@ WALLET_KEY = get_value("WALLET_KEY.txt")
 if not WALLET_KEY:
     raise Exception("Wallet key not found")
 
-secretjs: LCDClient
-wallet           # will hold the Wallet instance
+# placeholders
+secretjs: LCDClient = None
+wallet = None
 
 @app.on_event("startup")
 async def startup():
