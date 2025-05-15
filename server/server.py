@@ -257,11 +257,21 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
             ]
         },
     ]
+    test_messages = [
+        {"role": "system", "content": "describe the image"},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "describe the image"},
+                {"type": "image_url", "image_url": {"url": id_image}}
+            ]
+        },
+     ]
 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = secret_ai_llm.invoke(messages)
+        response = secret_ai_llm.invoke(test_messages)
         print(f"Raw response: {response}")
         result = json.loads(response.content)
         print(f"Parsed result: {result}")
