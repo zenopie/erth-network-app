@@ -250,7 +250,14 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         )
     test_messages = [
         {"role": "system", "content": "describe the image"},
-        {"role": "user", "content": "describe the image:", "images": [id_image]},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "describe the image"},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{id_image}"}}
+            ]
+        }
+    
     ]
 
     try:
