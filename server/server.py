@@ -238,7 +238,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
             "document_expiration": number|null
         },
         "is_fake": boolean,
-        "selfie_match": boolean|null
+        "selfie_match": boolean
         }
         """
 
