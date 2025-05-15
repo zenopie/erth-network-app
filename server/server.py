@@ -314,7 +314,7 @@ async def contract_interaction(message_object: Dict):
         resp = wallet.create_and_broadcast_tx(
             msg_list=[msg],  # List of messages (here, just one)
             memo="",         # Optional memo field
-            gas=1_000_000    # Gas limit for the transaction
+            gas=1_000_000,   # Gas limit for the transaction
             broadcast_mode="block"
         )
         return resp
