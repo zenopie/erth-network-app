@@ -110,7 +110,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0);
-      const base64Image = canvasRef.current.toDataURL('image/jpeg').split(',')[1];
+      const base64Image = canvasRef.current.toDataURL('image/jpeg');
       setSelfieImage(base64Image);
       stopCamera();
     }
@@ -121,7 +121,7 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result.split(",")[1];
+        const base64String = reader.result;
         setIdImage(base64String);
       };
       reader.readAsDataURL(file);

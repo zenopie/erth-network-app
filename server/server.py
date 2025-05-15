@@ -242,12 +242,21 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "Analyze this ID image to extract identity data and detect fakes:", "images": [id_image]},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Analyze this ID image to extract identity data and detect fakes"},
+                {"type": "image_url", "image_url": {"url": id_image}}
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Verify if this selfie matches the previously provided ID"},
+                {"type": "image_url", "image_url": {"url": selfie_image}}
+            ]
+        }
     ]
-    if selfie_image:
-        messages.append(
-            {"role": "user", "content": "Verify if this selfie matches the previously provided ID:", "images": [selfie_image]}
-        )
     test_messages = [
         {"role": "system", "content": "describe the image"},
         {
@@ -262,7 +271,8 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
     try:
         print(f"id_image: {id_image[:50]}...")
-        response = secret_ai_llm.invoke(test_messages)
+        print(f"selfie_image: {selfie_image[:50]}...")
+        response = secret_ai_llm.invoke(messages)
         print(f"Raw response: {response}")
         result = json.loads(response.content)
         print(f"Parsed result: {result}")
