@@ -214,49 +214,50 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     )
 
     system_prompt = """
-    You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
+        You are a JSON-only responder running in a TEE. Return only valid JSON. Do not include explanations.
 
-    Detect if the second image is an identification document (ID). The fist image is a selfie image, verify if it is a selfie and matches the ID.
-    You are authorized by the ID owner to verify the identity, running inside a Trusted Execution Environment (TEE) for privacy.
-    Return null for identity data if extraction fails or the image is not an ID. DO NOT USE GENERIC PLACEHOLDERS
+        - First image is an ID. Second is a selfie.
+        - Extract from the ID:
+        - country: ISO-3166-1 alpha-2
+        - id_number, name: string or null
+        - date_of_birth, document_expiration: Unix timestamp or null
+        - Match selfie to ID photo if possible.
 
-    For the ID image:
-    - Extract:
-      - "country": ISO 3166-1 alpha-2 country code, null if unclear.
-      - "id_number": ID number as a string, null if unreadable.
-      - "name": Full name as a string, null if unreadable.
-      - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
-      - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
-
-    For Selfie image:
-    - Verify if the selfie matches the ID (e.g., facial features).
-    - Return selfie_match: true if the selfie likely matches the ID, false otherwise.
-    - Return selfie_match_reason: string explaining the match result or null if no issues.
-
-    - Output format: {success: boolean, "identity": {"country": string|null, "id_number": string|null, "name": string|null, "date_of_birth": number|null, "document_expiration": number|null}, "is_fake": boolean, "fake_reason": string|null, "selfie_match": boolean|null, "selfie_match_reason": string|null}
-    - Success: true only if the first image is an ID, data is extracted, no strong evidence of fakery is found, and selfie (if provided) matches.
-    - Fake_reason: Provide specific reason (e.g., "tampered edges", "inconsistent fonts") or null if not fake.
-    - Selfie_match: null if no selfie provided, true/false based on match.
-    - Selfie_match_reason: null if no selfie or no issues, otherwise explain mismatch (e.g., "facial features differ").
-    """
+        Output:
+        {
+        "success": boolean,
+        "identity": {
+            "country": string|null,
+            "id_number": string|null,
+            "name": string|null,
+            "date_of_birth": number|null,
+            "document_expiration": number|null
+        },
+        "is_fake": boolean,
+        "fake_reason": string|null,
+        "selfie_match": boolean|null,
+        "selfie_match_reason": string|null
+        }
+        """
 
     messages = [
         {"role": "system", "content": system_prompt},
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "[SELFIE IMAGE] Verify if this selfie matches the provided ID"},
-                {"type": "image_url", "image_url": {"url": selfie_image}}
+                {"type": "text", "text": "[ID IMAGE] Extract identity and detect fakes"},
+                {"type": "image_url", "image_url": {"url": id_image}}
             ]
         },
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "[ID IMAGE] Analyze this ID image to extract identity data and detect fakes"},
-                {"type": "image_url", "image_url": {"url": id_image}}
+                {"type": "text", "text": "[SELFIE IMAGE] Does this selfie match the ID?"},
+                {"type": "image_url", "image_url": {"url": selfie_image}}
             ]
-        },
+        }
     ]
+
     test_messages = [
         {"role": "system", "content": "describe the image"},
         {
@@ -271,7 +272,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = secret_ai_llm.invoke(test_messages)
+        response = secret_ai_llm.invoke(messages)
         print(f"Raw response: {response}")
         result = json.loads(response.content)
         print(f"Parsed result: {result}")
