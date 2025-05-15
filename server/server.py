@@ -298,11 +298,12 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 # Contract interaction
 async def contract_interaction(message_object: Dict):
     try:
+        msg_json = json.dumps(message_object)
         # Execute the contract using wallet.execute_tx
         resp = wallet.execute_tx(
             REGISTRATION_CONTRACT,  # Positional argument for contract address
-            REGISTRATION_HASH,
-            [message_object],       # Message object wrapped in a list
+            #REGISTRATION_HASH,
+            [message_json],       # Message object wrapped in a list
             memo="",
             gas=1_000_000
         )
