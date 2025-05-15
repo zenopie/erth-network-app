@@ -10,7 +10,6 @@ from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
-from secret_sdk.util.encryption import EncryptionUtils
 from secret_ai_sdk.secret_ai import ChatSecret
 import aiofiles
 import aiohttp
@@ -53,15 +52,15 @@ if not WALLET_KEY:
     raise Exception("Wallet key not found")
 
 # placeholders
-secretjs: LCDClient = None
+secretpy: LCDClient = None
 wallet = None
 
 @app.on_event("startup")
 async def startup():
-    global secretjs, wallet
-    secretjs = LCDClient("https://lcd.erth.network", "secret-4")
+    global secretpy, wallet
+    secretpy = LCDClient("https://lcd.erth.network", "secret-4")
     mk = MnemonicKey(mnemonic=WALLET_KEY)
-    wallet = secretjs.wallet(mk)
+    wallet = secretpy.wallet(mk)
 
 # Analytics data
 analytics_history = []
@@ -130,20 +129,20 @@ async def update_erth_values():
             prices = {k: price_data[t["coingeckoId"]]["usd"] for k, t in tokens.items() if "coingeckoId" in t}
 
             # Query ERTH total supply
-            erth_info = await secretjs.wasm.contract_query(
+            erth_info = await secretpy.wasm.contract_query(
                 tokens["ERTH"]["contract"], {"token_info": {}}, code_hash=tokens["ERTH"]["hash"]
             )
             erth_total_supply = int(erth_info["token_info"]["total_supply"]) / 10**tokens["ERTH"]["decimals"]
 
             # Query ANML total supply
-            anml_info = await secretjs.wasm.contract_query(
+            anml_info = await secretpy.wasm.contract_query(
                 tokens["ANML"]["contract"], {"token_info": {}}, code_hash=tokens["ANML"]["hash"]
             )
             anml_total_supply = int(anml_info["token_info"]["total_supply"]) / 10**tokens["ANML"]["decimals"]
 
             # Unified pool query
             pool_addresses = [t["contract"] for k, t in tokens.items() if k != "ERTH"]
-            unified_pool_res = await secretjs.wasm.contract_query(
+            unified_pool_res = await secretpy.wasm.contract_query(
                 UNIFIED_POOL_CONTRACT, {"query_pool_info": {"pools": pool_addresses}}, code_hash=UNIFIED_POOL_HASH
             )
 
@@ -312,8 +311,6 @@ async def contract_interaction(message_object: Dict):
         HTTPException: If the contract interaction fails.
     """
     try:
-        # Create encryption utilities for the Secret Network
-        encryption_utils = EncryptionUtils(wallet=wallet, chain_id="secret-4")
         
         # Construct the contract execution message
         msg = MsgExecuteContract(
@@ -321,7 +318,7 @@ async def contract_interaction(message_object: Dict):
             contract=REGISTRATION_CONTRACT,  # Target contract address
             msg=message_object,              # Message payload for the contract
             code_hash=REGISTRATION_HASH,     # Code hash of the contract
-            encryption_utils=encryption_utils  # Encryption utilities for privacy
+            encryption_utils=secretpy.encrypt_utils  # Encryption utilities for privacy
         )
         
         # Broadcast the transaction to the network
