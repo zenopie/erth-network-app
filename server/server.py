@@ -300,9 +300,9 @@ async def contract_interaction(message_object: Dict):
     try:
         # Execute the contract using wallet.execute_tx
         resp = wallet.execute_tx(
-            contract=REGISTRATION_CONTRACT,
-            handle_msg=message_object,
-            code_hash=REGISTRATION_HASH,
+            REGISTRATION_CONTRACT,  # Positional argument for contract address
+            [message_object],       # Message object wrapped in a list
+            REGISTRATION_HASH,  # Include code hash
             memo="",
             gas=1_000_000
         )
