@@ -316,7 +316,6 @@ async def contract_interaction(message_object: Dict):
             memo="",         # Optional memo field
             gas=1_000_000    # Gas limit for the transaction
         )
-        print(f"Transaction response: {resp}")
         return resp
     
     except Exception as e:
@@ -380,6 +379,8 @@ async def register(req: RegisterRequest):
             }
         }
         resp = await contract_interaction(message_object)
+        print("Resp raw:", resp)
+        
         if resp.code == 0:
             return {
               "success": True,
