@@ -251,7 +251,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
     try:
         response = secret_ai_llm.invoke(messages)
-        result = json.loads(response["message"]["content"])
+        result = json.loads(response.content)
         return {
             "success": result["success"],
             "identity": result["identity"],
