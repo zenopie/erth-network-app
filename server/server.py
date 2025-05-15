@@ -223,6 +223,10 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         - date_of_birth, document_expiration: Unix timestamp or null
         - Match selfie to ID photo if possible.
 
+        Only set "success": true if:
+        - All identity fields are non-null
+        - Image is not fake
+
         Output:
         {
         "success": boolean,
@@ -234,11 +238,10 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
             "document_expiration": number|null
         },
         "is_fake": boolean,
-        "fake_reason": string|null,
-        "selfie_match": boolean|null,
-        "selfie_match_reason": string|null
+        "selfie_match": boolean|null
         }
         """
+
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -280,9 +283,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
             "success": result["success"],
             "identity": result["identity"],
             "is_fake": result["is_fake"],
-            "fake_reason": result["fake_reason"],
             "selfie_match": result["selfie_match"],
-            "selfie_match_reason": result["selfie_match_reason"],
         }
     except Exception as e:
         print(f"Error processing images with Secret AI: {e}")
@@ -290,9 +291,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
             "success": False,
             "identity": {"country": "", "id_number": "", "name": "", "date_of_birth": 0, "document_expiration": 0},
             "is_fake": True,
-            "fake_reason": f"Failed to process image: {str(e)}",
             "selfie_match": False if selfie_image else None,
-            "selfie_match_reason": "Failed to process selfie" if selfie_image else None,
         }
 
 # Contract interaction
@@ -369,7 +368,6 @@ async def register(req: RegisterRequest):
                 detail={
                   "error": "Identity verification failed",
                   "is_fake": result["is_fake"],
-                  "reason": result["fake_reason"],
                 }
             )
         if selfie and not result["selfie_match"]:
@@ -378,7 +376,6 @@ async def register(req: RegisterRequest):
                 detail={
                   "error": "Selfie verification failed",
                   "is_fake": result["is_fake"],
-                  "reason": result["selfie_match_reason"],
                 }
             )
 
