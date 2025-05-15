@@ -300,7 +300,7 @@ async def contract_interaction(message_object: Dict):
     try:
         msg = MsgExecuteContract(
             sender=wallet.key.acc_address,
-            contract_address=REGISTRATION_CONTRACT,
+            contract=REGISTRATION_CONTRACT,
             msg=message_object,
             code_hash=REGISTRATION_HASH,
         )
