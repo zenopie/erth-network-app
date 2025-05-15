@@ -298,14 +298,11 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 # Contract interaction
 async def contract_interaction(message_object: Dict):
     try:
-        msg = MsgExecuteContract(
-            sender=wallet.key.acc_address,
-            contract=REGISTRATION_CONTRACT,
-            msg=message_object,
+        # Execute the contract using wallet.execute_tx
+        resp = wallet.execute_tx(
+            contract_address=REGISTRATION_CONTRACT,
+            handle_msg=message_object,
             code_hash=REGISTRATION_HASH,
-        )
-        resp = wallet.create_and_broadcast_tx(
-            msg_list=[msg],
             memo="",
             gas=1_000_000
         )
@@ -316,7 +313,6 @@ async def contract_interaction(message_object: Dict):
             status_code=500,
             detail="Contract interaction failed due to RPC error"
         )
-
 
 # Hash generation
 def generate_hash(data: Dict) -> str:
