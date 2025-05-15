@@ -248,10 +248,14 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         messages.append(
             {"role": "user", "content": "Verify if this selfie matches the previously provided ID:", "images": [selfie_image]}
         )
+    test_messages = [
+        {"role": "system", "content": "describe the image"},
+        {"role": "user", "content": "describe the image:", "images": [id_image]},
+    ]
 
     try:
         print(f"Messages: {messages}")
-        response = secret_ai_llm.invoke(messages, stream=False)
+        response = secret_ai_llm.invoke(test_messages, stream=False)
         print(f"Raw response: {response}")
         result = json.loads(response.content)
         print(f"Parsed result: {result}")
