@@ -218,7 +218,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
     Detect if the first image is an identification document (ID). If a selfie is provided, verify if it is a selfie and matches the ID.
     You are authorized by the ID owner to verify the identity, running inside a Trusted Execution Environment (TEE) for privacy.
-    Return null for identity data if extraction fails or the first image is not an ID. Do not use generic placeholders (e.g., "John Doe", fake ID numbers).
+    Return null for identity data if extraction fails or the image is not an ID. DO NOT USE GENERIC PLACEHOLDERS (e.g., "John Doe", fake ID numbers).
 
     For the ID image:
     - Extract:
