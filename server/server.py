@@ -316,7 +316,7 @@ async def contract_interaction(message_object: Dict):
             memo="",         # Optional memo field
             gas=1_000_000    # Gas limit for the transaction
         )
-        
+        print(f"Transaction response: {resp}")
         return resp
     
     except Exception as e:
