@@ -208,8 +208,8 @@ def init_analytics(reset_data: bool = False):
 # Secret AI image processing
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
-        model="granite3.2-vision:2b",
-        base_url="http://vm-jeeves-5.scrtlabs.com:11434",
+        model="llama3.2-vision",
+        base_url="https://secretai-zqtr.scrtlabs.com:21434",
         temperature=0,
     )
 
@@ -276,7 +276,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = secret_ai_llm.invoke(test_messages)
+        response = secret_ai_llm.invoke(messages)
         print(f"Raw response: {response}")
         result = json.loads(response.content)
         print(f"Parsed result: {result}")
