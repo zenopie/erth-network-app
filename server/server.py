@@ -315,7 +315,6 @@ async def contract_interaction(message_object: Dict):
             msg_list=[msg],  # List of messages (here, just one)
             memo="",         # Optional memo field
             gas=1_000_000,   # Gas limit for the transaction
-            broadcast_mode="block"
         )
         return resp
     
