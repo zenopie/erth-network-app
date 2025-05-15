@@ -10,6 +10,7 @@ from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
+from secret_sdk.util.encryption import EncryptionUtils
 from secret_ai_sdk.secret_ai import ChatSecret
 import aiofiles
 import aiohttp
@@ -297,17 +298,41 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
 # Contract interaction
 async def contract_interaction(message_object: Dict):
+    """
+    Execute a contract interaction on the Secret Network.
+    
+    Args:
+        message_object (Dict): The message to send to the contract, e.g.,
+            {"register": {"address": address, "id_hash": id_hash, "affiliate": referred}}
+    
+    Returns:
+        The transaction response.
+    
+    Raises:
+        HTTPException: If the contract interaction fails.
+    """
     try:
-        msg_json = json.dumps(message_object)
-        # Execute the contract using wallet.execute_tx
-        resp = wallet.execute_tx(
-            REGISTRATION_CONTRACT,  # Positional argument for contract address
-            #REGISTRATION_HASH,
-            [message_json],       # Message object wrapped in a list
-            memo="",
-            gas=1_000_000
+        # Create encryption utilities for the Secret Network
+        encryption_utils = EncryptionUtils(wallet=wallet, chain_id="secret-4")
+        
+        # Construct the contract execution message
+        msg = MsgExecuteContract(
+            sender=wallet.key.acc_address,  # Sender's address from the wallet
+            contract=REGISTRATION_CONTRACT,  # Target contract address
+            msg=message_object,              # Message payload for the contract
+            code_hash=REGISTRATION_HASH,     # Code hash of the contract
+            encryption_utils=encryption_utils  # Encryption utilities for privacy
         )
+        
+        # Broadcast the transaction to the network
+        resp = wallet.create_and_broadcast_tx(
+            msg_list=[msg],  # List of messages (here, just one)
+            memo="",         # Optional memo field
+            gas=1_000_000    # Gas limit for the transaction
+        )
+        
         return resp
+    
     except Exception as e:
         print(f"RPC error during contract interaction: {e}")
         raise HTTPException(
