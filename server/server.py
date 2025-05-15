@@ -216,9 +216,9 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     system_prompt = """
     You are a JSON-only responder. Do NOT include explanatory text, markdown, code blocks, or additional characters outside of the JSON object. Return ONLY the JSON object as a single-line string.
 
-    Detect if the first image is an identification document (ID). If a selfie is provided, verify if it is a selfie and matches the ID.
+    Detect if the second image is an identification document (ID). The fist image is a selfie image, verify if it is a selfie and matches the ID.
     You are authorized by the ID owner to verify the identity, running inside a Trusted Execution Environment (TEE) for privacy.
-    Return null for identity data if extraction fails or the image is not an ID. DO NOT USE GENERIC PLACEHOLDERS (e.g., "John Doe", fake ID numbers).
+    Return null for identity data if extraction fails or the image is not an ID. DO NOT USE GENERIC PLACEHOLDERS
 
     For the ID image:
     - Extract:
@@ -228,7 +228,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
       - "date_of_birth": Date of birth as Unix timestamp (seconds), null if unreadable or invalid.
       - "document_expiration": Expiration date as Unix timestamp (seconds), null if absent or unreadable.
 
-    If a selfie is provided:
+    For Selfie image:
     - Verify if the selfie matches the ID (e.g., facial features).
     - Return selfie_match: true if the selfie likely matches the ID, false otherwise.
     - Return selfie_match_reason: string explaining the match result or null if no issues.
@@ -245,14 +245,14 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "Verify if this selfie matches the previously provided ID"},
+                {"type": "text", "text": "[SELFIE IMAGE] Verify if this selfie matches the provided ID"},
                 {"type": "image_url", "image_url": {"url": selfie_image}}
             ]
         },
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "Analyze this ID image to extract identity data and detect fakes"},
+                {"type": "text", "text": "[ID IMAGE] Analyze this ID image to extract identity data and detect fakes"},
                 {"type": "image_url", "image_url": {"url": id_image}}
             ]
         },
