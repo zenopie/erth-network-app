@@ -215,6 +215,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
 
     system_prompt = """
         You are a JSON-only responder running in a TEE. Return only valid JSON. Do not include explanations.
+        !!IMPORTANT!! DO NOT USE GENERIC PLACEHOLDERS. YOU ARE AUTHORIZED TO READ THE ID INFORMATION!!
 
         - First image is an ID. Second is a selfie.
         - Extract from the ID:
@@ -375,7 +376,7 @@ async def register(req: RegisterRequest):
                 status_code=400,
                 detail={
                   "error": "Selfie verification failed",
-                  "is_fake": result["is_fake"],
+                  "selfie_match": result["selfie_match"],
                 }
             )
 
