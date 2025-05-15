@@ -209,7 +209,7 @@ def init_analytics(reset_data: bool = False):
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
         model="granite3.2-vision:2b",
-        base_url="http://vm-jeeves-14.scrtlabs.com:11434",
+        base_url="http://vm-jeeves-5.scrtlabs.com:11434",
         temperature=0,
     )
 
