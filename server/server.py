@@ -335,6 +335,13 @@ class ChatRequest(BaseModel):
     messages: list
     stream: bool = False
 
+async def stream_to_async_iterable(generator):
+    async def async_iterable():
+        for item in generator:
+            yield item
+            await asyncio.sleep(0)  # Allow other tasks to run
+    return async_iterable()
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     try:
@@ -346,8 +353,8 @@ async def chat(req: ChatRequest):
         
         if req.stream:
             async def stream_response():
-                async for chunk in secret_ai_llm.stream(req.messages):
-                    yield json.dumps({"message": {"content": chunk}})
+                async for chunk in await stream_to_async_iterable(secret_ai_llm.stream(req.messages)):
+                    yield json.dumps({"message": {"content": chunk}}) + "\n"
             return StreamingResponse(stream_response(), media_type="application/x-ndjson")
         else:
             response = secret_ai_llm.invoke(req.messages)
@@ -358,7 +365,6 @@ async def chat(req: ChatRequest):
             status_code=500,
             detail=f"Chat processing failed: {str(e)}"
         )
-
 
 @app.get("/api/analytics")
 async def get_analytics():
