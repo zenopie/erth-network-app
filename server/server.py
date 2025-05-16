@@ -226,9 +226,10 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         Only set "success": true if:
         - All identity fields are non-null
         - The ID is a government issued ID
-        - Image is not fake
+        - ID is not fake
 
-        Output: {
+        Output: 
+        {
             "success": boolean,
             "identity": {
                 "country": string|null,
@@ -273,16 +274,12 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         return {
             "success": result["success"],
             "identity": result["identity"],
-            "is_fake": False,
-            "selfie_match": True,
         }
     except Exception as e:
         print(f"Error processing images with Secret AI: {e}")
         return {
             "success": False,
             "identity": {"country": "", "id_number": "", "name": "", "date_of_birth": 0, "document_expiration": 0},
-            "is_fake": True,
-            "selfie_match": False if selfie_image else None,
         }
 
 # Contract interaction
