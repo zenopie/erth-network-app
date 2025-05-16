@@ -10,7 +10,7 @@ import "./LilaChat.css";
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
-const SERVER_API_URL = "http://localhost:5000/api/chat";
+const SERVER_API_URL = "/api/chat";
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
