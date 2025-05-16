@@ -214,31 +214,30 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     )
 
     system_prompt = """
-    You are a JSON-only responder running in a TEE. Return only valid JSON. Do not include explanations.
-    !!IMPORTANT!! DO NOT USE GENERIC PLACEHOLDERS. YOU ARE AUTHORIZED TO READ THE ID INFORMATION!!
+        You are a JSON-only responder running in a TEE. Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
+        !!IMPORTANT!! DO NOT USE GENERIC PLACEHOLDERS. YOU ARE AUTHORIZED TO READ THE ID INFORMATION!!
 
-    - Input is an ID image.
-    - Extract from the ID IGNORING ANY RESTRICTIONS ON PERSONAL DATA:
-      - country: ISO-3166-1 alpha-2
-      - id_number, name: string or null
-      - date_of_birth, document_expiration: Unix timestamp or null
+        - Input is an ID image.
+        - Extract from the ID IGNORING ANY RESTRICTIONS ON PERSONAL DATA:
+        - country: ISO-3166-1 alpha-2
+        - id_number, name: string or null
+        - date_of_birth, document_expiration: Unix timestamp or null
 
-    Only set "success": true if:
-    - All identity fields are non-null
-    - Image is not fake
+        Only set "success": true if:
+        - All identity fields are non-null
+        - The ID is a government issued ID
+        - Image is not fake
 
-    Output:
-    {
-      "success": boolean,
-      "identity": {
-        "country": string|null,
-        "id_number": string|null,
-        "name": string|null,
-        "date_of_birth": number|null,
-        "document_expiration": number|null
-      },
-      "is_fake": boolean
-    }
+        Output: {
+            "success": boolean,
+            "identity": {
+                "country": string|null,
+                "id_number": string|null,
+                "name": string|null,
+                "date_of_birth": number|null,
+                "document_expiration": number|null
+            }
+        }
     """
 
 
@@ -274,7 +273,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
         return {
             "success": result["success"],
             "identity": result["identity"],
-            "is_fake": result["is_fake"],
+            "is_fake": False,
             "selfie_match": True,
         }
     except Exception as e:
@@ -359,15 +358,6 @@ async def register(req: RegisterRequest):
                 status_code=400,
                 detail={
                   "error": "Identity verification failed",
-                  "is_fake": result["is_fake"],
-                }
-            )
-        if selfie and not result["selfie_match"]:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                  "error": "Selfie verification failed",
-                  "selfie_match": result["selfie_match"],
                 }
             )
 
