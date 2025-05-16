@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { SecretNetworkClient } from "secretjs";
-import { ChatSecret, SECRET_AI_CONFIG } from "secretai";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -10,8 +9,8 @@ import "./LilaChat.css";
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
-const TESTNET_WORKER_CONTRACT = SECRET_AI_CONFIG.SECRET_WORKER_SMART_CONTRACT_DEFAULT;
-const API_KEY = "sk-GeomADW4NrwMMR_zbRVEWK7-0vxv6SBeA_jeijtaGHNdOKIYmcelKpydPgV-be0kGEneAuyx";
+const TESTNET_WORKER_CONTRACT = "YOUR_SECRET_WORKER_CONTRACT_ADDRESS";
+const SERVER_API_URL = "http://localhost:5000/api/chat";
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
@@ -21,8 +20,6 @@ const secretNetworkClient = new SecretNetworkClient({
 const LilaChat = () => {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("");
-  const [urls, setUrls] = useState([]);
-  const [selectedUrl, setSelectedUrl] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState(null);
@@ -71,30 +68,13 @@ const LilaChat = () => {
       if (response.models && response.models.length > 0) {
         setModels(response.models);
         setSelectedModel(response.models[0]);
-        fetchUrls(response.models[0]);
       }
     } catch (error) {
       console.error("Error fetching models:", error);
+    } finally {
+      showLoadingScreen(false);
     }
   }, []);
-
-  const fetchUrls = async (model) => {
-    try {
-      console.log("Fetching URLs for model:", model);
-      const response = await secretNetworkClient.query.compute.queryContract({
-        contract_address: TESTNET_WORKER_CONTRACT,
-        query: { get_u_r_ls: { model } },
-      });
-      console.log("URLs response:", response);
-      if (response.urls && response.urls.length > 0) {
-        setUrls(response.urls);
-        setSelectedUrl(response.urls[0]);
-      }
-      showLoadingScreen(false);
-    } catch (error) {
-      console.error("Error fetching URLs:", error);
-    }
-  };
 
   useEffect(() => {
     if (initAttempted) return;
@@ -160,14 +140,14 @@ const LilaChat = () => {
 
     userInteracted.current = false;
     setLoading(true);
-    let localIsThinking = false;
     const controller = new AbortController();
     setAbortController(controller);
 
     const messageToSend = {
       role: "user",
-      content: input,
-      ...(pendingImage && { images: [pendingImage] }),
+      content: pendingImage
+        ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }]
+        : input,
     };
     const updatedMessages = [...messages, messageToSend];
     console.log("Messages to send:", JSON.stringify(updatedMessages, null, 2));
@@ -176,95 +156,78 @@ const LilaChat = () => {
     setPendingImage(null);
 
     try {
-      console.log("API key: ", API_KEY);
-      const secretAiLLM = new ChatSecret({
-        apiKey: API_KEY,
-        model: selectedModel,
-        base_url: selectedUrl,
-        stream: true,
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const response = await fetch(SERVER_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: updatedMessages,
+          stream: true,
+        }),
+        signal: controller.signal,
       });
-      setMessages((prev) => {
-        const withAssistant = [...prev, { role: "assistant", content: "" }];
-        console.log("Added empty assistant message:", JSON.stringify(withAssistant, null, 2));
-        return withAssistant;
-      });
-      await secretAiLLM.chat(updatedMessages, {
-        onMessage: (data) => {
-          console.log("Received streaming data:", JSON.stringify(data, null, 2));
-          if (data.message?.content) {
-            let newContent = data.message.content;
-            if (newContent.includes("<think>")) {
-              localIsThinking = true;
-              newContent = newContent.replace("<think>", "");
-              updateThinkingContent("🤔 Thinking: " + newContent);
-              return;
-            }
-            if (newContent.includes("</think>")) {
-              localIsThinking = false;
-              newContent = newContent.replace("</think>", "");
-              if (thinkingRef.current) {
-                thinkingRef.current.textContent += newContent;
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              }
-              return;
-            }
-            if (localIsThinking) {
-              if (thinkingRef.current) {
-                thinkingRef.current.textContent += newContent;
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              }
-            } else {
-              setMessages((prevMessages) => {
-                const lastMessage = prevMessages[prevMessages.length - 1];
-                if (lastMessage?.role === "assistant") {
-                  const updated = [
-                    ...prevMessages.slice(0, -1),
-                    { role: "assistant", content: lastMessage.content + newContent },
-                  ];
-                  console.log("Updated assistant message:", JSON.stringify(updated, null, 2));
-                  return updated;
-                } else {
-                  const updated = [...prevMessages, { role: "assistant", content: newContent }];
-                  console.log("Added new assistant message:", JSON.stringify(updated, null, 2));
-                  return updated;
-                }
-              });
-            }
-          }
-        },
-        onComplete: () => {
+
+      const reader = response.body.getReader();
+      let localIsThinking = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
           console.log("Streaming completed.");
           setAbortController(null);
-        },
-        onError: async (error) => {
-          console.error("Streaming error:", error);
-          if (error.message.includes("HTTP error")) {
-            try {
-              const response = await fetch(`${selectedUrl}/api/chat`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${API_KEY}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: selectedModel,
-                  temperature: 1.0,
-                  messages: updatedMessages,
-                  stream: true,
-                }),
-              });
-              const errorText = await response.text();
-              console.error("Server error details:", errorText);
-            } catch (fetchError) {
-              console.error("Failed to fetch error details:", fetchError);
+          break;
+        }
+
+        const text = new TextDecoder().decode(value);
+        const lines = text.split("\n").filter(line => line.trim());
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              let newContent = data.message.content;
+              if (newContent.includes("<think>")) {
+                localIsThinking = true;
+                newContent = newContent.replace("<think>", "");
+                updateThinkingContent("🤔 Thinking: " + newContent);
+                continue;
+              }
+              if (newContent.includes("</think>")) {
+                localIsThinking = false;
+                newContent = newContent.replace("</think>", "");
+                if (thinkingRef.current) {
+                  thinkingRef.current.textContent += newContent;
+                  if (chatContainerRef.current) {
+                    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                  }
+                }
+                continue;
+              }
+              if (localIsThinking) {
+                if (thinkingRef.current) {
+                  thinkingRef.current.textContent += newContent;
+                  if (chatContainerRef.current) {
+                    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                  }
+                }
+              } else {
+                setMessages((prevMessages) => {
+                  const lastMessage = prevMessages[prevMessages.length - 1];
+                  if (lastMessage?.role === "assistant") {
+                    return [
+                      ...prevMessages.slice(0, -1),
+                      { role: "assistant", content: lastMessage.content + newContent },
+                    ];
+                  }
+                  return [...prevMessages, { role: "assistant", content: newContent }];
+                });
+              }
             }
+          } catch (error) {
+            console.error("Error parsing stream data:", error);
           }
-        },
-      });
+        }
+      }
     } catch (error) {
       if (error.name === "AbortError") {
         console.log("Streaming stopped.");
@@ -350,7 +313,9 @@ const LilaChat = () => {
           >
             {msg.role === "assistant" && <div className="secret-think-box" ref={thinkingRef}></div>}
             <div className="secret-message-content">
-              <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
+              <ReactMarkdown components={components}>
+                {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
@@ -386,21 +351,12 @@ const LilaChat = () => {
               value={selectedModel}
               onChange={(e) => {
                 setSelectedModel(e.target.value);
-                fetchUrls(e.target.value);
-                setPendingImage(null); // Clear pending image when model changes
+                setPendingImage(null);
               }}
             >
               {models.map((model, index) => (
                 <option key={index} value={model}>
                   {model}
-                </option>
-              ))}
-            </select>
-            <label>AI Instance:</label>
-            <select value={selectedUrl} onChange={(e) => setSelectedUrl(e.target.value)}>
-              {urls.map((url, index) => (
-                <option key={index} value={url}>
-                  {url}
                 </option>
               ))}
             </select>

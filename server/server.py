@@ -37,6 +37,7 @@ WEBHOOK_PORT = 5000
 REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "04bd5177bad4c7846e97a9e3d345cf9e3e7fca5969f90ac20f3a5afc5b471cd5"
 ANALYTICS_FILE = "analyticsData.json"
+SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
 # Load wallet key from file
 def get_value(file: str) -> Optional[str]:
@@ -209,7 +210,7 @@ def init_analytics(reset_data: bool = False):
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
         model="llama3.2-vision",
-        base_url="https://secretai-zqtr.scrtlabs.com:21434",
+        base_url=SECRET_AI_URL,
         temperature=0,
     )
 
@@ -328,6 +329,36 @@ def generate_hash(data: Dict) -> str:
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 # Routes
+class ChatRequest(BaseModel):
+    model: str
+    messages: list
+    stream: bool = False
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    try:
+        secret_ai_llm = ChatSecret(
+            model=req.model,
+            base_url=SECRET_AI_URL,
+            temperature=1.0,
+        )
+        
+        if req.stream:
+            async def stream_response():
+                async for chunk in secret_ai_llm.stream(req.messages):
+                    yield json.dumps({"message": {"content": chunk}})
+            return StreamingResponse(stream_response(), media_type="application/x-ndjson")
+        else:
+            response = secret_ai_llm.invoke(req.messages)
+            return {"message": {"content": response.content}}
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat processing failed: {str(e)}"
+        )
+
+
 @app.get("/api/analytics")
 async def get_analytics():
     latest = analytics_history[-1] if analytics_history else None
