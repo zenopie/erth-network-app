@@ -330,6 +330,7 @@ def generate_hash(data: Dict) -> str:
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 # Routes
+# New Secret AI chat endpoint
 class ChatRequest(BaseModel):
     model: str
     messages: list
@@ -338,7 +339,7 @@ class ChatRequest(BaseModel):
 async def stream_to_async_iterable(generator):
     async def async_iterable():
         for item in generator:
-            yield item
+            yield item.content  # Extract content from AIMessageChunk
             await asyncio.sleep(0)  # Allow other tasks to run
     return async_iterable()
 
