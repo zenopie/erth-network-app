@@ -6,6 +6,7 @@ import time
 from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
