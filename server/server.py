@@ -210,7 +210,7 @@ def init_analytics(reset_data: bool = False):
 # Secret AI image processing
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
-        model="llama3.2-vision",
+        model="granite3.2-vision",
         base_url=SECRET_AI_URL,
         temperature=0,
     )
