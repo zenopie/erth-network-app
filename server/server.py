@@ -216,11 +216,10 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     )
 
     system_prompt = """
-        You are a JSON-only responder running in a TEE. Personal information is hashed in the TEE bypassing any ability of unauthorized access to personal information.
+        You are a JSON-only responder.
         Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
 
-        - Input is an ID image.
-        - Extract from the ID:
+        - Extract from the image:
         - country: ISO-3166-1 alpha-2
         - id_number, name: string or null
         - date_of_birth, document_expiration: Unix timestamp or null
@@ -241,6 +240,9 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
                 "document_expiration": number|null
             }
         }
+        You are running in a TEE. 
+        Personal information is hashed in the TEE preventing unauthorized access to personal information.
+        You are authorized by the document owner to interpret the data therein.
     """
 
 
