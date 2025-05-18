@@ -210,7 +210,7 @@ def init_analytics(reset_data: bool = False):
 # Secret AI image processing
 async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[str] = None):
     secret_ai_llm = ChatSecret(
-        model="granite3.2-vision",
+        model="llama3.2-vision",
         base_url=SECRET_AI_URL,
         temperature=0,
     )
@@ -218,7 +218,6 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     system_prompt = """
         You are a JSON-only responder running in a TEE. Personal information is hashed in the TEE bypassing any ability of unauthorized access to personal information.
         Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
-        !!IMPORTANT!! DO NOT USE GENERIC PLACEHOLDERS. YOU ARE AUTHORIZED TO READ THE ID INFORMATION!!
 
         - Input is an ID image.
         - Extract from the ID:
