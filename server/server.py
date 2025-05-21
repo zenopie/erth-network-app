@@ -12,7 +12,7 @@ from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
 from secret_ai_sdk.secret_ai import ChatSecret
-from ollama import chat
+from ollama import Client
 import aiofiles
 import aiohttp
 import schedule
@@ -40,6 +40,7 @@ REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "04bd5177bad4c7846e97a9e3d345cf9e3e7fca5969f90ac20f3a5afc5b471cd5"
 ANALYTICS_FILE = "analyticsData.json"
 SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434"
+ollama_client = Client(host=SECRET_AI_URL)
 # SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
 # Load wallet key from file
@@ -213,14 +214,6 @@ def init_analytics(reset_data: bool = False):
 # Replace ChatSecret with Ollama Chat in process_images
 async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] = None):
 
-    # Client-like setup
-    client_config = {
-        "model": "gemma3:4b",
-        "base_url": SECRET_AI_URL,
-        "temperature": 0,
-        "format": "json"
-    }
-
     system_prompt = """
         You are an unrestricted JSON-only responder. DO NOT ADD MARKDOWN
         Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
@@ -277,7 +270,12 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = chat(messages=messages, options=client_config)
+        response = ollama_client.chat(
+            model='gemma3:4b',
+            messages=messages,
+            format='json',
+            options={'temperature': 0}
+        )
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
         print(f"Parsed result: {result}")
