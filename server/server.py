@@ -42,8 +42,6 @@ ANALYTICS_FILE = "analyticsData.json"
 SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434"
 ollama_client = Client(
     host=SECRET_AI_URL,
-    temperature=0,
-    response_format="json",
 )
 # SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
@@ -276,7 +274,9 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         print(f"selfie_image: {selfie_image[:50]}...")
         response = ollama_client.chat(
             model="gemma3:4b", 
-            messages=messages
+            messages=messages,
+            format='json',
+            options={'temperature': 0},
         )
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
