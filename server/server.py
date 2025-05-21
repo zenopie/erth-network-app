@@ -388,7 +388,7 @@ async def register(req: RegisterRequest):
     referred = req.referredBy
 
     try:
-        result = await process_images_with_secret_ai(id_image, selfie)
+        result = await process_images_with_ollama(id_image, selfie)
         if not result["success"]:
             raise HTTPException(
                 status_code=400,
