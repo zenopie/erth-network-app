@@ -270,10 +270,11 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = ollama_client.chat.completions.create(
+        response = ollama_client.chat.create(
             model="gemma3:4b", 
             messages=messages,
             temperature=0,
+            response_format="json"
         )
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
