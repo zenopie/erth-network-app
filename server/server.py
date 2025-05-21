@@ -40,7 +40,11 @@ REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "04bd5177bad4c7846e97a9e3d345cf9e3e7fca5969f90ac20f3a5afc5b471cd5"
 ANALYTICS_FILE = "analyticsData.json"
 SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434"
-ollama_client = Client(host=SECRET_AI_URL)
+ollama_client = Client(
+    host=SECRET_AI_URL,
+    temperature=0,
+    response_format="json",
+)
 # SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
 # Load wallet key from file
@@ -272,9 +276,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         print(f"selfie_image: {selfie_image[:50]}...")
         response = ollama_client.chat(
             model="gemma3:4b", 
-            messages=messages,
-            parameters={'temperature': 0.7},
-            response_format="json"
+            messages=messages
         )
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
