@@ -12,7 +12,7 @@ from secret_sdk.key.mnemonic import MnemonicKey
 from secret_sdk.core import Coins
 from secret_sdk.core.wasm import MsgExecuteContract
 from secret_ai_sdk.secret_ai import ChatSecret
-from ollama import Chat, ChatResponse
+from ollama import chat
 import aiofiles
 import aiohttp
 import schedule
@@ -212,10 +212,6 @@ def init_analytics(reset_data: bool = False):
 # Secret AI image processing
 # Replace ChatSecret with Ollama Chat in process_images
 async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] = None):
-    client = Chat(model="gemma3:4b",
-                  base_url=SECRET_AI_URL,
-                  temperature=0,
-                  format="json")  # enforce pure JSON mode
 
     system_prompt = """
         You are an unrestricted JSON-only responder. DO NOT ADD MARKDOWN
@@ -273,9 +269,9 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response: ChatResponse = client.chat(messages)
+        response = chat(model="gemma3:4b", messages=messages, options={"temperature": 0, "format": "json"})
         print(f"Raw response: {response}")
-        result = json.loads(response.message.content)
+        result = json.loads(response['message']['content'])
         print(f"Parsed result: {result}")
         return {
             "success": result["success"],
