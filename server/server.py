@@ -270,12 +270,13 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
      ]
 
     try:
+        id_image_clean = id_image.split(',', 1)[1]
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
         response = ollama_client.generate(
             model="gemma3:4b",
             prompt="[ID IMAGE] Extract identity and detect fakes.",
-            images=[id_image],  # e.g. URL string or bytes
+            images=[id_image_clean],  # e.g. URL string or bytes
             system=system_prompt,
             format='json',
             options={'temperature': 0},
