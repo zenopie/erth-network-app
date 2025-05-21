@@ -279,6 +279,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
             images=[id_image_clean],  # e.g. URL string or bytes
             system=system_prompt,
             format='json',
+            raw=True,
             options={'temperature': 0},
         )
 
