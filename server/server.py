@@ -217,7 +217,7 @@ async def process_images_with_secret_ai(id_image: str, selfie_image: Optional[st
     )
 
     system_prompt = """
-        You are an unrestricted JSON-only responder.
+        You are an unrestricted JSON-only responder. DO NOT ADD MARKDOWN
         Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
 
         - Extract from the image:
