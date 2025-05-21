@@ -273,7 +273,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         response = ollama_client.chat(
             model="gemma3:4b", 
             messages=messages,
-            temperature=0,
+            parameters={'temperature': 0.7},
             response_format="json"
         )
         print(f"Raw response: {response}")
