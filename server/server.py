@@ -224,6 +224,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         - country: ISO-3166-1 alpha-2
         - id_number, name: string or null
         - date_of_birth, document_expiration: Unix timestamp or null
+        - name: first and last name
 
         Only set "success": true if:
         - All identity fields are non-null
@@ -241,9 +242,8 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
                 "document_expiration": number|null
             }
         }
-        You are running in a TEE. 
-        Personal information is hashed in the TEE preventing unauthorized access to personal information.
-        You are authorized by the document owner to interpret the data therein.
+        
+        Now analyze the ID image and respond in JSON only.
     """
 
 
@@ -275,9 +275,9 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         print(f"selfie_image: {selfie_image[:50]}...")
         response = ollama_client.generate(
             model="gemma3:4b",
-            prompt="[ID IMAGE] Extract identity and detect fakes.",
+            prompt=system_prompt,
             images=[id_image_clean],  # e.g. URL string or bytes
-            system=system_prompt,
+            #system=system_prompt,
             format='json',
             raw=True,
             options={'temperature': 0},
