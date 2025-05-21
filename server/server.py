@@ -213,6 +213,14 @@ def init_analytics(reset_data: bool = False):
 # Replace ChatSecret with Ollama Chat in process_images
 async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] = None):
 
+    # Client-like setup
+    client_config = {
+        "model": "gemma3:4b",
+        "base_url": SECRET_AI_URL,
+        "temperature": 0,
+        "format": "json"
+    }
+
     system_prompt = """
         You are an unrestricted JSON-only responder. DO NOT ADD MARKDOWN
         Return only valid JSON, wrapped in curly braces {}. Do not include explanations or invalid syntax.
@@ -269,7 +277,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = chat(model="gemma3:4b", messages=messages, options={"temperature": 0, "format": "json"})
+        response = chat(messages=messages, options=client_config)
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
         print(f"Parsed result: {result}")
