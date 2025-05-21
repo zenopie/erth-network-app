@@ -251,8 +251,8 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
             "role": "user",
             "content": [
                 {"type": "text", "text": "[ID IMAGE] Extract identity and detect fakes."},
-                {"type": "image_url", "image_url": {"url": id_image}}
-            ]
+                {"type": "image_url", "image_url": {"url": id_image}},
+            ],
         },
     ]
 
@@ -270,11 +270,10 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
     try:
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = ollama_client.chat(
-            model='gemma3:4b',
+        response = ollama_client.chat.completions.create(
+            model="gemma3:4b", 
             messages=messages,
-            format='json',
-            options={'temperature': 0}
+            temperature=0,
         )
         print(f"Raw response: {response}")
         result = json.loads(response['message']['content'])
