@@ -38,7 +38,8 @@ WEBHOOK_PORT = 5000
 REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "04bd5177bad4c7846e97a9e3d345cf9e3e7fca5969f90ac20f3a5afc5b471cd5"
 ANALYTICS_FILE = "analyticsData.json"
-SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
+SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434"
+# SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
 # Load wallet key from file
 def get_value(file: str) -> Optional[str]:
