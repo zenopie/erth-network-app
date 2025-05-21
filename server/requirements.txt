@@ -9,3 +9,4 @@ aiohttp
 setuptools
 langchain-ollama
 secp256k1
+ollama
