@@ -223,7 +223,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         - Extract from the image:
         - country: ISO-3166-1 alpha-2
         - id_number, name: string or null
-        - date_of_birth, document_expiration: Unix timestamp or null
+        - date_of_birth, document_expiration: date string in YYYY-MM-DD format or null
         - name: first and last
 
         Only set "success": true if:
