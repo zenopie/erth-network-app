@@ -274,7 +274,7 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
         id_image_clean = id_image.split(',', 1)[1]
         print(f"id_image: {id_image[:50]}...")
         print(f"selfie_image: {selfie_image[:50]}...")
-        response = ollama_client.generate(
+        raw_response = ollama_client.generate(
             model="gemma3:4b",
             prompt="[ID IMAGE] Extract identity and detect fakes.",
             images=[id_image_clean],  # e.g. URL string or bytes
@@ -283,10 +283,10 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
             options={'temperature': 0},
         )
 
-        print(f"Raw response: {response}")
+        print(f"Raw response: {raw_response}")
 
         # Strip markdown (```json ... ```)
-        cleaned = re.sub(r'^```json|```$', '', raw_response.strip(), flags=re.MULTILINE).strip()
+        cleaned = re.sub(r'^```json|```$', '', raw_response.response.strip(), flags=re.MULTILINE).strip()
         result = json.loads(cleaned)
 
         print(f"Parsed result: {result}")
