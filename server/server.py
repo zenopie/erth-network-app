@@ -283,13 +283,13 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
             options={'temperature': 0},
         )
 
-        print(f"Raw response: {raw_response}")
+        # print(f"Raw response: {raw_response}")
 
         # Strip markdown (```json ... ```)
         cleaned = re.sub(r'^```json|```$', '', raw_response.response.strip(), flags=re.MULTILINE).strip()
         result = json.loads(cleaned)
 
-        print(f"Parsed result: {result}")
+        # print(f"Parsed result: {result}")
         return {
             "success": result["success"],
             "identity": result["identity"],
@@ -413,11 +413,16 @@ async def register(req: RegisterRequest):
                   "error": "Identity verification failed",
                 }
             )
+        
+        identity_hash = generate_hash(result["identity"])
+        print(result["identity"]["name"])
+        print(f"Identity Hash: {identity_hash}")
+
 
         message_object = {
             "register": {
                 "address": address,
-                "id_hash": generate_hash(result["identity"]),
+                "id_hash": identity_hash,
                 "affiliate": referred,
             }
         }
