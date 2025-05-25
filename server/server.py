@@ -38,7 +38,7 @@ app.add_middleware(
 # Constants
 WEBHOOK_PORT = 5000
 REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
-REGISTRATION_HASH = "d76c0e4fcd429eed81c423911d7bdd43b4533bcb1c3cac5c02d212cb393434ef"
+REGISTRATION_HASH = "a31a5c5311f8e0d0a48116b11f349ca1ebb7be5d51bdecead3c79a66a2ab74d3"
 ANALYTICS_FILE = "analyticsData.json"
 SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434" #CVM
 # SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434" #SecretAI
