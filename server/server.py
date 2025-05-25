@@ -302,39 +302,52 @@ async def process_images_with_ollama(id_image: str, selfie_image: Optional[str] 
             "identity": {"country": "", "id_number": "", "name": "", "date_of_birth": 0, "document_expiration": 0},
         }
 
-# Contract interaction
 async def contract_interaction(message_object: Dict):
-    """
-    Execute a contract interaction on the Secret Network.
-    
-    Args:
-        message_object (Dict): The message to send to the contract, e.g.,
-            {"register": {"address": address, "id_hash": id_hash, "affiliate": referred}}
-    
-    Returns:
-        The transaction response.
-    
-    Raises:
-        HTTPException: If the contract interaction fails.
-    """
     try:
-        
         # Construct the contract execution message
         msg = MsgExecuteContract(
-            sender=wallet.key.acc_address,  # Sender's address from the wallet
-            contract=REGISTRATION_CONTRACT,  # Target contract address
-            msg=message_object,              # Message payload for the contract
-            code_hash=REGISTRATION_HASH,     # Code hash of the contract
-            encryption_utils=secretpy.encrypt_utils  # Encryption utilities for privacy
+            sender=wallet.key.acc_address,
+            contract=REGISTRATION_CONTRACT,
+            msg=message_object,
+            code_hash=REGISTRATION_HASH,
+            encryption_utils=secretpy.encrypt_utils
         )
         
-        # Broadcast the transaction to the network
+        # Broadcast the transaction
         resp = wallet.create_and_broadcast_tx(
-            msg_list=[msg],  # List of messages (here, just one)
-            memo="",         # Optional memo field
-            gas=1_000_000,   # Gas limit for the transaction
+            msg_list=[msg],
+            memo="",
+            gas=1_000_000,
         )
-        return resp
+        
+        # Check if broadcast was successful
+        if resp.code != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Transaction failed with code {resp.code}: {resp.raw_log}"
+            )
+        
+        # Poll for transaction result
+        tx_hash = resp.txhash
+        while True:
+            try:
+                tx_info = wallet.query.tx(tx_hash)  # Query transaction status
+                if tx_info['code'] == 0:  # Success
+                    return tx_info
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Transaction failed: {tx_info['raw_log']}"
+                    )
+            except Exception as e:
+                # If transaction is not found yet, wait and retry
+                if "tx not found" in str(e).lower():
+                    await asyncio.sleep(1)  # Wait 1 second before retrying
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error querying transaction: {e}"
+                    )
     
     except Exception as e:
         print(f"RPC error during contract interaction: {e}")
