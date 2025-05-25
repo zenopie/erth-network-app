@@ -40,7 +40,8 @@ WEBHOOK_PORT = 5000
 REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "d76c0e4fcd429eed81c423911d7bdd43b4533bcb1c3cac5c02d212cb393434ef"
 ANALYTICS_FILE = "analyticsData.json"
-SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434"
+SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434" #CVM
+# SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434" #SecretAI
 ollama_client = Client(
     host=SECRET_AI_URL,
 )
