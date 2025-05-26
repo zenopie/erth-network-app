@@ -364,7 +364,7 @@ const LilaChat = () => {
         )}
         <textarea
           className="secret-chat-input"
-          placeholder="Ask Lila(लीला) anything..."
+          placeholder="Ask Aya (آية) anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
