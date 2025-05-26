@@ -6,6 +6,7 @@ import time
 import re
 from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from secret_sdk.client.lcd import LCDClient
@@ -16,7 +17,6 @@ from secret_ai_sdk.secret_ai import ChatSecret
 from ollama import Client
 import aiofiles
 import aiohttp
-import schedule
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -64,12 +64,22 @@ if not WALLET_KEY:
 secretpy: LCDClient = None
 wallet = None
 
+scheduler = AsyncIOScheduler()
+scheduler.add_job(update_erth_values, 'interval', days=1, start_date='2023-01-01 00:00:00')
+
+
 @app.on_event("startup")
 async def startup():
     global secretpy, wallet
     secretpy = LCDClient("https://lcd.erth.network", "secret-4")
     mk = MnemonicKey(mnemonic=WALLET_KEY)
     wallet = secretpy.wallet(mk)
+    init_analytics()
+    scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    scheduler.shutdown()
 
 # Analytics data
 analytics_history = []
@@ -107,16 +117,18 @@ UNIFIED_POOL_HASH = "1c2220105c2a33edf4bbafacecb6cbdf317dac26289ada1df0cec1abc73
 def load_analytics_data():
     global analytics_history
     try:
-        if os.path.exists(ANALYTICS_FILE):
-            with open(ANALYTICS_FILE, "r") as f:
-                analytics_history = json.load(f)
-            print(f"[analyticsManager] Loaded {len(analytics_history)} historical data points")
-        else:
+        if not os.path.exists(ANALYTICS_FILE):
             print(f"[analyticsManager] No analytics file found at {ANALYTICS_FILE}")
+            analytics_history = []
+            return
+        with open(ANALYTICS_FILE, "r") as f:
+            analytics_history = json.load(f)
+            print(f"[analyticsManager] Loaded {len(analytics_history)} historical data points")
     except Exception as e:
         print(f"[analyticsManager] Error loading analytics data: {e}")
         analytics_history = []
 
+# Save analytics data
 def save_analytics_data():
     try:
         with open(ANALYTICS_FILE, "w") as f:
@@ -124,10 +136,6 @@ def save_analytics_data():
     except Exception as e:
         print(f"[analyticsManager] Error saving analytics data: {e}")
 
-# Save analytics data
-def save_analytics_data():
-    with open(ANALYTICS_FILE, "w") as f:
-        json.dump(analytics_history, f, indent=2)
 
 # Reset analytics data
 def reset_analytics_data():
@@ -139,31 +147,41 @@ def reset_analytics_data():
 # Update analytics
 async def update_erth_values():
     try:
-        print("[analyticsManager] Updating ERTH analytics...")
+        print("[analyticsManager] Starting ERTH analytics update...")
         async with aiohttp.ClientSession() as session:
-            # Fetch token prices from Coingecko
             token_ids = ",".join(t["coingeckoId"] for t in tokens.values() if "coingeckoId" in t)
+            print(f"[analyticsManager] Fetching prices for tokens: {token_ids}")
             async with session.get(f"https://api.coingecko.com/api/v3/simple/price?ids={token_ids}&vs_currencies=usd") as resp:
+                if resp.status != 200:
+                    raise Exception(f"Coingecko API failed: {await resp.text()}")
                 price_data = await resp.json()
+                print(f"[analyticsManager] Coingecko response: {price_data}")
             prices = {k: price_data[t["coingeckoId"]]["usd"] for k, t in tokens.items() if "coingeckoId" in t}
+            print(f"[analyticsManager] Prices: {prices}")
 
             # Query ERTH total supply
+            print(f"[analyticsManager] Querying ERTH contract: {tokens['ERTH']['contract']}")
             erth_info = await secretpy.wasm.contract_query(
                 tokens["ERTH"]["contract"], {"token_info": {}}, code_hash=tokens["ERTH"]["hash"]
             )
             erth_total_supply = int(erth_info["token_info"]["total_supply"]) / 10**tokens["ERTH"]["decimals"]
+            print(f"[analyticsManager] ERTH total supply: {erth_total_supply}")
 
             # Query ANML total supply
+            print(f"[analyticsManager] Querying ANML contract: {tokens['ANML']['contract']}")
             anml_info = await secretpy.wasm.contract_query(
                 tokens["ANML"]["contract"], {"token_info": {}}, code_hash=tokens["ANML"]["hash"]
             )
             anml_total_supply = int(anml_info["token_info"]["total_supply"]) / 10**tokens["ANML"]["decimals"]
+            print(f"[analyticsManager] ANML total supply: {anml_total_supply}")
 
             # Unified pool query
             pool_addresses = [t["contract"] for k, t in tokens.items() if k != "ERTH"]
+            print(f"[analyticsManager] Querying unified pool: {UNIFIED_POOL_CONTRACT} with pools {pool_addresses}")
             unified_pool_res = await secretpy.wasm.contract_query(
                 UNIFIED_POOL_CONTRACT, {"query_pool_info": {"pools": pool_addresses}}, code_hash=UNIFIED_POOL_HASH
             )
+            print(f"[analyticsManager] Unified pool response: {unified_pool_res}")
 
             total_weighted_price = 0
             total_liquidity = 0
@@ -176,6 +194,7 @@ async def update_erth_values():
                 tk = tokens[token_key]
                 erth_reserve = int(st["state"]["erth_reserve"]) / 10**tokens["ERTH"]["decimals"]
                 token_reserve = int(st["state"]["token_b_reserve"]) / 10**tk["decimals"]
+                print(f"[analyticsManager] Processing pool {token_key}: erth_reserve={erth_reserve}, token_reserve={token_reserve}")
                 if token_key == "ANML":
                     anml_data = {"token_reserve": token_reserve, "erth_reserve": erth_reserve}
                 else:
@@ -186,13 +205,14 @@ async def update_erth_values():
                     pool_data.append({"token": token_key, "erthPrice": pool_price, "tvl": pool_tvl})
 
             global_erth_price = total_weighted_price / total_liquidity if total_liquidity else 0
+            print(f"[analyticsManager] Global ERTH price: {global_erth_price}")
             if "anml_data" in locals():
                 anml_price_final = (anml_data["erth_reserve"] / anml_data["token_reserve"]) * global_erth_price
                 anml_tvl = anml_data["token_reserve"] * anml_price_final + anml_data["erth_reserve"] * global_erth_price
                 total_liquidity += anml_tvl
                 pool_data.append({"token": "ANML", "erthPrice": global_erth_price, "tvl": anml_tvl})
 
-            now = int(time.time() * 1000) // (24 * 60 * 60 * 1000) * (24 * 60 * 60 * 1000)  # Midnight timestamp
+            now = int(time.time() * 1000) // (24 * 60 * 60 * 1000) * (24 * 60 * 60 * 1000)
             data_point = {
                 "timestamp": now,
                 "erthPrice": global_erth_price,
@@ -209,23 +229,26 @@ async def update_erth_values():
             print(f"[analyticsManager] Updated global analytics: {data_point}")
     except Exception as e:
         print(f"[analyticsManager] Error updating analytics: {e}")
+        raise  # Re-raise to ensure init_analytics logs the error
 
-# Schedule daily updates
-def schedule_next_update():
-    schedule.every().day.at("00:00").do(lambda: asyncio.run(update_erth_values()))
+
 
 # Initialize analytics
 def init_analytics(reset_data: bool = False):
+    print("[analyticsManager] Initializing analytics...")
     if reset_data:
         reset_analytics_data()
     else:
         load_analytics_data()
     if not analytics_history or (time.time() * 1000 - analytics_history[-1]["timestamp"]) >= 24 * 60 * 60 * 1000:
         try:
+            print("[analyticsManager] Analytics empty or outdated, updating...")
             asyncio.run(update_erth_values())
         except Exception as e:
             print(f"[init_analytics] Failed to update analytics: {e}")
-    schedule_next_update()
+    else:
+    print("[analyticsManager] Analytics up to date, no update needed")
+    print("[analyticsManager] Analytics initialization complete")
 
 # Secret AI image processing
 # Replace ChatSecret with Ollama Chat in process_images
@@ -340,27 +363,26 @@ async def contract_interaction(message_object: Dict):
                 detail=f"Transaction failed with code {resp.code}: {resp.raw_log}"
             )
         
-        # Poll for transaction result
+        # Get the transaction hash
         tx_hash = resp.txhash
-        while True:
+        
+        # Poll for transaction result with a timeout
+        max_attempts = 30
+        for attempt in range(max_attempts):
             try:
-                tx_info = secretpy.tx.tx_info(tx_hash)  # Attempt to query transaction
-                if tx_info['code'] == 0:  # Success
+                tx_info = secretpy.tx.tx_info(tx_hash)
+                if tx_info['code'] == 0:
                     return tx_info
                 else:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Transaction failed: {tx_info['raw_log']}"
-                    )
+                    raise HTTPException(status_code=500, detail=f"Transaction failed: {tx_info['raw_log']}")
             except Exception as e:
-                # If transaction is not found yet, wait and retry
                 if "tx not found" in str(e).lower():
-                    await asyncio.sleep(1)  # Wait 1 second before retrying
+                    if attempt < max_attempts - 1:  # Retry unless it's the last attempt
+                        await asyncio.sleep(1)
+                    else:
+                        raise HTTPException(status_code=500, detail="Transaction timeout")
                 else:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Error querying transaction: {e}"
-                    )
+                    raise HTTPException(status_code=500, detail=f"Error querying transaction: {e}")
     
     except Exception as e:
         print(f"RPC error during contract interaction: {e}")
@@ -482,6 +504,5 @@ async def register(req: RegisterRequest):
         )
 # Start server
 if __name__ == "__main__":
-    init_analytics()
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=WEBHOOK_PORT)
