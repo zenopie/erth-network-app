@@ -64,8 +64,7 @@ if not WALLET_KEY:
 secretpy: LCDClient = None
 wallet = None
 
-scheduler = AsyncIOScheduler()
-scheduler.add_job(update_erth_values, 'interval', days=1, start_date='2023-01-01 00:00:00')
+
 
 
 @app.on_event("startup")
@@ -249,6 +248,10 @@ def init_analytics(reset_data: bool = False):
     else:
         print("[analyticsManager] Analytics up to date, no update needed")
     print("[analyticsManager] Analytics initialization complete")
+
+
+scheduler = AsyncIOScheduler()
+scheduler.add_job(update_erth_values, 'interval', days=1, start_date='2023-01-01 00:00:00')
 
 # Secret AI image processing
 # Replace ChatSecret with Ollama Chat in process_images
