@@ -469,6 +469,6 @@ async def register(req: RegisterRequest):
         )
 # Start server
 if __name__ == "__main__":
-    # init_analytics()
+    init_analytics()
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=WEBHOOK_PORT)
