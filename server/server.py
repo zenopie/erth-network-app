@@ -334,7 +334,7 @@ async def contract_interaction(message_object: Dict):
         tx_hash = resp.txhash
         while True:
             try:
-                tx_info = wallet.query.tx(tx_hash)  # Query transaction status
+                tx_info = secretpy.tx.tx_info(tx_hash)  # Attempt to query transaction
                 if tx_info['code'] == 0:  # Success
                     return tx_info
                 else:
