@@ -111,8 +111,18 @@ def load_analytics_data():
             with open(ANALYTICS_FILE, "r") as f:
                 analytics_history = json.load(f)
             print(f"[analyticsManager] Loaded {len(analytics_history)} historical data points")
+        else:
+            print(f"[analyticsManager] No analytics file found at {ANALYTICS_FILE}")
     except Exception as e:
-        print(f"Error loading analytics data: {e}")
+        print(f"[analyticsManager] Error loading analytics data: {e}")
+        analytics_history = []
+
+def save_analytics_data():
+    try:
+        with open(ANALYTICS_FILE, "w") as f:
+            json.dump(analytics_history, f, indent=2)
+    except Exception as e:
+        print(f"[analyticsManager] Error saving analytics data: {e}")
 
 # Save analytics data
 def save_analytics_data():
