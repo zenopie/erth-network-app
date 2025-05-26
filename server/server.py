@@ -247,7 +247,7 @@ def init_analytics(reset_data: bool = False):
         except Exception as e:
             print(f"[init_analytics] Failed to update analytics: {e}")
     else:
-    print("[analyticsManager] Analytics up to date, no update needed")
+        print("[analyticsManager] Analytics up to date, no update needed")
     print("[analyticsManager] Analytics initialization complete")
 
 # Secret AI image processing
