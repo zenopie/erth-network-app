@@ -352,12 +352,17 @@ async def contract_interaction(message_object: Dict):
             encryption_utils=secretpy.encrypt_utils
         )
         
-        # Broadcast the transaction
-        resp = wallet.create_and_broadcast_tx(
+        # Create transaction
+        tx = wallet.create_tx(
             msg_list=[msg],
             memo="",
             gas=1_000_000,
         )
+        
+        # Broadcast the transaction synchronously
+        resp = await secretpy.tx.broadcast_sync(tx)
+
+        print(f"Raw transaction response: {resp}")
         
         # Check if broadcast was successful
         if resp.code != 0:
@@ -366,26 +371,6 @@ async def contract_interaction(message_object: Dict):
                 detail=f"Transaction failed with code {resp.code}: {resp.raw_log}"
             )
         
-        # Get the transaction hash
-        tx_hash = resp.txhash
-        
-        # Poll for transaction result with a timeout
-        max_attempts = 30
-        for attempt in range(max_attempts):
-            try:
-                tx_info = secretpy.tx.tx_info(tx_hash)
-                if tx_info['code'] == 0:
-                    return tx_info
-                else:
-                    raise HTTPException(status_code=500, detail=f"Transaction failed: {tx_info['raw_log']}")
-            except Exception as e:
-                if "tx not found" in str(e).lower():
-                    if attempt < max_attempts - 1:  # Retry unless it's the last attempt
-                        await asyncio.sleep(1)
-                    else:
-                        raise HTTPException(status_code=500, detail="Transaction timeout")
-                else:
-                    raise HTTPException(status_code=500, detail=f"Error querying transaction: {e}")
     
     except Exception as e:
         print(f"RPC error during contract interaction: {e}")
@@ -393,7 +378,6 @@ async def contract_interaction(message_object: Dict):
             status_code=500,
             detail="Contract interaction failed due to RPC error"
         )
-
 # Hash generation
 def generate_hash(data: Dict) -> str:
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
