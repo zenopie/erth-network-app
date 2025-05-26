@@ -160,7 +160,7 @@ async def update_erth_values():
 
             # Query ERTH total supply
             print(f"[analyticsManager] Querying ERTH contract: {tokens['ERTH']['contract']}")
-            erth_info = await secretpy.wasm.contract_query(
+            erth_info = secretpy.wasm.contract_query(
                 tokens["ERTH"]["contract"], {"token_info": {}}
             )
             erth_total_supply = int(erth_info["token_info"]["total_supply"]) / 10**tokens["ERTH"]["decimals"]
@@ -168,7 +168,7 @@ async def update_erth_values():
 
             # Query ANML total supply
             print(f"[analyticsManager] Querying ANML contract: {tokens['ANML']['contract']}")
-            anml_info = await secretpy.wasm.contract_query(
+            anml_info = secretpy.wasm.contract_query(
                 tokens["ANML"]["contract"], {"token_info": {}}
             )
             anml_total_supply = int(anml_info["token_info"]["total_supply"]) / 10**tokens["ANML"]["decimals"]
@@ -177,7 +177,7 @@ async def update_erth_values():
             # Unified pool query
             pool_addresses = [t["contract"] for k, t in tokens.items() if k != "ERTH"]
             print(f"[analyticsManager] Querying unified pool: {UNIFIED_POOL_CONTRACT} with pools {pool_addresses}")
-            unified_pool_res = await secretpy.wasm.contract_query(
+            unified_pool_res = secretpy.wasm.contract_query(
                 UNIFIED_POOL_CONTRACT, {"query_pool_info": {"pools": pool_addresses}}
             )
             print(f"[analyticsManager] Unified pool response: {unified_pool_res}")
