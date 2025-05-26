@@ -211,7 +211,10 @@ def init_analytics(reset_data: bool = False):
     else:
         load_analytics_data()
     if not analytics_history or (time.time() * 1000 - analytics_history[-1]["timestamp"]) >= 24 * 60 * 60 * 1000:
-        asyncio.run(update_erth_values())
+        try:
+            asyncio.run(update_erth_values())
+        except Exception as e:
+            print(f"[init_analytics] Failed to update analytics: {e}")
     schedule_next_update()
 
 # Secret AI image processing
