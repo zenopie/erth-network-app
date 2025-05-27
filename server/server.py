@@ -354,7 +354,7 @@ async def contract_interaction(message_object: Dict):
         
         # Create transaction
         tx = wallet.create_tx(
-            msg_list=[msg],
+            msgs=[msg],
             memo="",
             gas=1_000_000,
         )
