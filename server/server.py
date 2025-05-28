@@ -374,10 +374,10 @@ async def contract_interaction(message_object: Dict):
         for attempt in range(max_attempts):
             try:
                 tx_info = secretpy.tx.tx_info(tx_hash)
-                if tx_info['code'] == 0:
+                if tx_info.code == 0:
                     return tx_info
                 else:
-                    raise HTTPException(status_code=500, detail=f"Transaction failed: {tx_info['raw_log']}")
+                    raise HTTPException(status_code=500, detail=f"Transaction failed: {tx_info.raw_log}") 
             except Exception as e:
                 if "tx not found" in str(e).lower():
                     if attempt < max_attempts - 1:  # Retry unless it's the last attempt
