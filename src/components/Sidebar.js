@@ -125,17 +125,6 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
               <span className="link_name">SCRT Dashboard</span>
             </a>
           </li>
-          <li>
-            <a
-              href="https://app.fina.cash/"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => isMobile && setIsMobileMenuOpen(false)}
-            >
-              <i className="bx bx-credit-card"></i>
-              <span className="link_name">FINA Card</span>
-            </a>
-          </li>
           <li className={`submenu ${isExperimentsOpen ? "open" : ""}`}>
             <div
               onClick={() => {
