@@ -17,11 +17,7 @@ const secretNetworkClient = new SecretNetworkClient({
   chainId: TESTNET_CHAIN_ID,
 });
 
-// Regex to find a complete <think>...</think> block
-const COMPLETE_THINK_TAG_REGEX = /<think>[\s\S]*?<\/think>/gs;
-// Regex to find the start of a think block, for cleaning incomplete streams
 const INCOMPLETE_THINK_TAG_REGEX = /<think>[\s\S]*/s;
-
 
 const LilaChat = () => {
   const [models, setModels] = useState([]);
@@ -45,6 +41,7 @@ const LilaChat = () => {
   const userInteracted = useRef(false);
   const fileInputRef = useRef(null);
 
+  // --- All useEffects and helper functions before handleSendMessage are correct ---
   useEffect(() => {
     async function connectTestnetKeplr() {
       if (!window.keplr) return console.error("Please install Keplr.");
@@ -53,9 +50,7 @@ const LilaChat = () => {
         const signer = window.getOfflineSignerOnlyAmino(TESTNET_CHAIN_ID);
         const accounts = await signer.getAccounts();
         setUserAddress(accounts[0].address);
-      } catch (error) {
-        console.error("Error reconnecting to testnet:", error);
-      }
+      } catch (error) { console.error("Error reconnecting to testnet:", error); }
     }
     if (!userAddress) connectTestnetKeplr();
   }, [userAddress]);
@@ -79,7 +74,6 @@ const LilaChat = () => {
         showLoadingScreen(false);
       }
     };
-
     if (!initAttempted) {
       setInitAttempted(true);
       fetchModels();
@@ -117,6 +111,7 @@ const LilaChat = () => {
     }
   };
 
+  // --- MAJOR FIXES ARE IN THIS FUNCTION ---
   const handleSendMessage = async () => {
     if (loading || modelsLoading || !input.trim() || !selectedModel) return;
     
@@ -129,18 +124,15 @@ const LilaChat = () => {
 
     const userMessage = { role: "user", content: pendingImage ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }] : input };
     const assistantPlaceholder = { role: "assistant", content: "" };
-    const messagesToSend = [...messages, userMessage];
-    setMessages([...messagesToSend, assistantPlaceholder]);
+    setMessages(prev => [...prev, userMessage, assistantPlaceholder]);
     setInput("");
     setPendingImage(null);
-
-    let finalThinkingText = "";
-
+    
     try {
       const response = await fetch(SERVER_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: selectedModel, messages: messagesToSend, stream: true }),
+        body: JSON.stringify({ model: selectedModel, messages: messages.concat(userMessage), stream: true }),
         signal: controller.signal,
       });
 
@@ -150,6 +142,7 @@ const LilaChat = () => {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullResponseText = "";
+      let thinkingHasCompleted = false; // Flag to track if we've seen </think>
 
       while (true) {
         const { done, value } = await reader.read();
@@ -167,52 +160,58 @@ const LilaChat = () => {
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
-                    // --- FIX IS HERE: SEPARATE PARSING LOGIC ---
-                    
-                    // 1. Update the LIVE THINKING box
-                    const thinkMatch = fullResponseText.match(/<think>([\s\S]*?)(?:<\/think>|$)/s);
-                    if (thinkMatch && thinkMatch[1]) {
-                        setStreamingThinkingText(thinkMatch[1]);
-                    }
-
-                    // 2. Update the MAIN CONTENT bubble
-                    // First, remove any complete <think>...</think> blocks
-                    let visibleContent = fullResponseText.replace(COMPLETE_THINK_TAG_REGEX, "");
-                    // Then, remove any lingering, unclosed <think> tags for a clean display
-                    visibleContent = visibleContent.replace(INCOMPLETE_THINK_TAG_REGEX, "").trim();
-                    
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        if (newMessages.length > 0) {
-                           newMessages[newMessages.length - 1].content = visibleContent;
+                    // --- NEW LOGIC FOR SEPARATING STREAMS ---
+                    if (!thinkingHasCompleted) {
+                      if (fullResponseText.includes("</think>")) {
+                        thinkingHasCompleted = true;
+                        const finalThinkMatch = fullResponseText.match(/<think>([\s\S]*?)<\/think>/s);
+                        if (finalThinkMatch && finalThinkMatch[1]) {
+                          const finalThinkingText = finalThinkMatch[1].trim();
+                          // Commit final thinking text to the message object
+                          setMessages(prev => {
+                            const newMessages = [...prev];
+                            const lastMessage = newMessages[newMessages.length - 1];
+                            if (lastMessage && lastMessage.role === 'assistant') {
+                              lastMessage.thinking = finalThinkingText;
+                            }
+                            return newMessages;
+                          });
                         }
-                        return newMessages;
+                        // Clear the live thinking box immediately
+                        setStreamingThinkingText("");
+                      } else {
+                        // Still thinking, update the live box
+                        const thinkMatch = fullResponseText.match(/<think>([\s\S]*)/s);
+                        if (thinkMatch && thinkMatch[1]) {
+                          setStreamingThinkingText(thinkMatch[1]);
+                        }
+                      }
+                    }
+                    
+                    // Always update the main content bubble with cleaned text
+                    const visibleContent = fullResponseText.replace(INCOMPLETE_THINK_TAG_REGEX, "").trim();
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      const lastMessage = newMessages[newMessages.length - 1];
+                      if (lastMessage && lastMessage.role === 'assistant') {
+                        lastMessage.content = visibleContent;
+                      }
+                      return newMessages;
                     });
                 }
             } catch (error) { console.warn("Could not parse JSON line:", line); }
         }
       }
-      const finalThinkMatch = fullResponseText.match(/<think>([\s\S]*?)<\/think>/s);
-      if (finalThinkMatch) finalThinkingText = finalThinkMatch[1].trim();
-
     } catch (error) {
         if (error.name !== "AbortError") {
             console.error("Error in handleSendMessage:", error);
             setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }]);
         }
     } finally {
-      if (finalThinkingText) {
-          setMessages(prev => {
-              const newMessages = [...prev];
-              if (newMessages.length > 0) {
-                 newMessages[newMessages.length - 1].thinking = finalThinkingText;
-              }
-              return newMessages;
-          });
-      }
-      setStreamingThinkingText("");
+      // Cleanup is simpler now
       setLoading(false);
       setAbortController(null);
+      setStreamingThinkingText(""); // Final failsafe clear
     }
   };
 
@@ -243,43 +242,57 @@ const LilaChat = () => {
   return (
     <div className="secret-main-container">
       <div className="secret-chat-container" ref={chatContainerRef}>
-        {messages.map((msg, index) => (
-          <div key={index} className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}>
-            {msg.role === 'assistant' && msg.thinking && (
-              <div className="secret-thinking-apparatus">
-                <div className="secret-thinking-header">
-                  <span>Thinking...</span>
-                  <button className="secret-expand-button" onClick={() => toggleHistoricThinkBox(index)}>
-                    {expandedStates[index] ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
-                  </button>
+        {messages.map((msg, index) => {
+          const isLastMessage = index === messages.length - 1;
+
+          return (
+            <div key={index} className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}>
+              
+              {/* --- RENDER LOGIC IS RESTRUCTURED HERE --- */}
+
+              {/* 1. Render HISTORIC thinking box for any previous message */}
+              {msg.role === 'assistant' && msg.thinking && (
+                <div className="secret-thinking-apparatus">
+                  <div className="secret-thinking-header">
+                    <span>Thinking...</span>
+                    <button className="secret-expand-button" onClick={() => toggleHistoricThinkBox(index)}>
+                      {expandedStates[index] ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                    </button>
+                  </div>
+                  <div className={`secret-think-box ${expandedStates[index] ? 'expanded' : ''}`}>
+                    <pre>{msg.thinking}</pre>
+                  </div>
                 </div>
-                <div className={`secret-think-box ${expandedStates[index] ? 'expanded' : ''}`}>
-                  <pre>{msg.thinking}</pre>
+              )}
+
+              {/* 2. Render LIVE thinking box ONLY for the last assistant message while loading */}
+              {isLastMessage && msg.role === 'assistant' && loading && streamingThinkingText && (
+                <div className="secret-thinking-apparatus">
+                  <div className="secret-thinking-header">
+                    <span>Thinking...</span>
+                    <button className="secret-expand-button" onClick={() => setIsLiveThinkingExpanded(!isLiveThinkingExpanded)}>
+                      {isLiveThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                    </button>
+                  </div>
+                  <div className={`secret-think-box live-expanded ${isLiveThinkingExpanded ? 'expanded' : ''}`}>
+                    <pre ref={thinkingBoxRef}>{streamingThinkingText}</pre>
+                  </div>
                 </div>
-              </div>
-            )}
-            {msg.content && (
-              <div className="secret-message-content">
-                <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
-              </div>
-            )}
-          </div>
-        ))}
-        {streamingThinkingText && (
-          <div className="secret-message secret-assistant">
-            <div className="secret-thinking-apparatus">
-              <div className="secret-thinking-header">
-                <span>Thinking...</span>
-                <button className="secret-expand-button" onClick={() => setIsLiveThinkingExpanded(!isLiveThinkingExpanded)}>
-                  {isLiveThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
-                </button>
-              </div>
-              <div className={`secret-think-box live-expanded ${isLiveThinkingExpanded ? 'expanded' : ''}`}>
-                <pre ref={thinkingBoxRef}>{streamingThinkingText}</pre>
-              </div>
+              )}
+
+              {/* 3. Render the message content bubble */}
+              {(msg.content || (isLastMessage && loading && !streamingThinkingText)) && (
+                <div className="secret-message-content">
+                  <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
+                  {/* Show a blinking cursor or indicator while loading but not thinking */}
+                  {isLastMessage && loading && !streamingThinkingText && !msg.content && (
+                    <span style={{ animation: 'blink 1s infinite' }}>▍</span>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })}
       </div>
 
       <div className="secret-input-container">
