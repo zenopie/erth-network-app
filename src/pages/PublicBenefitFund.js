@@ -16,7 +16,7 @@ const PublicBenefitFund = ({ isKeplrConnected }) => {
   return (
     <div className="public-benefit-container">
       <AllocationFund
-        title="Public Benefit Fund"
+        title="Stewardship Fund"
         contract={this_contract}
         contractHash={this_hash}
         allocationNames={allocationNames}

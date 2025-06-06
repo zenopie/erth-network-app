@@ -104,7 +104,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             <ul className="submenu-list">
               <li>
                 <Link to="/public-benefit-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Public Benefit Fund
+                  Stewardship Fund
                 </Link>
               </li>
               <li>
