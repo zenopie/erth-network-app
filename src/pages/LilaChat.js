@@ -17,15 +17,13 @@ const secretNetworkClient = new SecretNetworkClient({
   chainId: TESTNET_CHAIN_ID,
 });
 
-const INCOMPLETE_THINK_TAG_REGEX = /<think>[\s\S]*/s;
-
 const LilaChat = () => {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("");
   const [modelsLoading, setModelsLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
-  const [isLiveThinkingExpanded, setIsLiveThinkingExpanded] = useState(true);
+  const [isLiveThinkingExpanded, setIsLiveThinkingExpanded] = useState(false);
   const [expandedStates, setExpandedStates] = useState({});
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState(null);
@@ -66,9 +64,8 @@ const LilaChat = () => {
           setModels(response.models);
           setSelectedModel(response.models[0]);
         }
-      } catch (error) {
-        console.error("CRITICAL: Failed to fetch models.", error);
-      } finally {
+      } catch (error) { console.error("CRITICAL: Failed to fetch models.", error); } 
+      finally {
         setModelsLoading(false);
         showLoadingScreen(false);
       }
@@ -115,7 +112,7 @@ const LilaChat = () => {
     
     userInteracted.current = false;
     setLoading(true);
-    setIsLiveThinkingExpanded(true);
+    setIsLiveThinkingExpanded(false);
     setSettingsOpen(false);
     const controller = new AbortController();
     setAbortController(controller);
@@ -127,6 +124,9 @@ const LilaChat = () => {
     setInput("");
     setPendingImage(null);
     
+    let fullResponseText = "";
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gs;
+
     try {
       const response = await fetch(SERVER_API_URL, {
         method: "POST",
@@ -140,9 +140,7 @@ const LilaChat = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let fullResponseText = "";
-      let thinkingHasCompleted = false;
-
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -159,38 +157,37 @@ const LilaChat = () => {
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
-                    if (!thinkingHasCompleted) {
-                      if (fullResponseText.includes("</think>")) {
-                        thinkingHasCompleted = true;
-                        const finalThinkMatch = fullResponseText.match(/<think>([\s\S]*?)<\/think>/s);
-                        if (finalThinkMatch?.[1]) {
-                          const finalThinkingText = finalThinkMatch[1].trim();
-                          setMessages(prev => {
-                            const newMessages = [...prev];
-                            const lastMessage = newMessages[newMessages.length - 1];
-                            if (lastMessage?.role === 'assistant') {
-                              lastMessage.thinking = finalThinkingText;
-                            }
-                            return newMessages;
-                          });
-                        }
-                        setStreamingThinkingText("");
-                      } else {
-                        const thinkMatch = fullResponseText.match(/<think>([\s\S]*)/s);
-                        if (thinkMatch?.[1]) {
-                          setStreamingThinkingText(thinkMatch[1]);
-                        }
-                      }
+                    const completedThinks = [];
+                    thinkRegex.lastIndex = 0; 
+                    let match;
+                    while ((match = thinkRegex.exec(fullResponseText)) !== null) {
+                        completedThinks.push(match[1].trim());
                     }
+                    const finalizedThinkingText = completedThinks.join("\n\n---\n\n");
+
+                    let liveThinkingText = "";
+                    const lastThinkStart = fullResponseText.lastIndexOf("<think>");
+                    const lastThinkEnd = fullResponseText.lastIndexOf("</think>");
+                    if (lastThinkStart !== -1 && lastThinkStart > lastThinkEnd) {
+                        liveThinkingText = fullResponseText.substring(lastThinkStart + 7);
+                    }
+                    setStreamingThinkingText(liveThinkingText);
+
+                    const visibleContent = fullResponseText
+                        .replace(thinkRegex, "")
+                        .replace(/<think>[\s\S]*/s, "")
+                        .trim();
                     
-                    const visibleContent = fullResponseText.replace(INCOMPLETE_THINK_TAG_REGEX, "").trim();
                     setMessages(prev => {
-                      const newMessages = [...prev];
-                      const lastMessage = newMessages[newMessages.length - 1];
-                      if (lastMessage?.role === 'assistant') {
-                        lastMessage.content = visibleContent;
-                      }
-                      return newMessages;
+                        const newMessages = [...prev];
+                        const lastMessage = newMessages[newMessages.length - 1];
+                        if (lastMessage?.role === 'assistant') {
+                            lastMessage.content = visibleContent;
+                            if (finalizedThinkingText.length > 0) {
+                                lastMessage.thinking = finalizedThinkingText;
+                            }
+                        }
+                        return newMessages;
                     });
                 }
             } catch (error) { console.warn("Could not parse JSON line:", line); }
@@ -199,13 +196,35 @@ const LilaChat = () => {
     } catch (error) {
         if (error.name !== "AbortError") {
             console.error("Error in handleSendMessage:", error);
-            // Correctly removes only the assistant placeholder on error
             setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }]);
         }
     } finally {
-      setLoading(false);
-      setAbortController(null);
-      setStreamingThinkingText("");
+        thinkRegex.lastIndex = 0;
+        const finalThinkBlocks = [];
+        let match;
+        while ((match = thinkRegex.exec(fullResponseText)) !== null) {
+            finalThinkBlocks.push(match[1].trim());
+        }
+        const finalThinking = finalThinkBlocks.join("\n\n---\n\n");
+        const finalContent = fullResponseText.replace(thinkRegex, "").trim();
+
+        setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (lastMessage?.role === 'assistant') {
+                lastMessage.content = finalContent;
+                if (finalThinking.length > 0) {
+                    lastMessage.thinking = finalThinking;
+                } else {
+                    delete lastMessage.thinking;
+                }
+            }
+            return newMessages;
+        });
+      
+        setStreamingThinkingText("");
+        setLoading(false);
+        setAbortController(null);
     }
   };
 
@@ -238,15 +257,15 @@ const LilaChat = () => {
       <div className="secret-chat-container" ref={chatContainerRef}>
         {messages.map((msg, index) => {
           const isLastMessage = index === messages.length - 1;
+          
           return (
             <div key={index} className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}>
-              {/* --- THE PRIMARY FIX IS IN THE SIMPLIFIED JSX BELOW --- */}
-
-              {/* 1. Render historic thinking box for any previous assistant message */}
+              
+              {/* Render HISTORIC thoughts box (will only exist if thinking text was not empty) */}
               {msg.role === 'assistant' && msg.thinking && (
                 <div className="secret-thinking-apparatus">
                   <div className="secret-thinking-header">
-                    <span>Thinking...</span>
+                    <span>Thoughts</span>
                     <button className="secret-expand-button" onClick={() => toggleHistoricThinkBox(index)}>
                       {expandedStates[index] ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
                     </button>
@@ -257,8 +276,8 @@ const LilaChat = () => {
                 </div>
               )}
 
-              {/* 2. Render LIVE thinking box ONLY if it's currently active */}
-              {isLastMessage && streamingThinkingText && (
+              {/* Render LIVE thinking box only if there's non-whitespace text */}
+              {isLastMessage && streamingThinkingText.trim().length > 0 && (
                 <div className="secret-thinking-apparatus">
                   <div className="secret-thinking-header">
                     <span>Thinking...</span>
@@ -266,14 +285,18 @@ const LilaChat = () => {
                       {isLiveThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
                     </button>
                   </div>
-                  <div className={`secret-think-box live-expanded ${isLiveThinkingExpanded ? 'expanded' : ''}`}>
+                  <div className={`secret-think-box live-preview ${isLiveThinkingExpanded ? 'expanded' : ''}`}>
                     <pre ref={thinkingBoxRef}>{streamingThinkingText}</pre>
                   </div>
                 </div>
               )}
 
-              {/* 3. Render the message content bubble ONLY if there is content to show */}
-              {msg.content && (
+              {/* 
+                --- THE FIX IS HERE ---
+                Render the message content bubble if it has content OR if it's the loading placeholder.
+                This prevents the bubble from disappearing and reappearing during the streaming process.
+              */}
+              {(msg.content || (isLastMessage && loading)) && (
                  <div className="secret-message-content">
                     <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
                  </div>

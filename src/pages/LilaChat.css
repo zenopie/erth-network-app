@@ -61,8 +61,8 @@
 }
 
 .secret-thinking-apparatus {
+  max-width: 80%;
   width: 100%;
-  max-width: 100%;
   border-radius: 12px;
   border: 1px solid #2dc08d30;
   background: #fdfdfd;
@@ -111,24 +111,33 @@
   font-style: normal;
 }
 
+/* --- FIX 1: True Zero-Height Collapse --- */
 .secret-think-box pre {
   margin: 0;
-  padding: 12px;
   white-space: pre-wrap;
   word-wrap: break-word;
+  overflow: hidden; /* Hide content while collapsed */
+  /* Collapsed State: No height or vertical padding */
   max-height: 0;
-  overflow-y: auto;
-  transition: max-height 0.3s ease-in-out;
+  padding: 0 12px;
+  transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
 }
-
 .secret-think-box.expanded pre {
+  /* Expanded State: Full height and vertical padding */
   max-height: 400px;
+  padding: 12px;
+  overflow-y: auto;
 }
-.secret-think-box.live-expanded pre {
-  max-height: 100px;
+.secret-think-box.live-preview pre {
+  /* Live Preview State: One-line height and vertical padding */
+  max-height: 48px;
+  padding: 12px;
+  overflow-y: hidden;
 }
-.secret-think-box.live-expanded.expanded pre {
+.secret-think-box.live-preview.expanded pre {
+  /* Expanded Live Preview */
   max-height: 400px;
+  overflow-y: auto;
 }
 
 .secret-think-box pre::-webkit-scrollbar {
