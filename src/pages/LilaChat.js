@@ -199,7 +199,8 @@ const LilaChat = () => {
     } catch (error) {
         if (error.name !== "AbortError") {
             console.error("Error in handleSendMessage:", error);
-            setMessages(prev => [...prev.slice(0, -2), { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }]);
+            // Correctly removes only the assistant placeholder on error
+            setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }]);
         }
     } finally {
       setLoading(false);
@@ -239,37 +240,43 @@ const LilaChat = () => {
           const isLastMessage = index === messages.length - 1;
           return (
             <div key={index} className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}>
-              {/* --- SIMPLIFIED AND CORRECTED RENDER LOGIC --- */}
-              
-              {/* 1. Render historic or live thinking box */}
-              {(msg.role === 'assistant' && msg.thinking) || (isLastMessage && streamingThinkingText) ? (
+              {/* --- THE PRIMARY FIX IS IN THE SIMPLIFIED JSX BELOW --- */}
+
+              {/* 1. Render historic thinking box for any previous assistant message */}
+              {msg.role === 'assistant' && msg.thinking && (
                 <div className="secret-thinking-apparatus">
                   <div className="secret-thinking-header">
                     <span>Thinking...</span>
-                    <button className="secret-expand-button" onClick={isLastMessage && streamingThinkingText ? () => setIsLiveThinkingExpanded(!isLiveThinkingExpanded) : () => toggleHistoricThinkBox(index)}>
-                      {isLastMessage && streamingThinkingText ? (isLiveThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />) : (expandedStates[index] ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />)}
+                    <button className="secret-expand-button" onClick={() => toggleHistoricThinkBox(index)}>
+                      {expandedStates[index] ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
                     </button>
                   </div>
-                  <div className={`secret-think-box ${isLastMessage && streamingThinkingText ? `live-expanded ${isLiveThinkingExpanded ? 'expanded' : ''}` : (expandedStates[index] ? 'expanded' : '')}`}>
-                    <pre ref={isLastMessage && streamingThinkingText ? thinkingBoxRef : null}>
-                      {isLastMessage && streamingThinkingText ? streamingThinkingText : msg.thinking}
-                    </pre>
+                  <div className={`secret-think-box ${expandedStates[index] ? 'expanded' : ''}`}>
+                    <pre>{msg.thinking}</pre>
                   </div>
                 </div>
-              ) : null}
+              )}
 
-              {/* 2. Render the message content bubble. It will appear empty at first. */}
-              {msg.role === 'assistant' ? (
-                <div className="secret-message-content">
-                  <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
-                  {isLastMessage && loading && !msg.content && !streamingThinkingText && (
-                    <span className="secret-blinking-cursor">▍</span>
-                  )}
+              {/* 2. Render LIVE thinking box ONLY if it's currently active */}
+              {isLastMessage && streamingThinkingText && (
+                <div className="secret-thinking-apparatus">
+                  <div className="secret-thinking-header">
+                    <span>Thinking...</span>
+                    <button className="secret-expand-button" onClick={() => setIsLiveThinkingExpanded(!isLiveThinkingExpanded)}>
+                      {isLiveThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                    </button>
+                  </div>
+                  <div className={`secret-think-box live-expanded ${isLiveThinkingExpanded ? 'expanded' : ''}`}>
+                    <pre ref={thinkingBoxRef}>{streamingThinkingText}</pre>
+                  </div>
                 </div>
-              ) : (
-                <div className="secret-message-content">
-                  <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
-                </div>
+              )}
+
+              {/* 3. Render the message content bubble ONLY if there is content to show */}
+              {msg.content && (
+                 <div className="secret-message-content">
+                    <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
+                 </div>
               )}
             </div>
           );
