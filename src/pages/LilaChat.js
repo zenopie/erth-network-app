@@ -292,11 +292,11 @@ const LilaChat = () => {
               )}
 
               {/* 
-                --- THE FIX IS HERE ---
-                Render the message content bubble if it has content OR if it's the loading placeholder.
-                This prevents the bubble from disappearing and reappearing during the streaming process.
+                Render the message content bubble only if it has actual content.
+                This prevents an empty bubble from showing while the AI is "thinking"
+                but hasn't produced any user-visible output yet.
               */}
-              {(msg.content || (isLastMessage && loading)) && (
+              {msg.content && (
                  <div className="secret-message-content">
                     <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
                  </div>
