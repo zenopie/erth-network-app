@@ -10,6 +10,7 @@ import "./LilaChat.css";
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
+// Connect to your remote server
 const SERVER_API_URL = "https://erth.network/api/chat";
 
 const secretNetworkClient = new SecretNetworkClient({
@@ -83,7 +84,6 @@ const LilaChat = () => {
     } finally {
       console.log("Finished model fetching process.");
       setModelsLoading(false);
-      // CHANGE: Restored the call to hide the initial loading screen
       showLoadingScreen(false);
     }
   }, []);
@@ -165,33 +165,55 @@ const LilaChat = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      
+      let buffer = "";
       let fullResponseText = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
           console.log("Streaming completed.");
+          if (buffer.trim()) {
+              console.warn("Stream ended with unprocessed data in buffer:", buffer);
+          }
           setAbortController(null);
           break;
         }
         
-        fullResponseText += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true });
 
-        const thinkingParts = fullResponseText.match(THINK_TAG_REGEX) || [];
-        const thinkingText = thinkingParts.join('\n').replace(ALL_TAGS_REGEX, "").trim();
-        const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            const line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
 
-        setMessages((prevMessages) => {
-          const newMessages = [...prevMessages];
-          if (newMessages.length > 0) {
-            newMessages[newMessages.length - 1] = {
-              ...newMessages[newMessages.length - 1],
-              content: visibleContent,
-              thinking: thinkingText,
-            };
-          }
-          return newMessages;
-        });
+            if (line.trim() === '') continue;
+
+            try {
+                const data = JSON.parse(line);
+                if (data.message?.content) {
+                    fullResponseText += data.message.content;
+
+                    const thinkingParts = fullResponseText.match(THINK_TAG_REGEX) || [];
+                    const thinkingText = thinkingParts.join('\n').replace(ALL_TAGS_REGEX, "").trim();
+                    const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
+
+                    setMessages((prevMessages) => {
+                      const newMessages = [...prevMessages];
+                      if (newMessages.length > 0) {
+                        newMessages[newMessages.length - 1] = {
+                          ...newMessages[newMessages.length - 1],
+                          content: visibleContent,
+                          thinking: thinkingText,
+                        };
+                      }
+                      return newMessages;
+                    });
+                }
+            } catch (error) {
+                console.warn("Could not parse JSON line, likely incomplete or malformed:", line);
+            }
+        }
       }
     } catch (error) {
       if (error.name === "AbortError") {
