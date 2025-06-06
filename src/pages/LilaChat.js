@@ -4,13 +4,12 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiSettings } from "react-icons/fi";
-import { showLoadingScreen } from "../utils/uiUtils"; // Assuming this utility exists
+import { showLoadingScreen } from "../utils/uiUtils";
 import "./LilaChat.css";
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
-// Connect to your remote server
 const SERVER_API_URL = "https://erth.network/api/chat";
 
 const secretNetworkClient = new SecretNetworkClient({
@@ -26,9 +25,10 @@ const LilaChat = () => {
   const [selectedModel, setSelectedModel] = useState("");
   const [modelsLoading, setModelsLoading] = useState(true);
   const [messages, setMessages] = useState([]);
+  const [streamingThinkingText, setStreamingThinkingText] = useState("");
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState(null);
-  const [loading, setLoading] = useState(false); // For sending messages
+  const [loading, setLoading] = useState(false);
   const [copiedText, setCopiedText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
@@ -109,7 +109,7 @@ const LilaChat = () => {
         }, 0);
       }
     }
-  }, [messages]);
+  }, [messages, streamingThinkingText]);
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -140,7 +140,7 @@ const LilaChat = () => {
         : input,
     };
     
-    const assistantPlaceholder = { role: "assistant", content: "", thinking: "" };
+    const assistantPlaceholder = { role: "assistant", content: "" };
     const messagesToSend = [...messages, userMessage];
     
     setMessages([...messagesToSend, assistantPlaceholder]);
@@ -172,10 +172,6 @@ const LilaChat = () => {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          console.log("Streaming completed.");
-          if (buffer.trim()) {
-              console.warn("Stream ended with unprocessed data in buffer:", buffer);
-          }
           setAbortController(null);
           break;
         }
@@ -198,13 +194,14 @@ const LilaChat = () => {
                     const thinkingText = thinkingParts.join('\n').replace(ALL_TAGS_REGEX, "").trim();
                     const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
 
+                    setStreamingThinkingText(thinkingText);
+
                     setMessages((prevMessages) => {
                       const newMessages = [...prevMessages];
                       if (newMessages.length > 0) {
                         newMessages[newMessages.length - 1] = {
                           ...newMessages[newMessages.length - 1],
                           content: visibleContent,
-                          thinking: thinkingText,
                         };
                       }
                       return newMessages;
@@ -230,6 +227,7 @@ const LilaChat = () => {
         });
       }
     } finally {
+      setStreamingThinkingText("");
       setLoading(false);
     }
   };
@@ -292,11 +290,6 @@ const LilaChat = () => {
             key={index}
             className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}
           >
-            {msg.role === "assistant" && msg.thinking && (
-              <div className="secret-think-box">
-                🤔 <pre>{msg.thinking}</pre>
-              </div>
-            )}
             <div className="secret-message-content">
               <ReactMarkdown components={components}>
                 {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
@@ -304,6 +297,14 @@ const LilaChat = () => {
             </div>
           </div>
         ))}
+        
+        {streamingThinkingText && (
+          <div className="secret-message secret-assistant">
+            <div className="secret-think-box">
+              <pre>{streamingThinkingText}</pre>
+            </div>
+          </div>
+        )}
       </div>
       <div className="secret-input-container">
         <div className="secret-settings-container">
