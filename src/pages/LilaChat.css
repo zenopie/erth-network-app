@@ -96,15 +96,86 @@
   text-align: left;
 }
 
-.secret-think-box {
+/* --- NEW STYLES for the thinking apparatus --- */
+.secret-thinking-apparatus {
+  width: 100%;
+  max-width: 80%;
+  border-radius: 12px;
+  border: 1px solid #2dc08d30;
+  background: #f3faf7;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.secret-thinking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #eaf6f1;
+  color: #374151;
   font-size: 14px;
-  font-style: italic;
-  color: #888;
-  padding: 4px 8px;
-  border-left: 3px solid #aaa;
-  margin: 4px 0;
-  display: inline-block;
-  max-width: 90%;
+  font-weight: 500;
+  border-bottom: 1px solid #2dc08d30;
+}
+
+.secret-expand-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #269c73;
+}
+
+.secret-expand-button:hover {
+  background-color: #d1e8df;
+}
+
+
+/* --- REPLACED this rule --- */
+.secret-think-box {
+  background-color: #2d3748;
+  color: #e2e8f0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border-left: none;
+  font-style: normal;
+}
+
+/* This is the scrolling text area */
+.secret-think-box pre {
+  margin: 0;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 100px;
+  overflow-y: auto;
+  transition: max-height 0.3s ease-in-out;
+}
+
+/* This class gets added when the expand button is clicked */
+.secret-think-box.expanded pre {
+  max-height: 400px;
+}
+
+/* Scrollbar styling */
+.secret-think-box pre::-webkit-scrollbar {
+  width: 10px;
+}
+.secret-think-box pre::-webkit-scrollbar-track {
+  background: #2d3748;
+}
+.secret-think-box pre::-webkit-scrollbar-thumb {
+  background-color: #4a5568;
+  border-radius: 5px;
+  border: 2px solid #2d3748;
 }
 
 .secret-code-block-wrapper {

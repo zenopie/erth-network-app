@@ -3,9 +3,9 @@ import { SecretNetworkClient } from "secretjs";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { FiCopy, FiCheck, FiSettings } from "react-icons/fi";
+import { FiCopy, FiCheck, FiSettings, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
-import "./LilaChat.css";
+import "./LilaChat.css"; // Note: The CSS file name is LilaChat.css in the original code
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
@@ -25,6 +25,7 @@ const LilaChat = () => {
   const [modelsLoading, setModelsLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ const LilaChat = () => {
   const [initAttempted, setInitAttempted] = useState(false);
 
   const chatContainerRef = useRef(null);
+  const thinkingBoxRef = useRef(null);
   const userInteracted = useRef(false);
   const fileInputRef = useRef(null);
 
@@ -69,19 +71,15 @@ const LilaChat = () => {
         query: { get_models: {} },
       });
 
-      console.log("Received response from contract:", response);
-
       if (response && response.models && Array.isArray(response.models) && response.models.length > 0) {
-        console.log("Models found:", response.models);
         setModels(response.models);
         setSelectedModel(response.models[0]);
       } else {
-        console.warn("Contract query successful, but no models were found in the response.", response);
+        console.warn("Contract query successful, but no models were found.", response);
       }
     } catch (error) {
-      console.error("CRITICAL: Failed to fetch models from the Secret contract.", error);
+      console.error("CRITICAL: Failed to fetch models.", error);
     } finally {
-      console.log("Finished model fetching process.");
       setModelsLoading(false);
       showLoadingScreen(false);
     }
@@ -110,6 +108,12 @@ const LilaChat = () => {
     }
   }, [messages, streamingThinkingText]);
 
+  useEffect(() => {
+    if (thinkingBoxRef.current) {
+      thinkingBoxRef.current.scrollTop = thinkingBoxRef.current.scrollHeight;
+    }
+  }, [streamingThinkingText]);
+
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -127,6 +131,7 @@ const LilaChat = () => {
   const handleSendMessage = async () => {
     if (loading || modelsLoading || !input.trim() || !selectedModel) return;
 
+    setIsThinkingExpanded(false);
     userInteracted.current = false;
     setLoading(true);
     const controller = new AbortController();
@@ -284,52 +289,49 @@ const LilaChat = () => {
       <div
         className="secret-chat-container"
         ref={chatContainerRef}
-        onScroll={() => {
-          if (chatContainerRef.current) {
-            const isAtBottom =
-              chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
-              chatContainerRef.current.clientHeight + 20;
-            userInteracted.current = !isAtBottom;
-          }
-        }}
+        onScroll={() => { /* ... */ }}
       >
         {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}
-          >
-            <div className="secret-message-content">
-              <ReactMarkdown components={components}>
-                {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
-              </ReactMarkdown>
+          msg.content && (
+            <div
+              key={index}
+              className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}
+            >
+              <div className="secret-message-content">
+                <ReactMarkdown components={components}>
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
             </div>
-          </div>
+          )
         ))}
         
         {streamingThinkingText && (
           <div className="secret-message secret-assistant">
-            <div className="secret-think-box">
-              <pre>{streamingThinkingText}</pre>
+            <div className="secret-thinking-apparatus">
+              <div className="secret-thinking-header">
+                <span>Thinking...</span>
+                <button
+                  className="secret-expand-button"
+                  onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                >
+                  {isThinkingExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                </button>
+              </div>
+              <div className={`secret-think-box ${isThinkingExpanded ? 'expanded' : ''}`}>
+                <pre ref={thinkingBoxRef}>{streamingThinkingText}</pre>
+              </div>
             </div>
           </div>
         )}
       </div>
+
       <div className="secret-input-container">
         <div className="secret-settings-container">
           {selectedModel === "llama3.2-vision" && (
             <>
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={handleImageUpload}
-              />
-              <button
-                className="secret-upload-button"
-                onClick={() => fileInputRef.current.click()}
-                style={{ backgroundColor: "#ffeb3b", color: "#000", marginRight: "8px" }}
-              >
+              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={handleImageUpload} />
+              <button className="secret-upload-button" onClick={() => fileInputRef.current.click()} style={{ backgroundColor: "#ffeb3b", color: "#000", marginRight: "8px" }}>
                 📷 Upload Image
               </button>
             </>
@@ -349,20 +351,13 @@ const LilaChat = () => {
               }}
               disabled={modelsLoading}
             >
-              {models.map((model, index) => (
-                <option key={index} value={model}>
-                  {model}
-                </option>
-              ))}
+              {models.map((model, index) => (<option key={index} value={model}>{model}</option>))}
             </select>
           </div>
         )}
         <textarea
           className="secret-chat-input"
-          placeholder={
-            modelsLoading ? "Loading available models..." :
-            models.length > 0 ? "Ask Aya (آية) anything..." : "No AI models available. Check contract."
-          }
+          placeholder={modelsLoading ? "Loading available models..." : models.length > 0 ? "Ask Aya (آية) anything..." : "No AI models available. Check contract."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -373,11 +368,7 @@ const LilaChat = () => {
           }}
           disabled={modelsLoading || models.length === 0}
         />
-        {abortController && (
-          <button className="secret-stop-button" onClick={handleStopStreaming}>
-            ⏹ Stop
-          </button>
-        )}
+        {abortController && (<button className="secret-stop-button" onClick={handleStopStreaming}>⏹ Stop</button>)}
         <button
           className="secret-send-button"
           onClick={handleSendMessage}
