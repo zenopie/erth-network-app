@@ -17,8 +17,7 @@ const secretNetworkClient = new SecretNetworkClient({
   chainId: TESTNET_CHAIN_ID,
 });
 
-const THINK_TAG_REGEX = /<think>([\s\S]*?)<\/think>/gs;
-const ALL_TAGS_REGEX = /<\/?think>/g;
+const THINK_TAG_REGEX = /<think>[\s\S]*?<\/think>/gs;
 
 const LilaChat = () => {
   const [models, setModels] = useState([]);
@@ -159,9 +158,7 @@ const LilaChat = () => {
         signal: controller.signal,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -190,42 +187,53 @@ const LilaChat = () => {
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
-                    const thinkingParts = fullResponseText.match(THINK_TAG_REGEX) || [];
-                    const thinkingText = thinkingParts.join('\n').replace(ALL_TAGS_REGEX, "").trim();
-                    const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
+                    const hasStartedThinking = fullResponseText.includes("<think>");
+                    const hasFinishedThinking = fullResponseText.includes("</think>");
 
-                    setStreamingThinkingText(thinkingText);
+                    if (hasStartedThinking && !hasFinishedThinking) {
+                        const currentThinking = fullResponseText.replace("<think>", "").trim();
+                        setStreamingThinkingText(currentThinking);
+                        
+                        setMessages((prevMessages) => {
+                            const newMessages = [...prevMessages];
+                            if (newMessages.length > 0) {
+                                newMessages[newMessages.length - 1].content = "";
+                            }
+                            return newMessages;
+                        });
 
-                    setMessages((prevMessages) => {
-                      const newMessages = [...prevMessages];
-                      if (newMessages.length > 0) {
-                        newMessages[newMessages.length - 1] = {
-                          ...newMessages[newMessages.length - 1],
-                          content: visibleContent,
-                        };
-                      }
-                      return newMessages;
-                    });
+                    } else {
+                        setStreamingThinkingText("");
+                        const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
+
+                        setMessages((prevMessages) => {
+                            const newMessages = [...prevMessages];
+                            if (newMessages.length > 0) {
+                                newMessages[newMessages.length - 1].content = visibleContent;
+                            }
+                            return newMessages;
+                        });
+                    }
                 }
             } catch (error) {
-                console.warn("Could not parse JSON line, likely incomplete or malformed:", line);
+                console.warn("Could not parse JSON line:", line);
             }
         }
       }
     } catch (error) {
-      if (error.name === "AbortError") {
-        console.log("Streaming stopped.");
-      } else {
-        console.error("Error in handleSendMessage:", error);
-        setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'assistant') {
-                const newMessages = [...prev.slice(0, -1)];
-                return [...newMessages, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
-            }
-            return [...prev, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
-        });
-      }
+        if (error.name === "AbortError") {
+            console.log("Streaming stopped.");
+        } else {
+            console.error("Error in handleSendMessage:", error);
+            setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last && last.role === 'assistant') {
+                    const newMessages = [...prev.slice(0, -1)];
+                    return [...newMessages, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
+                }
+                return [...prev, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
+            });
+        }
     } finally {
       setStreamingThinkingText("");
       setLoading(false);
