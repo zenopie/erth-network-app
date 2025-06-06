@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiSettings, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
-import "./LilaChat.css"; // Corrected import to match your original file
+import "./LilaChat.css";
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
@@ -17,7 +17,11 @@ const secretNetworkClient = new SecretNetworkClient({
   chainId: TESTNET_CHAIN_ID,
 });
 
-const THINK_TAG_REGEX = /<think>[\s\S]*?<\/think>/gs;
+// Regex to find a complete <think>...</think> block
+const COMPLETE_THINK_TAG_REGEX = /<think>[\s\S]*?<\/think>/gs;
+// Regex to find the start of a think block, for cleaning incomplete streams
+const INCOMPLETE_THINK_TAG_REGEX = /<think>[\s\S]*/s;
+
 
 const LilaChat = () => {
   const [models, setModels] = useState([]);
@@ -123,13 +127,7 @@ const LilaChat = () => {
     const controller = new AbortController();
     setAbortController(controller);
 
-    const userMessage = {
-      role: "user",
-      content: pendingImage
-        ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }]
-        : input,
-    };
-    
+    const userMessage = { role: "user", content: pendingImage ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }] : input };
     const assistantPlaceholder = { role: "assistant", content: "" };
     const messagesToSend = [...messages, userMessage];
     setMessages([...messagesToSend, assistantPlaceholder]);
@@ -169,15 +167,25 @@ const LilaChat = () => {
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
-                    const thinkMatch = fullResponseText.match(/<think>([\s\S]*)/s);
-                    if (thinkMatch && !fullResponseText.includes("</think>")) {
+                    // --- FIX IS HERE: SEPARATE PARSING LOGIC ---
+                    
+                    // 1. Update the LIVE THINKING box
+                    const thinkMatch = fullResponseText.match(/<think>([\s\S]*?)(?:<\/think>|$)/s);
+                    if (thinkMatch && thinkMatch[1]) {
                         setStreamingThinkingText(thinkMatch[1]);
                     }
+
+                    // 2. Update the MAIN CONTENT bubble
+                    // First, remove any complete <think>...</think> blocks
+                    let visibleContent = fullResponseText.replace(COMPLETE_THINK_TAG_REGEX, "");
+                    // Then, remove any lingering, unclosed <think> tags for a clean display
+                    visibleContent = visibleContent.replace(INCOMPLETE_THINK_TAG_REGEX, "").trim();
                     
-                    const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
                     setMessages(prev => {
                         const newMessages = [...prev];
-                        newMessages[newMessages.length - 1].content = visibleContent;
+                        if (newMessages.length > 0) {
+                           newMessages[newMessages.length - 1].content = visibleContent;
+                        }
                         return newMessages;
                     });
                 }
@@ -196,7 +204,9 @@ const LilaChat = () => {
       if (finalThinkingText) {
           setMessages(prev => {
               const newMessages = [...prev];
-              newMessages[newMessages.length - 1].thinking = finalThinkingText;
+              if (newMessages.length > 0) {
+                 newMessages[newMessages.length - 1].thinking = finalThinkingText;
+              }
               return newMessages;
           });
       }
@@ -276,11 +286,7 @@ const LilaChat = () => {
         {settingsOpen && (
           <div className="secret-settings-dropdown">
             <label>AI Model:</label>
-            <select
-              value={selectedModel}
-              onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }}
-              disabled={modelsLoading}
-            >
+            <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }} disabled={modelsLoading}>
               {models.map((model) => (<option key={model} value={model}>{model}</option>))}
             </select>
           </div>
@@ -291,7 +297,7 @@ const LilaChat = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-          disabled={modelsLoading || models.length === 0}
+          disabled={loading || modelsLoading || models.length === 0}
         />
         <div className="secret-settings-container">
           {selectedModel === "llama3.2-vision" && (

@@ -1,4 +1,4 @@
-/* LilaChat.css (or SecretAIChat.css, whatever you name it) */
+/* LilaChat.css */
 
 .secret-main-container {
   width: 100%;
@@ -10,42 +10,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.secret-sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 250px;
-  height: 100%;
-  background: #f9fafb;
-  padding: 20px;
-  border-right: 1px solid #e5e7eb;
-}
-
-.secret-new-conversation-button {
-  width: 100%;
-  padding: 10px;
-  background: #2dc08d;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 20px;
-}
-
-.secret-new-conversation-button:hover {
-  background: #269c73;
-}
-
-.secret-sidebar-item {
-  padding: 10px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.secret-sidebar-item:hover {
-  background: #e5e7eb;
 }
 
 .secret-chat-container {
@@ -96,7 +60,7 @@
   text-align: left;
 }
 
-/* --- UPDATED STYLES for the thinking apparatus --- */
+/* --- STYLES for the thinking apparatus --- */
 .secret-thinking-apparatus {
   width: 100%;
   max-width: 100%;
@@ -153,7 +117,7 @@
   padding: 12px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  max-height: 0; /* Start collapsed by default */
+  max-height: 0;
   overflow-y: auto;
   transition: max-height 0.3s ease-in-out;
 }
@@ -161,15 +125,13 @@
 .secret-think-box.expanded pre {
   max-height: 400px;
 }
-/* Special class for the LIVE box to manage its initial height */
 .secret-think-box.live-expanded pre {
-  max-height: 100px; /* Start with a visible height */
+  max-height: 100px;
 }
 .secret-think-box.live-expanded.expanded pre {
-  max-height: 400px; /* Allow it to expand fully */
+  max-height: 400px;
 }
 
-/* Updated Scrollbar styling */
 .secret-think-box pre::-webkit-scrollbar {
   width: 10px;
 }
@@ -259,7 +221,6 @@
   background: #dc2626;
 }
 
-/* These were missing from my JSX, so I've added them back here for completeness */
 .secret-settings-container {
     position: absolute;
     top: 28px;
@@ -282,7 +243,7 @@
 
 .secret-settings-dropdown {
   position: absolute;
-  bottom: calc(100% - 70px); /* Position above the text area */
+  bottom: calc(100% - 70px);
   right: 20px;
   background: #ffffff;
   padding: 16px;
