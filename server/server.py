@@ -23,7 +23,9 @@ app = FastAPI()
 
 # CORS configuration
 origins = [
-    "https://erth.network",    
+    "https://erth.network", 
+    "http://localhost:3000/"
+      
 ]
 
 app.add_middleware(

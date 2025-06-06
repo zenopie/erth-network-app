@@ -1,5 +1,13 @@
 /* LilaChat.css */
 
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.secret-blinking-cursor {
+  animation: blink 1s infinite;
+}
+
 .secret-main-container {
   width: 100%;
   max-width: 800px;
@@ -60,7 +68,6 @@
   text-align: left;
 }
 
-/* --- STYLES for the thinking apparatus --- */
 .secret-thinking-apparatus {
   width: 100%;
   max-width: 100%;
