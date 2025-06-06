@@ -4,26 +4,30 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiSettings } from "react-icons/fi";
-import { showLoadingScreen } from "../utils/uiUtils";
+import { showLoadingScreen } from "../utils/uiUtils"; // Assuming this utility exists
 import "./LilaChat.css";
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
-const SERVER_API_URL = "/api/chat";
+const SERVER_API_URL = "https://erth.network/api/chat";
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,
   chainId: TESTNET_CHAIN_ID,
 });
 
+const THINK_TAG_REGEX = /<think>([\s\S]*?)<\/think>/gs;
+const ALL_TAGS_REGEX = /<\/?think>/g;
+
 const LilaChat = () => {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("");
+  const [modelsLoading, setModelsLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // For sending messages
   const [copiedText, setCopiedText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
@@ -31,7 +35,6 @@ const LilaChat = () => {
   const [initAttempted, setInitAttempted] = useState(false);
 
   const chatContainerRef = useRef(null);
-  const thinkingRef = useRef(null);
   const userInteracted = useRef(false);
   const fileInputRef = useRef(null);
 
@@ -58,42 +61,46 @@ const LilaChat = () => {
   }, [userAddress]);
 
   const fetchModels = useCallback(async () => {
+    console.log("Component mounted, starting to fetch models...");
+    setModelsLoading(true);
     try {
-      console.log("Fetching models...");
       const response = await secretNetworkClient.query.compute.queryContract({
         contract_address: TESTNET_WORKER_CONTRACT,
         query: { get_models: {} },
       });
-      console.log("Models response:", response);
-      if (response.models && response.models.length > 0) {
+
+      console.log("Received response from contract:", response);
+
+      if (response && response.models && Array.isArray(response.models) && response.models.length > 0) {
+        console.log("Models found:", response.models);
         setModels(response.models);
         setSelectedModel(response.models[0]);
+      } else {
+        console.warn("Contract query successful, but no models were found in the response.", response);
       }
     } catch (error) {
-      console.error("Error fetching models:", error);
+      console.error("CRITICAL: Failed to fetch models from the Secret contract.", error);
     } finally {
+      console.log("Finished model fetching process.");
+      setModelsLoading(false);
+      // CHANGE: Restored the call to hide the initial loading screen
       showLoadingScreen(false);
     }
   }, []);
 
   useEffect(() => {
-    if (initAttempted) return;
-    async function initializeApp() {
+    if (!initAttempted) {
       setInitAttempted(true);
-      try {
-        await fetchModels();
-      } catch (error) {
-        console.error("Error during app initialization:", error);
-      }
+      fetchModels();
     }
-    initializeApp();
   }, [fetchModels, initAttempted]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
       const isNearBottom =
         chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
-        chatContainerRef.current.clientHeight + 100;
+        chatContainerRef.current.clientHeight + 150;
+
       if (isNearBottom || !userInteracted.current) {
         setTimeout(() => {
           if (chatContainerRef.current) {
@@ -104,30 +111,13 @@ const LilaChat = () => {
     }
   }, [messages]);
 
-  const updateThinkingContent = (content) => {
-    if (thinkingRef.current) {
-      thinkingRef.current.style.display = "block";
-      thinkingRef.current.textContent = content;
-      if (
-        chatContainerRef.current &&
-        (!userInteracted.current ||
-          chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <=
-            chatContainerRef.current.clientHeight + 100)
-      ) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-    }
-  };
-
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      console.log("Uploading image:", file.name);
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64ImageWithPrefix = e.target.result;
         const base64Image = base64ImageWithPrefix.split(',')[1];
-        console.log("Base64 image (no prefix):", base64Image.slice(0, 50) + "...");
         setPendingImage(base64Image);
         setInput((prev) => (prev ? `${prev}\n[Image attached]` : "[Image attached]"));
       };
@@ -136,40 +126,46 @@ const LilaChat = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!input || !selectedModel) return;
+    if (loading || modelsLoading || !input.trim() || !selectedModel) return;
 
     userInteracted.current = false;
     setLoading(true);
     const controller = new AbortController();
     setAbortController(controller);
 
-    const messageToSend = {
+    const userMessage = {
       role: "user",
       content: pendingImage
         ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }]
         : input,
     };
-    const updatedMessages = [...messages, messageToSend];
-    console.log("Messages to send:", JSON.stringify(updatedMessages, null, 2));
-    setMessages(updatedMessages);
+    
+    const assistantPlaceholder = { role: "assistant", content: "", thinking: "" };
+    const messagesToSend = [...messages, userMessage];
+    
+    setMessages([...messagesToSend, assistantPlaceholder]);
     setInput("");
     setPendingImage(null);
 
     try {
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
       const response = await fetch(SERVER_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: selectedModel,
-          messages: updatedMessages,
+          messages: messagesToSend,
           stream: true,
         }),
         signal: controller.signal,
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const reader = response.body.getReader();
-      let localIsThinking = false;
+      const decoder = new TextDecoder();
+      let fullResponseText = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -178,61 +174,38 @@ const LilaChat = () => {
           setAbortController(null);
           break;
         }
+        
+        fullResponseText += decoder.decode(value, { stream: true });
 
-        const text = new TextDecoder().decode(value);
-        const lines = text.split("\n").filter(line => line.trim());
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            if (data.message?.content) {
-              let newContent = data.message.content;
-              if (newContent.includes("<think>")) {
-                localIsThinking = true;
-                newContent = newContent.replace("<think>", "");
-                updateThinkingContent("🤔 Thinking: " + newContent);
-                continue;
-              }
-              if (newContent.includes("</think>")) {
-                localIsThinking = false;
-                newContent = newContent.replace("</think>", "");
-                if (thinkingRef.current) {
-                  thinkingRef.current.textContent += newContent;
-                  if (chatContainerRef.current) {
-                    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                  }
-                }
-                continue;
-              }
-              if (localIsThinking) {
-                if (thinkingRef.current) {
-                  thinkingRef.current.textContent += newContent;
-                  if (chatContainerRef.current) {
-                    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                  }
-                }
-              } else {
-                setMessages((prevMessages) => {
-                  const lastMessage = prevMessages[prevMessages.length - 1];
-                  if (lastMessage?.role === "assistant") {
-                    return [
-                      ...prevMessages.slice(0, -1),
-                      { role: "assistant", content: lastMessage.content + newContent },
-                    ];
-                  }
-                  return [...prevMessages, { role: "assistant", content: newContent }];
-                });
-              }
-            }
-          } catch (error) {
-            console.error("Error parsing stream data:", error);
+        const thinkingParts = fullResponseText.match(THINK_TAG_REGEX) || [];
+        const thinkingText = thinkingParts.join('\n').replace(ALL_TAGS_REGEX, "").trim();
+        const visibleContent = fullResponseText.replace(THINK_TAG_REGEX, "").trim();
+
+        setMessages((prevMessages) => {
+          const newMessages = [...prevMessages];
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1] = {
+              ...newMessages[newMessages.length - 1],
+              content: visibleContent,
+              thinking: thinkingText,
+            };
           }
-        }
+          return newMessages;
+        });
       }
     } catch (error) {
       if (error.name === "AbortError") {
         console.log("Streaming stopped.");
       } else {
         console.error("Error in handleSendMessage:", error);
+        setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'assistant') {
+                const newMessages = [...prev.slice(0, -1)];
+                return [...newMessages, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
+            }
+            return [...prev, { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }];
+        });
       }
     } finally {
       setLoading(false);
@@ -276,20 +249,6 @@ const LilaChat = () => {
         </code>
       );
     },
-    p({ node, children }) {
-      const text = children?.[0];
-      if (typeof text === "string") {
-        const thinkPattern = /<think>(.*?)<\/think>/s;
-        if (thinkPattern.test(text)) {
-          return (
-            <div className="secret-think-box">
-              🤔 <span>{text.replace(thinkPattern, "$1")}</span>
-            </div>
-          );
-        }
-      }
-      return <p>{children}</p>;
-    },
   };
 
   return (
@@ -311,7 +270,11 @@ const LilaChat = () => {
             key={index}
             className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}
           >
-            {msg.role === "assistant" && <div className="secret-think-box" ref={thinkingRef}></div>}
+            {msg.role === "assistant" && msg.thinking && (
+              <div className="secret-think-box">
+                🤔 <pre>{msg.thinking}</pre>
+              </div>
+            )}
             <div className="secret-message-content">
               <ReactMarkdown components={components}>
                 {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
@@ -353,6 +316,7 @@ const LilaChat = () => {
                 setSelectedModel(e.target.value);
                 setPendingImage(null);
               }}
+              disabled={modelsLoading}
             >
               {models.map((model, index) => (
                 <option key={index} value={model}>
@@ -364,7 +328,10 @@ const LilaChat = () => {
         )}
         <textarea
           className="secret-chat-input"
-          placeholder="Ask Aya (آية) anything..."
+          placeholder={
+            modelsLoading ? "Loading available models..." :
+            models.length > 0 ? "Ask Aya (آية) anything..." : "No AI models available. Check contract."
+          }
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -373,14 +340,19 @@ const LilaChat = () => {
               handleSendMessage();
             }
           }}
+          disabled={modelsLoading || models.length === 0}
         />
         {abortController && (
           <button className="secret-stop-button" onClick={handleStopStreaming}>
             ⏹ Stop
           </button>
         )}
-        <button className="secret-send-button" onClick={handleSendMessage} disabled={loading}>
-          {loading ? "Sending..." : "Send"}
+        <button
+          className="secret-send-button"
+          onClick={handleSendMessage}
+          disabled={loading || modelsLoading || !input.trim() || !selectedModel}
+        >
+          {loading ? "Thinking..." : modelsLoading ? "Loading..." : "Send"}
         </button>
       </div>
     </div>

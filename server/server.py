@@ -22,11 +22,10 @@ from pydantic import BaseModel
 app = FastAPI()
 
 # CORS configuration
-origins = (
-    ["http://localhost:3000", "http://127.0.0.1:3000"]
-    if os.getenv("NODE_ENV") == "development"
-    else ["https://erth.network"]
-)
+origins = [
+    "https://erth.network",    
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -45,7 +44,6 @@ SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 ollama_client = Client(
     host=SECRET_AI_URL,
 )
-SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
 
 # Load wallet key from file
 def get_value(file: str) -> Optional[str]:
