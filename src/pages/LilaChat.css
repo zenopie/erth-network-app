@@ -1,4 +1,4 @@
-/* SecretAIChat.css */
+/* LilaChat.css (or SecretAIChat.css, whatever you name it) */
 
 .secret-main-container {
   width: 100%;
@@ -96,15 +96,16 @@
   text-align: left;
 }
 
-/* --- NEW STYLES for the thinking apparatus --- */
+/* --- UPDATED STYLES for the thinking apparatus --- */
 .secret-thinking-apparatus {
   width: 100%;
-  max-width: 80%;
+  max-width: 100%;
   border-radius: 12px;
   border: 1px solid #2dc08d30;
-  background: #f3faf7;
+  background: #fdfdfd;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 12px;
 }
 
 .secret-thinking-header {
@@ -135,11 +136,9 @@
   background-color: #d1e8df;
 }
 
-
-/* --- REPLACED this rule --- */
 .secret-think-box {
-  background-color: #2d3748;
-  color: #e2e8f0;
+  background-color: #f9fafb;
+  color: #4b5563;
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   overflow: hidden;
@@ -149,33 +148,38 @@
   font-style: normal;
 }
 
-/* This is the scrolling text area */
 .secret-think-box pre {
   margin: 0;
   padding: 12px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  max-height: 100px;
+  max-height: 0; /* Start collapsed by default */
   overflow-y: auto;
   transition: max-height 0.3s ease-in-out;
 }
 
-/* This class gets added when the expand button is clicked */
 .secret-think-box.expanded pre {
   max-height: 400px;
 }
+/* Special class for the LIVE box to manage its initial height */
+.secret-think-box.live-expanded pre {
+  max-height: 100px; /* Start with a visible height */
+}
+.secret-think-box.live-expanded.expanded pre {
+  max-height: 400px; /* Allow it to expand fully */
+}
 
-/* Scrollbar styling */
+/* Updated Scrollbar styling */
 .secret-think-box pre::-webkit-scrollbar {
   width: 10px;
 }
 .secret-think-box pre::-webkit-scrollbar-track {
-  background: #2d3748;
+  background: #f9fafb;
 }
 .secret-think-box pre::-webkit-scrollbar-thumb {
-  background-color: #4a5568;
+  background-color: #d1d5db;
   border-radius: 5px;
-  border: 2px solid #2d3748;
+  border: 2px solid #f9fafb;
 }
 
 .secret-code-block-wrapper {
@@ -237,22 +241,6 @@
   background: #269c73;
 }
 
-.secret-save-button {
-  position: absolute;
-  left: 34px;
-  bottom: 25px;
-  background: #374151;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.secret-save-button:hover {
-  background: #4b5563;
-}
-
 .secret-stop-button {
   position: absolute;
   right: 130px;
@@ -271,34 +259,46 @@
   background: #dc2626;
 }
 
+/* These were missing from my JSX, so I've added them back here for completeness */
+.secret-settings-container {
+    position: absolute;
+    top: 28px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    z-index: 10;
+}
 .secret-settings-icon {
-  position: absolute;
-  top: 26px;
-  right: 35px;
   cursor: pointer;
   color: #2dc08d;
-  z-index: 10;
+}
+.secret-upload-button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  font-weight: 500;
 }
 
 .secret-settings-dropdown {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% - 70px); /* Position above the text area */
   right: 20px;
-  margin-bottom: 8px;
   background: #ffffff;
   padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   color: #374151;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   width: 250px;
-  z-index: 10;
+  z-index: 20;
 }
 
 .secret-settings-dropdown label {
   display: block;
   margin-bottom: 4px;
   font-weight: 500;
+  font-size: 14px;
 }
 
 .secret-settings-dropdown select {
