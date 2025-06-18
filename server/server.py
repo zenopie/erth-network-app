@@ -42,7 +42,7 @@ REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
 REGISTRATION_HASH = "a31a5c5311f8e0d0a48116b11f349ca1ebb7be5d51bdecead3c79a66a2ab74d3"
 ANALYTICS_FILE = "analyticsData.json"
 # SECRET_AI_URL = "http://vm-jeeves-2.scrtlabs.com:11434" #CVM
-SECRET_AI_URL = "https://secretai-zqtr.scrtlabs.com:21434"
+SECRET_AI_URL = "https://secretai-rytn.scrtlabs.com:21434"
 ollama_client = Client(
     host=SECRET_AI_URL,
 )
