@@ -60,6 +60,11 @@ const LilaChat = () => {
           contract_address: TESTNET_WORKER_CONTRACT,
           query: { get_models: {} },
         });
+        const url_response = await secretNetworkClient.query.compute.queryContract({
+          contract_address: TESTNET_WORKER_CONTRACT,
+          query: { get_u_r_ls: {} },
+        });
+        console.log(url_response);
         if (response?.models?.length) {
           setModels(response.models);
           setSelectedModel(response.models[0]);
