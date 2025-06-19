@@ -45,7 +45,7 @@ SECRET_AI_URL = "https://secretai-rytn.scrtlabs.com:21434"
 SECRET_AI_API_KEY = "sk-MiojMS-qLCH3sT597TIRWS1q1atz_V_oo3GSoKJphHL_852IKGbmvbLuh43aAXSy-B-0--1y"
 ollama_client = Client(
     host=SECRET_AI_URL,
-    headers={"Authorization": f"Bearer {api_key}"}
+    headers={"Authorization": f"Bearer {SECRET_AI_API_KEY}"}
 )
 
 # Load wallet key from file
