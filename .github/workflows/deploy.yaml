@@ -19,12 +19,9 @@ jobs:
           host: ${{ secrets.REMOTE_SERVER_HOST }}
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          
-          # The 'env' block makes GitHub secrets available as environment variables
-          # on the remote server for the duration of the script.
           env:
-            # Name the remote variable WALLET_KEY, which will hold the value
-            # of your GitHub secret, also named WALLET_KEY.
+            # This makes your GitHub secret named WALLET_KEY available as an
+            # environment variable on the remote server, also named WALLET_KEY.
             WALLET_KEY: ${{ secrets.WALLET_KEY }}
           
           script: |
@@ -81,7 +78,7 @@ jobs:
               exit 1
             fi
             
-            # This check now uses the consistent variable name, $WALLET_KEY.
+            # This check verifies the environment variable was passed correctly.
             if [ -z "$WALLET_KEY" ]; then
               echo "FATAL: The WALLET_KEY environment variable from GitHub secrets is not available."
               exit 1
@@ -95,8 +92,7 @@ jobs:
             docker rm erth-network-server   || true
             docker build -t erth-network-server .
 
-            # The variable name is now consistent everywhere. This takes the $WALLET_KEY
-            # from the remote shell and passes it into the container.
+            # The -e flag passes the shell's $WALLET_KEY variable into the container.
             docker run -d \
               -e WALLET_KEY="$WALLET_KEY" \
               --name erth-network-server \
