@@ -1,9 +1,7 @@
-# /server/api_routes.py
-
 import asyncio
 import hashlib
 import json
-import re
+import logging
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException
@@ -12,12 +10,15 @@ from secret_sdk.core.wasm import MsgExecuteContract
 
 import config
 from models import RegisterRequest, ChatRequest
-from dependencies import wallet, secret_client, ollama_client
-from prompts import ID_VERIFICATION_SYSTEM_PROMPT  # <-- NEW: Import the prompt
+from prompts import ID_VERIFICATION_SYSTEM_PROMPT
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# --- Helper functions are unchanged ---
+# --- Helper functions ---
 def generate_hash(data: Dict) -> str:
     """Creates a SHA256 hash of a JSON object for consistent ID hashing."""
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
@@ -25,6 +26,7 @@ def generate_hash(data: Dict) -> str:
 async def contract_interaction(message_object: Dict):
     """Creates a transaction, broadcasts it, and polls for the result."""
     try:
+        logger.debug(f"Message object: {message_object}")
         tx = wallet.create_and_broadcast_tx(
             msg_list=[
                 MsgExecuteContract(
@@ -35,21 +37,28 @@ async def contract_interaction(message_object: Dict):
                 )
             ]
         )
+        logger.debug(f"Transaction response: {tx.__dict__}")
+        if tx.code is None:
+            logger.error(f"Transaction code is None: {tx.raw_log}")
+            raise HTTPException(status_code=500, detail=f"Transaction code is None: {tx.raw_log}")
         if tx.code != 0:
+            logger.error(f"Transaction broadcast failed: {tx.raw_log}")
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.raw_log}")
         tx_hash = tx.txhash
         for _ in range(30):
             await asyncio.sleep(1)
             try:
                 tx_info = secret_client.tx.tx_info(tx_hash)
+                logger.debug(f"Transaction info: {tx_info.__dict__}")
                 return tx_info
             except Exception as e:
                 if "tx not found" in str(e).lower():
                     continue
+                logger.error(f"Transaction polling error: {e}")
                 raise
         raise HTTPException(status_code=504, detail="Transaction polling timed out.")
     except Exception as e:
-        print(f"Contract interaction error: {e}")
+        logger.error(f"Contract interaction error: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred during contract interaction: {str(e)}")
 
 # --- API Endpoints ---
@@ -65,27 +74,27 @@ async def register(req: RegisterRequest):
             model=config.OLLAMA_MODEL,
             prompt="[ID IMAGE] Extract identity and detect fakes according to the system prompt rules.",
             images=[id_image_clean],
-            system=ID_VERIFICATION_SYSTEM_PROMPT,  # <-- NEW: Use the imported prompt
+            system=ID_VERIFICATION_SYSTEM_PROMPT,
             format='json'
         )
         ai_result = json.loads(raw_response['response'])
 
         # Validate the structure of the AI's response
         if not isinstance(ai_result, dict) or "success" not in ai_result or "identity" not in ai_result:
-             raise ValueError("AI returned a malformed response object.")
+            logger.error("AI returned a malformed response object.")
+            raise ValueError("AI returned a malformed response object.")
 
         if not ai_result.get("success"):
+            logger.error(f"Identity verification failed: {ai_result.get('identity')}")
             raise HTTPException(
                 status_code=400,
                 detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
             )
             
     except HTTPException:
-        # Re-raise our own specific exceptions to let FastAPI handle them.
         raise
     except Exception as e:
-        # Catch any other unexpected error and wrap it in a 500.
-        print(f"AI verification step failed with an unexpected error: {e}")
+        logger.error(f"AI verification step failed: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during AI verification: {str(e)}")
 
     # On-chain Interaction Step
@@ -93,13 +102,15 @@ async def register(req: RegisterRequest):
     message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
     tx_info = await contract_interaction(message_object)
 
+    if tx_info.code is None:
+        logger.error(f"Transaction info code is None: {tx_info.raw_log}")
+        raise HTTPException(status_code=500, detail=f"Transaction info code is None: {tx_info.raw_log}")
     if tx_info.code != 0:
+        logger.error(f"Transaction failed on-chain: {tx_info.raw_log}")
         raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.raw_log}")
 
     return { "success": True, "tx_hash": tx_info.txhash, "identity_hash": identity_hash, "response": tx_info.to_data() }
 
-
-# --- Other endpoints remain unchanged ---
 @router.post("/chat", summary="AI Chat Endpoint")
 async def chat(req: ChatRequest):
     try:
@@ -112,7 +123,7 @@ async def chat(req: ChatRequest):
             response = await ollama_client.chat(model=req.model, messages=req.messages)
             return {"message": response['message']}
     except Exception as e:
-        print(f"Error in /chat endpoint: {e}")
+        logger.error(f"Error in /chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
 
 @router.get("/analytics", summary="Get ERTH Analytics Data")
