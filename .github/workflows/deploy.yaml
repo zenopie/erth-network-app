@@ -21,38 +21,32 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           env:
             WALLET_KEY: ${{ secrets.WALLET_KEY }}
-          
           script: |
-            set -e # Exit immediately if a command fails.
+            set -e
 
-            # --- Configuration ---
             REPO_DIR=/home/secret/erth-mainnet-app
             SERVER_DIR=$REPO_DIR/server
             FRONTEND_DEPLOY_DIR=/var/www/erth
 
-            # --- Repository Setup ---
-            echo ">>> 1. Setting up repository in $REPO_DIR"
+            echo ">>> 1. Setting up repository"
             mkdir -p $REPO_DIR
             cd $REPO_DIR
 
             if [ -d ".git" ]; then
-              echo "Repository exists. Pulling latest changes..."
               git fetch origin main
               git reset --hard origin/main
               git clean -fd
             else
-              echo "Cloning new repository..."
               git clone https://github.com/zenopie/erth-mainnet-app.git .
             fi
 
-            # --- Frontend Build ---
             echo ">>> 2. Building Frontend"
             if [ -f "package.json" ]; then
               export NVM_DIR="$HOME/.nvm"
               if [ ! -s "$NVM_DIR/nvm.sh" ]; then
                 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
               fi
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              . "$NVM_DIR/nvm.sh"
               
               nvm install 18
               nvm use 18
@@ -60,23 +54,20 @@ jobs:
               npm install
               npm run build
               
-              echo "Deploying frontend to $FRONTEND_DEPLOY_DIR"
               mkdir -p $FRONTEND_DEPLOY_DIR
               cp -r build/* $FRONTEND_DEPLOY_DIR/
             else
-              echo "WARNING: package.json not found at root. Skipping frontend build."
+              echo "WARNING: package.json not found. Skipping frontend build."
             fi
 
-            # --- Backend Deployment (Docker) ---
             echo ">>> 3. Setting up Backend"
-
             if [ ! -d "$SERVER_DIR" ]; then
               echo "ERROR: Server directory not found at $SERVER_DIR!"
               exit 1
             fi
             
             if [ -z "$WALLET_KEY" ]; then
-              echo "FATAL: The WALLET_KEY environment variable from GitHub secrets is not available."
+              echo "FATAL: WALLET_KEY environment variable is not available in the script."
               exit 1
             fi
             
