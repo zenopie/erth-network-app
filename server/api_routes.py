@@ -137,7 +137,7 @@ async def register(req: RegisterRequest):
 
         # On-chain Interaction Step
         identity_hash = generate_hash(ai_result["identity"])
-        message_object = { "register": { "address": req.address, "id_hash": identity HRM_hash, "affiliate": req.referredBy } }
+        message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
         tx_info = await contract_interaction(message_object)
 
         # Match main.py response structure
