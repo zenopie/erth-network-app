@@ -10,13 +10,18 @@ from secret_sdk.core.wasm import MsgExecuteContract
 
 import config
 from models import RegisterRequest, ChatRequest
+from dependencies import wallet, secret_client, ollama_client
 from prompts import ID_VERIFICATION_SYSTEM_PROMPT
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Log initial client state
+logger.debug(f"Secret client URL: {config.SECRET_LCD_URL}, Chain ID: {config.SECRET_CHAIN_ID}")
+logger.debug(f"Wallet address: {wallet.key.acc_address}")
 
 # --- Helper functions ---
 def generate_hash(data: Dict) -> str:
@@ -27,6 +32,14 @@ async def contract_interaction(message_object: Dict):
     """Creates a transaction, broadcasts it, and polls for the result."""
     try:
         logger.debug(f"Message object: {message_object}")
+        # Verify wallet and client state
+        if not wallet or not wallet.key or not wallet.key.acc_address:
+            logger.error("Wallet is not properly initialized")
+            raise HTTPException(status_code=500, detail="Wallet is not properly initialized")
+        if not secret_client:
+            logger.error("Secret client is not initialized")
+            raise HTTPException(status_code=500, detail="Secret client is not initialized")
+
         tx = wallet.create_and_broadcast_tx(
             msg_list=[
                 MsgExecuteContract(
@@ -38,18 +51,24 @@ async def contract_interaction(message_object: Dict):
             ]
         )
         logger.debug(f"Transaction response: {tx.__dict__}")
-        if tx.code is None:
-            logger.error(f"Transaction code is None: {tx.raw_log}")
-            raise HTTPException(status_code=500, detail=f"Transaction code is None: {tx.raw_log}")
+        if not hasattr(tx, 'code') or tx.code is None:
+            logger.error(f"Transaction code is missing or None: {tx.raw_log}")
+            raise HTTPException(status_code=500, detail=f"Transaction code is missing or None: {tx.raw_log}")
         if tx.code != 0:
             logger.error(f"Transaction broadcast failed: {tx.raw_log}")
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.raw_log}")
         tx_hash = tx.txhash
+        if not tx_hash:
+            logger.error("Transaction hash is missing")
+            raise HTTPException(status_code=500, detail="Transaction hash is missing")
         for _ in range(30):
             await asyncio.sleep(1)
             try:
                 tx_info = secret_client.tx.tx_info(tx_hash)
                 logger.debug(f"Transaction info: {tx_info.__dict__}")
+                if not hasattr(tx_info, 'code') or tx_info.code is None:
+                    logger.error(f"Transaction info code is missing or None: {tx_info.raw_log}")
+                    raise HTTPException(status_code=500, detail=f"Transaction info code is missing or None: {tx_info.raw_log}")
                 return tx_info
             except Exception as e:
                 if "tx not found" in str(e).lower():
@@ -58,7 +77,7 @@ async def contract_interaction(message_object: Dict):
                 raise
         raise HTTPException(status_code=504, detail="Transaction polling timed out.")
     except Exception as e:
-        logger.error(f"Contract interaction error: {e}")
+        logger.error(f"Contract interaction error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An error occurred during contract interaction: {str(e)}")
 
 # --- API Endpoints ---
@@ -69,6 +88,7 @@ async def register(req: RegisterRequest):
     Handles the user registration flow with improved error handling and validation.
     """
     try:
+        logger.debug(f"Register request: address={req.address}, referredBy={req.referredBy}")
         id_image_clean = req.idImage.split(',', 1)[1]
         raw_response = ollama_client.generate(
             model=config.OLLAMA_MODEL,
@@ -77,6 +97,7 @@ async def register(req: RegisterRequest):
             system=ID_VERIFICATION_SYSTEM_PROMPT,
             format='json'
         )
+        logger.debug(f"Ollama response: {raw_response}")
         ai_result = json.loads(raw_response['response'])
 
         # Validate the structure of the AI's response
@@ -94,7 +115,7 @@ async def register(req: RegisterRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI verification step failed: {e}")
+        logger.error(f"AI verification step failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during AI verification: {str(e)}")
 
     # On-chain Interaction Step
@@ -123,7 +144,7 @@ async def chat(req: ChatRequest):
             response = await ollama_client.chat(model=req.model, messages=req.messages)
             return {"message": response['message']}
     except Exception as e:
-        logger.error(f"Error in /chat endpoint: {e}")
+        logger.error(f"Error in /chat endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
 
 @router.get("/analytics", summary="Get ERTH Analytics Data")
