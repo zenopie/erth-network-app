@@ -25,17 +25,16 @@ OLLAMA_MODEL = "gemma3:4b"
 
 # --- Wallet Key Loading ---
 def get_wallet_key() -> str:
-    try:
-        with open(WALLET_KEY_FILE, "r") as f:
-            key = f.read().strip()
-            if not key:
-                raise ValueError("Wallet key file is empty.")
-            return key
-    except FileNotFoundError:
-        print(f"FATAL: Wallet key file not found at '{WALLET_KEY_FILE}'")
-        raise
-    except Exception as e:
-        print(f"FATAL: Error reading wallet key: {e}")
-        raise
+    """
+    Loads the wallet mnemonic from the 'WALLET_KEY' environment variable.
+    """
+    key = os.getenv("WALLET_KEY")
+    if not key:
+        # This error will be raised if the environment variable is not set or is empty.
+        # It will cause the app to fail on startup, which is good practice for missing critical config.
+        raise ValueError("FATAL: WALLET_KEY environment variable not set or is empty.")
+    return key
 
+# This line now calls the new function.
 WALLET_KEY = get_wallet_key()
+print("Wallet key loaded from environment variable.")

@@ -15,7 +15,6 @@ package-lock.json
 #server
 /server/node_modules
 /server/package-lock.json
-/server/WALLET_KEY.txt
 /server/analyticsData.json
 
 # misc
