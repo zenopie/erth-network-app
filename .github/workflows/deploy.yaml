@@ -15,12 +15,11 @@ jobs:
 
       - name: Deploy and Run on Remote Server
         uses: appleboy/ssh-action@v1.0.3
+        # The 'with' block contains inputs for the ssh-action itself.
         with:
           host: ${{ secrets.REMOTE_SERVER_HOST }}
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          env:
-            WALLET_KEY: ${{ secrets.WALLET_KEY }}
           script: |
             set -e
 
@@ -86,3 +85,7 @@ jobs:
               erth-network-server
 
             echo ">>> Deployment successful! <<<"
+        # The 'env' block is at the same level as 'with', 'name', and 'uses'.
+        # This makes the GitHub secret available to the 'script' block above.
+        env:
+          WALLET_KEY: ${{ secrets.WALLET_KEY }}
