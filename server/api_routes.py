@@ -40,6 +40,11 @@ async def contract_interaction(message_object: Dict):
             logger.error("Secret client is not initialized")
             raise HTTPException(status_code=500, detail="Secret client is not initialized")
 
+        # Explicit gas settings
+        gas_limit = 1000000  # Adjust based on your contract's needs
+        gas_price = "0.1uscrt"  # Standard gas price for Secret Network
+        logger.debug(f"Using gas_limit: {gas_limit}, gas_price: {gas_price}")
+
         tx = wallet.create_and_broadcast_tx(
             msg_list=[
                 MsgExecuteContract(
@@ -48,7 +53,9 @@ async def contract_interaction(message_object: Dict):
                     msg=message_object,
                     code_hash=config.REGISTRATION_HASH
                 )
-            ]
+            ],
+            gas=gas_limit,
+            gas_prices=gas_price
         )
         logger.debug(f"Transaction response: {tx.__dict__}")
         if not hasattr(tx, 'code') or tx.code is None:
