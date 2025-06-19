@@ -45,8 +45,9 @@ async def contract_interaction(message_object: Dict):
         balance = secret_client.bank.balance(wallet.key.acc_address)
         logger.debug(f"Wallet balance: {balance}")
         coins = balance[0] if balance else Coins()  # Extract Coins object from tuple
-        uscrt_amount = int(coins.get("uscrt", "0uscrt").amount)  # Get uscrt amount
-        if uscrt_amount < 1000000:  # Ensure enough SCRT for gas # Ensure enough SCRT for gas
+        uscrt_coin = coins.get("uscrt")  # Get Coin object for uscrt
+        uscrt_amount = int(uscrt_coin.amount) if uscrt_coin else 0  # Extract amount or default to 0
+        if uscrt_amount < 1000000:  # Ensure enough SCRT for gas
             logger.error("Insufficient wallet balance")
             raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction")
 
