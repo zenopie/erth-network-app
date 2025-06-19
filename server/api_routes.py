@@ -7,6 +7,7 @@ from typing import Dict, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from secret_sdk.core.wasm import MsgExecuteContract
+from secret_sdk.core.coins import Coins
 
 import config
 from models import RegisterRequest, ChatRequest
@@ -43,7 +44,9 @@ async def contract_interaction(message_object: Dict):
         # Check wallet balance
         balance = secret_client.bank.balance(wallet.key.acc_address)
         logger.debug(f"Wallet balance: {balance}")
-        if not balance or balance.get("uscrt", 0) < 1000000:  # Ensure enough SCRT for gas
+        coins = balance[0] if balance else Coins()  # Extract Coins object from tuple
+        uscrt_amount = int(coins.get("uscrt", "0uscrt").amount)  # Get uscrt amount
+        if uscrt_amount < 1000000:  # Ensure enough SCRT for gas # Ensure enough SCRT for gas
             logger.error("Insufficient wallet balance")
             raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction")
 
