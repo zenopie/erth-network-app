@@ -11,79 +11,104 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-        with:
-          clean: true
+        uses: actions/checkout@v4
 
-      - name: Deploy and Build on Remote Server
-        uses: appleboy/ssh-action@master
+      - name: Deploy and Run on Remote Server
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_SERVER_HOST }}
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e  # Exit on error
+            set -e # Exit immediately on error
 
-            HOME_DIR=/home/secret/earth-mainnet-app
-            BUILD_DIR=$HOME_DIR/build
-            SERVER_DIR=$HOME_DIR/server
-            DEPLOY_DIR=/var/www/erth
+            # --- Configuration ---
+            REPO_DIR=/home/secret/erth-mainnet-app
+            # Define the server directory path
+            SERVER_DIR=$REPO_DIR/server
+            FRONTEND_DEPLOY_DIR=/var/www/erth
 
-            mkdir -p $HOME_DIR
+            # --- Repository Setup ---
+            echo ">>> 1. Setting up repository in $REPO_DIR"
+            mkdir -p $REPO_DIR
+            cd $REPO_DIR
 
-            # Clone or update repository
-            cd $HOME_DIR
             if [ -d ".git" ]; then
-              git fetch origin
+              echo "Repository exists. Pulling latest changes..."
+              git fetch origin main
               git reset --hard origin/main
               git clean -fd
             else
+              echo "Cloning new repository..."
               git clone https://github.com/zenopie/erth-mainnet-app.git .
             fi
 
-            # Install Node.js for front-end build
-            export NVM_DIR="$HOME/.nvm"
-            if [ ! -d "$NVM_DIR" ]; then
-              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-            fi
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-            nvm install 18.20.7
-            nvm use 18.20.7
-            nvm alias default 18.20.7
-
-            # Build front-end
-            if [ -f package.json ]; then
+            # --- Frontend Build (if it exists at the root) ---
+            echo ">>> 2. Building Frontend"
+            if [ -f "package.json" ]; then
+              export NVM_DIR="$HOME/.nvm"
+              if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+                curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+              fi
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              
+              nvm install 18
+              nvm use 18
+              
               npm install
-              npm update
-              rm -rf $BUILD_DIR/*
               npm run build
+              
+              echo "Deploying frontend to $FRONTEND_DEPLOY_DIR"
+              mkdir -p $FRONTEND_DEPLOY_DIR
+              # Adjust 'build' to your actual build output directory if different
+              cp -r build/* $FRONTEND_DEPLOY_DIR/
             else
-              echo "package.json not found!"
+              echo "WARNING: package.json not found at root. Skipping frontend build."
+            fi
+
+            # --- Backend Deployment (Docker) ---
+            echo ">>> 3. Setting up Backend"
+
+            # Check if the server directory exists
+            if [ ! -d "$SERVER_DIR" ]; then
+              echo "ERROR: Server directory not found at $SERVER_DIR!"
               exit 1
             fi
 
-            # Copy front-end build to deployment directory
-            rm -rf $DEPLOY_DIR/*
-            cp -r $BUILD_DIR/* $DEPLOY_DIR/
-
-            # Install Docker
+            # Securely create the WALLET_KEY.txt inside the server directory
+            echo "Creating WALLET_KEY.txt in $SERVER_DIR..."
+            echo "${{ secrets.WALLET_KEY_SECRET }}" > $SERVER_DIR/WALLET_KEY.txt
+            if [ ! -s "$SERVER_DIR/WALLET_KEY.txt" ]; then
+              echo "ERROR: WALLET_KEY.txt is empty. Ensure WALLET_KEY_SECRET is set in GitHub."
+              exit 1
+            fi
+            
+            # Ensure Docker is installed
             if ! command -v docker &> /dev/null; then
+              echo "Docker not found. Installing..."
               sudo apt-get update
               sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io
               sudo systemctl start docker
               sudo systemctl enable docker
-              sudo usermod -aG docker secret
+              sudo usermod -aG docker ${{ secrets.REMOTE_SERVER_USERNAME }}
             fi
 
-            # Build and run Docker container as group “docker”
+            echo "Building and running Docker container from $SERVER_DIR..."
+            # Change directory to the server directory. This sets the "build context" for Docker.
             cd $SERVER_DIR
-            if [ ! -f WALLET_KEY.txt ]; then
-              echo "WALLET_KEY.txt not found in $SERVER_DIR!"
-              exit 1
-            fi
 
-            docker build -t erth-network-server .
+            # Stop and remove the old container
             docker stop erth-network-server || true
             docker rm erth-network-server   || true
-            docker run -d --name erth-network-server -p 5000:5000 --restart always erth-network-server
+
+            # Build the new image. The '.' refers to the current directory ($SERVER_DIR)
+            docker build -t erth-network-server .
+
+            # Run the new container
+            docker run -d \
+              --name erth-network-server \
+              -p 5000:5000 \
+              --restart always \
+              erth-network-server
+
+            echo ">>> Deployment successful! <<<"
