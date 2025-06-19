@@ -40,10 +40,16 @@ async def contract_interaction(message_object: Dict):
             logger.error("Secret client is not initialized")
             raise HTTPException(status_code=500, detail="Secret client is not initialized")
 
+        # Check wallet balance
+        balance = secret_client.bank.balance(wallet.key.acc_address)
+        logger.debug(f"Wallet balance: {balance}")
+        if not balance or balance.get("uscrt", 0) < 1000000:  # Ensure enough SCRT for gas
+            logger.error("Insufficient wallet balance")
+            raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction")
+
         # Explicit gas settings
         gas_limit = 1000000  # Match main.py
-        gas_price = "0.25uscrt"  # Standard gas price
-        logger.debug(f"Using gas_limit: {gas_limit}, gas_price: {gas_price}")
+        logger.debug(f"Using gas_limit: {gas_limit}")
 
         # Construct the contract execution message
         msg = MsgExecuteContract(
@@ -57,7 +63,6 @@ async def contract_interaction(message_object: Dict):
         tx = wallet.create_and_broadcast_tx(
             msg_list=[msg],
             gas=gas_limit,
-            gas_prices=gas_price,
             memo=""
         )
         logger.debug(f"Transaction response: {tx.__dict__}")
@@ -79,6 +84,9 @@ async def contract_interaction(message_object: Dict):
                 if not hasattr(tx_info, 'code') or tx_info.code is None:
                     logger.error(f"Transaction info code is missing or None: {tx_info.rawlog}")
                     raise HTTPException(status_code=500, detail=f"Transaction info code is missing or None: {tx_info.rawlog}")
+                if tx_info.code != 0:
+                    logger.error(f"Transaction failed on-chain: {tx_info.rawlog}")
+                    raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
                 return tx_info
             except Exception as e:
                 if "tx not found" in str(e).lower():
@@ -121,26 +129,29 @@ async def register(req: RegisterRequest):
                 status_code=400,
                 detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
             )
-            
+
+        # Validate address format
+        if not req.address.startswith("secret1") or len(req.address) != 45:
+            logger.error(f"Invalid Secret Network address: {req.address}")
+            raise HTTPException(status_code=400, detail="Invalid Secret Network address")
+
+        # On-chain Interaction Step
+        identity_hash = generate_hash(ai_result["identity"])
+        message_object = { "register": { "address": req.address, "id_hash": identity HRM_hash, "affiliate": req.referredBy } }
+        tx_info = await contract_interaction(message_object)
+
+        # Match main.py response structure
+        return {
+            "success": True,
+            "hash": identity_hash,
+            "response": tx_info.rawlog
+        }
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI verification step failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during AI verification: {str(e)}")
-
-    # On-chain Interaction Step
-    identity_hash = generate_hash(ai_result["identity"])
-    message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
-    tx_info = await contract_interaction(message_object)
-
-    if tx_info.code is None:
-        logger.error(f"Transaction info code is None: {tx_info.rawlog}")
-        raise HTTPException(status_code=500, detail=f"Transaction info code is None: {tx_info.rawlog}")
-    if tx_info.code != 0:
-        logger.error(f"Transaction failed on-chain: {tx_info.rawlog}")
-        raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
-
-    return { "success": True, "tx_hash": tx_info.txhash, "identity_hash": identity_hash, "response": tx_info.to_data() }
+        logger.error(f"Registration error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @router.post("/chat", summary="AI Chat Endpoint")
 async def chat(req: ChatRequest):
