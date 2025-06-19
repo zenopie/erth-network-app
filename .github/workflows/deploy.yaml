@@ -15,19 +15,28 @@ jobs:
 
       - name: Deploy and Run on Remote Server
         uses: appleboy/ssh-action@v1.0.3
-        # The 'with' block contains inputs for the ssh-action itself.
         with:
           host: ${{ secrets.REMOTE_SERVER_HOST }}
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
+            set -e # Exit immediately if a command fails.
 
+            # --- THE KEY FIX ---
+            # 1. GitHub Actions substitutes ${{ secrets.WALLET_KEY }} with your actual secret.
+            # 2. The remote server receives and executes: export WALLET_KEY='word1 word2 ...'
+            # This creates a shell variable on the remote server named WALLET_KEY.
+            # The single quotes are important to handle any special characters in the mnemonic.
+            export WALLET_KEY='${{ secrets.WALLET_KEY }}'
+
+            # --- Configuration ---
             REPO_DIR=/home/secret/erth-mainnet-app
             SERVER_DIR=$REPO_DIR/server
             FRONTEND_DEPLOY_DIR=/var/www/erth
 
-            echo ">>> 1. Setting up repository"
+            # --- Repository Setup ---
+            echo ">>> 1. Setting up repository in $REPO_DIR"
+            # ... (rest of the script is the same) ...
             mkdir -p $REPO_DIR
             cd $REPO_DIR
 
@@ -39,7 +48,9 @@ jobs:
               git clone https://github.com/zenopie/erth-mainnet-app.git .
             fi
 
+            # --- Frontend Build ---
             echo ">>> 2. Building Frontend"
+            # ... (rest of the script is the same) ...
             if [ -f "package.json" ]; then
               export NVM_DIR="$HOME/.nvm"
               if [ ! -s "$NVM_DIR/nvm.sh" ]; then
@@ -56,27 +67,25 @@ jobs:
               mkdir -p $FRONTEND_DEPLOY_DIR
               cp -r build/* $FRONTEND_DEPLOY_DIR/
             else
-              echo "WARNING: package.json not found. Skipping frontend build."
+              echo "WARNING: package.json not found at root. Skipping frontend build."
             fi
 
+            # --- Backend Deployment (Docker) ---
             echo ">>> 3. Setting up Backend"
-            if [ ! -d "$SERVER_DIR" ]; then
-              echo "ERROR: Server directory not found at $SERVER_DIR!"
-              exit 1
-            fi
-            
-            if [ -z "$WALLET_KEY" ]; then
-              echo "FATAL: WALLET_KEY environment variable is not available in the script."
-              exit 1
-            fi
-            
             cd $SERVER_DIR
+            
+            # This check will now succeed because the 'export' command above created the variable.
+            if [ -z "$WALLET_KEY" ]; then
+              echo "FATAL: Failed to create WALLET_KEY shell variable."
+              exit 1
+            fi
             
             echo "Building and running Docker container..."
             docker stop erth-network-server || true
             docker rm erth-network-server   || true
             docker build -t erth-network-server .
 
+            # This command now works because $WALLET_KEY is a valid shell variable on the remote server.
             docker run -d \
               -e WALLET_KEY="$WALLET_KEY" \
               --name erth-network-server \
@@ -85,7 +94,3 @@ jobs:
               erth-network-server
 
             echo ">>> Deployment successful! <<<"
-        # The 'env' block is at the same level as 'with', 'name', and 'uses'.
-        # This makes the GitHub secret available to the 'script' block above.
-        env:
-          WALLET_KEY: ${{ secrets.WALLET_KEY }}
