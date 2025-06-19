@@ -20,8 +20,6 @@ jobs:
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           env:
-            # This makes your GitHub secret named WALLET_KEY available as an
-            # environment variable on the remote server, also named WALLET_KEY.
             WALLET_KEY: ${{ secrets.WALLET_KEY }}
           
           script: |
@@ -64,7 +62,6 @@ jobs:
               
               echo "Deploying frontend to $FRONTEND_DEPLOY_DIR"
               mkdir -p $FRONTEND_DEPLOY_DIR
-              # Adjust 'build' to your actual build output directory if different (e.g., 'dist')
               cp -r build/* $FRONTEND_DEPLOY_DIR/
             else
               echo "WARNING: package.json not found at root. Skipping frontend build."
@@ -78,13 +75,11 @@ jobs:
               exit 1
             fi
             
-            # This check verifies the environment variable was passed correctly.
             if [ -z "$WALLET_KEY" ]; then
               echo "FATAL: The WALLET_KEY environment variable from GitHub secrets is not available."
               exit 1
             fi
             
-            # Change directory to the server directory for the Docker build context.
             cd $SERVER_DIR
             
             echo "Building and running Docker container..."
@@ -92,7 +87,6 @@ jobs:
             docker rm erth-network-server   || true
             docker build -t erth-network-server .
 
-            # The -e flag passes the shell's $WALLET_KEY variable into the container.
             docker run -d \
               -e WALLET_KEY="$WALLET_KEY" \
               --name erth-network-server \
