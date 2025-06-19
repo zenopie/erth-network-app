@@ -2,12 +2,11 @@ import asyncio
 import hashlib
 import json
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from secret_sdk.core.wasm import MsgExecuteContract
-from secret_sdk.util.encryption import EncryptionUtils  # Added for encryption
 
 import config
 from models import RegisterRequest, ChatRequest
@@ -42,35 +41,24 @@ async def contract_interaction(message_object: Dict):
             raise HTTPException(status_code=500, detail="Secret client is not initialized")
 
         # Explicit gas settings
-        gas_limit = 1000000  # Adjust based on contract needs
-        gas_price = "0.1uscrt"  # Standard gas price
+        gas_limit = 1000000  # Match main.py
+        gas_price = "0.25uscrt"  # Standard gas price
         logger.debug(f"Using gas_limit: {gas_limit}, gas_price: {gas_price}")
 
-        # Setup encryption
-        encryption_utils = EncryptionUtils(secret_client)
-        encryption_seed = encryption_utils.generate_new_seed()
-        logger.debug(f"Encryption seed generated: {encryption_seed.hex()}")
-
-        # Encrypt the message
-        encrypted_msg = encryption_utils.encrypt(
-            contract_code_hash=config.REGISTRATION_HASH,
+        # Construct the contract execution message
+        msg = MsgExecuteContract(
+            sender=wallet.key.acc_address,
+            contract=config.REGISTRATION_CONTRACT,
             msg=message_object,
-            nonce=encryption_seed
+            code_hash=config.REGISTRATION_HASH,
+            encryption_utils=secret_client.encrypt_utils  # Match main.py
         )
-        logger.debug(f"Encrypted message: {encrypted_msg.hex()}")
 
         tx = wallet.create_and_broadcast_tx(
-            msg_list=[
-                MsgExecuteContract(
-                    sender=wallet.key.acc_address,
-                    contract=config.REGISTRATION_CONTRACT,
-                    msg=encrypted_msg,
-                    code_hash=config.REGISTRATION_HASH,
-                    sent_funds=[]  # Add funds if required by contract
-                )
-            ],
+            msg_list=[msg],
             gas=gas_limit,
-            gas_prices=gas_price
+            gas_prices=gas_price,
+            memo=""
         )
         logger.debug(f"Transaction response: {tx.__dict__}")
         if not hasattr(tx, 'code') or tx.code is None:
