@@ -51,7 +51,7 @@ async def contract_interaction(message_object: Dict):
             contract=config.REGISTRATION_CONTRACT,
             msg=message_object,
             code_hash=config.REGISTRATION_HASH,
-            encryption_utils=secret_client.encrypt_utils  # Match main.py
+            encryption_utils=secret_client.encrypt_utils
         )
 
         tx = wallet.create_and_broadcast_tx(
@@ -62,11 +62,11 @@ async def contract_interaction(message_object: Dict):
         )
         logger.debug(f"Transaction response: {tx.__dict__}")
         if not hasattr(tx, 'code') or tx.code is None:
-            logger.error(f"Transaction code is missing or None: {tx.raw_log}")
-            raise HTTPException(status_code=500, detail=f"Transaction code is missing or None: {tx.raw_log}")
+            logger.error(f"Transaction code is missing or None: {tx.rawlog}")
+            raise HTTPException(status_code=500, detail=f"Transaction code is missing or None: {tx.rawlog}")
         if tx.code != 0:
-            logger.error(f"Transaction broadcast failed: {tx.raw_log}")
-            raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.raw_log}")
+            logger.error(f"Transaction broadcast failed: {tx.rawlog}")
+            raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
         tx_hash = tx.txhash
         if not tx_hash:
             logger.error("Transaction hash is missing")
@@ -77,8 +77,8 @@ async def contract_interaction(message_object: Dict):
                 tx_info = secret_client.tx.tx_info(tx_hash)
                 logger.debug(f"Transaction info: {tx_info.__dict__}")
                 if not hasattr(tx_info, 'code') or tx_info.code is None:
-                    logger.error(f"Transaction info code is missing or None: {tx_info.raw_log}")
-                    raise HTTPException(status_code=500, detail=f"Transaction info code is missing or None: {tx_info.raw_log}")
+                    logger.error(f"Transaction info code is missing or None: {tx_info.rawlog}")
+                    raise HTTPException(status_code=500, detail=f"Transaction info code is missing or None: {tx_info.rawlog}")
                 return tx_info
             except Exception as e:
                 if "tx not found" in str(e).lower():
@@ -134,11 +134,11 @@ async def register(req: RegisterRequest):
     tx_info = await contract_interaction(message_object)
 
     if tx_info.code is None:
-        logger.error(f"Transaction info code is None: {tx_info.raw_log}")
-        raise HTTPException(status_code=500, detail=f"Transaction info code is None: {tx_info.raw_log}")
+        logger.error(f"Transaction info code is None: {tx_info.rawlog}")
+        raise HTTPException(status_code=500, detail=f"Transaction info code is None: {tx_info.rawlog}")
     if tx_info.code != 0:
-        logger.error(f"Transaction failed on-chain: {tx_info.raw_log}")
-        raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.raw_log}")
+        logger.error(f"Transaction failed on-chain: {tx_info.rawlog}")
+        raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
 
     return { "success": True, "tx_hash": tx_info.txhash, "identity_hash": identity_hash, "response": tx_info.to_data() }
 
