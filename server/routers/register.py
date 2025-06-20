@@ -104,6 +104,8 @@ async def register(req: RegisterRequest):
             )
             face_match_result = json.loads(face_match_response['response'])
 
+            logger.debug(f"AI face match raw response: {face_match_result}")
+
             # This new, more robust check handles both errors (e.g., face not found) and non-matches.
             if face_match_result.get("error_message") or not face_match_result.get("is_match"):
                 logger.warning(f"Face match failed. Details: {face_match_result}")
