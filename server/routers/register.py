@@ -1,3 +1,5 @@
+# /routers/register.py
+
 import asyncio
 import hashlib
 import json
@@ -17,6 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # --- Helper functions specific to registration ---
+
 def generate_hash(data: Dict) -> str:
     """Creates a SHA256 hash of a JSON object for consistent ID hashing."""
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
@@ -31,7 +34,7 @@ async def contract_interaction(message_object: Dict):
         uscrt_amount = int(uscrt_coin.amount) if uscrt_coin else 0
         if uscrt_amount < 1000000:
             raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction")
-        
+
         msg = MsgExecuteContract(
             sender=wallet.key.acc_address,
             contract=config.REGISTRATION_CONTRACT,
@@ -42,7 +45,7 @@ async def contract_interaction(message_object: Dict):
         tx = wallet.create_and_broadcast_tx(msg_list=[msg], gas=1000000, memo="")
         if tx.code != 0:
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
-        
+
         for _ in range(30):
             await asyncio.sleep(1)
             try:
@@ -68,7 +71,7 @@ async def register(req: RegisterRequest):
     try:
         logger.debug(f"Register request: address={req.address}, referredBy={req.referredBy}")
         id_image_clean = req.idImage.split(',', 1)[1]
-        
+
         # Step 1: Verify the ID document
         raw_response = ollama_client.generate(
             model=config.OLLAMA_MODEL,
@@ -85,7 +88,7 @@ async def register(req: RegisterRequest):
                 detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
             )
 
-        # Step 2: Verify selfie against ID
+        # Step 2: Verify selfie against ID (with corrected validation logic)
         logger.info("Performing required face match verification.")
         try:
             selfie_image_clean = req.selfieImage.split(',', 1)[1]
@@ -99,17 +102,24 @@ async def register(req: RegisterRequest):
             )
             face_match_result = json.loads(face_match_response['response'])
 
-            if not face_match_result.get("is_match"):
+            # This new, more robust check handles both errors (e.g., face not found) and non-matches.
+            if face_match_result.get("error_message") or not face_match_result.get("is_match"):
                 logger.warning(f"Face match failed. Details: {face_match_result}")
+
+                # Provide a more specific reason in the response
+                reason = "The face in the selfie does not appear to match the face on the ID document."
+                if face_match_result.get("error_message"):
+                    reason = face_match_result["error_message"] # Use the AI's specific error
+
                 raise HTTPException(
                     status_code=400,
                     detail={
                         "error": "Selfie verification failed.",
-                        "reason": "The face in the selfie does not appear to match the face on the ID document.",
+                        "reason": reason,
                         "details": face_match_result
                     }
                 )
-            
+
             logger.info(f"Face match successful with confidence: {face_match_result.get('confidence_score', 'N/A')}")
 
         except json.JSONDecodeError:
@@ -125,7 +135,6 @@ async def register(req: RegisterRequest):
 
         # Step 3: Check for existing registration on-chain
         logger.info(f"Checking for existing registration with hash: {identity_hash}")
-        
         try:
             query_msg = {"query_registration_status_by_id_hash": {"id_hash": identity_hash}}
             existing_registration = secret_client.wasm.contract_query(
@@ -140,7 +149,7 @@ async def register(req: RegisterRequest):
                     status_code=409,
                     detail="This identity document has already been registered."
                 )
-            
+
             logger.info(f"No existing registration found for hash. Proceeding...")
 
         except HTTPException:
