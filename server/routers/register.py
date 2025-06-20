@@ -103,7 +103,7 @@ async def register(req: RegisterRequest):
             existing_registration = secret_client.wasm.contract_query(
                 contract_address=config.REGISTRATION_CONTRACT,
                 query=query_msg,
-                code_hash=config.REGISTRATION_HASH
+                contract_code_hash=config.REGISTRATION_HASH
             )
 
             # The query returns a dict like: {"registration_status": true, "last_claim": "..."}
