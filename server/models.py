@@ -5,7 +5,7 @@ from typing import Optional, List, Dict
 class RegisterRequest(BaseModel):
     address: str
     idImage: str
-    selfieImage: Optional[str] = None
+    selfieImage: str
     referredBy: Optional[str] = None
 
 class ChatRequest(BaseModel):
