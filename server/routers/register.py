@@ -1,4 +1,3 @@
-# /routers/register.py
 import asyncio
 import hashlib
 import json
@@ -12,7 +11,8 @@ from secret_sdk.core.coins import Coins
 import config
 from models import RegisterRequest
 from dependencies import wallet, secret_client, ollama_client
-from prompts import ID_VERIFICATION_SYSTEM_PROMPT
+# Assume FACE_MATCHING_SYSTEM_PROMPT is defined in your prompts.py
+from prompts import ID_VERIFICATION_SYSTEM_PROMPT, FACE_MATCHING_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,6 +71,8 @@ async def register(req: RegisterRequest):
     try:
         logger.debug(f"Register request: address={req.address}, referredBy={req.referredBy}")
         id_image_clean = req.idImage.split(',', 1)[1]
+        
+        # Step 1: Verify the ID document
         raw_response = ollama_client.generate(
             model=config.OLLAMA_MODEL,
             prompt="[ID IMAGE] Extract identity and detect fakes according to the system prompt rules.",
@@ -86,30 +88,60 @@ async def register(req: RegisterRequest):
                 detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
             )
 
+        # Step 2: NEW - Verify selfie against ID if provided
+        if req.selfieImage:
+            logger.info("Selfie image provided. Performing face match verification.")
+            try:
+                selfie_image_clean = req.selfieImage.split(',', 1)[1]
+
+                # Make the AI call for face matching
+                face_match_response = ollama_client.generate(
+                    model=config.OLLAMA_MODEL,
+                    prompt="[FIRST IMAGE: ID Card], [SECOND IMAGE: Selfie]. Do the faces in these two images belong to the same person?",
+                    images=[id_image_clean, selfie_image_clean],
+                    system=FACE_MATCHING_SYSTEM_PROMPT,
+                    format='json'
+                )
+                face_match_result = json.loads(face_match_response['response'])
+
+                # Check the result of the face match (assuming AI returns 'is_match': true/false)
+                if not face_match_result.get("is_match"):
+                    logger.warning(f"Face match failed. Details: {face_match_result}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "error": "Selfie verification failed.",
+                            "reason": "The face in the selfie does not appear to match the face on the ID document.",
+                            "details": face_match_result
+                        }
+                    )
+                
+                logger.info(f"Face match successful with confidence: {face_match_result.get('confidence_score', 'N/A')}")
+
+            except json.JSONDecodeError:
+                logger.error("Failed to decode JSON from face match AI response.")
+                raise HTTPException(status_code=500, detail="Internal error during selfie verification.")
+            except Exception as e:
+                logger.error(f"Error during selfie verification AI call: {e}", exc_info=True)
+                if isinstance(e, HTTPException):
+                    raise
+                raise HTTPException(status_code=503, detail="The selfie verification service is currently unavailable.")
+
         identity_hash = generate_hash(ai_result["identity"])
 
-         # --- New logic to check for existing registration ---
+        # Step 3: Check for existing registration on-chain
         logger.info(f"Checking for existing registration with hash: {identity_hash}")
         
         try:
-            # Construct the query message for the smart contract
-            query_msg = {
-                "query_registration_status_by_id_hash": {
-                    "id_hash": identity_hash
-                }
-            }
-            
-            # Execute a read-only query against the smart contract
+            query_msg = {"query_registration_status_by_id_hash": {"id_hash": identity_hash}}
             existing_registration = secret_client.wasm.contract_query(
                 contract_address=config.REGISTRATION_CONTRACT,
                 query=query_msg,
                 contract_code_hash=config.REGISTRATION_HASH
             )
 
-            # The query returns a dict like: {"registration_status": true, "last_claim": "..."}
             if existing_registration.get("registration_status"):
                 logger.warning(f"Duplicate registration attempt for hash: {identity_hash}")
-                # Use HTTP 409 Conflict for this specific error
                 raise HTTPException(
                     status_code=409,
                     detail="This identity document has already been registered."
@@ -118,12 +150,12 @@ async def register(req: RegisterRequest):
             logger.info(f"No existing registration found for hash. Proceeding...")
 
         except HTTPException:
-            # Re-raise the HTTPException we just created to stop execution
             raise
         except Exception as e:
-            # Handle potential query errors (e.g., node down)
             logger.error(f"Error querying contract for existing registration: {e}", exc_info=True)
             raise HTTPException(status_code=503, detail="Could not verify registration status with the network.")
+
+        # Step 4: Execute the registration transaction
         message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
         tx_info = await contract_interaction(message_object)
 
