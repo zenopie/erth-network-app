@@ -100,7 +100,7 @@ async def register(req: RegisterRequest):
             }
             
             # Execute a read-only query against the smart contract
-            existing_registration = secret_client.query.wasm.contract_query(
+            existing_registration = secret_client.wasm.contract_query(
                 contract_address=config.REGISTRATION_CONTRACT,
                 query_msg=query_msg,
                 code_hash=config.REGISTRATION_HASH
