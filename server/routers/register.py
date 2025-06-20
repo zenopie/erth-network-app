@@ -15,6 +15,8 @@ from models import RegisterRequest
 from dependencies import wallet, secret_client, ollama_client
 from prompts import ID_VERIFICATION_SYSTEM_PROMPT, FACE_MATCHING_SYSTEM_PROMPT
 
+logging.basicConfig(level=logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
