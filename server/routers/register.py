@@ -87,6 +87,43 @@ async def register(req: RegisterRequest):
             )
 
         identity_hash = generate_hash(ai_result["identity"])
+
+         # --- New logic to check for existing registration ---
+        logger.info(f"Checking for existing registration with hash: {identity_hash}")
+        
+        try:
+            # Construct the query message for the smart contract
+            query_msg = {
+                "query_registration_status_by_id_hash": {
+                    "id_hash": identity_hash
+                }
+            }
+            
+            # Execute a read-only query against the smart contract
+            existing_registration = secret_client.query.wasm.contract_query(
+                contract_address=config.REGISTRATION_CONTRACT,
+                query_msg=query_msg,
+                code_hash=config.REGISTRATION_HASH
+            )
+
+            # The query returns a dict like: {"registration_status": true, "last_claim": "..."}
+            if existing_registration.get("registration_status"):
+                logger.warning(f"Duplicate registration attempt for hash: {identity_hash}")
+                # Use HTTP 409 Conflict for this specific error
+                raise HTTPException(
+                    status_code=409,
+                    detail="This identity document has already been registered."
+                )
+            
+            logger.info(f"No existing registration found for hash. Proceeding...")
+
+        except HTTPException:
+            # Re-raise the HTTPException we just created to stop execution
+            raise
+        except Exception as e:
+            # Handle potential query errors (e.g., node down)
+            logger.error(f"Error querying contract for existing registration: {e}", exc_info=True)
+            raise HTTPException(status_code=503, detail="Could not verify registration status with the network.")
         message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
         tx_info = await contract_interaction(message_object)
 
