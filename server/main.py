@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import config
-import api_routes
-import analytics_manager
+# Import the individual router modules
+from routers import register, chat, analytics
 
 app = FastAPI(
-    title="Erth Network API (Consolidated)",
+    title="Erth Network API",
     description="Backend services for Erth Network applications.",
-    version="1.1.0"
+    version="1.4.0" # Version bump to reflect change
 )
 
 # --- Middleware ---
@@ -30,11 +30,12 @@ scheduler = AsyncIOScheduler()
 async def startup_event():
     """Initializes analytics and starts the scheduler."""
     print("Application startup...")
-    # Initialize shared clients (now done at import time in dependencies.py)
-    analytics_manager.init_analytics()
-    scheduler.add_job(analytics_manager.update_analytics_job, 'interval', hours=24)
+    # Call init_analytics from the analytics router module
+    analytics.init_analytics()
+    # Schedule the job from the analytics router module to run every 24 hours
+    scheduler.add_job(analytics.update_analytics_job, 'interval', hours=24)
     scheduler.start()
-    print("Startup complete.")
+    print("Startup complete. Analytics scheduler is running.")
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -42,10 +43,13 @@ def shutdown_event():
     scheduler.shutdown()
     print("Application shutdown.")
 
-# --- API Router ---
-app.include_router(api_routes.router, prefix="/api", tags=["Core API"])
+# --- API Routers ---
+app.include_router(register.router, prefix="/api", tags=["Registration"])
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
+app.include_router(analytics.router, prefix="/api", tags=["Analytics"])
 
-@app.get("/", tags=["Root"])
+
+@app.get("/", tags=["Health Check"])
 async def read_root():
     return {"message": "Welcome to the Erth Network API"}
 

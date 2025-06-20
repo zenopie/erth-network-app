@@ -10,7 +10,6 @@ ALLOWED_ORIGINS = [
 
 # --- File Paths ---
 ANALYTICS_FILE = "analyticsData.json"
-WALLET_KEY_FILE = "WALLET_KEY.txt"
 
 # --- Secret Network ---
 SECRET_LCD_URL = "https://lcd.erth.network"
@@ -22,6 +21,34 @@ REGISTRATION_HASH = "a31a5c5311f8e0d0a48116b11f349ca1ebb7be5d51bdecead3c79a66a2a
 SECRET_AI_URL = "https://secretai-rytn.scrtlabs.com:21434"
 SECRET_AI_API_KEY = "sk-MiojMS-qLCH3sT597TIRWS1q1atz_V_oo3GSoKJphHL_852IKGbmvbLuh43aAXSy-B-0--1y"
 OLLAMA_MODEL = "gemma3:4b"
+
+# --- Analytics & DeFi Contracts ---
+TOKENS = {
+    "ERTH": {
+        "contract": "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
+        "hash": "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+        "decimals": 6,
+    },
+    "ANML": {
+        "contract": "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
+        "hash": "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+        "decimals": 6,
+    },
+    "FINA": {
+        "contract": "secret1s3z9xkpdsrhk86300tqnv6u466jmdmlegew2ve",
+        "hash": "cfecd51a022c520c55429d974363fd7f065d20474af6a362da8737f73b7d9e80",
+        "decimals": 6,
+        "coingeckoId": "fina",
+    },
+    "sSCRT": {
+        "contract": "secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek",
+        "hash": "af74387e276be8874f07bec3a87023ee49b0e7ebe08178c49d0a49c3c98ed60e",
+        "decimals": 6,
+        "coingeckoId": "secret",
+    },
+}
+UNIFIED_POOL_CONTRACT = "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra"
+UNIFIED_POOL_HASH = "1c2220105c2a33edf4bbafacecb6cbdf317dac26289ada1df0cec1abc73895bd"
 
 # --- Wallet Key Loading ---
 def get_wallet_key() -> str:

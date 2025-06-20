@@ -2,16 +2,20 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
+import time
 from typing import Dict, Optional
 
+import aiohttp
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from secret_sdk.core.wasm import MsgExecuteContract
 from secret_sdk.core.coins import Coins
+from secret_sdk.core.wasm import MsgExecuteContract
 
-import config
-from models import RegisterRequest, ChatRequest
-from dependencies import wallet, secret_client, ollama_client
+import config  # Imports everything from your config.py
+from dependencies import ollama_client, secret_client, wallet
+from models import ChatRequest, RegisterRequest
 from prompts import ID_VERIFICATION_SYSTEM_PROMPT
 
 # Configure logging
