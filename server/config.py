@@ -42,7 +42,7 @@ TOKENS = {
     },
 }
 UNIFIED_POOL_CONTRACT = "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra"
-UNIFIED_POOL_HASH = "1c2220105c2a33edf4bbafacecb6cbdf317dac26289ada1df0cec1abc73895bd"
+UNIFIED_POOL_HASH = "2be409a0708a9e05155341ee3fe42a63bf2ff77b140942a2593767f5637bbf70"
 
 # --- Wallet Key Loading ---
 def get_wallet_key() -> str:
