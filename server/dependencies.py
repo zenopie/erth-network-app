@@ -1,7 +1,7 @@
 # /dependencies.py
 from secret_sdk.client.lcd import LCDClient
 from secret_sdk.key.mnemonic import MnemonicKey
-from ollama import Client
+from ollama import Client, AsyncClient
 import config
 
 # --- Secret Network Client ---
