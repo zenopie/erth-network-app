@@ -15,4 +15,10 @@ ollama_client = Client(
     host=config.SECRET_AI_URL,
     headers={"Authorization": f"Bearer {config.SECRET_AI_API_KEY}"}
 )
+
+ollama_async_client = AsyncClient(
+    host=config.SECRET_AI_URL,
+    headers={"Authorization": f"Bearer {config.SECRET_AI_API_KEY}"}
+)
+
 print("Ollama Client Initialized.")
