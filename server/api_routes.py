@@ -164,14 +164,27 @@ async def register(req: RegisterRequest):
 @router.post("/chat", summary="AI Chat Endpoint")
 async def chat(req: ChatRequest):
     try:
+        # This is the async generator function that will stream responses.
         async def stream_response():
-            async for chunk in await ollama_client.chat(model=req.model, messages=req.messages, stream=True):
+            # 1. Await the chat method to get the async generator (the stream)
+            stream = await ollama_client.chat(
+                model=req.model, 
+                messages=req.messages, 
+                stream=True
+            )
+            # 2. Iterate over the stream object
+            async for chunk in stream:
+                # The frontend expects a JSON object with a 'message' key
                 yield json.dumps({"message": chunk['message']}) + "\n"
+
         if req.stream:
+            # The media_type is correct for Newline Delimited JSON (NDJSON)
             return StreamingResponse(stream_response(), media_type="application/x-ndjson")
         else:
+            # Non-streaming case remains the same
             response = await ollama_client.chat(model=req.model, messages=req.messages)
             return {"message": response['message']}
+            
     except Exception as e:
         logger.error(f"Error in /chat endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
