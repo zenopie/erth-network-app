@@ -18,9 +18,10 @@ async def chat(req: ChatRequest):
                 messages=req.messages,
                 stream=True
             ):
-                print("Received chunk:", chunk)
+                # print("Received chunk:", chunk)
                 content = chunk['message']['content']
-                yield json.dumps({"message": content}) + "\n"
+                if content:
+                    yield json.dumps({"message": {"content": content}}) + "\n"
 
         if req.stream:
             return StreamingResponse(stream_response(), media_type="application/x-ndjson")
