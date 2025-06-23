@@ -1,4 +1,3 @@
-# /routers/chat.py
 import json
 import logging
 from fastapi import APIRouter, HTTPException
@@ -14,13 +13,23 @@ router = APIRouter()
 async def chat(req: ChatRequest):
     try:
         async def stream_response():
-            async for chunk in await ollama_client.chat(model=req.model, messages=req.messages, stream=True):
-                yield json.dumps({"message": chunk['message']}) + "\n"
+            stream = await ollama_client.chat(model=req.model, messages=req.messages, stream=True)
+            async for chunk in stream:
+                if 'message' in chunk:
+                    chunk_data = json.dumps({"message": chunk['message']})
+                    logger.debug(f"Sending chunk: {chunk_data}")
+                    yield chunk_data + "\n"
+                else:
+                    logger.warning(f"Unexpected chunk format: {chunk}")
+                    yield json.dumps({"error": "Unexpected chunk format"}) + "\n"
 
         if req.stream:
             return StreamingResponse(stream_response(), media_type="application/x-ndjson")
         else:
             response = await ollama_client.chat(model=req.model, messages=req.messages)
+            if 'message' not in response:
+                logger.error(f"Non-streaming response missing 'message' key: {response}")
+                raise HTTPException(status_code=500, detail="Invalid response format from Ollama")
             return {"message": response['message']}
             
     except Exception as e:
