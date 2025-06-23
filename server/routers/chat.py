@@ -1,3 +1,4 @@
+
 import json
 import logging
 from fastapi import APIRouter, HTTPException
@@ -13,8 +14,8 @@ router = APIRouter()
 async def chat(req: ChatRequest):
     try:
         async def stream_response():
-            stream = await ollama_client.chat(model=req.model, messages=req.messages, stream=True)
-            async for chunk in stream:
+            # Remove await; directly iterate over the async generator
+            async for chunk in ollama_client.chat(model=req.model, messages=req.messages, stream=True):
                 if 'message' in chunk:
                     chunk_data = json.dumps({"message": chunk['message']})
                     logger.debug(f"Sending chunk: {chunk_data}")
