@@ -1,4 +1,4 @@
-# /routers/register.py (Final Version with Correct Polling)
+# /routers/register.py (Corrected using the SDK's factory pattern)
 
 import asyncio
 import hashlib
@@ -10,13 +10,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from secret_sdk.client.lcd import AsyncLCDClient
 from secret_sdk.exceptions import LCDResponseError
 from secret_sdk.key.mnemonic import MnemonicKey
-from secret_sdk.wallet import AsyncWallet
+# REMOVED: from secret_sdk.wallet import AsyncWallet
+# The AsyncWallet should not be imported directly.
 from secret_sdk.core.wasm import MsgExecuteContract
 from secret_sdk.core.coins import Coins
 
 import config
 from models import RegisterRequest
-# Import the new dependency injectors and the shared encryption utils
 from dependencies import get_async_secret_client, ollama_async_client, secret_client
 from prompts import ID_VERIFICATION_SYSTEM_PROMPT, FACE_MATCHING_SYSTEM_PROMPT
 
@@ -31,7 +31,6 @@ def generate_hash(data: Dict) -> str:
 @router.post("/register", summary="Register a new user")
 async def register(
     req: RegisterRequest,
-    # FastAPI injects the async clients, handling setup and teardown
     secret_async_client: AsyncLCDClient = Depends(get_async_secret_client)
 ):
     """
@@ -77,7 +76,10 @@ async def register(
             raise HTTPException(status_code=409, detail="This identity document has already been registered.")
 
         # Step 4: Execute the registration transaction
-        async_wallet = AsyncWallet(secret_async_client, MnemonicKey(config.WALLET_KEY))
+        # --- THIS IS THE FIX ---
+        # Create the wallet from the async client instance, mirroring the SDK's documented pattern.
+        async_wallet = secret_async_client.wallet(MnemonicKey(config.WALLET_KEY))
+        # -----------------------
 
         # Check balance before proceeding
         balance = await secret_async_client.bank.balance(async_wallet.key.acc_address)
@@ -96,29 +98,25 @@ async def register(
         if tx.code != 0:
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
 
-        # --- Re-implementing the original, reliable polling loop ---
+        # Re-implementing the original, reliable polling loop
         tx_info = None
-        for i in range(30):  # Poll for 30 seconds
+        for i in range(30):
             try:
                 tx_info = await secret_async_client.tx.tx_info(tx.txhash)
                 if tx_info:
-                    break  # Exit loop if tx is found
+                    break
             except LCDResponseError as e:
-                # This error means the transaction is not yet indexed.
                 if "tx not found" in str(e).lower():
                     logger.debug(f"Polling for tx {tx.txhash}... attempt {i+1}")
                     await asyncio.sleep(1)
                     continue
-                # For other LCD errors, we should fail fast.
                 raise HTTPException(status_code=500, detail=f"Error polling for transaction: {e}")
         
         if not tx_info:
             raise HTTPException(status_code=504, detail="Transaction polling timed out.")
         
-        # Check if the transaction succeeded on-chain
         if tx_info.code != 0:
             raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
-        # --- End of re-implemented polling loop ---
 
         return {"success": True, "hash": identity_hash, "response": tx_info.rawlog}
 

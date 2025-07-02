@@ -1,16 +1,15 @@
-# /dependencies.py
-from secret_sdk.client.lcd import LCDClient
+# /dependencies.py (Corrected)
+from secret_sdk.client.lcd import LCDClient, AsyncLCDClient # Add AsyncLCDClient here
 from secret_sdk.key.mnemonic import MnemonicKey
 from ollama import Client, AsyncClient
 import config
 
 # --- Secret Network Client ---
-# This client is synchronous, which is fine for its usage pattern here.
 secret_client = LCDClient(url=config.SECRET_LCD_URL, chain_id=config.SECRET_CHAIN_ID)
 wallet = secret_client.wallet(MnemonicKey(mnemonic=config.WALLET_KEY))
 print(f"Secret Wallet Initialized. Address: {wallet.key.acc_address}")
 
-# This client is asynchronous
+# --- Async Secret Network Client ---
 async def get_async_secret_client():
     """
     This dependency injector uses the 'async with' pattern to create, yield,
