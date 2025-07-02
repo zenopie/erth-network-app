@@ -44,7 +44,7 @@ async def contract_interaction(message_object: Dict):
             code_hash=config.REGISTRATION_HASH,
             encryption_utils=secret_client.encrypt_utils
         )
-        tx = wallet.create_and_broadcast_tx(msg_list=[msg], gas=1000000, gas_prices=Coins(uscrt="0.1"), memo="")
+        tx = wallet.create_and_broadcast_tx(msg_list=[msg], gas=1000000, memo="")
         if tx.code != 0:
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
 
