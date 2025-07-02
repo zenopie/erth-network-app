@@ -15,7 +15,7 @@ ANALYTICS_FILE = "analyticsData.json"
 SECRET_LCD_URL = "https://lcd.erth.network"
 SECRET_CHAIN_ID = "secret-4"
 REGISTRATION_CONTRACT = "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p"
-REGISTRATION_HASH = "454f1e18d4349043717ffcd9ac92aa128097f7181e3763e8f4f8941c654acba5"
+REGISTRATION_HASH = "12fad89bbc7f4c9051b7b5fa1c7af1c17480dcdee4b962cf6cb6ff668da02667"
 
 # --- Secret AI / Ollama ---
 SECRET_AI_URL = "https://secretai-rytn.scrtlabs.com:21434"
