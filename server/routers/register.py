@@ -130,7 +130,7 @@ async def register(
         if tx_info.code != 0:
             raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.raw_log}")
 
-        return {"success": True, "hash": identity_hash, "tx_hash": tx_info.txhash, "response": tx_info.raw_log}
+        return {"success": True, "hash": identity_hash, "tx_hash": tx_info.txhash, "logs": tx_info.logs}
 
     except HTTPException:
         # Re-raise HTTPException directly to let FastAPI handle it
