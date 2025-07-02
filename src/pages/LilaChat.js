@@ -6,11 +6,12 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiSettings, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
 import "./LilaChat.css";
+import { ERTH_API_BASE_URL } from '../utils/config';
 
 const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
 const TESTNET_CHAIN_ID = "pulsar-3";
 const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
-const SERVER_API_URL = "https://erth.network/api/chat";
+const SERVER_API_URL = `${ERTH_API_BASE_URL}/api/chat`;
 
 const secretNetworkClient = new SecretNetworkClient({
   url: TESTNET_NODE_URL,

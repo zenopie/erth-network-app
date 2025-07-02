@@ -6,6 +6,7 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import StatusModal from "../components/StatusModal";
 import passportImage from "../images/passport.png";
 import anmlImage from "../images/anml.png";
+import { ERTH_API_BASE_URL } from '../utils/config';
 
 const REGISTRATION_CONTRACT = contracts.registration.contract;
 const REGISTRATION_HASH = contracts.registration.hash;
@@ -159,7 +160,11 @@ const ANMLClaim = ({ isKeplrConnected }) => {
     console.log("Selfie Image size:", selfieImage.length / 1024 / 1024, "MB");
 
     try {
-      const response = await fetch("/api/register", {
+      const fullApiUrl = `${ERTH_API_BASE_URL}/api/register`;
+
+      console.log("Sending registration request to:", fullApiUrl);
+
+      const response = await fetch(fullApiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

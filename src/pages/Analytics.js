@@ -3,9 +3,10 @@ import { Line } from "react-chartjs-2";
 import "chart.js/auto"; // For Chart.js v4
 import "./Analytics.css";
 import { showLoadingScreen } from "../utils/uiUtils";
+import { ERTH_API_BASE_URL } from '../utils/config';
 
 // Use the production URL - server now has CORS properly configured
-const API_URL = "https://erth.network/api/analytics";
+const API_URL = `${ERTH_API_BASE_URL}/api/analytics`;
 
 // Time range options
 const TIME_RANGES = [
