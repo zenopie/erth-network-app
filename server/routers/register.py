@@ -30,7 +30,10 @@ async def contract_interaction(message_object: Dict):
     """Creates a transaction, broadcasts it, and polls for the result."""
     try:
         logger.debug(f"Message object: {message_object}")
-        balance = secret_client.bank.balance(wallet.key.acc_address)
+        
+        # --- FIX: Run blocking network calls in a separate thread ---
+        balance = await asyncio.to_thread(secret_client.bank.balance, wallet.key.acc_address)
+        
         coins = balance[0] if balance else Coins()
         uscrt_coin = coins.get("uscrt")
         uscrt_amount = int(uscrt_coin.amount) if uscrt_coin else 0
@@ -44,14 +47,22 @@ async def contract_interaction(message_object: Dict):
             code_hash=config.REGISTRATION_HASH,
             encryption_utils=secret_client.encrypt_utils
         )
-        tx = wallet.create_and_broadcast_tx(msg_list=[msg], gas=1000000, memo="")
+        
+        # --- FIX: Run blocking network calls in a separate thread ---
+        tx = await asyncio.to_thread(
+            wallet.create_and_broadcast_tx,
+            msg_list=[msg], gas=1000000, memo=""
+        )
+
         if tx.code != 0:
             raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
 
         for _ in range(30):
-            await asyncio.sleep(1)
+            await asyncio.sleep(1) # This is already async, so it's correct
             try:
-                tx_info = secret_client.tx.tx_info(tx.txhash)
+                # --- FIX: Run blocking network calls in a separate thread ---
+                tx_info = await asyncio.to_thread(secret_client.tx.tx_info, tx.txhash)
+
                 if tx_info.code != 0:
                     raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
                 return tx_info
@@ -62,6 +73,9 @@ async def contract_interaction(message_object: Dict):
         raise HTTPException(status_code=504, detail="Transaction polling timed out.")
     except Exception as e:
         logger.error(f"Contract interaction error: {e}", exc_info=True)
+        # Re-raise HTTPException to preserve status code and detail
+        if isinstance(e, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -75,7 +89,9 @@ async def register(req: RegisterRequest):
         id_image_clean = req.idImage.split(',', 1)[1]
 
         # Step 1: Verify the ID document
-        raw_response = ollama_client.generate(
+        # --- FIX: Run blocking AI call in a separate thread ---
+        raw_response = await asyncio.to_thread(
+            ollama_client.generate,
             model=config.OLLAMA_MODEL,
             prompt="[ID IMAGE] Extract identity and detect fakes according to the system prompt rules.",
             images=[id_image_clean],
@@ -90,12 +106,14 @@ async def register(req: RegisterRequest):
                 detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
             )
 
-        # Step 2: Verify selfie against ID (with corrected validation logic)
+        # Step 2: Verify selfie against ID
         logger.info("Performing required face match verification.")
         try:
             selfie_image_clean = req.selfieImage.split(',', 1)[1]
 
-            face_match_response = ollama_client.generate(
+            # --- FIX: Run blocking AI call in a separate thread ---
+            face_match_response = await asyncio.to_thread(
+                ollama_client.generate,
                 model=config.OLLAMA_MODEL,
                 prompt="[FIRST IMAGE: ID Card], [SECOND IMAGE: Selfie]. Do the faces in these two images belong to the same person?",
                 images=[id_image_clean, selfie_image_clean],
@@ -106,26 +124,16 @@ async def register(req: RegisterRequest):
 
             logger.debug(f"AI face match raw response: {face_match_result}")
 
-            # This new, more robust check handles both errors (e.g., face not found) and non-matches.
             if face_match_result.get("error_message") or not face_match_result.get("is_match"):
                 logger.warning(f"Face match failed. Details: {face_match_result}")
-
-                # Provide a more specific reason in the response
                 reason = "The face in the selfie does not appear to match the face on the ID document."
                 if face_match_result.get("error_message"):
-                    reason = face_match_result["error_message"] # Use the AI's specific error
-
+                    reason = face_match_result["error_message"]
                 raise HTTPException(
                     status_code=400,
-                    detail={
-                        "error": "Selfie verification failed.",
-                        "reason": reason,
-                        "details": face_match_result
-                    }
+                    detail={"error": "Selfie verification failed.", "reason": reason, "details": face_match_result}
                 )
-
             logger.info(f"Face match successful with confidence: {face_match_result.get('confidence_score', 'N/A')}")
-
         except json.JSONDecodeError:
             logger.error("Failed to decode JSON from face match AI response.")
             raise HTTPException(status_code=500, detail="Internal error during selfie verification.")
@@ -141,7 +149,10 @@ async def register(req: RegisterRequest):
         logger.info(f"Checking for existing registration with hash: {identity_hash}")
         try:
             query_msg = {"query_registration_status_by_id_hash": {"id_hash": identity_hash}}
-            existing_registration = secret_client.wasm.contract_query(
+            
+            # --- FIX: Run blocking network call in a separate thread ---
+            existing_registration = await asyncio.to_thread(
+                secret_client.wasm.contract_query,
                 contract_address=config.REGISTRATION_CONTRACT,
                 query=query_msg,
                 contract_code_hash=config.REGISTRATION_HASH
@@ -153,9 +164,7 @@ async def register(req: RegisterRequest):
                     status_code=409,
                     detail="This identity document has already been registered."
                 )
-
             logger.info(f"No existing registration found for hash. Proceeding...")
-
         except HTTPException:
             raise
         except Exception as e:
