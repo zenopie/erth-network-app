@@ -1,4 +1,4 @@
-# /routers/register.py
+# /routers/register.py (Final Version with Correct Polling)
 
 import asyncio
 import hashlib
@@ -6,180 +6,122 @@ import json
 import logging
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from secret_sdk.client.lcd import AsyncLCDClient
+from secret_sdk.exceptions import LCDResponseError
+from secret_sdk.key.mnemonic import MnemonicKey
+from secret_sdk.wallet import AsyncWallet
 from secret_sdk.core.wasm import MsgExecuteContract
 from secret_sdk.core.coins import Coins
 
 import config
 from models import RegisterRequest
-from dependencies import wallet, secret_client, ollama_client
+# Import the new dependency injectors and the shared encryption utils
+from dependencies import get_async_secret_client, ollama_async_client, secret_client
 from prompts import ID_VERIFICATION_SYSTEM_PROMPT, FACE_MATCHING_SYSTEM_PROMPT
 
 logging.basicConfig(level=logging.DEBUG)
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# --- Helper functions specific to registration ---
-
 def generate_hash(data: Dict) -> str:
-    """Creates a SHA256 hash of a JSON object for consistent ID hashing."""
+    """Creates a SHA256 hash of a JSON object."""
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
-async def contract_interaction(message_object: Dict):
-    """Creates a transaction, broadcasts it, and polls for the result."""
-    try:
-        logger.debug(f"Message object: {message_object}")
-        
-        # --- FIX: Run blocking network calls in a separate thread ---
-        balance = await asyncio.to_thread(secret_client.bank.balance, wallet.key.acc_address)
-        
-        coins = balance[0] if balance else Coins()
-        uscrt_coin = coins.get("uscrt")
-        uscrt_amount = int(uscrt_coin.amount) if uscrt_coin else 0
-        if uscrt_amount < 1000000:
-            raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction")
-
-        msg = MsgExecuteContract(
-            sender=wallet.key.acc_address,
-            contract=config.REGISTRATION_CONTRACT,
-            msg=message_object,
-            code_hash=config.REGISTRATION_HASH,
-            encryption_utils=secret_client.encrypt_utils
-        )
-        
-        # --- FIX: Run blocking network calls in a separate thread ---
-        tx = await asyncio.to_thread(
-            wallet.create_and_broadcast_tx,
-            msg_list=[msg], gas=1000000, memo=""
-        )
-
-        if tx.code != 0:
-            raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
-
-        for _ in range(30):
-            await asyncio.sleep(1) # This is already async, so it's correct
-            try:
-                # --- FIX: Run blocking network calls in a separate thread ---
-                tx_info = await asyncio.to_thread(secret_client.tx.tx_info, tx.txhash)
-
-                if tx_info.code != 0:
-                    raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
-                return tx_info
-            except Exception as e:
-                if "tx not found" in str(e).lower():
-                    continue
-                raise
-        raise HTTPException(status_code=504, detail="Transaction polling timed out.")
-    except Exception as e:
-        logger.error(f"Contract interaction error: {e}", exc_info=True)
-        # Re-raise HTTPException to preserve status code and detail
-        if isinstance(e, HTTPException):
-            raise
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/register", summary="Register a new user")
-async def register(req: RegisterRequest):
+async def register(
+    req: RegisterRequest,
+    # FastAPI injects the async clients, handling setup and teardown
+    secret_async_client: AsyncLCDClient = Depends(get_async_secret_client)
+):
     """
-    Handles the user registration flow with improved error handling and validation.
+    Handles user registration using fully asynchronous, non-blocking clients
+    and the original, proven transaction polling logic.
     """
     try:
-        logger.debug(f"Register request: address={req.address}, referredBy={req.referredBy}")
         id_image_clean = req.idImage.split(',', 1)[1]
+        selfie_image_clean = req.selfieImage.split(',', 1)[1]
 
-        # Step 1: Verify the ID document
-        # --- FIX: Run blocking AI call in a separate thread ---
-        raw_response = await asyncio.to_thread(
-            ollama_client.generate,
+        # Step 1 & 2: Perform AI checks concurrently
+        id_task = ollama_async_client.generate(
             model=config.OLLAMA_MODEL,
-            prompt="[ID IMAGE] Extract identity and detect fakes according to the system prompt rules.",
-            images=[id_image_clean],
-            system=ID_VERIFICATION_SYSTEM_PROMPT,
-            format='json'
+            prompt="[ID IMAGE] Extract identity and detect fakes...",
+            images=[id_image_clean], system=ID_VERIFICATION_SYSTEM_PROMPT, format='json'
         )
-        ai_result = json.loads(raw_response['response'])
+        face_match_task = ollama_async_client.generate(
+            model=config.OLLAMA_MODEL,
+            prompt="[FIRST IMAGE: ID Card], [SECOND IMAGE: Selfie]...",
+            images=[id_image_clean, selfie_image_clean], system=FACE_MATCHING_SYSTEM_PROMPT, format='json'
+        )
+        id_response, face_match_response = await asyncio.gather(id_task, face_match_task)
 
+        # Process AI results
+        ai_result = json.loads(id_response['response'])
         if not ai_result.get("success"):
-            raise HTTPException(
-                status_code=400,
-                detail={"error": "Identity verification failed by AI", "details": ai_result.get("identity")}
-            )
+            raise HTTPException(status_code=400, detail={"error": "Identity verification failed", "details": ai_result.get("identity")})
 
-        # Step 2: Verify selfie against ID
-        logger.info("Performing required face match verification.")
-        try:
-            selfie_image_clean = req.selfieImage.split(',', 1)[1]
-
-            # --- FIX: Run blocking AI call in a separate thread ---
-            face_match_response = await asyncio.to_thread(
-                ollama_client.generate,
-                model=config.OLLAMA_MODEL,
-                prompt="[FIRST IMAGE: ID Card], [SECOND IMAGE: Selfie]. Do the faces in these two images belong to the same person?",
-                images=[id_image_clean, selfie_image_clean],
-                system=FACE_MATCHING_SYSTEM_PROMPT,
-                format='json'
-            )
-            face_match_result = json.loads(face_match_response['response'])
-
-            logger.debug(f"AI face match raw response: {face_match_result}")
-
-            if face_match_result.get("error_message") or not face_match_result.get("is_match"):
-                logger.warning(f"Face match failed. Details: {face_match_result}")
-                reason = "The face in the selfie does not appear to match the face on the ID document."
-                if face_match_result.get("error_message"):
-                    reason = face_match_result["error_message"]
-                raise HTTPException(
-                    status_code=400,
-                    detail={"error": "Selfie verification failed.", "reason": reason, "details": face_match_result}
-                )
-            logger.info(f"Face match successful with confidence: {face_match_result.get('confidence_score', 'N/A')}")
-        except json.JSONDecodeError:
-            logger.error("Failed to decode JSON from face match AI response.")
-            raise HTTPException(status_code=500, detail="Internal error during selfie verification.")
-        except Exception as e:
-            logger.error(f"Error during selfie verification AI call: {e}", exc_info=True)
-            if isinstance(e, HTTPException):
-                raise
-            raise HTTPException(status_code=503, detail="The selfie verification service is currently unavailable.")
+        face_match_result = json.loads(face_match_response['response'])
+        if face_match_result.get("error_message") or not face_match_result.get("is_match"):
+            reason = face_match_result.get("error_message", "Face does not match ID.")
+            raise HTTPException(status_code=400, detail={"error": "Selfie verification failed", "reason": reason})
 
         identity_hash = generate_hash(ai_result["identity"])
 
         # Step 3: Check for existing registration on-chain
         logger.info(f"Checking for existing registration with hash: {identity_hash}")
-        try:
-            query_msg = {"query_registration_status_by_id_hash": {"id_hash": identity_hash}}
-            
-            # --- FIX: Run blocking network call in a separate thread ---
-            existing_registration = await asyncio.to_thread(
-                secret_client.wasm.contract_query,
-                contract_address=config.REGISTRATION_CONTRACT,
-                query=query_msg,
-                contract_code_hash=config.REGISTRATION_HASH
-            )
-
-            if existing_registration.get("registration_status"):
-                logger.warning(f"Duplicate registration attempt for hash: {identity_hash}")
-                raise HTTPException(
-                    status_code=409,
-                    detail="This identity document has already been registered."
-                )
-            logger.info(f"No existing registration found for hash. Proceeding...")
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error querying contract for existing registration: {e}", exc_info=True)
-            raise HTTPException(status_code=503, detail="Could not verify registration status with the network.")
+        query_msg = {"query_registration_status_by_id_hash": {"id_hash": identity_hash}}
+        existing_registration = await secret_async_client.wasm.contract_query(
+            config.REGISTRATION_CONTRACT, query_msg, config.REGISTRATION_HASH
+        )
+        if existing_registration.get("registration_status"):
+            raise HTTPException(status_code=409, detail="This identity document has already been registered.")
 
         # Step 4: Execute the registration transaction
-        message_object = { "register": { "address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy } }
-        tx_info = await contract_interaction(message_object)
+        async_wallet = AsyncWallet(secret_async_client, MnemonicKey(config.WALLET_KEY))
 
-        return {
-            "success": True,
-            "hash": identity_hash,
-            "response": tx_info.rawlog
-        }
+        # Check balance before proceeding
+        balance = await secret_async_client.bank.balance(async_wallet.key.acc_address)
+        uscrt_coin = (balance[0] if balance else Coins()).get("uscrt")
+        if not uscrt_coin or int(uscrt_coin.amount) < 1000000:
+            raise HTTPException(status_code=400, detail="Insufficient wallet balance for transaction fee.")
+
+        # Create and broadcast the transaction
+        message_object = {"register": {"address": req.address, "id_hash": identity_hash, "affiliate": req.referredBy}}
+        msg = MsgExecuteContract(
+            sender=async_wallet.key.acc_address, contract=config.REGISTRATION_CONTRACT,
+            msg=message_object, code_hash=config.REGISTRATION_HASH,
+            encryption_utils=secret_client.encrypt_utils
+        )
+        tx = await async_wallet.create_and_broadcast_tx(msg_list=[msg], gas=1000000, memo="")
+        if tx.code != 0:
+            raise HTTPException(status_code=500, detail=f"Transaction broadcast failed: {tx.rawlog}")
+
+        # --- Re-implementing the original, reliable polling loop ---
+        tx_info = None
+        for i in range(30):  # Poll for 30 seconds
+            try:
+                tx_info = await secret_async_client.tx.tx_info(tx.txhash)
+                if tx_info:
+                    break  # Exit loop if tx is found
+            except LCDResponseError as e:
+                # This error means the transaction is not yet indexed.
+                if "tx not found" in str(e).lower():
+                    logger.debug(f"Polling for tx {tx.txhash}... attempt {i+1}")
+                    await asyncio.sleep(1)
+                    continue
+                # For other LCD errors, we should fail fast.
+                raise HTTPException(status_code=500, detail=f"Error polling for transaction: {e}")
+        
+        if not tx_info:
+            raise HTTPException(status_code=504, detail="Transaction polling timed out.")
+        
+        # Check if the transaction succeeded on-chain
+        if tx_info.code != 0:
+            raise HTTPException(status_code=400, detail=f"Transaction failed on-chain: {tx_info.rawlog}")
+        # --- End of re-implemented polling loop ---
+
+        return {"success": True, "hash": identity_hash, "response": tx_info.rawlog}
+
     except HTTPException:
         raise
     except Exception as e:
