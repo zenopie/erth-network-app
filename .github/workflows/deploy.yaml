@@ -1,4 +1,4 @@
-name: Deploy to Remote Server
+name: Deploy Frontend to Remote Server
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy and Run on Remote Server
+      - name: Deploy Frontend to Remote Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_SERVER_HOST }}
@@ -22,24 +22,16 @@ jobs:
           script: |
             set -e # Exit immediately if a command fails.
 
-            # --- THE KEY FIX ---
-            # 1. GitHub Actions substitutes ${{ secrets.WALLET_KEY }} with your actual secret.
-            # 2. The remote server receives and executes: export WALLET_KEY='word1 word2 ...'
-            # This creates a shell variable on the remote server named WALLET_KEY.
-            # The single quotes are important to handle any special characters in the mnemonic.
-            export WALLET_KEY='${{ secrets.WALLET_KEY }}'
-
             # --- Configuration ---
             REPO_DIR=/home/secret/erth-mainnet-app
-            SERVER_DIR=$REPO_DIR/server
             FRONTEND_DEPLOY_DIR=/var/www/erth
 
             # --- Repository Setup ---
             echo ">>> 1. Setting up repository in $REPO_DIR"
-            # ... (rest of the script is the same) ...
             mkdir -p $REPO_DIR
             cd $REPO_DIR
 
+            # If the repo already exists, pull the latest changes. Otherwise, clone it.
             if [ -d ".git" ]; then
               git fetch origin main
               git reset --hard origin/main
@@ -50,47 +42,32 @@ jobs:
 
             # --- Frontend Build ---
             echo ">>> 2. Building Frontend"
-            # ... (rest of the script is the same) ...
+            # Check for package.json to ensure we are in a node project
             if [ -f "package.json" ]; then
+              # Set up NVM
               export NVM_DIR="$HOME/.nvm"
               if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+                echo "NVM not found, installing..."
                 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
               fi
               . "$NVM_DIR/nvm.sh"
               
+              # Install and use the correct Node.js version
               nvm install 18
               nvm use 18
               
+              # Install dependencies and build the project
               npm install
               npm run build
               
+              # Deploy the built files to the web server directory
+              echo "Deploying build files to $FRONTEND_DEPLOY_DIR"
               mkdir -p $FRONTEND_DEPLOY_DIR
+              # The 'cp' command will overwrite existing files with the new build
               cp -r build/* $FRONTEND_DEPLOY_DIR/
             else
-              echo "WARNING: package.json not found at root. Skipping frontend build."
-            fi
-
-            # --- Backend Deployment (Docker) ---
-            echo ">>> 3. Setting up Backend"
-            cd $SERVER_DIR
-            
-            # This check will now succeed because the 'export' command above created the variable.
-            if [ -z "$WALLET_KEY" ]; then
-              echo "FATAL: Failed to create WALLET_KEY shell variable."
+              echo "FATAL: package.json not found at root. Cannot build frontend."
               exit 1
             fi
-            
-            echo "Building and running Docker container..."
-            docker stop erth-network-server || true
-            docker rm erth-network-server   || true
-            docker build -t erth-network-server .
 
-            # This command now works because $WALLET_KEY is a valid shell variable on the remote server.
-            docker run -d \
-              -e WALLET_KEY="$WALLET_KEY" \
-              --name erth-network-server \
-              -p 5000:5000 \
-              --restart always \
-              erth-network-server
-
-            echo ">>> Deployment successful! <<<"
+            echo ">>> Frontend deployment successful! <<<"
