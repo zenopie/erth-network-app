@@ -1,1 +1,1 @@
-export const ERTH_API_BASE_URL = "https://tomato-boar.vm.scrtlabs.com";
+export const ERTH_API_BASE_URL = "https://cyan-kite.vm.scrtlabs.com";
