@@ -96,6 +96,8 @@ const LilaChat = () => {
         signal: controller.signal,
       });
 
+      console.log("Server response:", response);
+
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const reader = response.body.getReader();
