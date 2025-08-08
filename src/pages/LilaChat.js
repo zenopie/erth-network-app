@@ -106,12 +106,15 @@ const LilaChat = () => {
       
       while (true) {
         const { done, value } = await reader.read();
+        console.log("Stream chunk:", value, "Done:", done);
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
+        console.log("Raw buffer:", buffer);
         let newlineIndex;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
             const line = buffer.slice(0, newlineIndex);
+            console.log("Raw line:", line);
             buffer = buffer.slice(newlineIndex + 1);
             if (line.trim() === '') continue;
 
