@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+// The SecretNetworkClient import has been removed.
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -7,11 +8,15 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import "./LilaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
+// Testnet and worker constants have been removed.
 const SERVER_API_URL = `${ERTH_API_BASE_URL}/api/chat`;
 
+// The SecretNetworkClient instantiation has been removed.
+
 const LilaChat = () => {
+  // Models are now hardcoded and the loading state is removed.
   const [models] = useState(["llama3.2-vision", "gemma3:4b"]);
-  const [selectedModel, setSelectedModel] = useState("llama3.2-vision");
+  const [selectedModel, setSelectedModel] = useState("llama3.2-vision"); // Set a default model.
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
   const [isLiveThinkingExpanded, setIsLiveThinkingExpanded] = useState(false);
@@ -29,7 +34,6 @@ const LilaChat = () => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    console.log("LilaChat rendering", { messages, selectedModel, loading });
     showLoadingScreen(false);
   }, []);
 
@@ -103,7 +107,6 @@ const LilaChat = () => {
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
-        console.log("Received chunk:", buffer);
         let newlineIndex;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
             const line = buffer.slice(0, newlineIndex);
@@ -112,7 +115,6 @@ const LilaChat = () => {
 
             try {
                 const data = JSON.parse(line);
-                console.log("Parsed data:", data);
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
@@ -152,14 +154,10 @@ const LilaChat = () => {
             } catch (error) { console.warn("Could not parse JSON line:", line); }
         }
       }
-
-      if (!fullResponseText) {
-        setMessages(prev => [...prev.slice(0, -1), { role: "assistant", content: "No response received from the server." }]);
-      }
     } catch (error) {
         if (error.name !== "AbortError") {
             console.error("Error in handleSendMessage:", error);
-            setMessages(prev => [...prev.slice(0, -1), { role: "assistant", content: `Sorry, an error occurred: ${error.message}` }]);
+            setMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: `Sorry, an error occurred: ${error.message}` }]);
         }
     } finally {
         thinkRegex.lastIndex = 0;
@@ -170,9 +168,6 @@ const LilaChat = () => {
         }
         const finalThinking = finalThinkBlocks.join("\n\n---\n\n");
         const finalContent = fullResponseText.replace(thinkRegex, "").trim();
-
-        console.log("Final thinking:", finalThinking);
-        console.log("Full response:", fullResponseText);
 
         setMessages(prev => {
             const newMessages = [...prev];
@@ -221,13 +216,13 @@ const LilaChat = () => {
   return (
     <div className="secret-main-container">
       <div className="secret-chat-container" ref={chatContainerRef}>
-        {messages.length === 0 && <div className="secret-empty-chat">No messages yet. Type something to start!</div>}
         {messages.map((msg, index) => {
           const isLastMessage = index === messages.length - 1;
           
           return (
             <div key={index} className={`secret-message ${msg.role === "assistant" ? "secret-assistant" : "secret-user"}`}>
               
+              {/* Render HISTORIC thoughts box (will only exist if thinking text was not empty) */}
               {msg.role === 'assistant' && msg.thinking && (
                 <div className="secret-thinking-apparatus">
                   <div className="secret-thinking-header">
@@ -242,6 +237,7 @@ const LilaChat = () => {
                 </div>
               )}
 
+              {/* Render LIVE thinking box only if there's non-whitespace text */}
               {isLastMessage && streamingThinkingText.trim().length > 0 && (
                 <div className="secret-thinking-apparatus">
                   <div className="secret-thinking-header">
@@ -256,6 +252,11 @@ const LilaChat = () => {
                 </div>
               )}
 
+              {/* 
+                Render the message content bubble only if it has actual content.
+                This prevents an empty bubble from showing while the AI is "thinking"
+                but hasn't produced any user-visible output yet.
+              */}
               {msg.content && (
                  <div className="secret-message-content">
                     <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
@@ -270,6 +271,7 @@ const LilaChat = () => {
         {settingsOpen && (
           <div className="secret-settings-dropdown">
             <label>AI Model:</label>
+            {/* The 'disabled' prop is no longer needed here. */}
             <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }}>
               {models.map((model) => (<option key={model} value={model}>{model}</option>))}
             </select>
@@ -277,6 +279,7 @@ const LilaChat = () => {
         )}
         <textarea
           className="secret-chat-input"
+          // Placeholder and disabled check are simplified.
           placeholder="Ask Aya (آية) anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -300,6 +303,7 @@ const LilaChat = () => {
         <button
           className="secret-send-button"
           onClick={handleSendMessage}
+          // Disabled check is simplified.
           disabled={loading || !input.trim() || !selectedModel}
         >
           {loading ? "Thinking..." : "Send"}
