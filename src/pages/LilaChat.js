@@ -117,6 +117,7 @@ const LilaChat = () => {
 
             try {
                 const data = JSON.parse(line);
+                console.log("Parsed data chunk:", data);
                 if (data.message?.content) {
                     fullResponseText += data.message.content;
 
