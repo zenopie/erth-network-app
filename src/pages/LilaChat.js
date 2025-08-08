@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SecretNetworkClient } from "secretjs";
+// The SecretNetworkClient import has been removed.
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -8,20 +8,15 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import "./LilaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
-const TESTNET_NODE_URL = "https://pulsar.lcd.secretnodes.com";
-const TESTNET_CHAIN_ID = "pulsar-3";
-const TESTNET_WORKER_CONTRACT = "secret18cy3cgnmkft3ayma4nr37wgtj4faxfnrnngrlq";
+// Testnet and worker constants have been removed.
 const SERVER_API_URL = `${ERTH_API_BASE_URL}/api/chat`;
 
-const secretNetworkClient = new SecretNetworkClient({
-  url: TESTNET_NODE_URL,
-  chainId: TESTNET_CHAIN_ID,
-});
+// The SecretNetworkClient instantiation has been removed.
 
 const LilaChat = () => {
-  const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("");
-  const [modelsLoading, setModelsLoading] = useState(true);
+  // Models are now hardcoded and the loading state is removed.
+  const [models] = useState(["llama3.2-vision", "gemma3:4b"]);
+  const [selectedModel, setSelectedModel] = useState("llama3.2-vision"); // Set a default model.
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
   const [isLiveThinkingExpanded, setIsLiveThinkingExpanded] = useState(false);
@@ -32,8 +27,6 @@ const LilaChat = () => {
   const [copiedText, setCopiedText] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
-  const [userAddress, setUserAddress] = useState("");
-  const [initAttempted, setInitAttempted] = useState(false);
 
   const chatContainerRef = useRef(null);
   const thinkingBoxRef = useRef(null);
@@ -41,46 +34,8 @@ const LilaChat = () => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    async function connectTestnetKeplr() {
-      if (!window.keplr) return console.error("Please install Keplr.");
-      try {
-        await window.keplr.enable(TESTNET_CHAIN_ID);
-        const signer = window.getOfflineSignerOnlyAmino(TESTNET_CHAIN_ID);
-        const accounts = await signer.getAccounts();
-        setUserAddress(accounts[0].address);
-      } catch (error) { console.error("Error reconnecting to testnet:", error); }
-    }
-    if (!userAddress) connectTestnetKeplr();
-  }, [userAddress]);
-
-  useEffect(() => {
-    const fetchModels = async () => {
-      setModelsLoading(true);
-      try {
-        const response = await secretNetworkClient.query.compute.queryContract({
-          contract_address: TESTNET_WORKER_CONTRACT,
-          query: { get_models: {} },
-        });
-        const url_response = await secretNetworkClient.query.compute.queryContract({
-          contract_address: TESTNET_WORKER_CONTRACT,
-          query: { get_u_r_ls: {} },
-        });
-        console.log(url_response);
-        if (response?.models?.length) {
-          setModels(response.models);
-          setSelectedModel(response.models[0]);
-        }
-      } catch (error) { console.error("CRITICAL: Failed to fetch models.", error); } 
-      finally {
-        setModelsLoading(false);
-        showLoadingScreen(false);
-      }
-    };
-    if (!initAttempted) {
-      setInitAttempted(true);
-      fetchModels();
-    }
-  }, [initAttempted]);
+    showLoadingScreen(false);
+  }, []);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -114,7 +69,7 @@ const LilaChat = () => {
   };
 
   const handleSendMessage = async () => {
-    if (loading || modelsLoading || !input.trim() || !selectedModel) return;
+    if (loading || !input.trim() || !selectedModel) return;
     
     userInteracted.current = false;
     setLoading(true);
@@ -316,18 +271,20 @@ const LilaChat = () => {
         {settingsOpen && (
           <div className="secret-settings-dropdown">
             <label>AI Model:</label>
-            <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }} disabled={modelsLoading}>
+            {/* The 'disabled' prop is no longer needed here. */}
+            <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }}>
               {models.map((model) => (<option key={model} value={model}>{model}</option>))}
             </select>
           </div>
         )}
         <textarea
           className="secret-chat-input"
-          placeholder={modelsLoading ? "Loading available models..." : "Ask Aya (آية) anything..."}
+          // Placeholder and disabled check are simplified.
+          placeholder="Ask Aya (آية) anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-          disabled={loading || modelsLoading || models.length === 0}
+          disabled={loading || models.length === 0}
         />
         <div className="secret-settings-container">
           {selectedModel === "llama3.2-vision" && (
@@ -346,7 +303,8 @@ const LilaChat = () => {
         <button
           className="secret-send-button"
           onClick={handleSendMessage}
-          disabled={loading || modelsLoading || !input.trim() || !selectedModel}
+          // Disabled check is simplified.
+          disabled={loading || !input.trim() || !selectedModel}
         >
           {loading ? "Thinking..." : "Send"}
         </button>
