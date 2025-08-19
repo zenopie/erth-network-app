@@ -103,61 +103,71 @@ const LilaChat = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let streamDone = false;
       
-      while (true) {
+      while (!streamDone) {
         const { done, value } = await reader.read();
-        console.log("Stream chunk:", value, "Done:", done);
         if (done) break;
-        
+    
         buffer += decoder.decode(value, { stream: true });
-        console.log("Raw buffer:", buffer);
-        let newlineIndex;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-            const line = buffer.slice(0, newlineIndex);
-            console.log("Raw line:", line);
-            buffer = buffer.slice(newlineIndex + 1);
-            if (line.trim() === '') continue;
-
-            try {
-                const data = JSON.parse(line);
-                console.log("Parsed data chunk:", data);
-                if (data.message?.content) {
-                    fullResponseText += data.message.content;
-
-                    const completedThinks = [];
-                    thinkRegex.lastIndex = 0; 
-                    let match;
-                    while ((match = thinkRegex.exec(fullResponseText)) !== null) {
-                        completedThinks.push(match[1].trim());
-                    }
-                    const finalizedThinkingText = completedThinks.join("\n\n---\n\n");
-
-                    let liveThinkingText = "";
-                    const lastThinkStart = fullResponseText.lastIndexOf("<think>");
-                    const lastThinkEnd = fullResponseText.lastIndexOf("</think>");
-                    if (lastThinkStart !== -1 && lastThinkStart > lastThinkEnd) {
-                        liveThinkingText = fullResponseText.substring(lastThinkStart + 7);
-                    }
-                    setStreamingThinkingText(liveThinkingText);
-
-                    const visibleContent = fullResponseText
-                        .replace(thinkRegex, "")
-                        .replace(/<think>[\s\S]*/s, "")
-                        .trim();
-                    
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastMessage = newMessages[newMessages.length - 1];
-                        if (lastMessage?.role === 'assistant') {
-                            lastMessage.content = visibleContent;
-                            if (finalizedThinkingText.length > 0) {
-                                lastMessage.thinking = finalizedThinkingText;
-                            }
-                        }
-                        return newMessages;
-                    });
+        // Split on newlines (handle CRLF). Keep the last partial chunk in buffer.
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop();
+    
+        for (let rawLine of lines) {
+          let line = rawLine.trim();
+          if (!line) continue;
+    
+          // Support SSE-style "data: {...}" lines and plain JSON lines.
+          if (line.startsWith("data:")) {
+            line = line.replace(/^data:\s*/, "");
+            if (line === "[DONE]") {
+              streamDone = true;
+              break;
+            }
+          }
+    
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              fullResponseText += data.message.content;
+    
+              const completedThinks = [];
+              thinkRegex.lastIndex = 0;
+              let match;
+              while ((match = thinkRegex.exec(fullResponseText)) !== null) {
+                completedThinks.push(match[1].trim());
+              }
+              const finalizedThinkingText = completedThinks.join("\n\n---\n\n");
+    
+              let liveThinkingText = "";
+              const lastThinkStart = fullResponseText.lastIndexOf("<think>");
+              const lastThinkEnd = fullResponseText.lastIndexOf("</think>");
+              if (lastThinkStart !== -1 && lastThinkStart > lastThinkEnd) {
+                liveThinkingText = fullResponseText.substring(lastThinkStart + 7);
+              }
+              setStreamingThinkingText(liveThinkingText);
+    
+              const visibleContent = fullResponseText
+                .replace(thinkRegex, "")
+                .replace(/<think>[\s\S]*/s, "")
+                .trim();
+    
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage?.role === 'assistant') {
+                  lastMessage.content = visibleContent;
+                  if (finalizedThinkingText.length > 0) {
+                    lastMessage.thinking = finalizedThinkingText;
+                  }
                 }
-            } catch (error) { console.warn("Could not parse JSON line:", line); }
+                return newMessages;
+              });
+            }
+          } catch (error) {
+            console.warn("Could not parse JSON line:", line);
+          }
         }
       }
     } catch (error) {
