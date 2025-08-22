@@ -69,6 +69,78 @@
   display: block;
 }
 
+/* Unbonding lock circle (shows red/green arcs and lock in center) */
+.unbonding-lock {
+  width: 56px;
+  height: 56px;
+  margin-left: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* SVG sizing */
+.unbonding-svg {
+  display: block;
+}
+
+/* Green base circle: we rotate it so 0% starts at top */
+.unbonding-svg .u-green {
+  transform: rotate(-90deg);
+  transform-origin: 28px 28px;
+  transition: stroke-dasharray 0.4s ease, stroke 0.2s ease;
+}
+
+/* Red arc overlay: strokeDasharray is set inline in React to reflect current unbonding percent */
+.unbonding-svg .u-red {
+  transition: stroke-dasharray 0.4s ease;
+  transform-origin: 28px 28px;
+}
+
+/* Center lock: simplified — white background with green boxicon by default */
+.u-lock {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff; /* white background */
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4caf50; /* green icon color (boxicon inherits this) */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* boxicon sizing and color inheritance */
+.u-lock .bx {
+  font-size: 24px;
+  font-weight:bolder;
+  line-height: 1;
+  color: inherit;
+  display: inline-block;
+}
+
+/* Alert state (unbonding > 10%): red background, white icon */
+.u-lock.u-lock-alert {
+  background: #e53935;
+  color: #ffffff;
+  box-shadow: 0 1px 6px rgba(229, 57, 53, 0.12);
+}
+
+/* Exclamation mark in alert state */
+.u-lock-exclaim {
+  font-size: 16px;
+  line-height: 1;
+  color: #fff;
+  font-weight: 700;
+}
+
 /* Individual Info Item Styling */
 .pool-info-item {
   display: flex;

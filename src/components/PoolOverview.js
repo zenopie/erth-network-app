@@ -60,7 +60,19 @@ const PoolOverview = ({
       setApr(`${aprValue.toFixed(2)}%`);
     }
   }, [poolData]);
-
+  
+  // Calculate unbonding percent for the circular lock visualization.
+  // Use pool_info.state.unbonding_shares / pool_info.state.total_shares (clamped 0..1).
+  const unbondingPercent = (() => {
+    if (!poolData?.pool_info?.state) return 0;
+    const us = Number(poolData.pool_info.state.unbonding_shares || 0);
+    const ts = Number(poolData.pool_info.state.total_shares || 0);
+    if (!ts) return 0;
+    const p = Math.min(Math.max(us / ts, 0), 1);
+    return p;
+  })();
+  const unbondingPercentDisplay = (unbondingPercent * 100).toFixed(1);
+  
   const handleManageLiquidity = (e) => {
     e.stopPropagation();
     if (!poolData) return;
@@ -152,6 +164,56 @@ const PoolOverview = ({
           <div className="pool-token-container">
             <h2 className="pool-label">{tokenKey}</h2>
             <span className="pool-pair-label">/ERTH</span>
+          </div>
+
+          {/* Unbonding lock visualization: circle with green base and red arc for unbonding portion.
+              Show red arc and alert only when unbondingPercent > 10% (0.1).
+              Lock in center is white with a green lock icon by default; turns red with white "!" when alert. */}
+          <div className="unbonding-lock" title={`${unbondingPercentDisplay}% unbonding`}>
+            <svg className="unbonding-svg" width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <circle className="u-bg" cx="28" cy="28" r="20" fill="none" stroke="#e6e6e6" strokeWidth="6" />
+              {/* Full green base (shows normal shares by default) */}
+              <circle
+                className="u-green"
+                cx="28"
+                cy="28"
+                r="20"
+                fill="none"
+                stroke="#4caf50"
+                strokeWidth="6"
+                strokeLinecap="round"
+                style={{
+                  transform: "rotate(-90deg)",
+                  transformOrigin: "28px 28px",
+                }}
+              />
+              {/* Red arc overlay: only render when over threshold */}
+              {unbondingPercent > 0.1 && (
+                <circle
+                  className="u-red"
+                  cx="28"
+                  cy="28"
+                  r="20"
+                  fill="none"
+                  stroke="#e53935"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  style={{
+                    strokeDasharray: `${2 * Math.PI * 20 * unbondingPercent} ${2 * Math.PI * 20}`,
+                    transform: "rotate(-90deg)",
+                    transformOrigin: "28px 28px",
+                  }}
+                />
+              )}
+            </svg>
+
+            <div className={`u-lock ${unbondingPercent > 0.1 ? "u-lock-alert" : ""}`} aria-hidden>
+              {unbondingPercent > 0.1 ? (
+                <span className="u-lock-exclaim">!</span>
+              ) : (
+                <i className="bx bx-lock-alt" aria-hidden></i>
+              )}
+            </div>
           </div>
         </div>
 
