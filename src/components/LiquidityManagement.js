@@ -345,6 +345,11 @@ const LiquidityManagement = ({
   };
 
   // ----------------------------------------------------------------
+  const hasClaimableUnbond = unbondRequests.some((req) => {
+    const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
+    return Date.now() >= claimableAt;
+  });
+
   return (
     <div className="liquidity-management-box">
       <StatusModal
@@ -610,13 +615,15 @@ const LiquidityManagement = ({
             Create Unbond Request
           </button>
 
-          <button
-            className="liquidity-management-button"
-            onClick={handleCompleteUnbond}
-            style={{ marginTop: '10px' }}
-          >
-            Complete Unbond
-          </button>
+          {hasClaimableUnbond && (
+            <button
+              className="liquidity-management-button"
+              onClick={handleCompleteUnbond}
+              style={{ marginTop: '10px' }}
+            >
+              Complete Unbond
+            </button>
+          )}
 
           {unbondRequests.length > 0 && (
             <div className="unbonding-requests">

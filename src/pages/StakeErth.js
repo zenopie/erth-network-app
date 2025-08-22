@@ -335,7 +335,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
           {/* Staking Rewards Display and Claim Section */}
           {stakingRewards > 0 ? (
             <div className="stake-page-rewards-section">
-              <h3>Flexible Rewards</h3>
+          
               <div className="stake-page-info-row">
                 <span className="stake-page-info-label">Staking Rewards Due:</span>
                 <span className="stake-page-info-value rewards-value">
