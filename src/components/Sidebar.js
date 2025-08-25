@@ -115,15 +115,10 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             </ul>
           </li>
           <li>
-            <a
-              href="https://dash.scrt.network/"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => isMobile && setIsMobileMenuOpen(false)}
-            >
-              <i className="bx bxs-dashboard"></i>
-              <span className="link_name">SCRT Dashboard</span>
-            </a>
+            <Link to="/gas-station" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-gas-pump"></i>
+              <span className="link_name">Gas Station</span>
+            </Link>
           </li>
           <li className={`submenu ${isExperimentsOpen ? "open" : ""}`}>
             <div

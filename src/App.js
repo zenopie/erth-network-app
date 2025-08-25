@@ -8,6 +8,7 @@ import ManageLP from './pages/ManageLP';
 import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
+import GasStation from './pages/GasStation';
 import LilaChat from './pages/LilaChat';
 import TransactionLogs from './pages/TransactionLogs';
 import './App.css';
@@ -25,6 +26,7 @@ function App() {
           <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
+          <Route path="/gas-station" element={<Layout><GasStation /></Layout>} />
           <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
         </Routes>

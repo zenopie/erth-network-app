@@ -1,5 +1,6 @@
 import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 import contracts from './contracts';
+import tokens from './tokens';
 
 let secretjs = null; // Signing client (REST)
 let queryClient = null; // Query client (gRPC)
@@ -263,4 +264,72 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
         console.error("Error providing liquidity:", error);
         throw error;
     }
+}
+// Query native SCRT balance a la gRPC
+export async function queryNativeBalance() {
+    if (!secretjs) {
+        throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
+    }
+    
+    try {
+        const response = await secretjs.query.bank.balance({
+            address: secretjs.address,
+            denom: "uscrt",
+        });
+        
+        if (response && response.balance && response.balance.amount) {
+            const balanceInUscrt = parseFloat(response.balance.amount);
+            return isNaN(balanceInUscrt) ? 0 : balanceInUscrt / 1e6;
+        }
+        return 0;
+    } catch (error) {
+        console.error("Error fetching native SCRT balance:", error);
+        return "Error";
+    }
+}
+// Wrap SCRT => sSCRT
+export async function wrapScrt(amount) {
+    if (!secretjs) {
+        throw new Error("SecretJS is not initialized.");
+    }
+
+    const msg = new MsgExecuteContract({
+        sender: secretjs.address,
+        contract_address: tokens.sSCRT.contract,
+        code_hash: tokens.sSCRT.hash,
+        msg: { deposit: {} },
+        sent_funds: [{ denom: "uscrt", amount: String(amount) }],
+    });
+
+    const resp = await secretjs.tx.broadcast([msg], {
+        gasLimit: 200_000,
+        gasPriceInFeeDenom: 0.1,
+        feeDenom: "uscrt",
+    });
+
+    logTransaction(tokens.sSCRT.contract, tokens.sSCRT.hash, { deposit: {} }, resp);
+    return resp;
+}
+
+// Unwrap sSCRT => SCRT
+export async function unwrapSscrt(amount) {
+    if (!secretjs) {
+        throw new Error("SecretJS is not initialized.");
+    }
+
+    const msg = new MsgExecuteContract({
+        sender: secretjs.address,
+        contract_address: tokens.sSCRT.contract,
+        code_hash: tokens.sSCRT.hash,
+        msg: { redeem: { amount: String(amount) } },
+    });
+
+    const resp = await secretjs.tx.broadcast([msg], {
+        gasLimit: 200_000,
+        gasPriceInFeeDenom: 0.1,
+        feeDenom: "uscrt",
+    });
+
+    logTransaction(tokens.sSCRT.contract, tokens.sSCRT.hash, { redeem: { amount: String(amount) } }, resp);
+    return resp;
 }

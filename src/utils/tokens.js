@@ -41,6 +41,10 @@ const tokens = {
       decimals: 6,
     },
   },
+  SCRT: {
+    decimals: 6,
+    logo: "/images/box-gas.svg",
+  },
 };
 
 export default tokens;
