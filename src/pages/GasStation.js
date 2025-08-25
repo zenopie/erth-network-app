@@ -15,7 +15,10 @@ const GasStation = ({ isKeplrConnected }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
-
+  
+  // Local SCRT token descriptor used only in this file (no global tokens.SCRT entry)
+  const scrtToken = { decimals: 6 };
+  
   // Define which token is "from" and "to" based on the current mode
   const fromToken = mode === "wrap" ? "SCRT" : "sSCRT";
   const toToken = mode === "wrap" ? "sSCRT" : "SCRT";
@@ -74,16 +77,17 @@ const GasStation = ({ isKeplrConnected }) => {
 
     setIsModalOpen(true);
     setAnimationState("loading");
-
+    
     try {
-      const amountInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
-
+      const tokenForConversion = fromToken === "SCRT" ? scrtToken : tokens[fromToken];
+      const amountInMicro = toMicroUnits(inputAmount, tokenForConversion);
+    
       if (mode === "wrap") {
         await wrapScrt(amountInMicro.toString());
       } else {
         await unwrapSscrt(amountInMicro.toString());
       }
-
+    
       setAnimationState("success");
       setAmount("");
     } catch (err) {
@@ -111,7 +115,10 @@ const GasStation = ({ isKeplrConnected }) => {
     return <div className="gas-error-message">Connect Keplr first</div>;
   }
 
-  if (!tokens[fromToken] || !tokens[toToken]) {
+  // Use the local SCRT descriptor when needed so SCRT doesn't block rendering
+  const fromTokenObj = fromToken === "SCRT" ? scrtToken : tokens[fromToken];
+  const toTokenObj = toToken === "SCRT" ? scrtToken : tokens[toToken];
+  if (!fromTokenObj || !toTokenObj) {
     return <div>Loading...</div>;
   }
 
