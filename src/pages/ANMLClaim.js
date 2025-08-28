@@ -249,97 +249,9 @@ const ANMLClaim = ({ isKeplrConnected }) => {
           style={{ filter: "drop-shadow(25px 25px 25px #aaa)" }}
           className="logo-img"
         />
-        <div className="anml-upload-container">
-          <div className="anml-upload-button-group">
-            <button
-              onClick={handleIdClick}
-              className="anml-upload-button"
-              disabled={isRegistering}
-            >
-              {idImage ? "✔" : "+"}
-            </button>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleIdUpload}
-              disabled={isRegistering}
-              ref={idInputRef}
-              style={{ display: 'none' }}
-            />
-            <span className="anml-upload-label">Upload ID</span>
-          </div>
-          <div className="anml-upload-button-group">
-            <button
-              onClick={handleSelfieClick}
-              className="anml-upload-button"
-              disabled={isRegistering}
-            >
-              {selfieImage ? "✔" : "+"}
-            </button>
-            <span className="anml-upload-label">Take Selfie</span>
-          </div>
+        <div className="anml-disabled-message">
+          Registration disabled while we transition to passport verification
         </div>
-
-        {cameraError && (
-          <div className="anml-validation-error">{cameraError}</div>
-        )}
-
-        <div className="anml-input-container">
-          <label className="anml-input-label">
-            Referred by (optional):
-            <div className="anml-validation-container">
-              <input
-                type="text"
-                value={referredBy}
-                onChange={handleReferredByChange}
-                placeholder="secret1..."
-                disabled={isRegistering}
-                className="anml-input-field"
-              />
-              {referredBy && isReferredByValid === true && (
-                <span className="anml-validation-check">✓</span>
-              )}
-            </div>
-            {referredBy && isReferredByValid === false && (
-              <div className="anml-validation-error">✗ Not valid</div>
-            )}
-          </label>
-        </div>
-
-        <button
-          onClick={registerButton}
-          className="anml-claim-button"
-          disabled={!idImage || !selfieImage || isRegistering}
-        >
-          {isRegistering ? "Registering..." : "Register"}
-        </button>
-
-        {isCameraActive && (
-          <div className="anml-modal-overlay">
-            <div className="anml-modal-content">
-              <video 
-                className="anml-video-preview" 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-              />
-              <div className="anml-modal-buttons">
-                <button 
-                  onClick={captureSelfie} 
-                  className="anml-claim-button anml-capture-button"
-                >
-                  Capture
-                </button>
-                <button 
-                  onClick={stopCamera} 
-                  className="anml-claim-button anml-cancel-button"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div id="claim-box" className="anml-test-box remove">
