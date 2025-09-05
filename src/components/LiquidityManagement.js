@@ -13,8 +13,8 @@ import tokens from '../utils/tokens';
 import contracts from '../utils/contracts.js';
 import StatusModal from '../components/StatusModal';
 
-// Hardcoded 10-minute unbond period (adjust as needed).
-const UNBOND_SECONDS = 600; // 10 minutes
+// 7-day unbond period
+const UNBOND_SECONDS = 7 * 24 * 60 * 60; // 7 days in seconds
 
 const LiquidityManagement = ({
   isKeplrConnected,
@@ -48,7 +48,7 @@ const LiquidityManagement = ({
   const tokenBReserve = Number(poolInfo?.state?.token_b_reserve || 0);
   const stakedAmount = toMacroUnits(
     userInfo?.amount_staked || '0',
-    tokenB
+    { decimals: 6 } // Shares have 6 decimals like tokens
   );
 
   // Local SNIP-20 balances
@@ -58,6 +58,7 @@ const LiquidityManagement = ({
   // -------------------- Fetch Unbond Requests --------------------
   const refreshUnbondRequests = useCallback(async () => {
     if (!isKeplrConnected || !tokenB?.contract) return;
+    console.log("[LiquidityManagement] Fetching unbond requests for pool:", tokenB.contract);
     try {
       const exchangeContract = contracts.exchange.contract;
       const exchangeHash = contracts.exchange.hash;
@@ -67,7 +68,9 @@ const LiquidityManagement = ({
           user: window.secretjs.address,
         },
       };
+      console.log("[LiquidityManagement] Unbond query message:", msg);
       const resp = await query(exchangeContract, exchangeHash, msg);
+      console.log("[LiquidityManagement] Unbond requests response:", resp);
       setUnbondRequests(resp || []);
     } catch (err) {
       console.error("[LiquidityManagement] Error fetching unbond requests:", err);
@@ -247,8 +250,8 @@ const LiquidityManagement = ({
     }
   };
   const handleMaxRemoveAmount = () => {
-    if (stakedAmount && !isNaN(stakedAmount)) {
-      setRemoveAmount(stakedAmount);
+    if (userStakedShares && !isNaN(userStakedShares)) {
+      setRemoveAmount(userStakedShares);
     }
   };
 
@@ -259,8 +262,8 @@ const LiquidityManagement = ({
   };
 
   // -------------------- Pool Calculations for Remove Tab --------------------
-  const totalShares = Number(poolInfo?.state?.total_shares || 0);
-  const userStakedShares = Number(userInfo?.amount_staked || 0);
+  const totalShares = toMacroUnits(poolInfo?.state?.total_shares || '0', { decimals: 6 });
+  const userStakedShares = toMacroUnits(userInfo?.amount_staked || '0', { decimals: 6 });
   
   const poolOwnershipPercent = totalShares > 0 ? (userStakedShares / totalShares) * 100 : 0;
   
@@ -333,6 +336,16 @@ const LiquidityManagement = ({
             <div className={styles.poolStatItem}>
               <span className={styles.poolStatLabel}>Pool Ownership:</span>
               <span className={styles.poolStatValue}>{poolOwnershipPercent.toFixed(4)}%</span>
+            </div>
+            <div className={styles.poolStatItem}>
+              <span className={styles.poolStatLabel}>Total Unbonding:</span>
+              <span className={styles.poolStatValue}>{toMacroUnits(poolInfo?.state?.unbonding_shares || '0', { decimals: 6 }).toLocaleString()}</span>
+            </div>
+            <div className={styles.poolStatItem}>
+              <span className={styles.poolStatLabel}>Unbonding Percentage:</span>
+              <span className={styles.poolStatValue}>
+                {totalShares > 0 ? ((toMacroUnits(poolInfo?.state?.unbonding_shares || '0', { decimals: 6 }) / totalShares) * 100).toFixed(4) : '0.0000'}%
+              </span>
             </div>
           </div>
           
@@ -438,10 +451,10 @@ const LiquidityManagement = ({
         <div className={styles.tabContent}>
           <div className={styles.inputGroup}>
             <div className={styles.labelWrapper}>
-              <label>Remove Liquidity</label>
+              <label>Shares</label>
               <div className={styles.balanceContainer}>
                 <>
-                  Staked: {stakedAmount ?? '...'}
+                  Balance: {userStakedShares ?? '...'}
                   <button className={styles.maxButton} onClick={handleMaxRemoveAmount}>
                     Max
                   </button>
@@ -453,7 +466,7 @@ const LiquidityManagement = ({
                 type="text"
                 value={removeAmount}
                 onChange={(e) => setRemoveAmount(e.target.value)}
-                placeholder="Amount to Remove"
+                placeholder="Number of shares to remove"
                 className={styles.input}
               />
             </div>
@@ -462,6 +475,10 @@ const LiquidityManagement = ({
           <button className={styles.button} onClick={handleRemoveLiquidity}>
             Remove Liquidity
           </button>
+          
+          <p style={{ marginTop: '15px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
+            Note: Removing liquidity requires a 7-day unbonding period before you can claim your tokens.
+          </p>
         </div>
       )}
 
@@ -479,20 +496,46 @@ const LiquidityManagement = ({
           )}
 
           {unbondRequests.length > 0 && (
-            <div className={styles.unbondingRequests}>
-              <h3>Unbonding Requests</h3>
-              <ul>
-                {unbondRequests.map((req, i) => {
-                  const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
-                  return (
-                    <li key={i}>
-                      Amount: {toMacroUnits(req.amount, tokenB)} tokens,
-                      <br />
-                      Claimable at: {new Date(claimableAt).toLocaleString()}
-                    </li>
-                  );
-                })}
-              </ul>
+            <div>
+              <h3 className={styles.poolInfoTitle}>Unbonding Requests</h3>
+              {unbondRequests.map((req, i) => {
+                const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
+                const unbondingShares = toMacroUnits(req.amount, { decimals: 6 });
+                const unbondingPercent = totalShares > 0 ? (unbondingShares / totalShares) * 100 : 0;
+                const unbondingErthValue = unbondingPercent > 0 ? (toMacroUnits(erthReserve, tokens.ERTH) * unbondingPercent) / 100 : 0;
+                const unbondingTokenBValue = unbondingPercent > 0 ? (toMacroUnits(tokenBReserve, tokenB) * unbondingPercent) / 100 : 0;
+                
+                return (
+                  <div key={i} style={{ marginBottom: '20px' }}>
+                    <div className={styles.poolStatsGrid}>
+                      <div className={styles.poolStatItem}>
+                        <span className={styles.poolStatLabel}>Unbonding Shares:</span>
+                        <span className={styles.poolStatValue}>{unbondingShares.toLocaleString()}</span>
+                      </div>
+                      <div className={styles.poolStatItem}>
+                        <span className={styles.poolStatLabel}>Pool Percentage:</span>
+                        <span className={styles.poolStatValue}>{unbondingPercent.toFixed(4)}%</span>
+                      </div>
+                      <div className={styles.poolStatItem}>
+                        <span className={styles.poolStatLabel}>Claimable At:</span>
+                        <span className={styles.poolStatValue}>{new Date(claimableAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    
+                    <h4>Approximate Underlying Value</h4>
+                    <div className={styles.underlyingValueGrid}>
+                      <div className={styles.underlyingValueItem}>
+                        <span className={styles.underlyingValueLabel}>ERTH:</span>
+                        <span className={styles.underlyingValueAmount}>{unbondingErthValue.toFixed(6)}</span>
+                      </div>
+                      <div className={styles.underlyingValueItem}>
+                        <span className={styles.underlyingValueLabel}>{tokenKey}:</span>
+                        <span className={styles.underlyingValueAmount}>{unbondingTokenBValue.toFixed(6)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
