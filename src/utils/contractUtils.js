@@ -201,8 +201,8 @@ export async function requestViewingKey(token) {
     }
 }
 
-// Provide liquidity using REST client
-export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, amountErth, amountB, stake) {
+// Add liquidity using REST client (direct staking approach)
+export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBContract, tokenBHash, amountErth, amountB) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");
     }
@@ -237,7 +237,6 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
                 amount_erth: amountErth.toString(),
                 amount_b: amountB.toString(),
                 pool: tokenBContract,
-                stake,
             },
         };
 

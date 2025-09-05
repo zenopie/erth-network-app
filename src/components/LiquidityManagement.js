@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './LiquidityManagement.css';
+import styles from './LiquidityManagement.module.css';
 import {
   query,
   querySnipBalance,
@@ -22,25 +22,19 @@ const LiquidityManagement = ({
   poolData,         // { pool_info, user_info, tokenKey }
 }) => {
   // Tabs
-  const [activeTab, setActiveTab] = useState('Provide');
+  const [activeTab, setActiveTab] = useState('Info');
 
-  // Provide tab fields
+  // Add liquidity fields
   const [erthAmount, setErthAmount] = useState('');
   const [tokenBAmount, setTokenBAmount] = useState('');
 
-  // Stake tab fields
-  const [lpTokenAmount, setLpTokenAmount] = useState('');
-  const [unstakeAmount, setUnstakeAmount] = useState('');
-
-  // Unbond tab fields
-  const [unbondAmount, setUnbondAmount] = useState('');
+  // Remove liquidity fields
+  const [removeAmount, setRemoveAmount] = useState('');
   const [unbondRequests, setUnbondRequests] = useState([]);
 
   // UI states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState('loading');
-  const [provideStake, setProvideStake] = useState(true);
-  const [unstakeUnbond, setUnstakeUnbond] = useState(true);
 
   // Local pool state (replacing prop dependency)
   const [poolInfo, setPoolInfo] = useState(poolData?.pool_info || {});
@@ -49,18 +43,17 @@ const LiquidityManagement = ({
   const tokenErth = tokens.ERTH;
   const tokenB = tokens[tokenKey];
 
-  // Reserves, staked amounts (now derived from local state)
+  // Reserves and staked amounts (now derived from local state)
   const erthReserve = Number(poolInfo?.state?.erth_reserve || 0);
   const tokenBReserve = Number(poolInfo?.state?.token_b_reserve || 0);
-  const stakedLpTokenBalance = toMacroUnits(
+  const stakedAmount = toMacroUnits(
     userInfo?.amount_staked || '0',
-    tokenB?.lp
+    tokenB
   );
 
   // Local SNIP-20 balances
   const [erthBalance, setErthBalance] = useState(null);
   const [tokenBBalance, setTokenBBalance] = useState(null);
-  const [lpTokenWalletBalance, setLpTokenWalletBalance] = useState(null);
 
   // -------------------- Fetch Unbond Requests --------------------
   const refreshUnbondRequests = useCallback(async () => {
@@ -94,9 +87,6 @@ const LiquidityManagement = ({
 
       const tBal = await querySnipBalance(tokenB);
       setTokenBBalance(tBal);
-
-      const lpBal = await querySnipBalance(tokenB.lp);
-      setLpTokenWalletBalance(lpBal);
     } catch (err) {
       console.error("[LiquidityManagement] Error fetching NORTH-20 balances:", err);
     }
@@ -130,8 +120,8 @@ const LiquidityManagement = ({
     refreshPoolData(); // Initial fetch to ensure latest data
   }, [refreshSnipBalances, refreshPoolData]);
 
-  // -------------------- Provide Liquidity --------------------
-  const handleProvideLiquidity = async () => {
+  // -------------------- Add Liquidity --------------------
+  const handleAddLiquidity = async () => {
     if (!isKeplrConnected) return;
 
     try {
@@ -144,63 +134,32 @@ const LiquidityManagement = ({
         tokenB.contract,
         tokenB.hash,
         toMicroUnits(erthAmount, tokenErth),
-        toMicroUnits(tokenBAmount, tokenB),
-        provideStake
+        toMicroUnits(tokenBAmount, tokenB)
       );
 
-      await refreshPoolData(); // Wait for data refresh before showing success
+      await refreshPoolData();
       setErthAmount('');
       setTokenBAmount('');
       setAnimationState('success');
     } catch (error) {
-      console.error("[LiquidityManagement] Error providing liquidity:", error);
+      console.error("[LiquidityManagement] Error adding liquidity:", error);
       setAnimationState('error');
     }
   };
 
-  // -------------------- Stake from wallet --------------------
-  const handleStakeLpTokens = async () => {
+  // -------------------- Remove Liquidity --------------------
+  const handleRemoveLiquidity = async () => {
     if (!isKeplrConnected) return;
 
     try {
       setIsModalOpen(true);
       setAnimationState('loading');
 
-      const inputAmount = toMicroUnits(lpTokenAmount, tokenB.lp);
-      const snipMsg = { deposit_lp_tokens: { pool: tokenB.contract } };
-
-      await snip(
-        tokenB.lp.contract,
-        tokenB.lp.hash,
-        contracts.exchange.contract,
-        contracts.exchange.hash,
-        snipMsg,
-        inputAmount
-      );
-
-      await refreshPoolData(); // Wait for data refresh before showing success
-      setLpTokenAmount('');
-      setAnimationState('success');
-    } catch (error) {
-      console.error("[LiquidityManagement] Error staking LP:", error);
-      setAnimationState('error');
-    }
-  };
-
-  // -------------------- Unstake staked LP --------------------
-  const handleUnstakeLpTokens = async () => {
-    if (!isKeplrConnected) return;
-
-    try {
-      setIsModalOpen(true);
-      setAnimationState('loading');
-
-      const inputAmount = toMicroUnits(unstakeAmount, tokenB.lp);
+      const inputAmount = toMicroUnits(removeAmount, tokenB);
       const msg = {
-        withdraw_lp_tokens: {
+        remove_liquidity: {
           pool: tokenB.contract,
           amount: inputAmount.toString(),
-          unbond: unstakeUnbond
         },
       };
 
@@ -210,51 +169,16 @@ const LiquidityManagement = ({
         msg
       );
 
-      await refreshPoolData(); // Wait for data refresh before showing success
-      if (unstakeUnbond) await refreshUnbondRequests(); // Refresh unbond requests if unbonding was triggered
-      setUnstakeAmount('');
+      await refreshPoolData();
+      setRemoveAmount('');
       setAnimationState('success');
     } catch (error) {
-      console.error("[LiquidityManagement] Error unstaking LP:", error);
+      console.error("[LiquidityManagement] Error removing liquidity:", error);
       setAnimationState('error');
     }
   };
 
-  // -------------------- Create Unbond Request from Wallet --------------------
-  const handleCreateUnbondRequest = async () => {
-    if (!isKeplrConnected) return;
 
-    try {
-      setIsModalOpen(true);
-      setAnimationState('loading');
-
-      const inputAmount = toMicroUnits(unbondAmount, tokenB.lp);
-      const snipMsg = {
-        withdraw_liquidity: {
-          pool: tokenB.contract,
-          amount: inputAmount.toString(),
-          unbond: true,
-        },
-      };
-
-      await snip(
-        tokenB.lp.contract,
-        tokenB.lp.hash,
-        tokenB.contract,
-        tokenB.poolHash,
-        snipMsg,
-        inputAmount
-      );
-
-      await refreshPoolData(); // Wait for pool data refresh
-      await refreshUnbondRequests(); // Refresh unbond requests after creating one
-      setUnbondAmount('');
-      setAnimationState('success');
-    } catch (error) {
-      console.error("[LiquidityManagement] Error creating unbond request:", error);
-      setAnimationState('error');
-    }
-  };
 
   // -------------------- Complete Unbond --------------------
   const handleCompleteUnbond = async () => {
@@ -272,8 +196,8 @@ const LiquidityManagement = ({
 
       await contract(contracts.exchange.contract, contracts.exchange.hash, msg);
 
-      await refreshPoolData(); // Wait for pool data refresh
-      await refreshUnbondRequests(); // Refresh unbond requests after completion
+      await refreshPoolData();
+      await refreshUnbondRequests();
       setAnimationState('success');
     } catch (error) {
       console.error("[LiquidityManagement] Error completing unbond:", error);
@@ -322,19 +246,9 @@ const LiquidityManagement = ({
       handleTokenBChange({ target: { value: tokenBBalance } });
     }
   };
-  const handleMaxLpTokenWalletBalance = () => {
-    if (lpTokenWalletBalance && !isNaN(lpTokenWalletBalance)) {
-      setLpTokenAmount(lpTokenWalletBalance);
-    }
-  };
-  const handleMaxStakedLpTokenBalance = () => {
-    if (stakedLpTokenBalance && !isNaN(stakedLpTokenBalance)) {
-      setUnstakeAmount(stakedLpTokenBalance);
-    }
-  };
-  const handleMaxUnbondAmount = () => {
-    if (lpTokenWalletBalance && !isNaN(lpTokenWalletBalance)) {
-      setUnbondAmount(lpTokenWalletBalance);
+  const handleMaxRemoveAmount = () => {
+    if (stakedAmount && !isNaN(stakedAmount)) {
+      setRemoveAmount(stakedAmount);
     }
   };
 
@@ -344,6 +258,16 @@ const LiquidityManagement = ({
     refreshSnipBalances();
   };
 
+  // -------------------- Pool Calculations for Remove Tab --------------------
+  const totalShares = Number(poolInfo?.state?.total_shares || 0);
+  const userStakedShares = Number(userInfo?.amount_staked || 0);
+  
+  const poolOwnershipPercent = totalShares > 0 ? (userStakedShares / totalShares) * 100 : 0;
+  
+  // Calculate approximate underlying token values
+  const userErthValue = poolOwnershipPercent > 0 ? (toMacroUnits(erthReserve, tokens.ERTH) * poolOwnershipPercent) / 100 : 0;
+  const userTokenBValue = poolOwnershipPercent > 0 ? (toMacroUnits(tokenBReserve, tokenB) * poolOwnershipPercent) / 100 : 0;
+
   // ----------------------------------------------------------------
   const hasClaimableUnbond = unbondRequests.some((req) => {
     const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
@@ -351,7 +275,7 @@ const LiquidityManagement = ({
   });
 
   return (
-    <div className="liquidity-management-box">
+    <div className={styles.box}>
       <StatusModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -360,61 +284,100 @@ const LiquidityManagement = ({
 
       <h2>Manage Liquidity</h2>
       <div
-        className="liquidity-management-close-button"
+        className={styles.closeButton}
         onClick={toggleManageLiquidity}
       >
         X
       </div>
 
-      <div className="liquidity-management-tab">
+      <div className={styles.tab}>
         <button
-          className={`tablinks ${activeTab === 'Provide' ? 'active' : ''}`}
-          onClick={() => setActiveTab('Provide')}
+          className={activeTab === 'Info' ? styles.active : ''}
+          onClick={() => setActiveTab('Info')}
         >
-          Provide
+          Info
         </button>
         <button
-          className={`tablinks ${activeTab === 'Stake' ? 'active' : ''}`}
-          onClick={() => setActiveTab('Stake')}
+          className={activeTab === 'Add' ? styles.active : ''}
+          onClick={() => setActiveTab('Add')}
         >
-          Stake
+          Add
         </button>
         <button
-          className={`tablinks ${activeTab === 'Unbond' ? 'active' : ''}`}
+          className={activeTab === 'Remove' ? styles.active : ''}
+          onClick={() => setActiveTab('Remove')}
+        >
+          Remove
+        </button>
+        <button
+          className={activeTab === 'Unbond' ? styles.active : ''}
           onClick={() => setActiveTab('Unbond')}
         >
           Unbond
         </button>
       </div>
 
-      {/* ===================== Provide Tab ===================== */}
-      {activeTab === 'Provide' && (
-        <div className="liquidity-management-tabcontent">
+      {/* ===================== Info Tab ===================== */}
+      {activeTab === 'Info' && (
+        <div className={styles.tabContent}>
+          <h3 className={styles.poolInfoTitle}>Pool Information</h3>
+          <div className={styles.poolStatsGrid}>
+            <div className={styles.poolStatItem}>
+              <span className={styles.poolStatLabel}>Total Pool Shares:</span>
+              <span className={styles.poolStatValue}>{totalShares.toLocaleString()}</span>
+            </div>
+            <div className={styles.poolStatItem}>
+              <span className={styles.poolStatLabel}>Your Shares:</span>
+              <span className={styles.poolStatValue}>{userStakedShares.toLocaleString()}</span>
+            </div>
+            <div className={styles.poolStatItem}>
+              <span className={styles.poolStatLabel}>Pool Ownership:</span>
+              <span className={styles.poolStatValue}>{poolOwnershipPercent.toFixed(4)}%</span>
+            </div>
+          </div>
+          
+          <h4>Approximate Underlying Value</h4>
+          <div className={styles.underlyingValueGrid}>
+            <div className={styles.underlyingValueItem}>
+              <span className={styles.underlyingValueLabel}>ERTH:</span>
+              <span className={styles.underlyingValueAmount}>{userErthValue.toFixed(6)}</span>
+            </div>
+            <div className={styles.underlyingValueItem}>
+              <span className={styles.underlyingValueLabel}>{tokenKey}:</span>
+              <span className={styles.underlyingValueAmount}>{userTokenBValue.toFixed(6)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== Add Tab ===================== */}
+      {activeTab === 'Add' && (
+        <div className={styles.tabContent}>
           {/* tokenB input */}
-          <div className="liquidity-management-input-group">
-            <div className="liquidity-management-label-wrapper">
+          <div className={styles.inputGroup}>
+            <div className={styles.labelWrapper}>
               <label>{tokenKey}</label>
-              <div className="balance-container">
+              <div className={styles.balanceContainer}>
                 {tokenBBalance === 'Error' ? (
-                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB)}>
+                  <button className={styles.maxButton} onClick={() => handleRequestViewingKey(tokenB)}>
                     Get Viewing Key
                   </button>
                 ) : (
                   <>
                     Balance: {tokenBBalance ?? '...'}
-                    <button className="max-button" onClick={handleMaxTokenBAmount}>
+                    <button className={styles.maxButton} onClick={handleMaxTokenBAmount}>
                       Max
                     </button>
                   </>
                 )}
               </div>
             </div>
-            <div className="liquidity-management-input-wrapper">
+            <div className={styles.inputWrapper}>
               {tokenB?.logo && (
                 <img
                   src={tokenB.logo}
                   alt={`${tokenKey} logo`}
-                  className="liquidity-management-input-logo"
+                  className={styles.inputLogo}
                 />
               )}
               <input
@@ -422,36 +385,36 @@ const LiquidityManagement = ({
                 value={tokenBAmount}
                 onChange={handleTokenBChange}
                 placeholder={`Amount of ${tokenKey}`}
-                className="liquidity-management-input"
+                className={styles.input}
               />
             </div>
           </div>
 
           {/* ERTH input */}
-          <div className="liquidity-management-input-group">
-            <div className="liquidity-management-label-wrapper">
+          <div className={styles.inputGroup}>
+            <div className={styles.labelWrapper}>
               <label>ERTH</label>
-              <div className="balance-container">
+              <div className={styles.balanceContainer}>
                 {erthBalance === 'Error' ? (
-                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenErth)}>
+                  <button className={styles.maxButton} onClick={() => handleRequestViewingKey(tokenErth)}>
                     Get Viewing Key
                   </button>
                 ) : (
                   <>
                     Balance: {erthBalance ?? '...'}
-                    <button className="max-button" onClick={handleMaxErthAmount}>
+                    <button className={styles.maxButton} onClick={handleMaxErthAmount}>
                       Max
                     </button>
                   </>
                 )}
               </div>
             </div>
-            <div className="liquidity-management-input-wrapper">
+            <div className={styles.inputWrapper}>
               {tokenErth?.logo && (
                 <img
                   src={tokenErth.logo}
                   alt="ERTH logo"
-                  className="liquidity-management-input-logo"
+                  className={styles.inputLogo}
                 />
               )}
               <input
@@ -459,165 +422,55 @@ const LiquidityManagement = ({
                 value={erthAmount}
                 onChange={handleErthChange}
                 placeholder="Amount of ERTH"
-                className="liquidity-management-input"
+                className={styles.input}
               />
             </div>
           </div>
 
-          <div className="toggle-switch-container">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={provideStake}
-                onChange={() => setProvideStake(!provideStake)}
-              />
-              <span className="slider-toggle"></span>
-            </label>
-            <span className="toggle-label">
-              {provideStake ? 'Stake LP Tokens' : 'Create LP Tokens'}
-            </span>
-          </div>
-
-          <button className="liquidity-management-button" onClick={handleProvideLiquidity}>
-            Provide Liquidity
+          <button className={styles.button} onClick={handleAddLiquidity}>
+            Add Liquidity
           </button>
         </div>
       )}
 
-      {/* ===================== Stake Tab ===================== */}
-      {activeTab === 'Stake' && (
-        <div className="liquidity-management-tabcontent">
-          {/* Stake from wallet */}
-          <div className="liquidity-management-input-group">
-            <div className="liquidity-management-label-wrapper">
-              <label>Deposit LP Tokens</label>
-              <div className="balance-container">
-                {lpTokenWalletBalance === 'Error' ? (
-                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
-                    Get Viewing Key
+      {/* ===================== Remove Tab ===================== */}
+      {activeTab === 'Remove' && (
+        <div className={styles.tabContent}>
+          <div className={styles.inputGroup}>
+            <div className={styles.labelWrapper}>
+              <label>Remove Liquidity</label>
+              <div className={styles.balanceContainer}>
+                <>
+                  Staked: {stakedAmount ?? '...'}
+                  <button className={styles.maxButton} onClick={handleMaxRemoveAmount}>
+                    Max
                   </button>
-                ) : (
-                  <>
-                    Balance: {lpTokenWalletBalance ?? '...'}
-                    <button className="max-button" onClick={handleMaxLpTokenWalletBalance}>
-                      Max
-                    </button>
-                  </>
-                )}
+                </>
               </div>
             </div>
-            <div className="liquidity-management-input-wrapper">
-              {tokenB?.lp?.logo && (
-                <img
-                  src={tokenB.lp.logo}
-                  alt={`${tokenKey} LP logo`}
-                  className="liquidity-management-input-logo"
-                />
-              )}
+            <div className={styles.inputWrapper}>
               <input
                 type="text"
-                value={lpTokenAmount}
-                onChange={(e) => setLpTokenAmount(e.target.value)}
-                placeholder="Amount of LP Tokens to Stake"
-                className="liquidity-management-input"
+                value={removeAmount}
+                onChange={(e) => setRemoveAmount(e.target.value)}
+                placeholder="Amount to Remove"
+                className={styles.input}
               />
             </div>
           </div>
 
-          <button className="liquidity-management-button" onClick={handleStakeLpTokens}>
-            Stake LP
-          </button>
-
-          {/* Unstake from staked */}
-          <div className="liquidity-management-input-group">
-            <div className="liquidity-management-label-wrapper">
-              <label>Withdraw Staked LP</label>
-              <div className="balance-container">
-                {stakedLpTokenBalance === 'Error' ? (
-                  <button className="max-button" onClick={() => handleRequestViewingKey(contracts.exchange.contract)}>
-                    Get Viewing Key
-                  </button>
-                ) : (
-                  <>
-                    Balance: {stakedLpTokenBalance ?? '...'}
-                    <button className="max-button" onClick={handleMaxStakedLpTokenBalance}>
-                      Max
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="liquidity-management-input-wrapper">
-              <input
-                type="text"
-                value={unstakeAmount}
-                onChange={(e) => setUnstakeAmount(e.target.value)}
-                placeholder="Amount of LP Tokens to Withdraw"
-                className="liquidity-management-input"
-              />
-            </div>
-          </div>
-
-          <div className="toggle-switch-container">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={unstakeUnbond}
-                onChange={() => setUnstakeUnbond(!unstakeUnbond)}
-              />
-              <span className="slider-toggle"></span>
-            </label>
-            <span className="toggle-label">
-              {unstakeUnbond ? 'Create Unbond Request' : 'Withdraw LP Tokens'}
-            </span>
-          </div>
-
-          <button className="liquidity-management-button" onClick={handleUnstakeLpTokens}>
-            Withdraw Staked LP
+          <button className={styles.button} onClick={handleRemoveLiquidity}>
+            Remove Liquidity
           </button>
         </div>
       )}
 
       {/* ===================== Unbond Tab ===================== */}
       {activeTab === 'Unbond' && (
-        <div className="liquidity-management-tabcontent">
-          {/* Unbond from wallet */}
-          <div className="liquidity-management-input-group">
-            <div className="liquidity-management-label-wrapper">
-              <label>Wallet LP Tokens</label>
-              <div className="balance-container">
-                {lpTokenWalletBalance === 'Error' ? (
-                  <button className="max-button" onClick={() => handleRequestViewingKey(tokenB.lp)}>
-                    Get Viewing Key
-                  </button>
-                ) : (
-                  <>
-                    Balance: {lpTokenWalletBalance ?? '...'}
-                    <button className="max-button" onClick={handleMaxUnbondAmount}>
-                      Max
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="liquidity-management-input-wrapper">
-              <input
-                type="text"
-                value={unbondAmount}
-                onChange={(e) => setUnbondAmount(e.target.value)}
-                placeholder="Amount of LP Tokens to Unbond"
-                className="liquidity-management-input"
-              />
-            </div>
-          </div>
-
-          <button className="liquidity-management-button" onClick={handleCreateUnbondRequest}>
-            Create Unbond Request
-          </button>
-
+        <div className={styles.tabContent}>
           {hasClaimableUnbond && (
             <button
-              className="liquidity-management-button"
+              className={styles.button}
               onClick={handleCompleteUnbond}
               style={{ marginTop: '10px' }}
             >
@@ -626,14 +479,14 @@ const LiquidityManagement = ({
           )}
 
           {unbondRequests.length > 0 && (
-            <div className="unbonding-requests">
+            <div className={styles.unbondingRequests}>
               <h3>Unbonding Requests</h3>
               <ul>
                 {unbondRequests.map((req, i) => {
                   const claimableAt = (req.start_time + UNBOND_SECONDS) * 1000;
                   return (
                     <li key={i}>
-                      Amount: {toMacroUnits(req.amount, tokenB.lp)} LP,
+                      Amount: {toMacroUnits(req.amount, tokenB)} tokens,
                       <br />
                       Claimable at: {new Date(claimableAt).toLocaleString()}
                     </li>

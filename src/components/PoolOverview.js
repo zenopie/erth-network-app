@@ -48,14 +48,11 @@ const PoolOverview = ({
       const lastWeekMicro = dailyRewards.slice(0, 7).reduce((acc, val) => acc + Number(val), 0);
       const lastWeekMacro = toMacroUnits(lastWeekMicro, tokens.ERTH);
 
-      const totalShares = Number(pool_info.state.total_shares || 0);
-      const totalStaked = Number(pool_info.state.total_staked || 0);
-      const fractionStaked = totalShares ? totalStaked / totalShares : 0;
-      const stakedLiquidityMacro = totalLiquidityMacro * fractionStaked;
-
+      // In direct staking approach, all shares are automatically staked
+      // so APR is calculated against total liquidity
       let aprValue = 0;
-      if (stakedLiquidityMacro > 0) {
-        aprValue = (lastWeekMacro / stakedLiquidityMacro) * 52 * 100;
+      if (totalLiquidityMacro > 0) {
+        aprValue = (lastWeekMacro / totalLiquidityMacro) * 52 * 100;
       }
       setApr(`${aprValue.toFixed(2)}%`);
     }
@@ -130,14 +127,12 @@ const PoolOverview = ({
         const dailyRewards = updatedData.pool_info.state.daily_rewards || [];
         const lastWeekMicro = dailyRewards.slice(0, 7).reduce((acc, val) => acc + Number(val), 0);
         const lastWeekMacro = toMacroUnits(lastWeekMicro, tokens.ERTH);
-        const totalShares = Number(updatedData.pool_info.state.total_shares || 0);
-        const totalStaked = Number(updatedData.pool_info.state.total_staked || 0);
-        const fractionStaked = totalShares ? totalStaked / totalShares : 0;
-        const stakedLiquidityMacro = totalLiquidityMacro * fractionStaked;
 
+        // In direct staking approach, all shares are automatically staked
+        // so APR is calculated against total liquidity
         let aprValue = 0;
-        if (stakedLiquidityMacro > 0) {
-          aprValue = (lastWeekMacro / stakedLiquidityMacro) * 52 * 100;
+        if (totalLiquidityMacro > 0) {
+          aprValue = (lastWeekMacro / totalLiquidityMacro) * 52 * 100;
         }
         setApr(`${aprValue.toFixed(2)}%`);
       }
