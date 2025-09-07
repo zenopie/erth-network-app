@@ -82,6 +82,21 @@
   color: #333;
 }
 
+.gas-token-select {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+  outline: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
 .gas-token-input {
   background-color: transparent;
   width: 100%;
@@ -102,6 +117,17 @@
 .gas-token-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.gas-arrow-container {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.gas-arrow {
+  font-size: 24px;
+  color: #666;
 }
 
 .gas-toggle-container {
@@ -144,7 +170,7 @@
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 5px;
   transition: background-color 0.2s ease;
 }
 
@@ -156,6 +182,130 @@
   background-color: #4caf50;
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.gas-faucet-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 15px 0 5px 0;
+}
+
+.gas-faucet-button {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.gas-faucet-button:hover:not(.disabled) {
+  background-color: #1976D2;
+}
+
+.gas-faucet-button.disabled {
+  background-color: #ccc;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.gas-faucet-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background-color: #666;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+}
+
+.gas-faucet-tooltip {
+  position: absolute;
+  bottom: 150%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  font-weight: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.tooltip-text {
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+
+.tooltip-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.checkmark {
+  font-weight: bold;
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+}
+
+.checklist-item.checked .checkmark {
+  color: #4CAF50;
+}
+
+.checklist-item:not(.checked) .checkmark {
+  color: #f44336;
+}
+
+.gas-faucet-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: white;
+}
+
+.gas-faucet-tooltip::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #ddd;
+  z-index: -1;
+}
+
+.gas-faucet-info:hover .gas-faucet-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .gas-max-button,
