@@ -20,6 +20,9 @@ const GasStation = ({ isKeplrConnected }) => {
   const [isRegistered, setIsRegistered] = useState(false);
   const [canClaimFaucet, setCanClaimFaucet] = useState(false);
 
+  // Fee granter address from backend
+  const FEE_GRANTER_ADDRESS = "secret1ktpxcznqcls64t8tjyv3atwhndscgw08yp2jas";
+
   // ========== FETCH USER BALANCES ==========
   const fetchData = useCallback(async () => {
     if (!isKeplrConnected) {
@@ -151,14 +154,27 @@ const GasStation = ({ isKeplrConnected }) => {
         },
       };
       
-      await snip(
-        tokens[fromToken].contract,
-        tokens[fromToken].hash,
-        contracts.exchange.contract,
-        contracts.exchange.hash,
-        swapForGasMsg,
-        amountInMicro
-      );
+      if (hasGasGrant) {
+        // Use fee granter for gasless transaction
+        await snipWithFeeGrant(
+          tokens[fromToken].contract,
+          tokens[fromToken].hash,
+          contracts.exchange.contract,
+          contracts.exchange.hash,
+          swapForGasMsg,
+          amountInMicro
+        );
+      } else {
+        // Regular transaction
+        await snip(
+          tokens[fromToken].contract,
+          tokens[fromToken].hash,
+          contracts.exchange.contract,
+          contracts.exchange.hash,
+          swapForGasMsg,
+          amountInMicro
+        );
+      }
     
       setAnimationState("success");
       setAmount("");
@@ -184,10 +200,49 @@ const GasStation = ({ isKeplrConnected }) => {
     fetchData();
   };
 
+  // ========== SNIP WITH FEE GRANT ==========
+  const snipWithFeeGrant = async (tokenContract, tokenHash, recipientContract, recipientHash, message, amount) => {
+    if (!window.secretjs) {
+      throw new Error("SecretJS not initialized");
+    }
+
+    const { MsgExecuteContract } = await import('secretjs');
+    
+    const hookmsg64 = btoa(JSON.stringify(message));
+    const msg = new MsgExecuteContract({
+      sender: window.secretjs.address,
+      contract_address: tokenContract,
+      code_hash: tokenHash,
+      msg: {
+        send: {
+          recipient: recipientContract,
+          code_hash: recipientHash,
+          amount: amount.toString(),
+          msg: hookmsg64,
+        }
+      }
+    });
+
+    // Broadcast with fee grant
+    const resp = await window.secretjs.tx.broadcast([msg], {
+      gasLimit: 500_000,
+      gasPriceInFeeDenom: 0.25,
+      feeDenom: 'uscrt',
+      feeGranter: FEE_GRANTER_ADDRESS
+    });
+
+    if (resp.code !== 0) {
+      throw new Error(`Transaction failed: ${resp.rawLog}`);
+    }
+
+    console.log("Snip with fee grant:", resp);
+    return resp;
+  };
+
   // ========== FAUCET HANDLER ==========
   const handleFaucet = async () => {
-    if (!isKeplrConnected || !window.secretjs || !isRegistered || !canClaimFaucet) {
-      console.warn("Cannot claim faucet");
+    if (!isKeplrConnected || !window.secretjs) {
+      console.warn("Wallet not connected");
       return;
     }
 
@@ -195,7 +250,6 @@ const GasStation = ({ isKeplrConnected }) => {
     setAnimationState("loading");
 
     try {
-      // TODO: Replace with actual backend endpoint
       const response = await fetch('/api/faucet-gas', {
         method: 'POST',
         headers: {
@@ -208,12 +262,16 @@ const GasStation = ({ isKeplrConnected }) => {
 
       const result = await response.json();
       
-      if (result.success) {
+      if (response.ok && result.success) {
         setCanClaimFaucet(false);
+        setHasGasGrant(true);
         setAnimationState("success");
-        // Refresh balances
+        console.log("Gas allowance granted:", result);
+        // Refresh balances and registration status
         fetchData();
+        checkRegistrationStatus();
       } else {
+        console.error("Faucet error:", result);
         setAnimationState("error");
       }
     } catch (err) {
