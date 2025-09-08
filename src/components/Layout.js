@@ -42,7 +42,24 @@ const Layout = ({ children }) => {
       }
     };
 
+    // Listen for Keplr account changes and hard refresh the app
+    const handleAccountChange = () => {
+      console.log("Keplr account changed, refreshing app...");
+      window.location.reload();
+    };
+
     connectWallet();
+
+    // Add Keplr account change listener
+    if (window.keplr) {
+      window.addEventListener("keplr_keystorechange", handleAccountChange);
+    }
+
+    return () => {
+      if (window.keplr) {
+        window.removeEventListener("keplr_keystorechange", handleAccountChange);
+      }
+    };
   }, []);
 
   return (
