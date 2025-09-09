@@ -148,6 +148,11 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
                   Transaction Logs
                 </Link>
               </li>
+              <li>
+                <Link to="/pdf-signature" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  PDF Signature
+                </Link>
+              </li>
 
             </ul>
           </li>

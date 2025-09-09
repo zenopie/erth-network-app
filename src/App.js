@@ -11,6 +11,7 @@ import DeflationFund from './pages/DeflationFund';
 import GasStation from './pages/GasStation';
 import LilaChat from './pages/LilaChat';
 import TransactionLogs from './pages/TransactionLogs';
+import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import './App.css';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
           <Route path="/gas-station" element={<Layout><GasStation /></Layout>} />
           <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
+          <Route path="/pdf-signature" element={<Layout><PDFSignatureVerification /></Layout>} />
         </Routes>
       </div>
     </Router>
