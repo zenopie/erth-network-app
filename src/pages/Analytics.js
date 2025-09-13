@@ -10,6 +10,7 @@ const API_URL = `${ERTH_API_BASE_URL}/api/analytics`;
 
 // Time range options
 const TIME_RANGES = [
+  { id: "1d", label: "1D", points: 24 }, // 24 hours for daily view
   { id: "1w", label: "1W", points: 7 }, // 7 days for weekly view
   { id: "1m", label: "1M", points: 30 }, // 30 days for monthly view
   { id: "all", label: "All", points: Infinity },
@@ -55,11 +56,17 @@ const Analytics = () => {
 
     if (selectedRange.id === "all") return history;
 
-    // For daily data points, we need to calculate based on days rather than hourly points
-    // since our time ranges now expect one data point per day
-    const daysToInclude = selectedRange.id === "1w" ? 7 : 30; // 1w = 7 days, 1m = 30 days
+    // Calculate hours to include based on time range (data comes in hourly intervals)
+    let hoursToInclude;
+    if (selectedRange.id === "1d") {
+      hoursToInclude = 24; // 1 day = 24 hours
+    } else if (selectedRange.id === "1w") {
+      hoursToInclude = 7 * 24; // 1 week = 168 hours
+    } else if (selectedRange.id === "1m") {
+      hoursToInclude = 30 * 24; // 1 month = 720 hours
+    }
 
-    return history.slice(-Math.min(daysToInclude, history.length));
+    return history.slice(-Math.min(hoursToInclude, history.length));
   };
 
   // Get formatted time labels based on timeRange
@@ -70,7 +77,13 @@ const Analytics = () => {
       const date = new Date(d.timestamp);
 
       // Format date based on timeRange for better intuition
-      if (timeRange === "1w") {
+      if (timeRange === "1d") {
+        // For 1 day view, show hour format
+        return date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          hour12: true 
+        });
+      } else if (timeRange === "1w") {
         // For 1 week view, show day name with date
         const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         return `${days[date.getDay()]} ${date.getMonth() + 1}/${date.getDate()}`;
@@ -105,6 +118,8 @@ const Analytics = () => {
   // Get time range label for price change
   const getPriceChangeLabel = () => {
     switch (timeRange) {
+      case "1d":
+        return "24h";
       case "1w":
         return "7d";
       case "1m":
@@ -183,7 +198,7 @@ const Analytics = () => {
             size: 10,
           },
           maxRotation: 0,
-          maxTicksLimit: timeRange === "1w" ? 7 : 10,
+          maxTicksLimit: timeRange === "1d" ? 12 : timeRange === "1w" ? 7 : 10,
         },
       },
       y: {
