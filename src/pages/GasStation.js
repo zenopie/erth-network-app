@@ -4,6 +4,7 @@ import tokens from "../utils/tokens";
 import contracts from "../utils/contracts";
 import { showLoadingScreen } from "../utils/uiUtils";
 import { toMicroUnits } from "../utils/mathUtils";
+import { ERTH_API_BASE_URL } from "../utils/config";
 import StatusModal from "../components/StatusModal";
 import "./GasStation.css";
 
@@ -59,7 +60,7 @@ const GasStation = ({ isKeplrConnected }) => {
     if (!window.secretjs || !window.secretjs.address) return;
 
     try {
-      const response = await fetch(`/api/faucet-eligibility/${window.secretjs.address}`);
+      const response = await fetch(`${ERTH_API_BASE_URL}/api/faucet-eligibility/${window.secretjs.address}`);
       const result = await response.json();
 
       if (response.ok) {
@@ -242,7 +243,7 @@ const GasStation = ({ isKeplrConnected }) => {
     setAnimationState("loading");
 
     try {
-      const response = await fetch('/api/faucet-gas', {
+      const response = await fetch(`${ERTH_API_BASE_URL}/api/faucet-gas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
