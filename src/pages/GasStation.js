@@ -50,36 +50,28 @@ const GasStation = ({ isKeplrConnected }) => {
   useEffect(() => {
     fetchData();
     if (isKeplrConnected) {
-      checkRegistrationStatus();
+      checkFaucetEligibility();
     }
   }, [fetchData, isKeplrConnected]);
 
-  // ========== CHECK REGISTRATION STATUS ==========
-  const checkRegistrationStatus = async () => {
+  // ========== CHECK FAUCET ELIGIBILITY ==========
+  const checkFaucetEligibility = async () => {
     if (!window.secretjs || !window.secretjs.address) return;
-    
-    try {
-      const querymsg = {
-        query_registration_status: {
-          address: window.secretjs.address,
-        },
-      };
 
-      const result = await query(contracts.registration.contract, contracts.registration.hash, querymsg);
-      
-      if (result.registration_status === true) {
-        setIsRegistered(true);
-        // Check if they can claim faucet (once per week)
-        const now = Date.now();
-        const oneWeekInMillis = 7 * 24 * 60 * 60 * 1000;
-        const nextClaim = result.last_claim / 1000000 + oneWeekInMillis;
-        setCanClaimFaucet(now > nextClaim);
+    try {
+      const response = await fetch(`/api/faucet-eligibility/${window.secretjs.address}`);
+      const result = await response.json();
+
+      if (response.ok) {
+        setIsRegistered(result.registered);
+        setCanClaimFaucet(result.eligible);
       } else {
+        console.error("[checkFaucetEligibility] API error:", result);
         setIsRegistered(false);
         setCanClaimFaucet(false);
       }
     } catch (err) {
-      console.error("[checkRegistrationStatus] error:", err);
+      console.error("[checkFaucetEligibility] error:", err);
       setIsRegistered(false);
       setCanClaimFaucet(false);
     }
@@ -267,9 +259,9 @@ const GasStation = ({ isKeplrConnected }) => {
         setHasGasGrant(true);
         setAnimationState("success");
         console.log("Gas allowance granted:", result);
-        // Refresh balances and registration status
+        // Refresh balances and faucet eligibility
         fetchData();
-        checkRegistrationStatus();
+        checkFaucetEligibility();
       } else {
         console.error("Faucet error:", result);
         setAnimationState("error");
