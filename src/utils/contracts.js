@@ -2,7 +2,7 @@
 const contracts = {
   exchange: {
     contract: "secret1rj2phrf6x3v7526jrz60m2dcq58slyq2269kra",
-    hash: "95f8e02efc032c5c3c3632a97014b3b4b9efbec1b55051c18ca7ad1729522c00",
+    hash: "58c616e3736ccaecbdb7293a60ca1f8b4d64a75559a1dee941d1292a489ae0ec",
   },
   registration: {
     contract: "secret12q72eas34u8fyg68k6wnerk2nd6l5gaqppld6p",
