@@ -92,24 +92,30 @@ const GasStation = ({ isKeplrConnected }) => {
     
     try {
       const amountInMicro = toMicroUnits(parseFloat(sanitizedValue), tokens[fromToken]);
-      
-      // Always simulate swap to sSCRT to get accurate output (accounts for fees)
-      const simulateMsg = {
-        simulate_swap: {
-          input_token: tokens[fromToken].contract,
-          amount: amountInMicro.toString(),
-          output_token: tokens.sSCRT.contract,
-        },
-      };
-      
-      const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
-      const sscrtOutputMicro = result.output_amount;
-      
-      // The final SCRT amount will be the same as sSCRT amount (1:1 unwrap)
-      const scrtOutputMacro = parseFloat(sscrtOutputMicro) / 10 ** tokens.sSCRT.decimals;
-      setExpectedScrt(scrtOutputMacro.toFixed(6));
+
+      if (fromToken === "sSCRT") {
+        // For sSCRT unwrap, it's 1:1 conversion to SCRT
+        const scrtOutputMacro = parseFloat(sanitizedValue);
+        setExpectedScrt(scrtOutputMacro.toFixed(6));
+      } else {
+        // Simulate swap to sSCRT first, then account for 1:1 unwrap to SCRT
+        const simulateMsg = {
+          simulate_swap: {
+            input_token: tokens[fromToken].contract,
+            amount: amountInMicro.toString(),
+            output_token: tokens.sSCRT.contract,
+          },
+        };
+
+        const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
+        const sscrtOutputMicro = result.output_amount;
+
+        // The final SCRT amount will be the same as sSCRT amount (1:1 unwrap)
+        const scrtOutputMacro = parseFloat(sscrtOutputMicro) / 10 ** tokens.sSCRT.decimals;
+        setExpectedScrt(scrtOutputMacro.toFixed(6));
+      }
     } catch (err) {
-      console.error("[simulate swap] error:", err);
+      console.error("[simulate] error:", err);
       setExpectedScrt("");
     }
   };
@@ -138,35 +144,66 @@ const GasStation = ({ isKeplrConnected }) => {
     
     try {
       const amountInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
-      
-      // Use the swap_for_gas message
-      const swapForGasMsg = {
-        swap_for_gas: {
-          from: window.secretjs.address,
-          amount: amountInMicro.toString(),
-        },
-      };
-      
-      if (hasGasGrant) {
-        // Use fee granter for gasless transaction
-        await snipWithFeeGrant(
-          tokens[fromToken].contract,
-          tokens[fromToken].hash,
-          contracts.exchange.contract,
-          contracts.exchange.hash,
-          swapForGasMsg,
-          amountInMicro
-        );
+
+      if (fromToken === "sSCRT") {
+        // Use unwrap for sSCRT -> SCRT
+        const unwrapMsg = {
+          redeem: {
+            amount: amountInMicro.toString(),
+          },
+        };
+
+        if (hasGasGrant) {
+          // Use fee granter for gasless transaction
+          await snipWithFeeGrant(
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            unwrapMsg,
+            amountInMicro
+          );
+        } else {
+          // Regular transaction
+          await snip(
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            unwrapMsg,
+            amountInMicro
+          );
+        }
       } else {
-        // Regular transaction
-        await snip(
-          tokens[fromToken].contract,
-          tokens[fromToken].hash,
-          contracts.exchange.contract,
-          contracts.exchange.hash,
-          swapForGasMsg,
-          amountInMicro
-        );
+        // Use the swap_for_gas message for other tokens
+        const swapForGasMsg = {
+          swap_for_gas: {
+            from: window.secretjs.address,
+            amount: amountInMicro.toString(),
+          },
+        };
+
+        if (hasGasGrant) {
+          // Use fee granter for gasless transaction
+          await snipWithFeeGrant(
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            contracts.exchange.contract,
+            contracts.exchange.hash,
+            swapForGasMsg,
+            amountInMicro
+          );
+        } else {
+          // Regular transaction
+          await snip(
+            tokens[fromToken].contract,
+            tokens[fromToken].hash,
+            contracts.exchange.contract,
+            contracts.exchange.hash,
+            swapForGasMsg,
+            amountInMicro
+          );
+        }
       }
     
       setAnimationState("success");
@@ -389,7 +426,7 @@ const GasStation = ({ isKeplrConnected }) => {
 
       {/* Action Button */}
       <button className="gas-button" onClick={handleSwapForGas} disabled={!amount || parseFloat(amount) <= 0 || !expectedScrt}>
-        Swap for Gas
+        {fromToken === "sSCRT" ? "Unwrap" : "Swap for Gas"}
       </button>
     </div>
   );
