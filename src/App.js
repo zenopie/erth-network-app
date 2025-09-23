@@ -12,6 +12,7 @@ import GasStation from './pages/GasStation';
 import LilaChat from './pages/LilaChat';
 import TransactionLogs from './pages/TransactionLogs';
 import PDFSignatureVerification from './pages/PDFSignatureVerification';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import './App.css';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
           <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
           <Route path="/pdf-signature" element={<Layout><PDFSignatureVerification /></Layout>} />
+          <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
         </Routes>
       </div>
     </Router>
