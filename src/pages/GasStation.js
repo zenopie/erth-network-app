@@ -6,14 +6,20 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import { toMicroUnits } from "../utils/mathUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 import StatusModal from "../components/StatusModal";
-import "./GasStation.css";
+import styles from "./GasStation.module.css";
 
 const GasStation = ({ isKeplrConnected }) => {
+  const [activeTab, setActiveTab] = useState("SwapForGas");
   const [fromToken, setFromToken] = useState("sSCRT");
   const [amount, setAmount] = useState("");
   const [expectedScrt, setExpectedScrt] = useState("");
   const [fromBalance, setFromBalance] = useState(null);
   const [scrtBalance, setScrtBalance] = useState(null);
+
+  // Wrap/Unwrap specific states
+  const [wrapUnwrapAmount, setWrapUnwrapAmount] = useState("");
+  const [isWrapMode, setIsWrapMode] = useState(true); // true = wrap SCRT->sSCRT, false = unwrap sSCRT->SCRT
+  const [sscrtBalance, setSscrtBalance] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
@@ -32,17 +38,20 @@ const GasStation = ({ isKeplrConnected }) => {
     }
     showLoadingScreen(true);
     try {
-      const [nativeBal, tokenBal] = await Promise.all([
-        queryNativeBalance(), 
-        querySnipBalance(tokens[fromToken])
+      const [nativeBal, tokenBal, sscrtBal] = await Promise.all([
+        queryNativeBalance(),
+        querySnipBalance(tokens[fromToken]),
+        querySnipBalance(tokens.sSCRT)
       ]);
 
       setScrtBalance(isNaN(nativeBal) ? "Error" : parseFloat(nativeBal));
       setFromBalance(isNaN(tokenBal) ? "Error" : parseFloat(tokenBal));
+      setSscrtBalance(isNaN(sscrtBal) ? "Error" : parseFloat(sscrtBal));
     } catch (err) {
       console.error("[fetchData] error:", err);
       setScrtBalance("Error");
       setFromBalance("Error");
+      setSscrtBalance("Error");
     } finally {
       showLoadingScreen(false);
     }
@@ -146,33 +155,45 @@ const GasStation = ({ isKeplrConnected }) => {
       const amountInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
 
       if (fromToken === "sSCRT") {
-        // Use unwrap for sSCRT -> SCRT
+        // Use unwrap for sSCRT -> SCRT (direct contract call, not token send)
+        const { MsgExecuteContract } = await import('secretjs');
+
         const unwrapMsg = {
           redeem: {
             amount: amountInMicro.toString(),
           },
         };
 
+        const msg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.sSCRT.contract,
+          code_hash: tokens.sSCRT.hash,
+          msg: unwrapMsg
+        });
+
         if (hasGasGrant) {
           // Use fee granter for gasless transaction
-          await snipWithFeeGrant(
-            tokens[fromToken].contract,
-            tokens[fromToken].hash,
-            tokens[fromToken].contract,
-            tokens[fromToken].hash,
-            unwrapMsg,
-            amountInMicro
-          );
+          const resp = await window.secretjs.tx.broadcast([msg], {
+            gasLimit: 150_000,
+            gasPriceInFeeDenom: 0.25,
+            feeDenom: 'uscrt',
+            feeGranter: FEE_GRANTER_ADDRESS
+          });
+
+          if (resp.code !== 0) {
+            throw new Error(`Transaction failed: ${resp.rawLog}`);
+          }
         } else {
           // Regular transaction
-          await snip(
-            tokens[fromToken].contract,
-            tokens[fromToken].hash,
-            tokens[fromToken].contract,
-            tokens[fromToken].hash,
-            unwrapMsg,
-            amountInMicro
-          );
+          const resp = await window.secretjs.tx.broadcast([msg], {
+            gasLimit: 150_000,
+            gasPriceInFeeDenom: 0.25,
+            feeDenom: 'uscrt'
+          });
+
+          if (resp.code !== 0) {
+            throw new Error(`Transaction failed: ${resp.rawLog}`);
+          }
         }
       } else {
         // Use the swap_for_gas message for other tokens
@@ -310,8 +331,89 @@ const GasStation = ({ isKeplrConnected }) => {
     }
   };
 
+  // Handle wrap/unwrap based on current mode
+  const handleWrapUnwrap = async () => {
+    if (!isKeplrConnected || !wrapUnwrapAmount || parseFloat(wrapUnwrapAmount) <= 0) return;
+
+    setIsModalOpen(true);
+    setAnimationState("loading");
+
+    try {
+      if (isWrapMode) {
+        // Wrap SCRT to sSCRT
+        const { MsgExecuteContract } = await import('secretjs');
+        const amountInMicro = toMicroUnits(parseFloat(wrapUnwrapAmount), { decimals: 6 });
+
+        const msg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.sSCRT.contract,
+          code_hash: tokens.sSCRT.hash,
+          msg: { deposit: {} },
+          sent_funds: [{ denom: "uscrt", amount: amountInMicro.toString() }]
+        });
+
+        const resp = await window.secretjs.tx.broadcast([msg], {
+          gasLimit: 150_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: 'uscrt'
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      } else {
+        // Unwrap sSCRT to SCRT (direct contract call, not token send)
+        const { MsgExecuteContract } = await import('secretjs');
+        const amountInMicro = toMicroUnits(parseFloat(wrapUnwrapAmount), tokens.sSCRT);
+
+        const unwrapMsg = {
+          redeem: {
+            amount: amountInMicro.toString(),
+          },
+        };
+
+        const msg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.sSCRT.contract,
+          code_hash: tokens.sSCRT.hash,
+          msg: unwrapMsg
+        });
+
+        const resp = await window.secretjs.tx.broadcast([msg], {
+          gasLimit: 150_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: 'uscrt'
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      }
+
+      setAnimationState("success");
+      setWrapUnwrapAmount("");
+    } catch (err) {
+      console.error(`[handle${isWrapMode ? 'Wrap' : 'Unwrap'}] error:`, err);
+      setAnimationState("error");
+    } finally {
+      fetchData();
+    }
+  };
+
+  // Toggle between wrap and unwrap modes
+  const toggleWrapUnwrapMode = () => {
+    setIsWrapMode(!isWrapMode);
+    setWrapUnwrapAmount(""); // Clear amount when switching modes
+  };
+
+  // Request viewing key for sSCRT
+  const handleRequestSscrtViewingKey = async () => {
+    await requestViewingKey(tokens.sSCRT);
+    fetchData();
+  };
+
   if (!isKeplrConnected) {
-    return <div className="gas-error-message">Connect Keplr first</div>;
+    return <div className={styles.gasErrorMessage}>Connect Keplr first</div>;
   }
 
   if (!tokens[fromToken]) {
@@ -321,113 +423,265 @@ const GasStation = ({ isKeplrConnected }) => {
   // Get available tokens (exclude SCRT since we're converting TO SCRT)
   const availableTokens = Object.keys(tokens);
 
-  return (
-    <div className="gas-box">
-      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
-
-      <div className="gas-title-container">
-        <h2 className="gas-title">Gas Station</h2>
-        <p className="gas-subtitle">Swap any token for SCRT (gas)</p>
-      </div>
-
-      {/* FROM INPUT */}
-      <div className="gas-input-group">
-        <div className="gas-label-wrapper">
-          <label className="gas-input-label">From</label>
-          <div className="gas-token-balance">
-            {fromBalance === "Error" ? (
-              <button className="gas-vk-button" onClick={handleRequestViewingKey}>
-                Get Viewing Key
-              </button>
-            ) : (
-              <>
-                Balance: {fromBalance ?? "..."}
-                <button className="gas-max-button" onClick={handleMaxAmount}>
-                  Max
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="gas-input-wrapper">
-          <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className="gas-input-logo" />
-          <select className="gas-token-select" value={fromToken} onChange={handleTokenChange}>
-            {availableTokens.map((tk) => (
-              <option key={tk} value={tk}>
-                {tk}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            className="gas-token-input"
-            placeholder="0.0"
-            value={amount}
-            onChange={(e) => handleAmountChange(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Arrow Down */}
-      <div className="gas-arrow-container">
-        <i className="bx bx-down-arrow-alt gas-arrow" aria-hidden="true"></i>
-      </div>
-
-      {/* TO INPUT (read-only) */}
-      <div className="gas-input-group">
-        <div className="gas-label-wrapper">
-          <label className="gas-input-label">To (Gas)</label>
-          <div className="gas-token-balance">
-            Balance: {scrtBalance ?? "..."}
-          </div>
-        </div>
-
-        <div className="gas-input-wrapper">
-          <i className="bx bxs-gas-pump gas-input-logo" aria-hidden="true"></i>
-          <div className="gas-token-name">SCRT</div>
-          <input
-            type="number"
-            className="gas-token-input"
-            placeholder="0.0"
-            value={expectedScrt}
-            disabled
-            readOnly
-          />
-        </div>
-      </div>
-
-      {/* Faucet Button */}
-      <div className="gas-faucet-container">
-        <button 
-          className={`gas-faucet-button ${!isRegistered || !canClaimFaucet ? 'disabled' : ''}`}
-          onClick={handleFaucet} 
-          disabled={!isRegistered || !canClaimFaucet}
-        >
-          Faucet
-        </button>
-        <span className="gas-faucet-info">
-          ?
-          <div className="gas-faucet-tooltip">
-            <div className="tooltip-text">Registered users can get a free swap to gas once a week</div>
-            <div className="tooltip-checklist">
-              <div className={`checklist-item ${isRegistered ? 'checked' : ''}`}>
-                <span className="checkmark">{isRegistered ? '✓' : '✗'}</span>
-                Registered
+  // Render tab content based on active tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "SwapForGas":
+        return (
+          <div className={`${styles.gasTabcontent} ${styles.active}`}>
+            {/* FROM INPUT */}
+            <div className={styles.gasInputGroup}>
+              <div className={styles.gasLabelWrapper}>
+                <label className={styles.gasInputLabel}>From</label>
+                <div className={styles.gasTokenBalance}>
+                  {fromBalance === "Error" ? (
+                    <button className={styles.gasVkButton} onClick={handleRequestViewingKey}>
+                      Get Viewing Key
+                    </button>
+                  ) : (
+                    <>
+                      Balance: {fromBalance ?? "..."}
+                      <button className={styles.gasMaxButton} onClick={handleMaxAmount}>
+                        Max
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className={`checklist-item ${canClaimFaucet ? 'checked' : ''}`}>
-                <span className="checkmark">{canClaimFaucet ? '✓' : '✗'}</span>
-                Available to use
+
+              <div className={styles.gasInputWrapper}>
+                <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className={styles.gasInputLogo} />
+                <select className={styles.gasTokenSelect} value={fromToken} onChange={handleTokenChange}>
+                  {availableTokens.map((tk) => (
+                    <option key={tk} value={tk}>
+                      {tk}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  className={styles.gasTokenInput}
+                  placeholder="0.0"
+                  value={amount}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                />
               </div>
             </div>
+
+            {/* Arrow Down */}
+            <div className={styles.gasArrowContainer}>
+              <i className={`bx bx-down-arrow-alt ${styles.gasArrow}`} aria-hidden="true"></i>
+            </div>
+
+            {/* TO INPUT (read-only) */}
+            <div className={styles.gasInputGroup}>
+              <div className={styles.gasLabelWrapper}>
+                <label className={styles.gasInputLabel}>To (Gas)</label>
+                <div className={styles.gasTokenBalance}>
+                  Balance: {scrtBalance ?? "..."}
+                </div>
+              </div>
+
+              <div className={styles.gasInputWrapper}>
+                <i className={`bx bxs-gas-pump ${styles.gasInputLogo}`} aria-hidden="true"></i>
+                <div className={styles.gasTokenName}>SCRT</div>
+                <input
+                  type="number"
+                  className={styles.gasTokenInput}
+                  placeholder="0.0"
+                  value={expectedScrt}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* Faucet Button */}
+            <div className={styles.gasFaucetContainer}>
+              <button
+                className={!isRegistered || !canClaimFaucet ? styles.gasFaucetButtonDisabled : styles.gasFaucetButton}
+                onClick={handleFaucet}
+                disabled={!isRegistered || !canClaimFaucet}
+              >
+                Faucet
+              </button>
+              <span className={styles.gasFaucetInfo}>
+                ?
+                <div className={styles.gasFaucetTooltip}>
+                  <div className={styles.tooltipText}>Registered users can get a free swap to gas once a week</div>
+                  <div className={styles.tooltipChecklist}>
+                    <div className={`${styles.checklistItem} ${isRegistered ? 'checked' : ''}`}>
+                      <span className={styles.checkmark}>{isRegistered ? '✓' : '✗'}</span>
+                      Registered
+                    </div>
+                    <div className={`${styles.checklistItem} ${canClaimFaucet ? 'checked' : ''}`}>
+                      <span className={styles.checkmark}>{canClaimFaucet ? '✓' : '✗'}</span>
+                      Available to use
+                    </div>
+                  </div>
+                </div>
+              </span>
+            </div>
+
+            {/* Action Button */}
+            <button className={styles.gasButton} onClick={handleSwapForGas} disabled={!amount || parseFloat(amount) <= 0 || !expectedScrt}>
+              {fromToken === "sSCRT" ? "Unwrap" : "Swap for Gas"}
+            </button>
           </div>
-        </span>
+        );
+
+      case "WrapUnwrap":
+        const currentBalance = isWrapMode ? scrtBalance : sscrtBalance;
+        const fromTokenInfo = isWrapMode ? { name: "SCRT", logo: null, isIcon: true } : { name: "sSCRT", logo: tokens.sSCRT.logo, isIcon: false };
+        const toTokenInfo = isWrapMode ? { name: "sSCRT", logo: tokens.sSCRT.logo, isIcon: false } : { name: "SCRT", logo: null, isIcon: true };
+
+        return (
+          <div className={`${styles.gasTabcontent} ${styles.active}`}>
+            {/* FROM INPUT */}
+            <div className={styles.gasInputGroup}>
+              <div className={styles.gasLabelWrapper}>
+                <label className={styles.gasInputLabel}>From</label>
+                <div className={styles.gasTokenBalance}>
+                  {(!isWrapMode && sscrtBalance === "Error") ? (
+                    <button className={styles.gasVkButton} onClick={handleRequestSscrtViewingKey}>
+                      Get Viewing Key
+                    </button>
+                  ) : (
+                    <>
+                      Balance: {currentBalance ?? "..."}
+                      <button
+                        className={styles.gasMaxButton}
+                        onClick={() => setWrapUnwrapAmount(currentBalance?.toString() || "")}
+                      >
+                        Max
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.gasInputWrapper}>
+                {fromTokenInfo.isIcon ? (
+                  <i className={`bx bxs-gas-pump ${styles.gasInputLogo}`} aria-hidden="true"></i>
+                ) : (
+                  <img src={fromTokenInfo.logo} alt={`${fromTokenInfo.name} logo`} className={styles.gasInputLogo} />
+                )}
+                <div className={styles.gasTokenName}>{fromTokenInfo.name}</div>
+                <input
+                  type="number"
+                  className={styles.gasTokenInput}
+                  placeholder="0.0"
+                  value={wrapUnwrapAmount}
+                  onChange={(e) => setWrapUnwrapAmount(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Toggle Button */}
+            <div className={styles.gasToggleContainer}>
+              <button className={styles.gasToggleButton} onClick={toggleWrapUnwrapMode}>
+                <i className="bx bx-refresh" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            {/* TO INPUT (read-only) */}
+            <div className={styles.gasInputGroup}>
+              <div className={styles.gasLabelWrapper}>
+                <label className={styles.gasInputLabel}>To</label>
+                <div className={styles.gasTokenBalance}>
+                  {(isWrapMode && sscrtBalance === "Error") ? (
+                    <button className={styles.gasVkButton} onClick={handleRequestSscrtViewingKey}>
+                      Get Viewing Key
+                    </button>
+                  ) : (
+                    <>
+                      Balance: {isWrapMode ? (sscrtBalance ?? "...") : (scrtBalance ?? "...")}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.gasInputWrapper}>
+                {toTokenInfo.isIcon ? (
+                  <i className={`bx bxs-gas-pump ${styles.gasInputLogo}`} aria-hidden="true"></i>
+                ) : (
+                  <img src={toTokenInfo.logo} alt={`${toTokenInfo.name} logo`} className={styles.gasInputLogo} />
+                )}
+                <div className={styles.gasTokenName}>{toTokenInfo.name}</div>
+                <input
+                  type="number"
+                  className={styles.gasTokenInput}
+                  placeholder="0.0"
+                  value={wrapUnwrapAmount}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* Faucet Button */}
+            <div className={styles.gasFaucetContainer}>
+              <button
+                className={!isRegistered || !canClaimFaucet ? styles.gasFaucetButtonDisabled : styles.gasFaucetButton}
+                onClick={handleFaucet}
+                disabled={!isRegistered || !canClaimFaucet}
+              >
+                Faucet
+              </button>
+              <span className={styles.gasFaucetInfo}>
+                ?
+                <div className={styles.gasFaucetTooltip}>
+                  <div className={styles.tooltipText}>Registered users can get a free swap to gas once a week</div>
+                  <div className={styles.tooltipChecklist}>
+                    <div className={`${styles.checklistItem} ${isRegistered ? 'checked' : ''}`}>
+                      <span className={styles.checkmark}>{isRegistered ? '\u2713' : '\u2717'}</span>
+                      Registered
+                    </div>
+                    <div className={`${styles.checklistItem} ${canClaimFaucet ? 'checked' : ''}`}>
+                      <span className={styles.checkmark}>{canClaimFaucet ? '\u2713' : '\u2717'}</span>
+                      Available to use
+                    </div>
+                  </div>
+                </div>
+              </span>
+            </div>
+
+            {/* Action Button */}
+            <button
+              className={styles.gasButton}
+              onClick={handleWrapUnwrap}
+              disabled={!wrapUnwrapAmount || parseFloat(wrapUnwrapAmount) <= 0}
+            >
+              {isWrapMode ? "Wrap" : "Unwrap"}
+            </button>
+          </div>
+        );
+
+      default:
+        return <div className={`${styles.gasTabcontent} ${styles.active}`}>Tab content not found</div>;
+    }
+  };
+
+  return (
+    <div className={styles.gasBox}>
+      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
+
+      <div className={styles.gasTitleContainer}>
+        <h2 className={styles.gasTitle}>Gas Station</h2>
       </div>
 
-      {/* Action Button */}
-      <button className="gas-button" onClick={handleSwapForGas} disabled={!amount || parseFloat(amount) <= 0 || !expectedScrt}>
-        {fromToken === "sSCRT" ? "Unwrap" : "Swap for Gas"}
-      </button>
+      {/* Tab Navigation */}
+      <div className={styles.gasTab}>
+        <button className={activeTab === "SwapForGas" ? "active" : ""} onClick={() => setActiveTab("SwapForGas")}>
+          Swap for Gas
+        </button>
+        <button className={activeTab === "WrapUnwrap" ? "active" : ""} onClick={() => setActiveTab("WrapUnwrap")}>
+          Wrap/Unwrap
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {renderTabContent()}
     </div>
   );
 };
