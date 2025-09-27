@@ -4,7 +4,6 @@
 /node_modules
 /.pnp
 .pnp.js
-package-lock.json
 
 # testing
 /coverage
@@ -14,8 +13,7 @@ package-lock.json
 
 #server
 /server/node_modules
-/server/package-lock.json
-/server/analyticsData.json
+/server//server/analyticsData.json
 
 # misc
 .DS_Store
