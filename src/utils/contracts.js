@@ -12,6 +12,10 @@ const contracts = {
     contract: "secret10ea3ya578qnz02rmr7adhu2rq7g2qjg88ry2h5",
     hash: "f3890262cc071b02dbb14f4dbd3b240aca4b0776be896fc60cfd993db97357db",
   },
+  airdrop: {
+    contract: "secret13yyyzlqn4wq7ue40axh09phufv6myej7qvtmkw",
+    hash: "8c49bfc1c0d26ff8ecd7b1f85599a1e60fba8afbe41293313a4ddcedbc1fb9c3",
+  },
 };
 
 export default contracts;

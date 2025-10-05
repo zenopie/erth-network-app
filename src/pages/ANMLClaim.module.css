@@ -28,19 +28,34 @@
   text-align: center;
 }
 
-.googlePlayContainer {
+.googlePlayButton {
   margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-.googlePlayContainer img {
+  background-color: white;
+  border: 5px solid #4056a1;
+  font-size: 18px;
+  border-radius: 30px;
+  color: #293462;
+  padding: 12px 25px;
+  box-sizing: border-box;
+  text-align: center;
   cursor: pointer;
-  width: 200px;
-  height: auto;
-  transition: opacity 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.googlePlayContainer img:hover {
-  opacity: 0.8;
+.googlePlayButton i {
+  font-size: 24px;
+}
+
+.googlePlayButton:hover {
+  background-color: #eee;
+  transition: all 0.3s ease;
+}
+
+.googlePlayButton:active {
+  background-color: #ddd;
 }

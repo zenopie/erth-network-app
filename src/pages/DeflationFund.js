@@ -11,6 +11,7 @@ const allocationNames = [
   { id: "1", name: "LP Rewards" },
   { id: "2", name: "SCRT Labs" },
   { id: "3", name: "ERTH Labs" },
+  { id: "4", name: "Airdrop" },
   // Add more allocation names here
 ];
 

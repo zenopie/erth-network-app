@@ -1,0 +1,231 @@
+/* Airdrop Claim Page */
+.testBox {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 500px;
+  box-sizing: border-box;
+  padding: 20px;
+}
+
+.logoImg {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.amountDisplay {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #4CAF50;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.combinedAPRContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.combinedAPR {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4CAF50;
+  text-align: center;
+}
+
+.aprText {
+  font-size: 1.5rem;
+  color: #293462;
+}
+
+.infoIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.infoIcon i {
+  font-size: 1.2rem;
+  color: #293462;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border: 2px solid #293462;
+  border-radius: 8px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.infoIcon:hover .tooltip {
+  display: block;
+}
+
+.tokenSymbol {
+  font-size: 2rem;
+  color: #293462;
+}
+
+.infoText {
+  font-size: 16px;
+  color: #293462;
+  margin-bottom: 5px;
+  padding: 5px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.baseAPR {
+  color: #293462;
+  font-weight: 600;
+}
+
+.plusSign {
+  color: #293462;
+}
+
+.airdropAPR {
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.aprLabel {
+  color: #293462;
+  font-weight: 600;
+}
+
+.aprSubLabel {
+  color: #293462;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.message {
+  font-size: 20px;
+  color: #293462;
+  margin-bottom: 10px;
+  padding: 10px;
+  text-align: center;
+}
+
+.noAirdropMessage {
+  font-size: 20px;
+  color: #f44336;
+  padding: 10px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.claimedMessage {
+  display: inline-block;
+  padding: 15px 40px;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  border: 2px solid #4CAF50;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+.claimButton {
+  margin-top: 20px;
+  background-color: white;
+  border: 5px solid #4056a1;
+  font-size: 20px;
+  border-radius: 30px;
+  color: #293462;
+  padding: 12px 25px;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.claimButton:hover {
+  background-color: #eee;
+  transition: all 0.3s ease;
+}
+
+.claimButton:active {
+  background-color: #ddd;
+}
+
+.claimButton:disabled {
+  background-color: #f5f5f5;
+  border-color: #ccc;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.retryButton {
+  padding: 12px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #293462;
+  background: transparent;
+  border: 2px solid #293462;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.retryButton:hover {
+  background: #293462;
+  color: #fff;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .testBox {
+    max-width: 90%;
+    padding: 15px;
+  }
+
+  .amountDisplay {
+    font-size: 2.5rem;
+  }
+
+  .tokenSymbol {
+    font-size: 1.5rem;
+  }
+
+  .infoText {
+    font-size: 14px;
+  }
+
+  .claimButton {
+    padding: 12px 40px;
+    font-size: 16px;
+  }
+}

@@ -6,7 +6,7 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
 // Use the production URL - server now has CORS properly configured
-const API_URL = `${ERTH_API_BASE_URL}/api/analytics`;
+const API_URL = `${ERTH_API_BASE_URL}/analytics`;
 
 // Time range options
 const TIME_RANGES = [

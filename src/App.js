@@ -13,6 +13,7 @@ import LilaChat from './pages/LilaChat';
 import TransactionLogs from './pages/TransactionLogs';
 import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import WeeklyAirdropClaim from './pages/WeeklyAirdropClaim';
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/anml-claim" />} />
           <Route path="/anml-claim" element={<Layout><ANMLClaim /></Layout>} />
+          <Route path="/airdrop" element={<Layout><WeeklyAirdropClaim /></Layout>} />
           <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
           <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
           <Route path="/manage-lp" element={<Layout><ManageLP /></Layout>} />
