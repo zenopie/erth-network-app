@@ -123,7 +123,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
           <li>
             <Link to="/airdrop" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-gift"></i>
-              <span className="link_name">Airdrop</span>
+              <span className="link_name">Weekly{'\u00A0'}Airdrop</span>
             </Link>
           </li>
           <li className={`submenu ${isExperimentsOpen ? "open" : ""}`}>
