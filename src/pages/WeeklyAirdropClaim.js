@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { query, contract } from "../utils/contractUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 import { showLoadingScreen } from "../utils/uiUtils";
@@ -12,6 +12,9 @@ import styles from "./WeeklyAirdropClaim.module.css";
 const AIRDROP_CONTRACT = contracts.airdrop.contract;
 const AIRDROP_HASH = contracts.airdrop.hash;
 
+// Validator address for staking link
+const VALIDATOR_ADDRESS = "secretvaloper19g3d3ug9xwtwswq4qef890xu3j0d4r4nvpz0jd";
+
 const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const [claimData, setClaimData] = useState(null);
   const [hasClaimed, setHasClaimed] = useState(false);
@@ -21,7 +24,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
   const [prices, setPrices] = useState(null);
-  const [airdropAPR, setAirdropAPR] = useState(null);
   const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
@@ -291,7 +293,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
         <>
           <button
             className={styles.claimButton}
-            onClick={() => window.open('https://wallet.keplr.app/chains/secret-network?tab=staking', '_blank')}
+            onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
           >
             Stake SCRT
           </button>
