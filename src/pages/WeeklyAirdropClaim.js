@@ -22,6 +22,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const [animationState, setAnimationState] = useState("loading");
   const [prices, setPrices] = useState(null);
   const [airdropAPR, setAirdropAPR] = useState(null);
+  const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
     if (isKeplrConnected) {
@@ -29,6 +30,44 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     }
     fetchPrices();
   }, [isKeplrConnected]);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const nextSunday = new Date(now);
+
+      // Get current day (0 = Sunday, 1 = Monday, etc.)
+      const currentDay = now.getUTCDay();
+
+      // Calculate days until next Sunday (0)
+      const daysUntilSunday = currentDay === 0 ? 7 : 7 - currentDay;
+
+      // Set to next Sunday at midnight UTC
+      nextSunday.setUTCDate(now.getUTCDate() + daysUntilSunday);
+      nextSunday.setUTCHours(0, 0, 0, 0);
+
+      const diff = nextSunday - now;
+
+      if (diff <= 0) {
+        setCountdown("00:00:00:00");
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setCountdown(
+        `${String(days).padStart(2, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchPrices = async () => {
     try {
@@ -249,17 +288,31 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       )}
 
       {error ? (
-        <button
-          className={styles.claimButton}
-          onClick={() => window.open('https://wallet.keplr.app/chains/secret-network?tab=staking', '_blank')}
-        >
-          Stake SCRT
-        </button>
+        <>
+          <button
+            className={styles.claimButton}
+            onClick={() => window.open('https://wallet.keplr.app/chains/secret-network?tab=staking', '_blank')}
+          >
+            Stake SCRT
+          </button>
+          {countdown && (
+            <div className={styles.countdownText}>
+              Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
+            </div>
+          )}
+        </>
       ) : claimData && (
         hasClaimed ? (
-          <div className={styles.claimedMessage}>
-            Already Claimed
-          </div>
+          <>
+            <div className={styles.claimedMessage}>
+              Already Claimed
+            </div>
+            {countdown && (
+              <div className={styles.countdownText}>
+                Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
+              </div>
+            )}
+          </>
         ) : (
           <button className={styles.claimButton} onClick={handleClaim}>
             Claim Airdrop

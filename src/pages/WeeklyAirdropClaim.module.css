@@ -156,6 +156,20 @@
   margin-top: 20px;
 }
 
+.countdownText {
+  margin-top: 15px;
+  font-size: 16px;
+  color: #293462;
+  text-align: center;
+}
+
+.countdownTimer {
+  font-weight: 700;
+  color: #4056a1;
+  font-family: monospace;
+  font-size: 18px;
+}
+
 .claimButton {
   margin-top: 20px;
   background-color: white;
