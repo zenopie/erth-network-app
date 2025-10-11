@@ -5,8 +5,8 @@ import { showLoadingScreen } from "../utils/uiUtils";
 import { query, contract } from "../utils/contractUtils";
 import StatusModal from "../components/StatusModal";
 
-// Colors for the pie chart
-const COLORS = ["#4CAF50", "#8BC34A", "#FF9800", "#CDDC39", "#009688", "#795548"];
+// Colors for the pie chart - earth/nature theme with distinct colors
+const COLORS = ["#4CAF50", "#2196F3", "#FFC107", "#00BCD4", "#8E24AA", "#FF7043"];
 const UNALLOCATED_COLOR = "#B0B0B0"; // Grey color for Unallocated
 
 const renderCustomLegend = (props, data) => {

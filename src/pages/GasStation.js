@@ -69,7 +69,7 @@ const GasStation = ({ isKeplrConnected }) => {
     if (!window.secretjs || !window.secretjs.address) return;
 
     try {
-      const response = await fetch(`${ERTH_API_BASE_URL}/api/faucet-eligibility/${window.secretjs.address}`);
+      const response = await fetch(`${ERTH_API_BASE_URL}/faucet-eligibility/${window.secretjs.address}`);
       const result = await response.json();
 
       if (response.ok) {
@@ -301,7 +301,7 @@ const GasStation = ({ isKeplrConnected }) => {
     setAnimationState("loading");
 
     try {
-      const response = await fetch(`${ERTH_API_BASE_URL}/api/faucet-gas`, {
+      const response = await fetch(`${ERTH_API_BASE_URL}/faucet-gas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
