@@ -257,30 +257,28 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
           {error}
         </div>
       ) : claimData && (
-        <>
-          <div className={styles.amountDisplay}>
-            {calculateClaimableAmount()}
-            <span className={styles.tokenSymbol}>ERTH</span>
-          </div>
+        <div className={styles.amountDisplay}>
+          {calculateClaimableAmount()}
+          <span className={styles.tokenSymbol}>ERTH</span>
+        </div>
+      )}
 
-          {calculateAirdropAPR() && (
-            <div className={styles.combinedAPRContainer}>
-              <div className={styles.combinedAPR}>
-                {(20.29 + parseFloat(calculateAirdropAPR())).toFixed(2)}% <span className={styles.aprText}>APR</span>
-              </div>
-              <div className={styles.infoIcon}>
-                <i className="bx bx-info-circle"></i>
-                <div className={styles.tooltip}>
-                  <span className={styles.baseAPR}>20.29%</span>
-                  <span className={styles.aprSubLabel}> (validator)</span>
-                  <span className={styles.plusSign}> + </span>
-                  <span className={styles.airdropAPR}>{calculateAirdropAPR()}%</span>
-                  <span className={styles.aprSubLabel}> (airdrop)</span>
-                </div>
-              </div>
+      {calculateAirdropAPR() && (
+        <div className={styles.combinedAPRContainer}>
+          <div className={styles.combinedAPR}>
+            {(20.29 + parseFloat(calculateAirdropAPR())).toFixed(2)}% <span className={styles.aprText}>APR</span>
+          </div>
+          <div className={styles.infoIcon}>
+            <i className="bx bx-info-circle"></i>
+            <div className={styles.tooltip}>
+              <span className={styles.baseAPR}>20.29%</span>
+              <span className={styles.aprSubLabel}> (validator)</span>
+              <span className={styles.plusSign}> + </span>
+              <span className={styles.airdropAPR}>{calculateAirdropAPR()}%</span>
+              <span className={styles.aprSubLabel}> (airdrop)</span>
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
 
       {roundInfo && (
