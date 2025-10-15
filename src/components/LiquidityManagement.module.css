@@ -79,6 +79,8 @@
   flex-direction: column;
   padding: 0 20px;
   margin-top: -20px;
+  max-height: 500px;
+  overflow-y: auto;
 }
 
 /* Input Group Styling */
