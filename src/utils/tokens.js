@@ -2,13 +2,13 @@
 const tokens = {
   ERTH: {
     contract: "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
-    hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+    hash: "72e7242ceb5e3e441243f5490fab2374df0d3e828ce33aa0f0b4aad226cfedd7",
     decimals: 6,
     logo: "/images/coin/ERTH.png",
   },
   ANML: {
     contract: "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
-    hash: "638a3e1d50175fbcb8373cf801565283e3eb23d88a9b7b7f99fcc5eb1e6b561e",
+    hash: "72e7242ceb5e3e441243f5490fab2374df0d3e828ce33aa0f0b4aad226cfedd7",
     decimals: 6,
     logo: "/images/coin/ANML.png",
   },
