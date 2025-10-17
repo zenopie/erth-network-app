@@ -102,6 +102,7 @@
   height: 24px;
   margin-left: 4px;
   vertical-align: middle;
+  pointer-events: none;
 }
 
 /* Spinner */
