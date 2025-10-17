@@ -23,12 +23,12 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   // Fetch balances
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (refetch = false) => {
     if (!isKeplrConnected) {
       console.warn("Keplr not connected");
       return;
     }
-    showLoadingScreen(true);
+    if (!refetch) showLoadingScreen(true);
     try {
       const fromBal = await querySnipBalance(tokens[fromToken]);
       const toBal = await querySnipBalance(tokens[toToken]);
@@ -39,7 +39,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
       setFromBalance("Error");
       setToBalance("Error");
     } finally {
-      showLoadingScreen(false);
+      if (!refetch) showLoadingScreen(false);
     }
   }, [isKeplrConnected, fromToken, toToken]);
 
@@ -119,7 +119,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
       console.error("[handleSwap] error:", err);
       setAnimationState("error");
     } finally {
-      fetchData();
+      fetchData(true);
     }
   };
 
@@ -160,13 +160,17 @@ const SwapTokens = ({ isKeplrConnected }) => {
     fetchData();
   };
 
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
   if (!isKeplrConnected) {
     return <div className={styles.errorMessage}>Connect Keplr first</div>;
   }
 
   return (
     <div className={styles.container}>
-      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
+      <StatusModal isOpen={isModalOpen} onClose={handleModalClose} animationState={animationState} />
 
       <div className={styles.titleContainer}>
         <h2 className={styles.title}>Swap Tokens</h2>

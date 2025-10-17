@@ -134,8 +134,9 @@
 }
 
 .toggleButton {
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
+  background-color: #4caf50;
+  opacity: 0.6;
+  border: none;
   border-radius: 50%;
   width: 56px;
   height: 56px;
@@ -143,17 +144,18 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
 .toggleButton i {
   font-size: 34px;
   line-height: 1;
+  color: white;
 }
 
 .toggleButton:hover {
-  background-color: #e9e9e9;
-  transform: rotate(180deg);
+  opacity: 1;
+  background-color: #45a049;
 }
 
 /* Primary action button */

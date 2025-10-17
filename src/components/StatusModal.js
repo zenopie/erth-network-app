@@ -40,7 +40,7 @@ const ReusableModal = ({ isOpen, onClose, animationState }) => {
             {!isLoading && animationState === "success" && (
               <div className="status-modal-checkmark-wrapper">
                 <svg className="status-modal-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                  <circle className="status-modal-checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+                  <circle className="status-modal-checkmark__circle" cx="26" cy="26" r="25" />
                   <path className="status-modal-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
                 </svg>
               </div>
