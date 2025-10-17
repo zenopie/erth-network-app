@@ -30,11 +30,11 @@
 
 .googlePlayButton {
   margin-top: 20px;
-  background-color: white;
-  border: 5px solid #4056a1;
+  background-color: #4caf50;
+  border: none;
   font-size: 18px;
   border-radius: 30px;
-  color: #293462;
+  color: white !important;
   padding: 12px 25px;
   box-sizing: border-box;
   text-align: center;
@@ -45,17 +45,22 @@
   gap: 8px;
   font-weight: 600;
   white-space: nowrap;
+  transition: background-color 0.2s ease;
 }
 
 .googlePlayButton i {
   font-size: 24px;
+  color: white !important;
+}
+
+.googlePlayButton span {
+  color: white !important;
 }
 
 .googlePlayButton:hover {
-  background-color: #eee;
-  transition: all 0.3s ease;
+  background-color: #45a049;
 }
 
 .googlePlayButton:active {
-  background-color: #ddd;
+  background-color: #45a049;
 }
