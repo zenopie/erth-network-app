@@ -1,24 +1,69 @@
-// token details
-const tokens = {
+import { getRegistryData } from './contractUtils';
+
+// Token metadata that doesn't come from registry
+const tokenMetadata = {
   ERTH: {
-    contract: "secret16snu3lt8k9u0xr54j2hqyhvwnx9my7kq7ay8lp",
-    hash: "72e7242ceb5e3e441243f5490fab2374df0d3e828ce33aa0f0b4aad226cfedd7",
     decimals: 6,
     logo: "/images/coin/ERTH.png",
   },
   ANML: {
-    contract: "secret14p6dhjznntlzw0yysl7p6z069nk0skv5e9qjut",
-    hash: "72e7242ceb5e3e441243f5490fab2374df0d3e828ce33aa0f0b4aad226cfedd7",
     decimals: 6,
     logo: "/images/coin/ANML.png",
   },
-  sSCRT: {
-    contract: "secret1k0jntykt7e4g3y88ltc60czgjuqdy4c9e8fzek",
-    hash: "af74387e276be8874f07bec3a87023ee49b0e7ebe08178c49d0a49c3c98ed60e",
+  SSCRT: {
     decimals: 6,
     logo: "/images/coin/SSCRT.png",
     coingeckoId: "secret",
   },
 };
+
+// Get tokens with dynamic data from registry
+function getTokens() {
+  const registry = getRegistryData();
+  const tokens = {};
+
+  // Merge registry data with metadata
+  Object.keys(tokenMetadata).forEach(tokenName => {
+    const registryToken = registry.tokens?.[tokenName];
+    const metadata = tokenMetadata[tokenName];
+
+    tokens[tokenName] = {
+      contract: registryToken?.contract || undefined,
+      hash: registryToken?.hash || undefined,
+      ...metadata
+    };
+  });
+
+  return tokens;
+}
+
+// Export as a Proxy to always get fresh data
+const tokens = new Proxy({}, {
+  get(_target, prop) {
+    const currentTokens = getTokens();
+    // Return token with metadata or empty object if token not found
+    if (currentTokens[prop]) {
+      return currentTokens[prop];
+    }
+    // Fallback: return metadata only if it exists
+    if (tokenMetadata[prop]) {
+      return {
+        contract: undefined,
+        hash: undefined,
+        ...tokenMetadata[prop]
+      };
+    }
+    return { contract: undefined, hash: undefined };
+  },
+  ownKeys() {
+    return Object.keys(tokenMetadata);
+  },
+  getOwnPropertyDescriptor(_target, _prop) {
+    return {
+      enumerable: true,
+      configurable: true,
+    };
+  }
+});
 
 export default tokens;

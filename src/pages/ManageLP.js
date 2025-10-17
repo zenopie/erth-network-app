@@ -22,11 +22,20 @@ const ManageLP = ({ isKeplrConnected }) => {
 
   useEffect(() => {
     if (!isKeplrConnected) return;
+
+    // Check if registry data is loaded
+    const exchangeContract = contracts.exchange.contract;
+    const pools = tokenKeys.map((key) => tokens[key].contract).filter(Boolean);
+
+    if (pools.length === 0 || !exchangeContract) {
+      console.log("Waiting for registry data to load...");
+      return;
+    }
+
     showLoadingScreen(true);
-    const pools = tokenKeys.map((key) => tokens[key].contract);
     const msg = { query_user_info: { pools, user: window.secretjs.address } };
 
-    query(contracts.exchange.contract, contracts.exchange.hash, msg)
+    query(exchangeContract, contracts.exchange.hash, msg)
       .then((resArray) => {
         const data = {};
         tokenKeys.forEach((key, i) => {
@@ -36,7 +45,7 @@ const ManageLP = ({ isKeplrConnected }) => {
       })
       .catch((err) => console.error("Error querying pools:", err))
       .finally(() => showLoadingScreen(false));
-  }, [isKeplrConnected, refreshKey, tokenKeys]);
+  }, [isKeplrConnected, refreshKey, tokenKeys, contracts.exchange.contract]);
 
   const refreshParent = () => {
     setRefreshKey((prev) => prev + 1);

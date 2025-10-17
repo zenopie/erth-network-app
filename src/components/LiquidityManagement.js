@@ -58,10 +58,17 @@ const LiquidityManagement = ({
   // -------------------- Fetch Unbond Requests --------------------
   const refreshUnbondRequests = useCallback(async () => {
     if (!isKeplrConnected || !tokenB?.contract) return;
+
+    const exchangeContract = contracts.exchange.contract;
+    const exchangeHash = contracts.exchange.hash;
+
+    if (!exchangeContract || !exchangeHash) {
+      console.log("[LiquidityManagement] Waiting for exchange contract to load...");
+      return;
+    }
+
     console.log("[LiquidityManagement] Fetching unbond requests for pool:", tokenB.contract);
     try {
-      const exchangeContract = contracts.exchange.contract;
-      const exchangeHash = contracts.exchange.hash;
       const msg = {
         query_unbonding_requests: {
           pool: tokenB.contract,
@@ -98,6 +105,15 @@ const LiquidityManagement = ({
   // -------------------- Query Pool Data --------------------
   const refreshPoolData = useCallback(async () => {
     if (!isKeplrConnected || !tokenB?.contract) return;
+
+    const exchangeContract = contracts.exchange.contract;
+    const exchangeHash = contracts.exchange.hash;
+
+    if (!exchangeContract || !exchangeHash) {
+      console.log("[LiquidityManagement] Waiting for exchange contract to load...");
+      return;
+    }
+
     try {
       const msg = {
         query_user_info: {
@@ -105,7 +121,7 @@ const LiquidityManagement = ({
           user: window.secretjs.address,
         },
       };
-      const result = await query(contracts.exchange.contract, contracts.exchange.hash, msg);
+      const result = await query(exchangeContract, exchangeHash, msg);
       const updatedData = result[0];
       if (updatedData) {
         setPoolInfo(updatedData.pool_info || {});

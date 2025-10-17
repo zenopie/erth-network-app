@@ -10,7 +10,7 @@ import styles from "./GasStation.module.css";
 
 const GasStation = ({ isKeplrConnected }) => {
   const [activeTab, setActiveTab] = useState("SwapForGas");
-  const [fromToken, setFromToken] = useState("sSCRT");
+  const [fromToken, setFromToken] = useState("SSCRT");
   const [amount, setAmount] = useState("");
   const [expectedScrt, setExpectedScrt] = useState("");
   const [fromBalance, setFromBalance] = useState(null);
@@ -18,7 +18,7 @@ const GasStation = ({ isKeplrConnected }) => {
 
   // Wrap/Unwrap specific states
   const [wrapUnwrapAmount, setWrapUnwrapAmount] = useState("");
-  const [isWrapMode, setIsWrapMode] = useState(true); // true = wrap SCRT->sSCRT, false = unwrap sSCRT->SCRT
+  const [isWrapMode, setIsWrapMode] = useState(true); // true = wrap SCRT->SSCRT, false = unwrap SSCRT->SCRT
   const [sscrtBalance, setSscrtBalance] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,7 +41,7 @@ const GasStation = ({ isKeplrConnected }) => {
       const [nativeBal, tokenBal, sscrtBal] = await Promise.all([
         queryNativeBalance(),
         querySnipBalance(tokens[fromToken]),
-        querySnipBalance(tokens.sSCRT)
+        querySnipBalance(tokens.SSCRT)
       ]);
 
       setScrtBalance(isNaN(nativeBal) ? "Error" : parseFloat(nativeBal));
@@ -102,25 +102,25 @@ const GasStation = ({ isKeplrConnected }) => {
     try {
       const amountInMicro = toMicroUnits(parseFloat(sanitizedValue), tokens[fromToken]);
 
-      if (fromToken === "sSCRT") {
-        // For sSCRT unwrap, it's 1:1 conversion to SCRT
+      if (fromToken === "SSCRT") {
+        // For SSCRT unwrap, it's 1:1 conversion to SCRT
         const scrtOutputMacro = parseFloat(sanitizedValue);
         setExpectedScrt(scrtOutputMacro.toFixed(6));
       } else {
-        // Simulate swap to sSCRT first, then account for 1:1 unwrap to SCRT
+        // Simulate swap to SSCRT first, then account for 1:1 unwrap to SCRT
         const simulateMsg = {
           simulate_swap: {
             input_token: tokens[fromToken].contract,
             amount: amountInMicro.toString(),
-            output_token: tokens.sSCRT.contract,
+            output_token: tokens.SSCRT.contract,
           },
         };
 
         const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
         const sscrtOutputMicro = result.output_amount;
 
-        // The final SCRT amount will be the same as sSCRT amount (1:1 unwrap)
-        const scrtOutputMacro = parseFloat(sscrtOutputMicro) / 10 ** tokens.sSCRT.decimals;
+        // The final SCRT amount will be the same as SSCRT amount (1:1 unwrap)
+        const scrtOutputMacro = parseFloat(sscrtOutputMicro) / 10 ** tokens.SSCRT.decimals;
         setExpectedScrt(scrtOutputMacro.toFixed(6));
       }
     } catch (err) {
@@ -154,8 +154,8 @@ const GasStation = ({ isKeplrConnected }) => {
     try {
       const amountInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
 
-      if (fromToken === "sSCRT") {
-        // Use unwrap for sSCRT -> SCRT (direct contract call, not token send)
+      if (fromToken === "SSCRT") {
+        // Use unwrap for SSCRT -> SCRT (direct contract call, not token send)
         const { MsgExecuteContract } = await import('secretjs');
 
         const unwrapMsg = {
@@ -166,8 +166,8 @@ const GasStation = ({ isKeplrConnected }) => {
 
         const msg = new MsgExecuteContract({
           sender: window.secretjs.address,
-          contract_address: tokens.sSCRT.contract,
-          code_hash: tokens.sSCRT.hash,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
           msg: unwrapMsg
         });
 
@@ -340,14 +340,14 @@ const GasStation = ({ isKeplrConnected }) => {
 
     try {
       if (isWrapMode) {
-        // Wrap SCRT to sSCRT
+        // Wrap SCRT to SSCRT
         const { MsgExecuteContract } = await import('secretjs');
         const amountInMicro = toMicroUnits(parseFloat(wrapUnwrapAmount), { decimals: 6 });
 
         const msg = new MsgExecuteContract({
           sender: window.secretjs.address,
-          contract_address: tokens.sSCRT.contract,
-          code_hash: tokens.sSCRT.hash,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
           msg: { deposit: {} },
           sent_funds: [{ denom: "uscrt", amount: amountInMicro.toString() }]
         });
@@ -362,9 +362,9 @@ const GasStation = ({ isKeplrConnected }) => {
           throw new Error(`Transaction failed: ${resp.rawLog}`);
         }
       } else {
-        // Unwrap sSCRT to SCRT (direct contract call, not token send)
+        // Unwrap SSCRT to SCRT (direct contract call, not token send)
         const { MsgExecuteContract } = await import('secretjs');
-        const amountInMicro = toMicroUnits(parseFloat(wrapUnwrapAmount), tokens.sSCRT);
+        const amountInMicro = toMicroUnits(parseFloat(wrapUnwrapAmount), tokens.SSCRT);
 
         const unwrapMsg = {
           redeem: {
@@ -374,8 +374,8 @@ const GasStation = ({ isKeplrConnected }) => {
 
         const msg = new MsgExecuteContract({
           sender: window.secretjs.address,
-          contract_address: tokens.sSCRT.contract,
-          code_hash: tokens.sSCRT.hash,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
           msg: unwrapMsg
         });
 
@@ -406,9 +406,9 @@ const GasStation = ({ isKeplrConnected }) => {
     setWrapUnwrapAmount(""); // Clear amount when switching modes
   };
 
-  // Request viewing key for sSCRT
+  // Request viewing key for SSCRT
   const handleRequestSscrtViewingKey = async () => {
-    await requestViewingKey(tokens.sSCRT);
+    await requestViewingKey(tokens.SSCRT);
     fetchData();
   };
 
@@ -525,15 +525,15 @@ const GasStation = ({ isKeplrConnected }) => {
 
             {/* Action Button */}
             <button className={styles.gasButton} onClick={handleSwapForGas} disabled={!amount || parseFloat(amount) <= 0 || !expectedScrt}>
-              {fromToken === "sSCRT" ? "Unwrap" : "Swap for Gas"}
+              {fromToken === "SSCRT" ? "Unwrap" : "Swap for Gas"}
             </button>
           </div>
         );
 
       case "WrapUnwrap":
         const currentBalance = isWrapMode ? scrtBalance : sscrtBalance;
-        const fromTokenInfo = isWrapMode ? { name: "SCRT", logo: null, isIcon: true } : { name: "sSCRT", logo: tokens.sSCRT.logo, isIcon: false };
-        const toTokenInfo = isWrapMode ? { name: "sSCRT", logo: tokens.sSCRT.logo, isIcon: false } : { name: "SCRT", logo: null, isIcon: true };
+        const fromTokenInfo = isWrapMode ? { name: "SCRT", logo: null, isIcon: true } : { name: "SSCRT", logo: tokens.SSCRT.logo, isIcon: false };
+        const toTokenInfo = isWrapMode ? { name: "SSCRT", logo: tokens.SSCRT.logo, isIcon: false } : { name: "SCRT", logo: null, isIcon: true };
 
         return (
           <div className={`${styles.gasTabcontent} ${styles.active}`}>

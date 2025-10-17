@@ -8,6 +8,28 @@ const url = "https://lcd.erth.network";      // REST endpoint for Keplr
 const grpcUrl = "https://grpc.erth.network"; // gRPC endpoint for queries
 const chainId = 'secret-4';                  // Mainnet chain ID
 
+// Contract Registry
+const REGISTRY_CONTRACT = "secret1ql943kl7fd7pyv9njf7rmngxhzljncgx6eyw5j";
+const REGISTRY_HASH = "2a53df1dc1d8f37ecddd9463930c9caa4940fed94f9a8cd113d6285eef09445b";
+
+// In-memory storage for registry data
+let registryData = {
+    contracts: {},
+    tokens: {},
+    lastUpdated: null
+};
+
+// Initialize from localStorage on module load
+try {
+    const stored = localStorage.getItem('contractRegistry');
+    if (stored) {
+        registryData = JSON.parse(stored);
+        console.log("Registry data loaded from localStorage");
+    }
+} catch (error) {
+    console.error("Error loading registry from localStorage:", error);
+}
+
 console.log("REST url = " + url);
 console.log("gRPC url = " + grpcUrl);
 
@@ -76,7 +98,104 @@ export async function connectKeplr() {
     }
 
     const walletName = await window.keplr.getKey(chainId);
+
+    // Query the registry to get contract info
+    await queryRegistry();
+
     return { secretjs, walletName: walletName.name.slice(0, 12) };
+}
+
+// Query the contract registry and store the data
+async function queryRegistry() {
+    if (!queryClient) {
+        console.error("Query client not initialized");
+        return;
+    }
+
+    try {
+        console.log("Querying contract registry...");
+        const response = await queryClient.query.compute.queryContract({
+            contract_address: REGISTRY_CONTRACT,
+            code_hash: REGISTRY_HASH,
+            query: { get_all_contracts: {} },
+        });
+
+        if (response && response.contracts) {
+            // Parse and organize the registry data
+            const contracts = {};
+            const tokens = {};
+
+            response.contracts.forEach(item => {
+                const contractInfo = {
+                    contract: item.info.address,
+                    hash: item.info.code_hash
+                };
+
+                // Categorize as token or contract
+                if (item.name.includes('token')) {
+                    const tokenName = item.name.replace('_token', '').toUpperCase();
+                    tokens[tokenName] = contractInfo;
+                } else {
+                    contracts[item.name] = contractInfo;
+                }
+            });
+
+            // Store in memory
+            registryData.contracts = contracts;
+            registryData.tokens = tokens;
+            registryData.lastUpdated = new Date().toISOString();
+
+            // Also store in localStorage for persistence
+            localStorage.setItem('contractRegistry', JSON.stringify(registryData));
+
+            console.log("Registry data loaded:", registryData);
+        }
+    } catch (error) {
+        console.error("Error querying registry:", error);
+    }
+}
+
+// Export function to get registry data
+export function getRegistryData() {
+    // Try to load from localStorage if not in memory
+    if (!registryData.lastUpdated) {
+        const stored = localStorage.getItem('contractRegistry');
+        if (stored) {
+            registryData = JSON.parse(stored);
+        }
+    }
+    return registryData;
+}
+
+// Get a specific contract from registry
+export function getContract(name) {
+    const registry = getRegistryData();
+    return registry.contracts[name] || null;
+}
+
+// Get a specific token from registry
+export function getToken(name) {
+    const registry = getRegistryData();
+    return registry.tokens[name] || null;
+}
+
+// Get the stored login permit
+export function getLoginPermit() {
+    try {
+        const permitStr = localStorage.getItem('erth_login_permit');
+        if (permitStr) {
+            return JSON.parse(permitStr);
+        }
+        return null;
+    } catch (error) {
+        console.error("Error retrieving login permit:", error);
+        return null;
+    }
+}
+
+// Get the user address
+export function getUserAddress() {
+    return localStorage.getItem('erth_user_address') || null;
 }
 
 // Query function using gRPC client
@@ -286,7 +405,7 @@ export async function queryNativeBalance() {
         return "Error";
     }
 }
-// Wrap SCRT => sSCRT
+// Wrap SCRT => SSCRT
 export async function wrapScrt(amount) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized.");
@@ -294,8 +413,8 @@ export async function wrapScrt(amount) {
 
     const msg = new MsgExecuteContract({
         sender: secretjs.address,
-        contract_address: tokens.sSCRT.contract,
-        code_hash: tokens.sSCRT.hash,
+        contract_address: tokens.SSCRT.contract,
+        code_hash: tokens.SSCRT.hash,
         msg: { deposit: {} },
         sent_funds: [{ denom: "uscrt", amount: String(amount) }],
     });
@@ -306,11 +425,11 @@ export async function wrapScrt(amount) {
         feeDenom: "uscrt",
     });
 
-    logTransaction(tokens.sSCRT.contract, tokens.sSCRT.hash, { deposit: {} }, resp);
+    logTransaction(tokens.SSCRT.contract, tokens.SSCRT.hash, { deposit: {} }, resp);
     return resp;
 }
 
-// Unwrap sSCRT => SCRT
+// Unwrap SSCRT => SCRT
 export async function unwrapSscrt(amount) {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized.");
@@ -318,8 +437,8 @@ export async function unwrapSscrt(amount) {
 
     const msg = new MsgExecuteContract({
         sender: secretjs.address,
-        contract_address: tokens.sSCRT.contract,
-        code_hash: tokens.sSCRT.hash,
+        contract_address: tokens.SSCRT.contract,
+        code_hash: tokens.SSCRT.hash,
         msg: { redeem: { amount: String(amount) } },
     });
 
@@ -329,6 +448,6 @@ export async function unwrapSscrt(amount) {
         feeDenom: "uscrt",
     });
 
-    logTransaction(tokens.sSCRT.contract, tokens.sSCRT.hash, { redeem: { amount: String(amount) } }, resp);
+    logTransaction(tokens.SSCRT.contract, tokens.SSCRT.hash, { redeem: { amount: String(amount) } }, resp);
     return resp;
 }
