@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./Sidebar.css";
 import logo from "../images/logo.png";
-import keplr from "../images/keplr.svg";
+import keplr from "../images/keplr.png";
 
 const Sidebar = ({ walletName, isKeplrConnected }) => {
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
@@ -40,6 +40,15 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleLogout = () => {
+    // Clear all login data
+    localStorage.removeItem('erth_login_permit');
+    localStorage.removeItem('erth_user_address');
+    localStorage.removeItem('erth_permit_expiration');
+    // Reload to show login screen
+    window.location.reload();
   };
 
   return (
@@ -170,8 +179,19 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
               <img src={keplr} alt="profileImg" />
             </div>
             <div className="name-job">
-              <div id="wallet-name" className="profile_name">
-                {isKeplrConnected ? walletName : "Connecting..."}
+              <div className="profile-name-row">
+                <div id="wallet-name" className="profile_name">
+                  {isKeplrConnected ? walletName : "Connecting..."}
+                </div>
+                {isKeplrConnected && (
+                  <button
+                    className="logout-button"
+                    onClick={handleLogout}
+                    title="Logout"
+                  >
+                    <i className="bx bx-log-out"></i>
+                  </button>
+                )}
               </div>
               <div className="job"></div>
             </div>

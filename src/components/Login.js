@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { queryRegistryAndGetTokens } from '../utils/contractUtils';
 import styles from './Login.module.css';
+import keplrLogo from '../images/keplr-logo-white.png';
 
 const Login = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +32,14 @@ const Login = ({ onLoginSuccess }) => {
 
       const userAddress = accounts[0].address;
 
-      // Create permit for signing
+      // Query registry and get token addresses for permit (also populates contracts/tokens)
+      const tokenAddresses = await queryRegistryAndGetTokens();
+
+      // Calculate expiration: 1 week from now (in seconds)
+      const oneWeekInSeconds = 7 * 24 * 60 * 60;
+      const expirationTimestamp = Math.floor(Date.now() / 1000) + oneWeekInSeconds;
+
+      // Create permit for signing with all token addresses and 1 week expiration
       const permit = {
         chain_id: chainId,
         account_number: "0",
@@ -40,7 +49,7 @@ const Login = ({ onLoginSuccess }) => {
             type: "query_permit",
             value: {
               permit_name: "erth_network_login",
-              allowed_tokens: [],
+              allowed_tokens: tokenAddresses,
               permissions: ["owner"]
             }
           }
@@ -65,24 +74,26 @@ const Login = ({ onLoginSuccess }) => {
         }
       );
 
+      // Clear any existing permit first
+      localStorage.removeItem('erth_login_permit');
+      localStorage.removeItem('erth_user_address');
+      localStorage.removeItem('erth_permit_expiration');
+
       // Store the permit in localStorage with the wallet address
       const permitData = {
         params: {
           permit_name: "erth_network_login",
-          allowed_tokens: [],
+          allowed_tokens: tokenAddresses,
           chain_id: chainId,
           permissions: ["owner"]
         },
         signature: signedPermit.signature
       };
 
-      // Clear any existing permit first
-      localStorage.removeItem('erth_login_permit');
-      localStorage.removeItem('erth_user_address');
-
-      // Store new permit and address
+      // Store new permit, address, and expiration
       localStorage.setItem('erth_login_permit', JSON.stringify(permitData));
       localStorage.setItem('erth_user_address', userAddress);
+      localStorage.setItem('erth_permit_expiration', expirationTimestamp.toString());
 
       console.log("Login permit signed successfully for:", userAddress);
 
@@ -103,7 +114,6 @@ const Login = ({ onLoginSuccess }) => {
         <div className={styles.titleContainer}>
           <img src="/images/logo.png" alt="ERTH Network" className={styles.logo} />
           <h2 className={styles.title}>Welcome to ERTH Network</h2>
-          <p className={styles.subtitle}>Sign in with your Keplr wallet</p>
         </div>
 
         {error && (
@@ -124,9 +134,15 @@ const Login = ({ onLoginSuccess }) => {
               Connecting...
             </>
           ) : (
-            'Sign in with Keplr'
+            <>
+              Sign in with <img src={keplrLogo} alt="Keplr" className={styles.keplrLogo} />
+            </>
           )}
         </button>
+
+        <p className={styles.disclaimer}>
+          Signing in will create a permit to view your private balances
+        </p>
       </div>
     </div>
   );

@@ -31,8 +31,21 @@ const Layout = ({ children }) => {
     const checkExistingLogin = async () => {
       const existingPermit = localStorage.getItem('erth_login_permit');
       const storedAddress = localStorage.getItem('erth_user_address');
+      const permitExpiration = localStorage.getItem('erth_permit_expiration');
 
-      if (existingPermit && storedAddress) {
+      if (existingPermit && storedAddress && permitExpiration) {
+        // Check if permit has expired
+        const currentTime = Math.floor(Date.now() / 1000);
+        const expirationTime = parseInt(permitExpiration, 10);
+
+        if (currentTime >= expirationTime) {
+          console.log("Permit expired, clearing login");
+          localStorage.removeItem('erth_login_permit');
+          localStorage.removeItem('erth_user_address');
+          localStorage.removeItem('erth_permit_expiration');
+          return;
+        }
+
         // Verify the current Keplr wallet matches the stored permit
         try {
           if (window.keplr) {
@@ -45,13 +58,14 @@ const Layout = ({ children }) => {
               const currentAddress = accounts[0].address;
 
               if (currentAddress === storedAddress) {
-                // Wallet matches, use existing permit
+                // Wallet matches and permit not expired, use existing permit
                 setIsLoggedIn(true);
               } else {
                 // Wallet changed, clear old permit
                 console.log("Wallet changed, clearing old permit");
                 localStorage.removeItem('erth_login_permit');
                 localStorage.removeItem('erth_user_address');
+                localStorage.removeItem('erth_permit_expiration');
               }
             }
           }
@@ -98,6 +112,7 @@ const Layout = ({ children }) => {
       console.log("Keplr account changed, clearing permit and refreshing...");
       localStorage.removeItem('erth_login_permit');
       localStorage.removeItem('erth_user_address');
+      localStorage.removeItem('erth_permit_expiration');
       window.location.reload();
     };
 

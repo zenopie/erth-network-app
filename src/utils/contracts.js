@@ -1,27 +1,33 @@
-import { getRegistryData } from './contractUtils';
+// Contract objects - populated from registry
+const contracts = {
+  exchange: {
+    contract: undefined,
+    hash: undefined,
+  },
+  staking: {
+    contract: undefined,
+    hash: undefined,
+  },
+  airdrop: {
+    contract: undefined,
+    hash: undefined,
+  },
+  weekly_airdrop: {
+    contract: undefined,
+    hash: undefined,
+  },
+};
 
-// Get contracts with dynamic data from registry
-function getContracts() {
-  const registry = getRegistryData();
-  return registry.contracts || {};
+// Populate contracts with registry data
+export function populateContracts(registryContracts) {
+  Object.keys(registryContracts).forEach(contractName => {
+    if (!contracts[contractName]) {
+      contracts[contractName] = {};
+    }
+    contracts[contractName].contract = registryContracts[contractName].contract;
+    contracts[contractName].hash = registryContracts[contractName].hash;
+  });
+  console.log("Contracts populated:", contracts);
 }
-
-// Export as a Proxy to always get fresh data
-const contracts = new Proxy({}, {
-  get(_target, prop) {
-    const currentContracts = getContracts();
-    // Return empty object if contract not found to avoid undefined errors
-    return currentContracts[prop] || { contract: undefined, hash: undefined };
-  },
-  ownKeys() {
-    return Object.keys(getContracts());
-  },
-  getOwnPropertyDescriptor(_target, _prop) {
-    return {
-      enumerable: true,
-      configurable: true,
-    };
-  }
-});
 
 export default contracts;
