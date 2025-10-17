@@ -12,7 +12,7 @@ const contracts = {
     contract: undefined,
     hash: undefined,
   },
-  weekly_airdrop: {
+  registration: {
     contract: undefined,
     hash: undefined,
   },
