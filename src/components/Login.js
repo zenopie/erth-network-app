@@ -58,7 +58,7 @@ const Login = ({ onLoginSuccess }) => {
           amount: [{ denom: "uscrt", amount: "0" }],
           gas: "1"
         },
-        memo: ""
+        memo: "Create viewing permit"
       };
 
       console.log("Requesting permit signature...");
