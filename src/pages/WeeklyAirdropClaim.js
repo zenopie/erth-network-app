@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { query, contract } from "../utils/contractUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 import { showLoadingScreen } from "../utils/uiUtils";
@@ -109,7 +109,11 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     return apr.toFixed(2);
   };
 
-  const fetchAirdropData = async () => {
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  const fetchAirdropData = async (refetch = false) => {
     if (!window.secretjs || !window.secretjs.address) {
       setError("Wallet not connected");
       setLoading(false);
@@ -117,7 +121,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     }
 
     try {
-      showLoadingScreen(true);
+      if (!refetch) showLoadingScreen(true);
       setLoading(true);
       setError(null);
 
@@ -145,7 +149,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
         if (claimResponse.status === 404) {
           setError("No airdrop allocation found for your address");
           setLoading(false);
-          showLoadingScreen(false);
+          if (!refetch) showLoadingScreen(false);
           return;
         }
         throw new Error(`Failed to fetch claim data: ${claimResponse.statusText}`);
@@ -160,12 +164,12 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       setHasClaimed(hasClaimedResp.has_claimed);
 
       setLoading(false);
-      showLoadingScreen(false);
+      if (!refetch) showLoadingScreen(false);
     } catch (err) {
       console.error("Error fetching airdrop data:", err);
       setError(err.message || "Failed to load airdrop data");
       setLoading(false);
-      showLoadingScreen(false);
+      if (!refetch) showLoadingScreen(false);
     }
   };
 
@@ -196,7 +200,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       console.error("Error claiming airdrop:", err);
       setAnimationState("error");
     } finally {
-      fetchAirdropData(); // Refresh data
+      fetchAirdropData(true); // Refresh data
     }
   };
 
@@ -236,11 +240,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   }
 
   if (loading) {
-    return (
-      <div className={styles.testBox}>
-        <div className={styles.message}>Loading airdrop data...</div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -323,7 +323,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
 
     <StatusModal
       isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
+      onClose={handleModalClose}
       animationState={animationState}
     />
   </>
