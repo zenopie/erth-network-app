@@ -19,7 +19,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const [claimData, setClaimData] = useState(null);
   const [hasClaimed, setHasClaimed] = useState(false);
   const [roundInfo, setRoundInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
@@ -116,13 +115,11 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const fetchAirdropData = async (refetch = false) => {
     if (!window.secretjs || !window.secretjs.address) {
       setError("Wallet not connected");
-      setLoading(false);
       return;
     }
 
     try {
       if (!refetch) showLoadingScreen(true);
-      setLoading(true);
       setError(null);
 
       const userAddress = window.secretjs.address;
@@ -148,7 +145,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       if (!claimResponse.ok) {
         if (claimResponse.status === 404) {
           setError("No airdrop allocation found for your address");
-          setLoading(false);
           if (!refetch) showLoadingScreen(false);
           return;
         }
@@ -163,12 +159,10 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       const hasClaimedResp = await query(AIRDROP_CONTRACT, AIRDROP_HASH, hasClaimedQuery);
       setHasClaimed(hasClaimedResp.has_claimed);
 
-      setLoading(false);
       if (!refetch) showLoadingScreen(false);
     } catch (err) {
       console.error("Error fetching airdrop data:", err);
       setError(err.message || "Failed to load airdrop data");
-      setLoading(false);
       if (!refetch) showLoadingScreen(false);
     }
   };
@@ -237,10 +231,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
         </div>
       </div>
     );
-  }
-
-  if (loading) {
-    return null;
   }
 
   return (
