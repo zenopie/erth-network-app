@@ -33,11 +33,9 @@ const AyaChat = () => {
   }, []);
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      const isNearBottom = chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop <= chatContainerRef.current.clientHeight + 150;
-      if (isNearBottom || !userInteracted.current) {
-        setTimeout(() => chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight), 0);
-      }
+    const isNearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 150;
+    if (isNearBottom || !userInteracted.current) {
+      setTimeout(() => window.scrollTo(0, document.documentElement.scrollHeight), 0);
     }
   }, [messages, streamingThinkingText]);
 

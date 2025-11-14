@@ -6,16 +6,14 @@
   margin: 0 auto;
   font-family: "Inter", sans-serif;
   min-height: 100vh;
-  height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  padding-bottom: 150px; /* Space for fixed input area */
 }
 
 .secret-chat-container {
   flex: 1;
   width: 100%;
-  overflow-y: auto;
   padding: 20px;
   box-sizing: border-box;
   margin-bottom: 0;
@@ -172,12 +170,18 @@
 }
 
 .secret-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
+  max-width: 800px;
   padding: 20px;
   box-sizing: border-box;
-  background: transparent;
+  background: #ffffff;
   margin: 0;
-  position: relative;
+  border-top: 1px solid #e5e7eb;
+  z-index: 100;
 }
 
 .secret-chat-input {
