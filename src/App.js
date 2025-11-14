@@ -9,7 +9,7 @@ import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
 import GasStation from './pages/GasStation';
-import LilaChat from './pages/LilaChat';
+import AyaChat from './pages/AyaChat';
 import TransactionLogs from './pages/TransactionLogs';
 import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -31,7 +31,7 @@ function App() {
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
           <Route path="/gas-station" element={<Layout><GasStation /></Layout>} />
-          <Route path="/lila-chat" element={<Layout><LilaChat /></Layout>} />
+          <Route path="/aya-chat" element={<Layout><AyaChat /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
           <Route path="/pdf-signature" element={<Layout><PDFSignatureVerification /></Layout>} />
           <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />

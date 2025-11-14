@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
-import "./LilaChat.css";
+import "./AyaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
 // Testnet and worker constants have been removed.
@@ -13,7 +13,7 @@ const SERVER_API_URL = `${ERTH_API_BASE_URL}/chat`;
 
 // The SecretNetworkClient instantiation has been removed.
 
-const LilaChat = () => {
+const AyaChat = () => {
   const selectedModel = "llama3.2-vision"; // Hardcoded default model
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
@@ -267,7 +267,7 @@ const LilaChat = () => {
       <div className="secret-input-container">
         <textarea
           className="secret-chat-input"
-          placeholder="Ask Aya (آية) anything..."
+          placeholder="Ask Aya anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
@@ -286,4 +286,4 @@ const LilaChat = () => {
   );
 };
 
-export default LilaChat;
+export default AyaChat;
