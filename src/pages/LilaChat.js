@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { FiCopy, FiCheck, FiSettings, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiCopy, FiCheck, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
 import "./LilaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
@@ -14,24 +14,19 @@ const SERVER_API_URL = `${ERTH_API_BASE_URL}/chat`;
 // The SecretNetworkClient instantiation has been removed.
 
 const LilaChat = () => {
-  // Models are now hardcoded and the loading state is removed.
-  const [models] = useState(["llama3.2-vision", "gemma3:4b"]);
-  const [selectedModel, setSelectedModel] = useState("llama3.2-vision"); // Set a default model.
+  const selectedModel = "llama3.2-vision"; // Hardcoded default model
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
   const [isLiveThinkingExpanded, setIsLiveThinkingExpanded] = useState(false);
   const [expandedStates, setExpandedStates] = useState({});
   const [input, setInput] = useState("");
-  const [pendingImage, setPendingImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copiedText, setCopiedText] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
 
   const chatContainerRef = useRef(null);
   const thinkingBoxRef = useRef(null);
   const userInteracted = useRef(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     showLoadingScreen(false);
@@ -56,34 +51,20 @@ const LilaChat = () => {
     setExpandedStates(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPendingImage(e.target.result.split(',')[1]);
-        setInput((prev) => (prev ? `${prev}\n[Image attached]` : "[Image attached]"));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSendMessage = async () => {
     if (loading || !input.trim() || !selectedModel) return;
-    
+
     userInteracted.current = false;
     setLoading(true);
     setIsLiveThinkingExpanded(false);
-    setSettingsOpen(false);
     const controller = new AbortController();
     setAbortController(controller);
 
-    const userMessage = { role: "user", content: pendingImage ? [{ type: "text", text: input }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${pendingImage}` } }] : input };
+    const userMessage = { role: "user", content: input };
     const assistantPlaceholder = { role: "assistant", content: "" };
     const messagesToSend = messages.concat(userMessage);
     setMessages([...messagesToSend, assistantPlaceholder]);
     setInput("");
-    setPendingImage(null);
     
     let fullResponseText = "";
     const thinkRegex = /<think>([\s\S]*?)<\/think>/gs;
@@ -284,42 +265,18 @@ const LilaChat = () => {
       </div>
 
       <div className="secret-input-container">
-        {settingsOpen && (
-          <div className="secret-settings-dropdown">
-            <label>AI Model:</label>
-            {/* The 'disabled' prop is no longer needed here. */}
-            <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); setPendingImage(null); }}>
-              {models.map((model) => (<option key={model} value={model}>{model}</option>))}
-            </select>
-          </div>
-        )}
         <textarea
           className="secret-chat-input"
-          // Placeholder and disabled check are simplified.
           placeholder="Ask Aya (آية) anything..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-          disabled={loading || models.length === 0}
+          disabled={loading}
         />
-        <div className="secret-settings-container">
-          {selectedModel === "llama3.2-vision" && (
-            <>
-              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={handleImageUpload} />
-              <button className="secret-upload-button" onClick={() => fileInputRef.current?.click()} style={{ backgroundColor: "#ffeb3b", color: "#000", marginRight: "8px" }}>
-                📷 Upload
-              </button>
-            </>
-          )}
-          <div className="secret-settings-icon" onClick={() => setSettingsOpen(!settingsOpen)}>
-            <FiSettings size={24} />
-          </div>
-        </div>
         {loading && <button className="secret-stop-button" onClick={handleStopStreaming}>⏹ Stop</button>}
         <button
           className="secret-send-button"
           onClick={handleSendMessage}
-          // Disabled check is simplified.
           disabled={loading || !input.trim() || !selectedModel}
         >
           {loading ? "Thinking..." : "Send"}
