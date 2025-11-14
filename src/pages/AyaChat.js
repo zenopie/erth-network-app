@@ -192,6 +192,9 @@ const AyaChat = () => {
         setStreamingThinkingText("");
         setLoading(false);
         setAbortController(null);
+
+        // Refocus input after response completes
+        setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
@@ -304,23 +307,25 @@ const AyaChat = () => {
       </div>
 
       <div className="secret-input-container">
-        <textarea
-          ref={inputRef}
-          className="secret-chat-input"
-          placeholder="Ask Aya anything..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-          disabled={loading}
-        />
-        {loading && <button className="secret-stop-button" onClick={handleStopStreaming}>⏹ Stop</button>}
-        <button
-          className="secret-send-button"
-          onClick={handleSendMessage}
-          disabled={loading || !input.trim() || !selectedModel}
-        >
-          {loading ? "Thinking..." : "Send"}
-        </button>
+        <div className="secret-input-wrapper">
+          <textarea
+            ref={inputRef}
+            className="secret-chat-input"
+            placeholder="Ask Aya anything..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+            disabled={loading}
+          />
+          {loading && <button className="secret-stop-button" onClick={handleStopStreaming}>⏹ Stop</button>}
+          <button
+            className="secret-send-button"
+            onClick={handleSendMessage}
+            disabled={loading || !input.trim() || !selectedModel}
+          >
+            {loading ? "Thinking..." : "Send"}
+          </button>
+        </div>
       </div>
     </div>
   );
