@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy, FiCheck, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { showLoadingScreen } from "../utils/uiUtils";
-import "./AyaChat.css";
+import "./AquaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
 // Testnet and worker constants have been removed.
@@ -13,7 +13,7 @@ const SERVER_API_URL = `${ERTH_API_BASE_URL}/chat`;
 
 // The SecretNetworkClient instantiation has been removed.
 
-const AyaChat = () => {
+const AquaChat = () => {
   const selectedModel = "llama3.2-vision"; // Hardcoded default model
   const [messages, setMessages] = useState([]);
   const [streamingThinkingText, setStreamingThinkingText] = useState("");
@@ -245,13 +245,13 @@ const AyaChat = () => {
     <div className="secret-main-container">
       <button
         onClick={handleNewChat}
-        className="aya-sprite-button"
+        className="aqua-sprite-button"
         aria-label="Start new chat"
       >
         <img
           src={getSpriteSrc()}
-          alt="Aya Chat Status"
-          className="aya-sprite-image"
+          alt="Aqua Chat Status"
+          className="aqua-sprite-image"
         />
       </button>
       <div className="secret-chat-container" ref={chatContainerRef}>
@@ -311,7 +311,7 @@ const AyaChat = () => {
           <textarea
             ref={inputRef}
             className="secret-chat-input"
-            placeholder="Ask Aya anything..."
+            placeholder="Ask Aqua anything..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
@@ -331,4 +331,4 @@ const AyaChat = () => {
   );
 };
 
-export default AyaChat;
+export default AquaChat;

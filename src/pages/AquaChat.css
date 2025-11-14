@@ -1,4 +1,4 @@
-/* AyaChat.css */
+/* AquaChat.css */
 
 @keyframes float {
   0%, 100% {
@@ -18,7 +18,7 @@
   }
 }
 
-.aya-sprite-button {
+.aqua-sprite-button {
   position: fixed;
   bottom: 160px;
   left: calc(50% - 250px - 7rem);
@@ -32,31 +32,31 @@
   animation: float 3s ease-in-out infinite;
 }
 
-.aya-sprite-button:hover {
+.aqua-sprite-button:hover {
   animation: float-hover 3s ease-in-out infinite;
 }
 
 /* Adjust for collapsed sidebar */
-.sidebar.collapsed ~ .home-section .aya-sprite-button {
+.sidebar.collapsed ~ .home-section .aqua-sprite-button {
   left: calc(50% - 340px - 7rem);
 }
 
 @media (max-width: 1024px) {
-  .aya-sprite-button {
+  .aqua-sprite-button {
     left: 20px !important;
   }
 }
 
-.aya-sprite-button:focus {
+.aqua-sprite-button:focus {
   outline: none;
 }
 
-.aya-sprite-button:focus-visible {
+.aqua-sprite-button:focus-visible {
   outline: 2px solid #2dc08d;
   outline-offset: 2px;
 }
 
-.aya-sprite-image {
+.aqua-sprite-image {
   height: 7rem;
   width: 7rem;
   display: block;
@@ -81,15 +81,17 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-left: calc(50% - 400px);
+  padding-right: calc(50% - 400px);
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
-.secret-chat-container > * {
-  max-width: 800px;
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 20px;
-  padding-right: 20px;
+@media (max-width: 840px) {
+  .secret-chat-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 .secret-message {
@@ -247,14 +249,21 @@
   margin: 0;
   position: relative;
   flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
+  padding-left: calc(50% - 400px);
+  padding-right: calc(50% - 400px);
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+@media (max-width: 840px) {
+  .secret-input-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 .secret-input-wrapper {
   width: 100%;
-  max-width: 800px;
   position: relative;
 }
 
