@@ -186,6 +186,25 @@ const AyaChat = () => {
 
   const handleStopStreaming = () => abortController?.abort();
 
+  const handleNewChat = () => {
+    if (loading) {
+      abortController?.abort();
+    }
+    setMessages([]);
+    setInput("");
+    setStreamingThinkingText("");
+    setExpandedStates({});
+  };
+
+  const getSpriteSrc = () => {
+    if (loading) {
+      return streamingThinkingText.trim().length > 0
+        ? "/images/sprites/aqua_think.png"
+        : "/images/sprites/aqua_talk.png";
+    }
+    return "/images/sprites/aqua_rest.png";
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedText(text);
@@ -210,6 +229,17 @@ const AyaChat = () => {
 
   return (
     <div className="secret-main-container">
+      <button
+        onClick={handleNewChat}
+        className="aya-sprite-button"
+        aria-label="Start new chat"
+      >
+        <img
+          src={getSpriteSrc()}
+          alt="Aya Chat Status"
+          className="aya-sprite-image"
+        />
+      </button>
       <div className="secret-chat-container" ref={chatContainerRef}>
         {messages.map((msg, index) => {
           const isLastMessage = index === messages.length - 1;
