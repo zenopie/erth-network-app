@@ -9,7 +9,7 @@ import "./LilaChat.css";
 import { ERTH_API_BASE_URL } from '../utils/config';
 
 // Testnet and worker constants have been removed.
-const SERVER_API_URL = `${ERTH_API_BASE_URL}/api/chat`;
+const SERVER_API_URL = `${ERTH_API_BASE_URL}/chat`;
 
 // The SecretNetworkClient instantiation has been removed.
 
