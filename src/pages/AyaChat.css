@@ -1,31 +1,50 @@
 /* AyaChat.css */
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-15px) scale(1);
+  }
+}
+
+@keyframes float-hover {
+  0%, 100% {
+    transform: translateY(0) scale(1.1);
+  }
+  50% {
+    transform: translateY(-15px) scale(1.1);
+  }
+}
+
 .aya-sprite-button {
   position: fixed;
-  top: 20px;
-  left: calc(50% - 250px);
+  bottom: 160px;
+  left: calc(50% - 250px - 7rem);
   background: none;
   border: none;
   cursor: pointer;
   z-index: 101;
   padding: 0;
   border-radius: 50%;
-  transition: left 0.5s ease, transform 0.2s ease;
+  transition: left 0.5s ease, bottom 0.5s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+.aya-sprite-button:hover {
+  animation: float-hover 3s ease-in-out infinite;
 }
 
 /* Adjust for collapsed sidebar */
 .sidebar.collapsed ~ .home-section .aya-sprite-button {
-  left: calc(50% - 340px);
+  left: calc(50% - 340px - 7rem);
 }
 
 @media (max-width: 1024px) {
   .aya-sprite-button {
     left: 20px !important;
   }
-}
-
-.aya-sprite-button:hover {
-  transform: scale(1.1);
 }
 
 .aya-sprite-button:focus {
@@ -52,13 +71,13 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 150px; /* Space for fixed input area */
 }
 
 .secret-chat-container {
   flex: 1;
   width: 100%;
   padding: 20px;
+  padding-bottom: 180px; /* Space for fixed input area */
   box-sizing: border-box;
   margin-bottom: 0;
   display: flex;

@@ -27,15 +27,21 @@ const AyaChat = () => {
   const chatContainerRef = useRef(null);
   const thinkingBoxRef = useRef(null);
   const userInteracted = useRef(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     showLoadingScreen(false);
   }, []);
 
   useEffect(() => {
-    const isNearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 150;
+    const isNearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200;
     if (isNearBottom || !userInteracted.current) {
-      setTimeout(() => window.scrollTo(0, document.documentElement.scrollHeight), 0);
+      setTimeout(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
   }, [messages, streamingThinkingText]);
 
@@ -63,6 +69,9 @@ const AyaChat = () => {
     const messagesToSend = messages.concat(userMessage);
     setMessages([...messagesToSend, assistantPlaceholder]);
     setInput("");
+
+    // Refocus input after clearing
+    setTimeout(() => inputRef.current?.focus(), 100);
     
     let fullResponseText = "";
     const thinkRegex = /<think>([\s\S]*?)<\/think>/gs;
@@ -294,6 +303,7 @@ const AyaChat = () => {
 
       <div className="secret-input-container">
         <textarea
+          ref={inputRef}
           className="secret-chat-input"
           placeholder="Ask Aya anything..."
           value={input}
