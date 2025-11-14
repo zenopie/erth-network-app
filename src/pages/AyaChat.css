@@ -68,20 +68,23 @@
   max-width: 800px;
   margin: 0 auto;
   font-family: "Inter", sans-serif;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .secret-chat-container {
   flex: 1;
   width: 100%;
   padding: 20px;
-  padding-bottom: 180px; /* Space for fixed input area */
+  padding-bottom: 20px;
   box-sizing: border-box;
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .secret-message {
@@ -233,30 +236,13 @@
 }
 
 .secret-input-container {
-  position: fixed;
-  bottom: 0;
-  left: calc(50% + 130px);
-  transform: translateX(-50%);
   width: 100%;
-  max-width: 800px;
   padding: 20px;
   box-sizing: border-box;
   background: transparent;
   margin: 0;
-  border-top: none;
-  z-index: 100;
-  transition: left 0.5s ease;
-}
-
-/* Adjust for collapsed sidebar */
-.sidebar.collapsed ~ .home-section .secret-input-container {
-  left: calc(50% + 40px);
-}
-
-@media (max-width: 1024px) {
-  .secret-input-container {
-    left: 50% !important;
-  }
+  position: relative;
+  flex-shrink: 0;
 }
 
 .secret-chat-input {
