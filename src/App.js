@@ -14,6 +14,7 @@ import TransactionLogs from './pages/TransactionLogs';
 import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import WeeklyAirdropClaim from './pages/WeeklyAirdropClaim';
+import './styles/global.css';
 import './App.css';
 
 function App() {
