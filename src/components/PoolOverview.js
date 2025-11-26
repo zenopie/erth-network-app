@@ -4,6 +4,7 @@ import { contract, query } from "../utils/contractUtils";
 import tokens from "../utils/tokens";
 import contracts from "../utils/contracts";
 import { toMacroUnits } from "../utils/mathUtils";
+import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
 
 const PoolOverview = ({
   tokenKey,
@@ -19,8 +20,26 @@ const PoolOverview = ({
   const [liquidity, setLiquidity] = useState("-");
   const [volume, setVolume] = useState("-");
   const [apr, setApr] = useState("-");
+  const [erthPrice, setErthPrice] = useState(null);
 
   const token = tokens[tokenKey];
+
+  // Fetch ERTH price on mount and update every minute
+  useEffect(() => {
+    const updateErthPrice = async () => {
+      try {
+        const priceData = await fetchErthPrice();
+        setErthPrice(priceData.price);
+      } catch (error) {
+        console.error('Failed to fetch ERTH price:', error);
+      }
+    };
+
+    updateErthPrice();
+    const interval = setInterval(updateErthPrice, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!poolData) return;
@@ -215,16 +234,31 @@ const PoolOverview = ({
         <div className="pool-compact-info">
           <div className="pool-info-item">
             <span className="pool-info-value">{pendingRewards}</span>
+            {erthPrice && pendingRewards !== "-" && (
+              <span className="pool-info-usd">
+                {formatUSD(parseFloat(pendingRewards.replace(/,/g, '')) * erthPrice)}
+              </span>
+            )}
             <span className="pool-info-label">Rewards</span>
           </div>
 
           <div className="pool-info-item">
             <span className="pool-info-value">{liquidity}</span>
+            {erthPrice && liquidity !== "-" && (
+              <span className="pool-info-usd">
+                {formatUSD(parseFloat(liquidity.replace(/,/g, '')) * erthPrice)}
+              </span>
+            )}
             <span className="pool-info-label">Liquidity (ERTH)</span>
           </div>
 
           <div className="pool-info-item">
             <span className="pool-info-value">{volume}</span>
+            {erthPrice && volume !== "-" && (
+              <span className="pool-info-usd">
+                {formatUSD(parseFloat(volume.replace(/,/g, '')) * erthPrice)}
+              </span>
+            )}
             <span className="pool-info-label">Volume (7d)</span>
           </div>
 

@@ -282,10 +282,13 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
       <div className="stake-page-tab">
         <button className={`tablinks ${activeTab === "Info" ? "active" : ""}`} onClick={() => setActiveTab("Info")}>
-          Info & Rewards
+          Rewards
         </button>
         <button className={`tablinks ${activeTab === "Stake" ? "active" : ""}`} onClick={() => setActiveTab("Stake")}>
-          Stake/Unstake
+          Stake
+        </button>
+        <button className={`tablinks ${activeTab === "Withdraw" ? "active" : ""}`} onClick={() => setActiveTab("Withdraw")}>
+          Withdraw
         </button>
         <button
           className={`tablinks ${activeTab === "Unbonding" ? "active" : ""}`}
@@ -295,7 +298,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         </button>
       </div>
 
-      {/* TAB 1: Info & Rewards */}
+      {/* TAB 1: Rewards */}
       {activeTab === "Info" && (
         <div className="stake-page-tabcontent">
           {/* Info Display */}
@@ -364,7 +367,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         </div>
       )}
 
-      {/* TAB 2: Stake/Unstake */}
+      {/* TAB 2: Stake */}
       {activeTab === "Stake" && (
         <div className="stake-page-tabcontent">
           <div className="stake-page-section">
@@ -418,15 +421,18 @@ const StakingManagement = ({ isKeplrConnected }) => {
               Stake
             </button>
           </div>
+        </div>
+      )}
 
-          <div className="stake-page-divider"></div>
-
+      {/* TAB 3: Withdraw */}
+      {activeTab === "Withdraw" && (
+        <div className="stake-page-tabcontent">
           <div className="stake-page-section">
-            <h3>Unstake ERTH</h3>
-            {/* Unstake Input Section */}
+            <h3>Withdraw ERTH</h3>
+            {/* Withdraw Input Section */}
             <div className="stake-page-input-group">
               <div className="stake-page-label-wrapper">
-                <label className="stake-page-input-label">Amount to Unstake</label>
+                <label className="stake-page-input-label">Amount to Withdraw</label>
                 <div className="stake-page-token-balance">
                   {stakedBalance === null || stakedBalance === "Error" ? (
                     <span>No staked ERTH</span>
@@ -456,7 +462,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
               disabled={!unstakeAmount || Number(unstakeAmount) <= 0 || Number(unstakeAmount) > Number(stakedBalance)}
               title={
                 !unstakeAmount
-                  ? "Enter an amount to unstake"
+                  ? "Enter an amount to withdraw"
                   : Number(unstakeAmount) <= 0
                   ? "Amount must be greater than 0"
                   : Number(unstakeAmount) > Number(stakedBalance)
@@ -464,14 +470,14 @@ const StakingManagement = ({ isKeplrConnected }) => {
                   : ""
               }
             >
-              Unstake
+              Withdraw
             </button>
-            <p className="stake-page-note">Unstaking has a 21-day unbonding period</p>
+            <p className="stake-page-note">Withdrawing has a 21-day unbonding period</p>
           </div>
         </div>
       )}
 
-      {/* TAB 3: Unbonding */}
+      {/* TAB 4: Unbonding */}
       {activeTab === "Unbonding" && (
         <div className="stake-page-tabcontent">
           {unbondingEntries.length > 0 ? (
