@@ -469,10 +469,10 @@ html {
 
 /* Pool Section Styling */
 .pool-section {
-  background-color: #f8fbf8; /* Light green background */
+  background-color: #f1f0ea; /* Light beige background */
   border-radius: 12px;
   padding: 18px;
-  border: 1px solid #4caf50; /* Green outline */
+  border: 1px solid rgba(30, 58, 138, 0.15); /* Subtle blue outline */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -493,4 +493,144 @@ html {
 
 .pool-section .analytics-table tr:hover {
   background-color: rgba(76, 175, 80, 0.1); /* Lighter green hover effect */
+}
+
+/* Pool Cards Container */
+.pool-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Individual Pool Card */
+.pool-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid rgba(30, 58, 138, 0.1);
+  transition: all 0.2s ease;
+}
+
+.pool-card:hover {
+  border-color: rgba(30, 58, 138, 0.3);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.1);
+}
+
+.pool-card-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(30, 58, 138, 0.1);
+}
+
+.pool-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.pool-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pool-card-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pool-card-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.pool-card-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e3a8a;
+  font-family: monospace;
+}
+
+/* Arb Depth Label with Tooltip */
+.arb-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.arb-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background-color: rgba(30, 58, 138, 0.1);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1e3a8a;
+  cursor: help;
+}
+
+.arb-tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background-color: #1e3a8a;
+  color: white;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  z-index: 100;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.arb-tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e3a8a transparent transparent transparent;
+}
+
+.arb-tooltip:hover .arb-tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Responsive adjustments for pool cards */
+@media (max-width: 768px) {
+  .pool-card {
+    padding: 12px;
+  }
+
+  .pool-card-name {
+    font-size: 15px;
+  }
+
+  .pool-card-label {
+    font-size: 12px;
+  }
+
+  .pool-card-value {
+    font-size: 13px;
+  }
+
+  .arb-tooltip-text {
+    width: 150px;
+    font-size: 10px;
+  }
 }

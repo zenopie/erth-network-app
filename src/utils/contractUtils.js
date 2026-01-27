@@ -344,7 +344,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
         msg: {
             send: {
                 recipient: recipient,
-                code_hash: recipient_hash,
+                recipient_code_hash: recipient_hash,
                 amount: amount.toString(),
                 msg: hookmsg64,
             }

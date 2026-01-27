@@ -98,6 +98,12 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
               <span className="link_name">Stake ERTH</span>
             </Link>
           </li>
+          <li>
+            <Link to="/bridge" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bx-transfer-alt"></i>
+              <span className="link_name">Bridge</span>
+            </Link>
+          </li>
           <li className={`submenu ${isGovernanceOpen ? "open" : ""}`}>
             <div
               onClick={() => {

@@ -485,36 +485,55 @@ const Analytics = () => {
               </div>
             )}
 
-            <div className="analytics-section pool-section">
-              <h3 className="analytics-section-title">Liquidity Pools</h3>
-              {latest && latest.pools && latest.pools.length > 0 ? (
-                <table className="analytics-table">
-                  <thead>
-                    <tr>
-                      <th>Pool</th>
-                      <th>ERTH Price</th>
-                      <th>Liquidity (USD)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latest.pools.map((pool, i) => (
-                      <tr key={i}>
-                        <td>ERTH-{pool.token}</td>
-                        <td>${pool.erthPrice.toFixed(6)}</td>
-                        <td>
-                          $
-                          {pool.tvl.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="analytics-divider"></div>
+            {latest && latest.pools && latest.pools.length > 0 ? (
+                <div className="pool-cards-container">
+                  {latest.pools.map((pool, i) => (
+                    <div key={i} className="pool-card">
+                      <div className="pool-card-header">
+                        <span className="pool-card-name">ERTH-{pool.token}</span>
+                      </div>
+                      <div className="pool-card-stats">
+                        <div className="pool-card-stat">
+                          <span className="pool-card-label">ERTH Price</span>
+                          <span className="pool-card-value">${pool.erthPrice.toFixed(6)}</span>
+                        </div>
+                        <div className="pool-card-stat">
+                          <span className="pool-card-label">TVL</span>
+                          <span className="pool-card-value">
+                            ${pool.tvl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                        <div className="pool-card-stat">
+                          <span className="pool-card-label arb-label">
+                            Arb Depth
+                            <span className="arb-tooltip">
+                              ?
+                              <span className="arb-tooltip-text">
+                                {pool.arbDepth > 0
+                                  ? "ERTH is cheap in this pool. Buy ERTH to arbitrage."
+                                  : pool.arbDepth < 0
+                                  ? "ERTH is expensive in this pool. Sell ERTH to arbitrage."
+                                  : "Pool is at equilibrium price."}
+                              </span>
+                            </span>
+                          </span>
+                          <span
+                            className="pool-card-value"
+                            style={{
+                              color: pool.arbDepth > 0 ? '#4caf50' : pool.arbDepth < 0 ? '#e74c3c' : 'inherit'
+                            }}
+                          >
+                            {pool.arbDepth > 0 ? '+' : ''}{pool.arbDepth.toFixed(2)} ERTH
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <p className="analytics-note">No pool data available at this time.</p>
               )}
-            </div>
           </div>
         );
 

@@ -1,0 +1,583 @@
+/* Bridge Page Styling */
+
+/* Title Row */
+.bridge-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.bridge-title-row h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Logo */
+.bridge-logo {
+  width: 36px;
+  height: 36px;
+}
+
+/* Main Container */
+.bridge-page-box {
+  width: 100%;
+  max-width: 420px;
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Tab Navigation */
+.bridge-page-tab {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 25px;
+  width: 100%;
+  background-color: #f1f0ea;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bridge-page-tab button {
+  background-color: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 0;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  flex-grow: 1;
+  text-align: center;
+  color: #1e3a8a;
+  font-weight: 500;
+  border-radius: 0;
+}
+
+.bridge-page-tab button:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.bridge-page-tab button:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.bridge-page-tab button.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+.bridge-page-tab button:not(.active):hover {
+  background-color: #ccc;
+}
+
+/* Tab Content */
+.bridge-page-tabcontent {
+  width: 100%;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Error Display */
+.bridge-error {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Disabled State */
+.bridge-disabled {
+  text-align: center;
+  color: #666;
+  padding: 40px 20px;
+  font-size: 16px;
+}
+
+/* Generate Section */
+.bridge-generate-section {
+  text-align: center;
+}
+
+.bridge-info-text {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* Address Box */
+.bridge-address-box {
+  background-color: #f8fbf8;
+  border: 1px solid #4caf50;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.bridge-label {
+  display: block;
+  font-size: 14px;
+  color: #1e3a8a;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.bridge-address-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bridge-address {
+  font-family: monospace;
+  font-size: 12px;
+  color: #333;
+  word-break: break-all;
+  flex: 1;
+  background-color: #f1f0ea;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.bridge-copy-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bridge-copy-button:hover {
+  background-color: #388e3c;
+}
+
+.bridge-copy-button i {
+  font-size: 18px;
+}
+
+/* Info Rows */
+.bridge-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.bridge-info-label {
+  color: #666;
+  font-size: 14px;
+}
+
+.bridge-info-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Buttons */
+.bridge-page-button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.bridge-page-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.bridge-page-button:disabled {
+  background-color: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.bridge-page-button.secondary {
+  background-color: #f1f0ea;
+  color: #1e3a8a;
+  box-shadow: none;
+}
+
+.bridge-page-button.secondary:hover {
+  background-color: #e0dfda;
+  box-shadow: none;
+}
+
+/* Deposits Section */
+.bridge-deposits-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.bridge-deposits-section h3 {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.bridge-deposits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bridge-deposit-item {
+  background-color: #f8fbf8;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.bridge-deposit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.bridge-deposit-label {
+  color: #666;
+  font-size: 13px;
+}
+
+.bridge-deposit-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.bridge-deposit-value.truncate {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.bridge-deposit-status {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Input Group */
+.bridge-input-group {
+  margin-bottom: 16px;
+}
+
+.bridge-label-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.bridge-input-label {
+  font-size: 14px;
+  color: #1e3a8a;
+  font-weight: 500;
+}
+
+.bridge-token-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bridge-token-balance span {
+  font-size: 13px;
+  color: #555;
+}
+
+.bridge-max-button {
+  background-color: #66bb6a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.bridge-max-button:hover {
+  background-color: #4caf50;
+  transform: translateY(-1px);
+}
+
+/* Input */
+.bridge-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 8px;
+  font-size: 16px;
+  color: #333;
+  background-color: #f1f0ea;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.bridge-input:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+.bridge-input::-webkit-outer-spin-button,
+.bridge-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bridge-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Note */
+.bridge-note {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin-top: 16px;
+  font-style: italic;
+}
+
+/* Withdrawals Section */
+.bridge-withdrawals-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.bridge-withdrawals-section h3 {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.bridge-withdrawals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.bridge-withdrawal-item {
+  background-color: #fff8e1;
+  border: 1px solid #ffb74d;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.bridge-withdrawal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.bridge-withdrawal-label {
+  color: #666;
+  font-size: 13px;
+}
+
+.bridge-withdrawal-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.bridge-withdrawal-value.truncate {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* History Section */
+.bridge-history-section {
+  width: 100%;
+}
+
+.bridge-history-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bridge-history-subtabs button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 13px;
+  background-color: #f1f0ea;
+  color: #1e3a8a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.bridge-history-subtabs button.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+.bridge-history-subtabs button:not(.active):hover {
+  background-color: #e0dfda;
+}
+
+.bridge-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom scrollbar for history list */
+.bridge-history-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bridge-history-list::-webkit-scrollbar-track {
+  background: #f1f0ea;
+  border-radius: 3px;
+}
+
+.bridge-history-list::-webkit-scrollbar-thumb {
+  background: #4caf50;
+  border-radius: 3px;
+}
+
+.bridge-history-list::-webkit-scrollbar-thumb:hover {
+  background: #388e3c;
+}
+
+.bridge-history-item {
+  background-color: #f8fbf8;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.bridge-history-item.failed {
+  background-color: #ffebee;
+  border-color: #f44336;
+}
+
+.bridge-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.bridge-history-label {
+  color: #666;
+  font-size: 13px;
+}
+
+.bridge-history-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.bridge-history-value.truncate {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.bridge-history-status {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.bridge-retry-button {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.bridge-retry-button:hover {
+  background-color: #d32f2f;
+}
+
+.bridge-retry-button:disabled {
+  background-color: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .bridge-page-box {
+    padding: 25px 20px;
+    border-radius: 15px;
+  }
+
+  .bridge-page-box h2 {
+    font-size: 22px;
+  }
+
+  .bridge-page-tab button {
+    font-size: 13px;
+    padding: 12px 0;
+  }
+
+  .bridge-address {
+    font-size: 11px;
+  }
+
+  .bridge-label-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}

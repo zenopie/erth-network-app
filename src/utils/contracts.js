@@ -16,6 +16,10 @@ const contracts = {
     contract: undefined,
     hash: undefined,
   },
+  xmr_bridge: {
+    contract: "secret130nl6yfwuzjmnuknwfccq7jl8qekl4kcz0ppap",
+    hash: "91bed2b7eac8ba8e29c89efc32fcf0d0d0352d75f945da9035bc2ac4fa1ac14d",
+  },
 };
 
 // Populate contracts with registry data

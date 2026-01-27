@@ -14,6 +14,7 @@ import TransactionLogs from './pages/TransactionLogs';
 import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import WeeklyAirdropClaim from './pages/WeeklyAirdropClaim';
+import Bridge from './pages/Bridge';
 import './App.css';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
           <Route path="/pdf-signature" element={<Layout><PDFSignatureVerification /></Layout>} />
           <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
+          <Route path="/bridge" element={<Layout><Bridge /></Layout>} />
         </Routes>
       </div>
     </Router>

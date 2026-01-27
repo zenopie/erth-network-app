@@ -230,12 +230,19 @@ const LiquidityManagement = ({
     setErthAmount(val);
     const parsed = parseFloat(val);
 
-    if (!isNaN(parsed) && erthReserve && tokenBReserve) {
-      const tokenBEquiv = (parsed * tokenBReserve) / erthReserve;
-      setTokenBAmount(tokenBEquiv.toFixed(6));
-    } else {
-      setTokenBAmount('');
+    // Only sync if pool has existing liquidity
+    if (erthReserve && tokenBReserve) {
+      if (!isNaN(parsed)) {
+        // Convert reserves to macro units to account for different decimals
+        const erthReserveMacro = toMacroUnits(erthReserve, tokenErth);
+        const tokenBReserveMacro = toMacroUnits(tokenBReserve, tokenB);
+        const tokenBEquiv = (parsed * tokenBReserveMacro) / erthReserveMacro;
+        setTokenBAmount(tokenBEquiv.toFixed(6));
+      } else {
+        setTokenBAmount('');
+      }
     }
+    // If pool has zero liquidity, allow independent input (don't sync)
   };
 
   // -------------------- Ratio sync: tokenB => ERTH --------------------
@@ -244,12 +251,19 @@ const LiquidityManagement = ({
     setTokenBAmount(val);
     const parsed = parseFloat(val);
 
-    if (!isNaN(parsed) && erthReserve && tokenBReserve) {
-      const erthEquiv = (parsed * erthReserve) / tokenBReserve;
-      setErthAmount(erthEquiv.toFixed(6));
-    } else {
-      setErthAmount('');
+    // Only sync if pool has existing liquidity
+    if (erthReserve && tokenBReserve) {
+      if (!isNaN(parsed)) {
+        // Convert reserves to macro units to account for different decimals
+        const erthReserveMacro = toMacroUnits(erthReserve, tokenErth);
+        const tokenBReserveMacro = toMacroUnits(tokenBReserve, tokenB);
+        const erthEquiv = (parsed * erthReserveMacro) / tokenBReserveMacro;
+        setErthAmount(erthEquiv.toFixed(6));
+      } else {
+        setErthAmount('');
+      }
     }
+    // If pool has zero liquidity, allow independent input (don't sync)
   };
 
   // -------------------- "Max" Buttons --------------------

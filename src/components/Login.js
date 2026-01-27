@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { queryRegistryAndGetTokens } from '../utils/contractUtils';
+import tokens from '../utils/tokens';
 import styles from './Login.module.css';
 import keplrLogo from '../images/keplr-logo-white.png';
 
@@ -34,6 +35,11 @@ const Login = ({ onLoginSuccess }) => {
 
       // Query registry and get token addresses for permit (also populates contracts/tokens)
       const tokenAddresses = await queryRegistryAndGetTokens();
+
+      // Add XMR token address if not already included
+      if (tokens.XMR?.contract && !tokenAddresses.includes(tokens.XMR.contract)) {
+        tokenAddresses.push(tokens.XMR.contract);
+      }
 
       // Calculate expiration: 1 week from now (in seconds)
       const oneWeekInSeconds = 7 * 24 * 60 * 60;
