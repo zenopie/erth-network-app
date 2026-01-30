@@ -178,12 +178,13 @@
 }
 
 .submenu .submenu-toggle .link_name {
-  flex-grow: 1;
   font-size: 18px;
   white-space: nowrap;
 }
 
 .submenu .arrow {
+  min-width: auto;
+  margin-left: auto;
   line-height: 45px;
   transition: transform 0.3s;
 }

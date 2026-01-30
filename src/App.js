@@ -9,9 +9,7 @@ import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
 import GasStation from './pages/GasStation';
-import AquaChat from './pages/AquaChat';
 import TransactionLogs from './pages/TransactionLogs';
-import PDFSignatureVerification from './pages/PDFSignatureVerification';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import WeeklyAirdropClaim from './pages/WeeklyAirdropClaim';
 import Bridge from './pages/Bridge';
@@ -32,9 +30,7 @@ function App() {
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
           <Route path="/gas-station" element={<Layout><GasStation /></Layout>} />
-          <Route path="/aqua-chat" element={<Layout><AquaChat /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
-          <Route path="/pdf-signature" element={<Layout><PDFSignatureVerification /></Layout>} />
           <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
           <Route path="/bridge" element={<Layout><Bridge /></Layout>} />
         </Routes>

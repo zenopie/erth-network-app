@@ -2,10 +2,9 @@ import { SecretNetworkClient, MsgExecuteContract } from 'secretjs';
 import contracts, { populateContracts } from './contracts';
 import tokens, { populateTokens } from './tokens';
 
-let secretjs = null; // Signing client (REST)
-let queryClient = null; // Query client (gRPC)
-const url = "https://lcd.erth.network";      // REST endpoint for Keplr
-const grpcUrl = "https://grpc.erth.network"; // gRPC endpoint for queries
+let secretjs = null; // Signing client (LCD)
+let queryClient = null; // Query client (LCD)
+const url = "https://lcd.erth.network";      // LCD endpoint
 const chainId = 'secret-4';                  // Mainnet chain ID
 
 // Contract Registry
@@ -37,8 +36,7 @@ try {
     console.error("Error loading registry from localStorage:", error);
 }
 
-console.log("REST url = " + url);
-console.log("gRPC url = " + grpcUrl);
+console.log("LCD url = " + url);
 
 // Helper function to log transactions to browser storage
 function logTransaction(contract_address, hash, msg, resp) {
@@ -90,15 +88,14 @@ export async function connectKeplr() {
             encryptionUtils: enigmaUtils,
         });
 
-        // Query client (gRPC for queries)
+        // Query client (LCD)
         queryClient = new SecretNetworkClient({
             url,
-            grpcUrl,              // gRPC endpoint only
             chainId: chainId,
         });
 
-        console.log("SecretJS signing client (REST) initialized successfully");
-        console.log("SecretJS query client (gRPC) initialized successfully");
+        console.log("SecretJS signing client (LCD) initialized successfully");
+        console.log("SecretJS query client (LCD) initialized successfully");
     } catch (error) {
         console.error("Error initializing clients:", error);
         throw error;
@@ -234,7 +231,6 @@ export function getUserAddress() {
 export async function queryRegistryAndGetTokens() {
     const queryOnlyClient = new SecretNetworkClient({
         url,
-        grpcUrl,
         chainId: chainId,
     });
 
@@ -290,19 +286,17 @@ export async function queryRegistryAndGetTokens() {
     }
 }
 
-// Query function using gRPC client
+// Query function using LCD client
 export async function query(contract, hash, querymsg) {
     if (!queryClient) {
         throw new Error("Query client is not initialized. Ensure Keplr is connected first.");
     }
 
-    console.time("Query Time");
     let resp = await queryClient.query.compute.queryContract({
         contract_address: contract,
         code_hash: hash,
         query: querymsg,
     });
-    console.timeEnd("Query Time");
     console.log("Query: ", resp);
     return resp;
 }
@@ -361,7 +355,7 @@ export async function snip(token_contract, token_hash, recipient, recipient_hash
     return resp;
 }
 
-// Query SNIP-20 balance using gRPC client with permit
+// Query SNIP-20 balance using LCD client with permit
 export async function querySnipBalance(token) {
     if (!queryClient) {
         console.error("Query client not initialized in querySnipBalance");
@@ -478,7 +472,7 @@ export async function provideLiquidity(tokenErthContract, tokenErthHash, tokenBC
         throw error;
     }
 }
-// Query native SCRT balance a la gRPC
+// Query native SCRT balance
 export async function queryNativeBalance() {
     if (!secretjs) {
         throw new Error("SecretJS is not initialized. Ensure Keplr is connected first.");

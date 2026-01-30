@@ -6,7 +6,7 @@ import keplr from "../images/keplr.png";
 
 const Sidebar = ({ walletName, isKeplrConnected }) => {
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
-  const [isExperimentsOpen, setIsExperimentsOpen] = useState(false);
+  const [isUtilitiesOpen, setIsUtilitiesOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -34,7 +34,7 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
     if (!isMobile) {
       setIsCollapsed(true);
       setIsGovernanceOpen(false);
-      setIsExperimentsOpen(false);
+      setIsUtilitiesOpen(false);
     }
   };
 
@@ -98,17 +98,11 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
               <span className="link_name">Stake ERTH</span>
             </Link>
           </li>
-          <li>
-            <Link to="/bridge" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bx-transfer-alt"></i>
-              <span className="link_name">Bridge</span>
-            </Link>
-          </li>
           <li className={`submenu ${isGovernanceOpen ? "open" : ""}`}>
             <div
               onClick={() => {
                 setIsGovernanceOpen((prev) => !prev);
-                setIsExperimentsOpen(false);
+                setIsUtilitiesOpen(false);
               }}
               className="submenu-toggle"
             >
@@ -130,38 +124,38 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             </ul>
           </li>
           <li>
-            <Link to="/gas-station" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-gas-pump"></i>
-              <span className="link_name">Gas Station</span>
-            </Link>
-          </li>
-          <li>
             <Link to="/airdrop" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-gift"></i>
               <span className="link_name">Weekly{'\u00A0'}Airdrop</span>
             </Link>
           </li>
-          <li className={`submenu ${isExperimentsOpen ? "open" : ""}`}>
+          <li>
+            <Link to="/analytics" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-bar-chart-alt-2"></i>
+              <span className="link_name">Analytics</span>
+            </Link>
+          </li>
+          <li className={`submenu ${isUtilitiesOpen ? "open" : ""}`}>
             <div
               onClick={() => {
-                setIsExperimentsOpen((prev) => !prev);
+                setIsUtilitiesOpen((prev) => !prev);
                 setIsGovernanceOpen(false);
               }}
               className="submenu-toggle"
             >
-              <i className="bx bx-test-tube"></i>
-              <span className="link_name">Experiments</span>
+              <i className="bx bxs-cog"></i>
+              <span className="link_name">Utilities</span>
               <i className="bx bx-chevron-right arrow"></i>
             </div>
             <ul className="submenu-list">
               <li>
-                <Link to="/aqua-chat" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Ask Aqua
+                <Link to="/bridge" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  XMR Bridge
                 </Link>
               </li>
               <li>
-                <Link to="/analytics" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Analytics
+                <Link to="/gas-station" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Gas Station
                 </Link>
               </li>
               <li>
@@ -169,12 +163,6 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
                   Transaction Logs
                 </Link>
               </li>
-              <li>
-                <Link to="/pdf-signature" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  PDF Signature
-                </Link>
-              </li>
-
             </ul>
           </li>
         </ul>
