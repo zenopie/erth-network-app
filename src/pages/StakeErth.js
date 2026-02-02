@@ -6,6 +6,7 @@ import { toMicroUnits, toMacroUnits } from "../utils/mathUtils.js";
 import tokens from "../utils/tokens.js";
 import contracts from "../utils/contracts.js";
 import { showLoadingScreen } from "../utils/uiUtils";
+import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
 import "./StakeErth.css";
 import StatusModal from "../components/StatusModal";
 
@@ -43,12 +44,28 @@ const StakingManagement = ({ isKeplrConnected }) => {
   const [unbondingEntries, setUnbondingEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [animationState, setAnimationState] = useState("loading");
+  const [erthPrice, setErthPrice] = useState(null);
 
   useEffect(() => {
     if (isKeplrConnected) {
       fetchStakingRewards();
     }
   }, [isKeplrConnected]);
+
+  // Fetch ERTH price for USD display
+  useEffect(() => {
+    const updateErthPrice = async () => {
+      try {
+        const priceData = await fetchErthPrice();
+        setErthPrice(priceData.price);
+      } catch (error) {
+        console.error('Failed to fetch ERTH price:', error);
+      }
+    };
+    updateErthPrice();
+    const interval = setInterval(updateErthPrice, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchStakingRewards = async () => {
     if (!window.secretjs || !window.secretjs.address) {
@@ -278,7 +295,57 @@ const StakingManagement = ({ isKeplrConnected }) => {
     <div className="stake-page-box">
       {/* Modal for displaying swap status */}
       <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
-      <h2>Manage Staking</h2>
+
+      {/* Header with ERTH logo - hidden on Unbonding tab */}
+      {activeTab !== "Unbonding" && (
+        <>
+          <div className="stake-header">
+            <img src="/images/coin/ERTH.png" alt="ERTH" className="stake-header-logo" />
+            <div className="stake-header-info">
+              <span className="stake-header-label">ERTH Staking</span>
+              <div className="stake-header-apr">
+                <span className="apr-value">{(apr * 100).toFixed(2)}%</span>
+                <span className="apr-label">APR</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="stake-stats-grid">
+            <div className="stake-stat-card">
+              <span className="stake-stat-label">Your Staked</span>
+              <span className="stake-stat-value">
+                {stakedBalance !== null && stakedBalance !== "Error"
+                  ? Number(stakedBalance).toLocaleString()
+                  : "—"}
+              </span>
+              <span className="stake-stat-usd">
+                {stakedBalance !== null && stakedBalance !== "Error" && erthPrice
+                  ? formatUSD(stakedBalance * erthPrice)
+                  : ""}
+              </span>
+            </div>
+            <div className="stake-stat-card">
+              <span className="stake-stat-label">Total Staked</span>
+              <span className="stake-stat-value">
+                {totalStakedBalance !== null
+                  ? Number(totalStakedBalance).toLocaleString()
+                  : "—"}
+              </span>
+              <span className="stake-stat-usd">
+                {totalStakedBalance !== null && erthPrice
+                  ? formatUSD(totalStakedBalance * erthPrice)
+                  : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="stake-info-box">
+            <p>Stake your ERTH tokens to earn a share of 1 ERTH per second distributed to all stakers. Unstaking requires a 21-day unbonding period.</p>
+          </div>
+        </>
+      )}
 
       <div className="stake-page-tab">
         <button className={`tablinks ${activeTab === "Info" ? "active" : ""}`} onClick={() => setActiveTab("Info")}>
@@ -301,49 +368,16 @@ const StakingManagement = ({ isKeplrConnected }) => {
       {/* TAB 1: Rewards */}
       {activeTab === "Info" && (
         <div className="stake-page-tabcontent">
-          {/* Info Display */}
-          <div className="stake-page-info-display">
-            <div className="stake-page-info-row">
-              <span className="stake-page-info-label">Your Staked Amount:</span>
-              <span className="stake-page-info-value">
-                {stakedBalance !== null && stakedBalance !== "Error"
-                  ? `${Number(stakedBalance).toLocaleString()} ERTH`
-                  : "Loading..."}
-              </span>
-            </div>
-            <div className="stake-page-info-row">
-              <span className="stake-page-info-label">Your ERTH Balance:</span>
-              <span className="stake-page-info-value">
-                {unstakedBalance !== null && unstakedBalance !== "Error" ? (
-                  `${Number(unstakedBalance).toLocaleString()} ERTH`
-                ) : (
-                  <button className="stake-page-inline-button" onClick={() => handleRequestViewingKey(tokens["ERTH"])}>
-                    Get Viewing Key
-                  </button>
-                )}
-              </span>
-            </div>
-            <div className="stake-page-info-row">
-              <span className="stake-page-info-label">Current APR:</span>
-              <span className="stake-page-info-value">{(apr * 100).toFixed(2)}%</span>
-            </div>
-            <div className="stake-page-info-row">
-              <span className="stake-page-info-label">Total Staked:</span>
-              <span className="stake-page-info-value">
-                {totalStakedBalance !== null ? `${Number(totalStakedBalance).toLocaleString()} ERTH` : "Loading..."}
-              </span>
-            </div>
-          </div>
-
           {/* Staking Rewards Display and Claim Section */}
           {stakingRewards > 0 ? (
-            <div className="stake-page-rewards-section">
-          
-              <div className="stake-page-info-row">
-                <span className="stake-page-info-label">Staking Rewards Due:</span>
-                <span className="stake-page-info-value rewards-value">
-                  {stakingRewards !== null ? `${Number(stakingRewards).toLocaleString()} ERTH` : "Loading..."}
-                </span>
+            <div className="rewards-display">
+              <div className="rewards-header">
+                <img src="/images/coin/ERTH.png" alt="ERTH" className="rewards-logo" />
+                <div className="rewards-info">
+                  <span className="rewards-title">Rewards Available</span>
+                  <span className="rewards-amount">{Number(stakingRewards).toLocaleString()} ERTH</span>
+                  <span className="rewards-usd">{erthPrice ? formatUSD(stakingRewards * erthPrice) : ""}</span>
+                </div>
               </div>
               <button
                 onClick={handleClaimRewards}
@@ -355,13 +389,15 @@ const StakingManagement = ({ isKeplrConnected }) => {
               </button>
             </div>
           ) : (
-            <div className="stake-page-rewards-section">
-              <h3>No Rewards Available</h3>
-              <div className="stake-page-info-row">
-                <span className="stake-page-info-label">Staking Rewards Due:</span>
-                <span className="stake-page-info-value">0 ERTH</span>
+            <div className="rewards-display no-rewards">
+              <div className="rewards-header">
+                <img src="/images/coin/ERTH.png" alt="ERTH" className="rewards-logo" />
+                <div className="rewards-info">
+                  <span className="rewards-title">No Rewards Yet</span>
+                  <span className="rewards-amount muted">0 ERTH</span>
+                </div>
               </div>
-              <p className="stake-page-note">Stake ERTH tokens to earn rewards</p>
+              <p className="stake-page-note">Stake ERTH tokens to start earning rewards</p>
             </div>
           )}
         </div>
@@ -371,7 +407,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
       {activeTab === "Stake" && (
         <div className="stake-page-tabcontent">
           <div className="stake-page-section">
-            <h3>Stake ERTH</h3>
             {/* Stake Input Section */}
             <div className="stake-page-input-group">
               <div className="stake-page-label-wrapper">
@@ -394,14 +429,21 @@ const StakingManagement = ({ isKeplrConnected }) => {
                   )}
                 </div>
               </div>
-              <div className="stake-page-input-wrapper">
-                <input
-                  type="number"
-                  placeholder="0.0"
-                  value={stakeAmount}
-                  onChange={(e) => setStakeAmount(e.target.value)}
-                  className="stake-page-input"
-                />
+              <div className="stake-input-wrapper">
+                <img src="/images/coin/ERTH.png" alt="ERTH" className="stake-input-logo" />
+                <div className="stake-input-container">
+                  <input
+                    type="number"
+                    placeholder="0.0"
+                    value={stakeAmount}
+                    onChange={(e) => setStakeAmount(e.target.value)}
+                    className="stake-input"
+                  />
+                  <span className="stake-input-usd">
+                    {stakeAmount && erthPrice ? formatUSD(parseFloat(stakeAmount) * erthPrice) : formatUSD(0)}
+                  </span>
+                </div>
+                <span className="stake-input-token">ERTH</span>
               </div>
             </div>
             <button
@@ -428,7 +470,6 @@ const StakingManagement = ({ isKeplrConnected }) => {
       {activeTab === "Withdraw" && (
         <div className="stake-page-tabcontent">
           <div className="stake-page-section">
-            <h3>Withdraw ERTH</h3>
             {/* Withdraw Input Section */}
             <div className="stake-page-input-group">
               <div className="stake-page-label-wrapper">
@@ -438,7 +479,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
                     <span>No staked ERTH</span>
                   ) : (
                     <>
-                      <span>Balance: {Number(stakedBalance).toLocaleString()}</span>
+                      <span>Staked: {Number(stakedBalance).toLocaleString()}</span>
                       <button className="stake-page-max-button" onClick={() => setUnstakeAmount(stakedBalance)}>
                         Max
                       </button>
@@ -446,14 +487,21 @@ const StakingManagement = ({ isKeplrConnected }) => {
                   )}
                 </div>
               </div>
-              <div className="stake-page-input-wrapper">
-                <input
-                  type="number"
-                  placeholder="0.0"
-                  value={unstakeAmount}
-                  onChange={(e) => setUnstakeAmount(e.target.value)}
-                  className="stake-page-input"
-                />
+              <div className="stake-input-wrapper">
+                <img src="/images/coin/ERTH.png" alt="ERTH" className="stake-input-logo" />
+                <div className="stake-input-container">
+                  <input
+                    type="number"
+                    placeholder="0.0"
+                    value={unstakeAmount}
+                    onChange={(e) => setUnstakeAmount(e.target.value)}
+                    className="stake-input"
+                  />
+                  <span className="stake-input-usd">
+                    {unstakeAmount && erthPrice ? formatUSD(parseFloat(unstakeAmount) * erthPrice) : formatUSD(0)}
+                  </span>
+                </div>
+                <span className="stake-input-token">ERTH</span>
               </div>
             </div>
             <button
@@ -490,13 +538,12 @@ const StakingManagement = ({ isKeplrConnected }) => {
                   const isMatured = new Date() >= new Date(entry.unbonding_time / 1e6);
                   return (
                     <li key={index} className="unbonding-item">
-                      <div className="unbonding-amount">
-                        <span className="unbonding-label">Amount:</span>
-                        <span className="unbonding-value">{Number(amount).toLocaleString()} ERTH</span>
-                      </div>
-                      <div className="unbonding-date">
-                        <span className="unbonding-label">Available:</span>
-                        <span className="unbonding-value">{availableDate}</span>
+                      <div className="unbonding-details">
+                        <div className="unbonding-amount-row">
+                          <img src="/images/coin/ERTH.png" alt="ERTH" className="unbonding-logo" />
+                          <span className="unbonding-value">{Number(amount).toLocaleString()} ERTH</span>
+                        </div>
+                        <span className="unbonding-date">Available: {availableDate}</span>
                       </div>
                       <div className="unbonding-actions">
                         {isMatured ? (
@@ -523,7 +570,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
               </ul>
             </div>
           ) : (
-            <div className="unbonding-entries-section">
+            <div className="unbonding-entries-section empty">
               <h3>No Unbonding Tokens</h3>
               <p className="stake-page-note">You don't have any tokens in the unbonding period</p>
             </div>

@@ -13,8 +13,109 @@
   z-index: 1;
 }
 
-/* Heading Styling */
+/* Header with ERTH Logo */
+.stake-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stake-header-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
+}
+
+.stake-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stake-header-label {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.stake-header-apr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.apr-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.apr-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Stats Cards Grid */
+.stake-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stake-stat-card {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stake-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.stake-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.stake-stat-usd {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Info Box */
+.stake-info-box {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  position: relative;
+  border-left: 4px solid #16a34a;
+}
+
+.stake-info-box p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+  margin: 0;
+}
+
+/* Heading Styling - Hidden since we have new header */
 .stake-page-box h2 {
+  display: none;
   margin-bottom: 20px;
   text-align: center;
   font-size: 24px;
@@ -80,14 +181,28 @@
 
 /* Section Styling */
 .stake-page-section {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   margin-bottom: 20px;
+}
+
+.section-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .stake-page-section h3 {
   font-size: 18px;
   color: #333;
-  margin-bottom: 15px;
-  text-align: center;
+  margin: 0;
   font-weight: 600;
 }
 
@@ -234,6 +349,71 @@
   margin: 0;
 }
 
+/* New Input Wrapper with Logo (like SwapTokens) */
+.stake-input-wrapper {
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background-color: #f1f0ea;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stake-input-logo {
+  width: 44px;
+  height: 44px;
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+.stake-input-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-left: 75px;
+  padding-right: 70px;
+  min-height: 70px;
+}
+
+.stake-input {
+  background-color: transparent;
+  width: 100%;
+  padding: 14px 0 2px 0;
+  font-size: 20px;
+  font-weight: 500;
+  border: none;
+  text-align: left;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.stake-input::-webkit-outer-spin-button,
+.stake-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stake-input-usd {
+  font-size: 12px;
+  color: #888;
+  text-align: left;
+  height: 18px;
+}
+
+.stake-input-token {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+}
+
 /* Note text */
 .stake-page-note {
   text-align: center;
@@ -324,36 +504,65 @@
   }
 }
 
-/* Rewards Section Styling */
-.stake-page-rewards-section {
-  background-color: #f8fbf8;
-  border-radius: 12px;
-  padding: 18px;
-  margin-top: 20px;
-  border: 1px solid #4caf50; /* Adding a tiny green outline */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+/* Rewards Display (no box) */
+.rewards-display {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.stake-page-rewards-section h3 {
-  font-size: 18px;
-  color: #1e3a8a; /* Royal blue */
-  margin-bottom: 16px;
-  text-align: center;
-  font-weight: 600;
+.rewards-display.no-rewards .stake-page-note {
+  margin-top: 0;
 }
 
-.rewards-value {
-  color: #1e3a8a; /* Royal blue */
-  font-weight: 600;
+.rewards-display .stake-page-button {
+  width: 100%;
 }
 
-.stake-page-rewards-section .stake-page-button {
-  background-color: #4caf50;
+.rewards-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
-.stake-page-rewards-section .stake-page-button:hover {
-  background-color: #388e3c;
+.rewards-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
 }
+
+.rewards-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.rewards-title {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.rewards-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.rewards-amount.muted {
+  color: #9ca3af;
+}
+
+.rewards-usd {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 
 /* Unbonding Entries Section - Matching rewards section style */
 .unbonding-entries-section {
@@ -366,11 +575,16 @@
 }
 
 .unbonding-entries-section h3 {
-  font-size: 18px;
-  color: #1e3a8a; /* Royal blue */
-  margin-bottom: 16px;
-  text-align: center;
+  font-size: 16px;
+  color: #1e3a8a;
+  margin: 0 0 16px 0;
   font-weight: 600;
+  text-align: center;
+}
+
+.unbonding-entries-section.empty {
+  border-color: #e5e7eb;
+  background-color: #f9fafb;
 }
 
 .unbonding-list {
@@ -380,7 +594,7 @@
 }
 
 .unbonding-item {
-  padding: 12px;
+  padding: 14px;
   margin-bottom: 10px;
   background-color: white;
   border-radius: 10px;
@@ -388,8 +602,9 @@
   font-size: 14px;
   line-height: 1.5;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -397,29 +612,45 @@
   margin-bottom: 0;
 }
 
-.unbonding-amount,
-.unbonding-date {
+.unbonding-details {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.unbonding-label {
-  color: #1e3a8a; /* Royal blue */
-  font-size: 14px;
-  margin-right: 5px;
+.unbonding-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.unbonding-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
 }
 
 .unbonding-value {
-  color: #1e3a8a; /* Royal blue */
+  color: #111827;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
+}
+
+.unbonding-date {
+  font-size: 12px;
+  color: #6b7280;
 }
 
 /* Unbonding Actions Container */
 .unbonding-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  flex-shrink: 0;
+}
+
+.unbonding-actions .stake-page-button {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 14px;
+  margin-top: 0;
 }
 
 /* Cancel Button Styling */
@@ -450,11 +681,69 @@
   }
 
   .unbonding-item {
-    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px;
   }
 
   .unbonding-actions {
+    width: 100%;
+  }
+
+  .unbonding-actions .stake-page-button {
+    width: 100%;
+  }
+
+  /* Input wrapper responsive */
+  .stake-input-container {
+    padding-left: 65px;
+    padding-right: 60px;
+  }
+
+  .stake-input-logo {
+    width: 36px;
+    height: 36px;
+    left: 12px;
+  }
+
+  .stake-input {
+    font-size: 18px;
+  }
+
+  .stake-input-token {
+    right: 12px;
+    font-size: 14px;
+  }
+
+  /* New header responsive */
+  .stake-header {
     flex-direction: column;
-    align-items: stretch;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .stake-header-info {
+    align-items: center;
+  }
+
+  .stake-header-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .stake-header-label {
+    font-size: 20px;
+  }
+
+  .apr-value {
+    font-size: 20px;
+  }
+
+  .stake-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stake-stat-value {
+    font-size: 16px;
   }
 }
