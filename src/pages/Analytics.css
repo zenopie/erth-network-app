@@ -1,576 +1,452 @@
-/*---- Analytics Page Styling ----*/
-.analytics-page {
-  width: 96%;
-  margin: auto;
-  background-color: rgba(209, 209, 209, 0.2);
-  padding: 25px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+/* Analytics Page - CoinGecko Token Detail Style */
+
+.analytics-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  min-height: 100vh;
 }
 
-/*---- Analytics Price Section Styling ----*/
-.analytics-price-section {
-  width: 96%;
-  margin: 25px auto;
-  background-color: rgba(209, 209, 209, 0.2);
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.analytics-container::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #fff;
+  z-index: -1;
 }
 
-/*---- Analytics Info Styling ----*/
-.analytics-info {
+/* Token Selector */
+.token-selector {
   display: flex;
-  flex-direction: column;
-  margin-top: 20px;
+  gap: 8px;
+  margin-bottom: 24px;
 }
 
-/*---- Analytics Info Item Styling ----*/
-.analytics-info-item {
-  margin-bottom: 15px;
+.token-btn {
   display: flex;
   align-items: center;
-}
-
-.analytics-info-label {
-  font-weight: bold;
-  margin-right: 10px;
-  min-width: 150px;
-}
-
-.analytics-info-value {
-  font-family: monospace;
-}
-
-/*---- Analytics Section Styling ----*/
-.analytics-section {
-  margin-bottom: 30px;
-}
-
-.analytics-section-title {
-  font-size: 1.5em;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-/*---- Analytics Table Styling ----*/
-.analytics-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.analytics-table th,
-.analytics-table td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-.analytics-table th {
-  background-color: #f8f8f8;
-  font-weight: bold;
-  color: #333;
-}
-
-.analytics-table tr:hover {
-  background-color: #f1f1f1;
-}
-
-/*---- Analytics Loading State Styling ----*/
-.analytics-loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
-}
-
-.analytics-loading-message,
-.analytics-error-message {
-  text-align: center;
-  padding: 20px;
-  font-size: 1.2em;
-  color: #666;
-}
-
-.analytics-error-message {
-  color: #e74c3c;
-}
-
-/*---- Analytics Chart Container Styling ----*/
-.analytics-chart-container {
-  height: 300px;
-  margin-top: 15px;
-  margin-bottom: 20px; /* Add bottom margin to the chart */
-  background-color: rgba(76, 175, 80, 0.05); /* Very light green background */
-  border-radius: 10px;
-  padding: 15px;
-  padding-top: 30px; /* Add more padding on top for the title */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(76, 175, 80, 0.3); /* Subtle green border */
-  position: relative;
-  overflow: hidden;
-}
-
-/* Add a subtle green glow on hover */
-.analytics-chart-container:hover {
-  box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
-}
-
-/* Add section title inside chart area */
-.analytics-chart-container::before {
-  content: "ERTH Price";
-  position: absolute;
-  top: 8px;
-  left: 15px;
-  font-size: 12px;
-  color: #4caf50;
-  font-weight: 600;
-  z-index: 1; /* Ensure it's above the chart but not above other UI elements */
-  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-/* ANML Chart specific styling */
-.analytics-chart-container.anml-chart::before {
-  content: "ANML Price";
-  color: #1e3a8a; /* Royal blue for ANML */
-}
-
-.analytics-chart-container.anml-chart {
-  border-color: rgba(30, 58, 138, 0.3); /* Blue border for ANML chart */
-}
-
-.analytics-chart-container.anml-chart:hover {
-  box-shadow: 0 0 15px rgba(30, 58, 138, 0.2); /* Blue glow for ANML chart */
-}
-
-/*---- Responsive Design ----*/
-@media (max-width: 768px) {
-  .analytics-page {
-    width: 90%;
-    padding: 15px;
-  }
-
-  .analytics-info-label {
-    min-width: 120px;
-  }
-
-  .analytics-table th,
-  .analytics-table td {
-    padding: 8px 10px;
-    font-size: 0.9em;
-  }
-}
-
-/* Analytics Page Styling - Matches StakeErth Styling */
-
-/* Add styles to ensure the page is scrollable */
-body,
-html {
-  min-height: 100%;
-  height: 100%;
-  background-color: #f5f5f5; /* Light gray background for the page */
-}
-
-#root {
-  min-height: 100%;
-  overflow-y: auto; /* Enable scrolling on the main container */
-  background-color: #f5f5f5; /* Match body background */
-}
-
-/* Main Analytics Container */
-.analytics-page-box {
-  width: 100%;
-  max-width: 450px;
-  background-color: #ffffff;
-  padding: 40px 30px 50px 30px;
-  border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin: 40px auto 60px; /* Reasonable top margin */
-  position: relative;
-  z-index: 1;
-}
-
-/* Heading Styling */
-.analytics-page-box h2 {
-  margin-bottom: 22px;
-  text-align: center;
-  font-size: 24px;
-  color: #1e3a8a; /* Royal blue */
-  font-weight: 600;
-}
-
-/* Tab Navigation Styling */
-.analytics-page-tab {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 25px;
-  width: 100%;
-  background-color: #f1f0ea; /* Light beige */
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.analytics-page-tab button {
-  background-color: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 14px 0;
-  transition: all 0.3s ease;
-  font-size: 14px;
-  flex-grow: 1;
-  text-align: center;
-  color: #1e3a8a; /* Royal blue */
-  font-weight: 500;
-  border-radius: 0;
-}
-
-.analytics-page-tab button:first-child {
-  border-radius: 10px 0 0 10px;
-}
-
-.analytics-page-tab button:last-child {
-  border-radius: 0 10px 10px 0;
-}
-
-.analytics-page-tab button.active {
-  background-color: #4caf50;
-  color: white;
-  transform: none;
-  box-shadow: none;
-}
-
-.analytics-page-tab button:not(.active):hover {
-  background-color: #ccc;
-  color: #1e3a8a; /* Keep royal blue on hover */
-}
-
-/* Tab Content Styling with fixed height and scrolling */
-.analytics-page-tabcontent {
-  width: 100%;
-  animation: fadeIn 0.3s ease-in-out;
-  display: none;
-  max-height: 400px; /* Reduce height from 500px to 400px */
-  overflow-y: auto; /* Add scrolling to tab content */
-  scrollbar-width: thin; /* Thin scrollbar for Firefox */
-  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
-}
-
-/* Custom scrollbar styling for tab content */
-.analytics-page-tabcontent::-webkit-scrollbar {
-  width: 6px;
-}
-
-.analytics-page-tabcontent::-webkit-scrollbar-track {
-  background: rgba(76, 175, 80, 0.05);
-  border-radius: 10px;
-}
-
-.analytics-page-tabcontent::-webkit-scrollbar-thumb {
-  background-color: rgba(76, 175, 80, 0.3);
-  border-radius: 10px;
-}
-
-.analytics-page-tabcontent.active {
-  display: block;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Section Styling */
-.analytics-section {
-  margin-bottom: 20px;
-}
-
-.analytics-section-title {
-  font-size: 18px;
-  color: #1e3a8a; /* Royal blue */
-  margin-bottom: 15px;
-  text-align: center;
-  font-weight: 600;
-}
-
-/* Info Display Section */
-.analytics-info-display {
-  background-color: transparent;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: none;
-}
-
-/* Info Row Styling */
-.analytics-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.analytics-info-row:last-child {
-  border-bottom: none;
-}
-
-.analytics-info-label {
-  color: #1e3a8a; /* Royal blue */
-  font-size: 14px;
-}
-
-.analytics-info-value {
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
   font-size: 15px;
-  color: #1e3a8a; /* Royal blue */
   font-weight: 600;
-  text-align: right;
-}
-
-/* Divider */
-.analytics-divider {
-  height: 1px;
-  background-color: #e0e0e0; /* Lighter gray divider */
-  width: 100%;
-  margin: 24px 0;
-}
-
-/* Analytics Table Styling */
-.analytics-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background-color: #f1f0ea; /* Light beige */
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.analytics-table th,
-.analytics-table td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.analytics-table th {
-  background-color: #f1f0ea; /* Light beige */
-  font-weight: 600;
-  color: #1e3a8a; /* Royal blue */
-}
-
-.analytics-table tr:hover {
-  background-color: rgba(76, 175, 80, 0.05);
-}
-
-/* Loading and Error States */
-.analytics-loading-message,
-.analytics-error-message {
-  text-align: center;
-  padding: 20px;
-  font-size: 15px;
-  color: #1e3a8a; /* Royal blue */
-  font-style: italic;
-}
-
-.analytics-error-message {
-  color: #e74c3c; /* Red */
-}
-
-/* Note text */
-.analytics-note {
-  text-align: center;
-  color: #1e3a8a; /* Royal blue */
-  font-size: 14px;
-  margin: 10px 0;
-  font-style: italic;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .analytics-page-box {
-    width: 90%;
-    padding: 30px 20px;
-  }
-
-  .analytics-info-label {
-    min-width: 120px;
-  }
-
-  .analytics-table th,
-  .analytics-table td {
-    padding: 8px 10px;
-    font-size: 0.9em;
-  }
-}
-
-/* Time Range Selector */
-.analytics-time-selector {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-  padding: 0 5px;
-}
-
-.analytics-time-selector button {
-  background-color: transparent;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #1e3a8a;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  margin-left: 8px;
-  border-radius: 4px;
+  color: #6b7280;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.analytics-time-selector button:hover {
-  background-color: rgba(76, 175, 80, 0.05);
-  border-color: rgba(76, 175, 80, 0.5);
+.token-btn:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
 }
 
-.analytics-time-selector button.active {
-  background-color: rgba(76, 175, 80, 0.15);
-  border-color: #4caf50;
-  color: #4caf50;
-  font-weight: 600;
+.token-btn.active.erth {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+  color: #16a34a;
 }
 
-/* Analytics Summary Container for TVL */
-.analytics-summary-container {
-  background-color: #f8fbf8; /* Light green background */
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 20px;
-  border: 1px solid #4caf50; /* Green outline */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.analytics-tvl-label {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e3a8a; /* Royal blue */
-}
-
-.analytics-tvl-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #4caf50; /* Green for positive value emphasis */
-}
-
-/* Pool Section Styling */
-.pool-section {
-  background-color: #f1f0ea; /* Light beige background */
-  border-radius: 12px;
-  padding: 18px;
-  border: 1px solid rgba(30, 58, 138, 0.15); /* Subtle blue outline */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.pool-section .analytics-section-title {
+.token-btn.active.anml {
+  border-color: #1e3a8a;
+  background: rgba(30, 58, 138, 0.08);
   color: #1e3a8a;
-  margin-bottom: 15px;
 }
 
-/* Override table styling in pool section */
-.pool-section .analytics-table {
-  background-color: transparent; /* Remove beige background */
+.token-logo-small {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-.pool-section .analytics-table th {
-  background-color: transparent; /* Remove beige background from headers */
-  color: #1e3a8a; /* Keep royal blue color */
+.token-logo-large {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-.pool-section .analytics-table tr:hover {
-  background-color: rgba(76, 175, 80, 0.1); /* Lighter green hover effect */
+/* Price Header */
+.price-header {
+  margin-bottom: 24px;
 }
 
-/* Pool Cards Container */
-.pool-cards-container {
+.price-main {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.price-info {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-/* Individual Pool Card */
-.pool-card {
-  background-color: rgba(255, 255, 255, 0.9);
+.price-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.token-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: left;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price-details {
+  display: flex;
+  gap: 24px;
+}
+
+.price-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 160px;
+}
+
+.price-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.price-stat-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.badge-period {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+/* Token Description */
+.token-description {
+  flex: 1;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.token-description::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #16a34a 0%, #22c55e 100%);
+  border-radius: 4px 0 0 4px;
+}
+
+.token-description h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.01em;
+}
+
+.token-description p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #374151;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.token-description.anml::before {
+  background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+.current-price {
+  font-size: 36px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.5px;
+}
+
+.price-badge {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.price-badge.positive {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.price-badge.negative {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.price-changes {
+  display: flex;
+  gap: 24px;
+}
+
+.change-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.change-label {
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.change-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.change-value.positive {
+  color: #16a34a;
+}
+
+.change-value.negative {
+  color: #ef4444;
+}
+
+/* Time Selector */
+.time-selector {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: #f3f4f6;
+  padding: 4px;
   border-radius: 10px;
-  padding: 14px;
-  border: 1px solid rgba(30, 58, 138, 0.1);
+  width: fit-content;
+}
+
+.time-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.pool-card:hover {
-  border-color: rgba(30, 58, 138, 0.3);
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.1);
+.time-btn:hover {
+  color: #374151;
 }
 
-.pool-card-header {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(30, 58, 138, 0.1);
+.time-btn.active {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.pool-card-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e3a8a;
+/* Chart Container */
+.chart-container {
+  height: 400px;
+  margin-bottom: 32px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
 }
 
-.pool-card-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
 }
 
-.pool-card-stat {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.stat-card {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
 }
 
-.pool-card-label {
+.stat-label {
+  display: block;
   font-size: 13px;
-  color: #666;
+  color: #6b7280;
+  margin-bottom: 6px;
 }
 
-.pool-card-value {
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Pools Section */
+.pools-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.pools-section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.pools-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pools-table th,
+.pools-table td {
+  text-align: left;
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.pools-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.pools-table td {
   font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  font-family: "SF Mono", Monaco, monospace;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pools-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pools-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.pools-table {
+  table-layout: fixed;
+}
+
+.pools-table th:nth-child(1),
+.pools-table td:nth-child(1) {
+  width: 25%;
+}
+
+.pools-table th:nth-child(2),
+.pools-table td:nth-child(2),
+.pools-table th:nth-child(3),
+.pools-table td:nth-child(3),
+.pools-table th:nth-child(4),
+.pools-table td:nth-child(4),
+.pools-table th:nth-child(5),
+.pools-table td:nth-child(5) {
+  width: 18.75%;
+}
+
+.pool-name-cell {
+  font-family: inherit;
   font-weight: 600;
   color: #1e3a8a;
-  font-family: monospace;
 }
 
-/* Arb Depth Label with Tooltip */
-.arb-label {
+.pool-name-cell-content {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
+.pool-pair-logos {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pool-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  background: #fff;
+}
+
+.pool-logo-overlap {
+  margin-left: -10px;
+}
+
+.arb-value {
+  font-weight: 600;
+}
+
+.arb-value.positive {
+  color: #16a34a;
+}
+
+.arb-value.negative {
+  color: #ef4444;
+}
+
+/* Arb Tooltip */
 .arb-tooltip {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  background-color: rgba(30, 58, 138, 0.1);
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  background: #e5e7eb;
   border-radius: 50%;
-  font-size: 10px;
-  font-weight: 600;
-  color: #1e3a8a;
+  font-size: 9px;
+  font-weight: 700;
+  color: #6b7280;
   cursor: help;
 }
 
@@ -578,32 +454,30 @@ html {
   visibility: hidden;
   opacity: 0;
   position: absolute;
-  bottom: 125%;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: calc(100% + 8px);
+  right: 0;
   width: 180px;
-  background-color: #1e3a8a;
-  color: white;
-  text-align: center;
+  background: #1f2937;
+  color: #fff;
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 400;
+  text-transform: none;
   line-height: 1.4;
   z-index: 100;
   transition: opacity 0.2s ease, visibility 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .arb-tooltip-text::after {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 12px;
   border-width: 5px;
   border-style: solid;
-  border-color: #1e3a8a transparent transparent transparent;
+  border-color: #1f2937 transparent transparent transparent;
 }
 
 .arb-tooltip:hover .arb-tooltip-text {
@@ -611,26 +485,79 @@ html {
   opacity: 1;
 }
 
-/* Responsive adjustments for pool cards */
+/* Loading & Error */
+.analytics-loading,
+.analytics-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.analytics-error {
+  color: #ef4444;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .pool-card {
+  .analytics-container {
+    padding: 16px;
+  }
+
+  .current-price {
+    font-size: 28px;
+  }
+
+  .price-main {
+    flex-wrap: wrap;
+  }
+
+  .price-info {
+    flex-wrap: wrap;
+  }
+
+  .price-details {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .price-stats {
+    flex-direction: row;
+    gap: 24px;
+  }
+
+  .token-logo-large {
+    width: 44px;
+    height: 44px;
+  }
+
+  .chart-container {
+    height: 300px;
     padding: 12px;
   }
 
-  .pool-card-name {
-    font-size: 15px;
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .token-selector {
+    flex-direction: column;
   }
 
-  .pool-card-label {
-    font-size: 12px;
+  .token-btn {
+    justify-content: center;
   }
 
-  .pool-card-value {
-    font-size: 13px;
+  .time-selector {
+    width: 100%;
   }
 
-  .arb-tooltip-text {
-    width: 150px;
-    font-size: 10px;
+  .time-btn {
+    flex: 1;
+    text-align: center;
   }
 }

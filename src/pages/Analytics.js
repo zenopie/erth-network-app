@@ -1,27 +1,25 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
-import "chart.js/auto"; // For Chart.js v4
+import "chart.js/auto";
 import "./Analytics.css";
 import { showLoadingScreen } from "../utils/uiUtils";
-import { ERTH_API_BASE_URL } from '../utils/config';
+import { ERTH_API_BASE_URL } from "../utils/config";
 
-// Use the production URL - server now has CORS properly configured
 const API_URL = `${ERTH_API_BASE_URL}/analytics`;
 
-// Time range options
 const TIME_RANGES = [
-  { id: "1d", label: "1D", points: 24 }, // 24 hours for daily view
-  { id: "1w", label: "1W", points: 7 }, // 7 days for weekly view
-  { id: "1m", label: "1M", points: 30 }, // 30 days for monthly view
-  { id: "all", label: "All", points: Infinity },
+  { id: "24h", label: "24H", hours: 24 },
+  { id: "7d", label: "7D", hours: 168 },
+  { id: "30d", label: "30D", hours: 720 },
+  { id: "all", label: "ALL", hours: Infinity },
 ];
 
 const Analytics = () => {
   const [latest, setLatest] = useState(null);
   const [history, setHistory] = useState([]);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("ERTH"); // Default to ERTH tab
-  const [timeRange, setTimeRange] = useState("1w"); // Default changed to 1 week view
+  const [activeToken, setActiveToken] = useState("ERTH");
+  const [timeRange, setTimeRange] = useState("7d");
 
   useEffect(() => {
     showLoadingScreen(true);
@@ -47,525 +45,322 @@ const Analytics = () => {
       });
   }, []);
 
-  // Filter history data based on selected time range
+  // Get filtered history based on time range
   const getFilteredHistory = () => {
     if (!history.length) return [];
-
-    const selectedRange = TIME_RANGES.find((range) => range.id === timeRange);
-    if (!selectedRange) return history.slice(-10);
-
-    if (selectedRange.id === "all") return history;
-
-    // Calculate hours to include based on time range (data comes in hourly intervals)
-    let hoursToInclude;
-    if (selectedRange.id === "1d") {
-      hoursToInclude = 24; // 1 day = 24 hours
-    } else if (selectedRange.id === "1w") {
-      hoursToInclude = 7 * 24; // 1 week = 168 hours
-    } else if (selectedRange.id === "1m") {
-      hoursToInclude = 30 * 24; // 1 month = 720 hours
-    }
-
-    return history.slice(-Math.min(hoursToInclude, history.length));
+    const range = TIME_RANGES.find((r) => r.id === timeRange);
+    if (!range || range.hours === Infinity) return history;
+    return history.slice(-range.hours);
   };
 
-  // Get formatted time labels based on timeRange
-  const getTimeLabels = () => {
-    const filteredData = getFilteredHistory();
-
-    return filteredData.map((d) => {
-      const date = new Date(d.timestamp);
-
-      // Format date based on timeRange for better intuition
-      if (timeRange === "1d") {
-        // For 1 day view, show hour format
-        return date.toLocaleTimeString('en-US', { 
-          hour: 'numeric', 
-          hour12: true 
-        });
-      } else if (timeRange === "1w") {
-        // For 1 week view, show day name with date
-        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        return `${days[date.getDay()]} ${date.getMonth() + 1}/${date.getDate()}`;
-      } else if (timeRange === "1m") {
-        // For 1 month view, show date in shorter format
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-      } else {
-        // For all-time view, show more complete date
-        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().substr(2, 2)}`;
-      }
-    });
-  };
-
-  // Calculate price change based on selected timeframe
-  const getPriceChange = () => {
+  // Calculate price change
+  const calculatePriceChange = (hours) => {
     if (!history.length) return { value: 0, isPositive: true };
+    const priceKey = activeToken === "ERTH" ? "erthPrice" : "anmlPrice";
+    const relevantHistory = history.slice(-hours);
+    if (relevantHistory.length < 2) return { value: 0, isPositive: true };
 
-    const filteredData = getFilteredHistory();
-    if (filteredData.length < 2) return { value: 0, isPositive: true };
+    const oldPrice = relevantHistory[0][priceKey];
+    const newPrice = relevantHistory[relevantHistory.length - 1][priceKey];
+    if (!oldPrice || !newPrice) return { value: 0, isPositive: true };
 
-    const oldestPrice = filteredData[0].erthPrice;
-    const newestPrice = filteredData[filteredData.length - 1].erthPrice;
-
-    const change = ((newestPrice - oldestPrice) / oldestPrice) * 100;
-
+    const change = ((newPrice - oldPrice) / oldPrice) * 100;
     return {
       value: Math.abs(change).toFixed(2),
       isPositive: change >= 0,
     };
   };
 
-  // Get time range label for price change
-  const getPriceChangeLabel = () => {
-    switch (timeRange) {
-      case "1d":
-        return "24h";
-      case "1w":
-        return "7d";
-      case "1m":
-        return "30d";
-      case "all":
-        return "All Time";
-      default:
-        return "7d";
+  // Get current token data
+  const getTokenData = () => {
+    if (!latest) return null;
+    if (activeToken === "ERTH") {
+      return {
+        name: "ERTH",
+        fullName: "Earth Token",
+        price: latest.erthPrice,
+        marketCap: latest.erthMarketCap,
+        totalSupply: latest.erthTotalSupply,
+        priceKey: "erthPrice",
+        color: "#16a34a",
+        bgColor: "rgba(22, 163, 74, 0.1)",
+        description: "ERTH is the native utility and governance token of the Earth Network. It serves as the primary medium of exchange across all liquidity pools, enables governance participation, and provides access to ecosystem services. Earth network fees burn ERTH tokens. Earth network distibutions are defined as 4 ERTH minted per second, 1 each to buyback and burn ANML token, ERTH stakers, Deflation fund, and the Caretaker Fund.",
+      };
     }
+    return {
+      name: "ANML",
+      fullName: "Animal Token",
+      price: latest.anmlPrice,
+      marketCap: latest.anmlMarketCap || latest.anmlPrice * latest.anmlTotalSupply,
+      totalSupply: latest.anmlTotalSupply,
+      priceKey: "anmlPrice",
+      color: "#1e3a8a",
+      bgColor: "rgba(30, 58, 138, 0.1)",
+      description: "ANML is the proof of Identity token of the Earth Network. It is distributed at the rate of 1 ANML per person per day. 1/4 of ERTH emmissions buy back and burn ANML at the rate of 1 ERTH per second."
+    };
   };
 
-  // Prepare chart data with filtered history
+  // Format price
+  const formatPrice = (price) => {
+    if (!price) return "$0.00";
+    if (price < 0.0001) return `$${price.toFixed(8)}`;
+    if (price < 0.01) return `$${price.toFixed(6)}`;
+    if (price < 1) return `$${price.toFixed(4)}`;
+    return `$${price.toFixed(2)}`;
+  };
+
+  // Format large numbers
+  const formatNumber = (num) => {
+    if (!num) return "$0";
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
+  };
+
+  // Get chart labels
+  const getChartLabels = () => {
+    const filtered = getFilteredHistory();
+    return filtered.map((d) => {
+      const date = new Date(d.timestamp);
+      if (timeRange === "24h") {
+        return date.toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
+      } else if (timeRange === "7d") {
+        return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      } else {
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+    });
+  };
+
+  const token = getTokenData();
+  const selectedRange = TIME_RANGES.find((r) => r.id === timeRange);
+  const selectedChange = calculatePriceChange(selectedRange?.hours || 168);
+
+  // Chart configuration
   const chartData = {
-    labels: getTimeLabels(),
+    labels: getChartLabels(),
     datasets: [
       {
-        label: "ERTH Price",
-        data: getFilteredHistory().map((d) => d.erthPrice),
+        data: getFilteredHistory().map((d) => d[token?.priceKey]),
         fill: true,
-        borderColor: "#4caf50",
-        backgroundColor: "rgba(76, 175, 80, 0.1)",
+        borderColor: token?.color,
+        backgroundColor: token?.bgColor,
         borderWidth: 2,
-        pointRadius: 3,
-        pointBackgroundColor: "#4caf50",
-        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: token?.color,
+        pointHoverBorderColor: "#fff",
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
       },
     ],
   };
 
-  // Chart options
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false, // Hide legend since we only have one dataset
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-        callbacks: {
-          label: function (context) {
-            return `$${context.parsed.y.toFixed(6)}`;
-          },
-          title: function (tooltipItems) {
-            // Show date in tooltip
-            const date = new Date(getFilteredHistory()[tooltipItems[0].dataIndex].timestamp);
-            return `Date: ${date.toLocaleDateString()}`;
-          },
-        },
-        backgroundColor: "rgba(30, 58, 138, 0.8)", // Royal blue background
-        titleColor: "white",
-        bodyColor: "white",
-        borderColor: "#4caf50",
-        borderWidth: 1,
-        padding: 10,
-        displayColors: false,
-      },
+    interaction: {
+      mode: "index",
+      intersect: false,
     },
-    hover: {
-      mode: "nearest",
-      intersect: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#1f2937",
+        titleColor: "#fff",
+        bodyColor: "#fff",
+        padding: 12,
+        displayColors: false,
+        callbacks: {
+          title: (items) => {
+            const idx = items[0].dataIndex;
+            const d = getFilteredHistory()[idx];
+            return new Date(d.timestamp).toLocaleString();
+          },
+          label: (context) => formatPrice(context.parsed.y),
+        },
+      },
     },
     scales: {
       x: {
         display: true,
-        title: {
-          display: false,
-        },
-        grid: {
-          display: false,
-        },
+        grid: { display: false },
         ticks: {
-          color: "#718096",
-          font: {
-            size: 10,
-          },
+          color: "#9ca3af",
+          font: { size: 11 },
+          maxTicksLimit: timeRange === "24h" ? 8 : timeRange === "7d" ? 7 : 10,
           maxRotation: 0,
-          maxTicksLimit: timeRange === "1d" ? 12 : timeRange === "1w" ? 7 : 10,
         },
       },
       y: {
         display: true,
-        title: {
-          display: false,
-        },
+        position: "right",
         grid: {
-          color: "rgba(76, 175, 80, 0.1)",
-          borderDash: [5, 5],
+          color: "#f3f4f6",
+          drawBorder: false,
         },
         ticks: {
-          color: "#1e3a8a",
-          font: {
-            size: 10,
-          },
-          callback: function (value) {
-            return "$" + value.toFixed(6);
-          },
+          color: "#9ca3af",
+          font: { size: 11 },
+          callback: (value) => formatPrice(value),
         },
-      },
-    },
-    elements: {
-      line: {
-        tension: 0.3,
       },
     },
   };
 
-  // Time range selector component
-  const TimeRangeSelector = () => {
+  if (error) {
     return (
-      <div className="analytics-time-selector">
+      <div className="analytics-container">
+        <div className="analytics-error">{error}</div>
+      </div>
+    );
+  }
+
+  if (!latest) {
+    return (
+      <div className="analytics-container">
+        <div className="analytics-loading">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="analytics-container">
+      {/* Token Selector */}
+      <div className="token-selector">
+        <button
+          className={`token-btn ${activeToken === "ERTH" ? "active erth" : ""}`}
+          onClick={() => setActiveToken("ERTH")}
+        >
+          <img src="/images/coin/ERTH.png" alt="ERTH" className="token-logo-small" />
+          ERTH
+        </button>
+        <button
+          className={`token-btn ${activeToken === "ANML" ? "active anml" : ""}`}
+          onClick={() => setActiveToken("ANML")}
+        >
+          <img src="/images/coin/ANML.png" alt="ANML" className="token-logo-small" />
+          ANML
+        </button>
+      </div>
+
+      {/* Price Header */}
+      <div className="price-header">
+        <div className="price-main">
+          <img src={`/images/coin/${token?.name}.png`} alt={token?.name} className="token-logo-large" />
+          <div className="price-info">
+            <div className="price-text">
+              <span className="token-name">{token?.fullName}</span>
+              <div className="price-row">
+                <span className="current-price">{formatPrice(token?.price)}</span>
+                <span className={`price-badge ${selectedChange.isPositive ? "positive" : "negative"}`}>
+                  {selectedChange.isPositive ? "+" : "-"}{selectedChange.value}%
+                  <span className="badge-period">({timeRange.toUpperCase()})</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="price-details">
+          <div className="price-stats">
+            <div className="price-stat">
+              <span className="price-stat-label">Market Cap</span>
+              <span className="price-stat-value">{formatNumber(token?.marketCap)}</span>
+            </div>
+            <div className="price-stat">
+              <span className="price-stat-label">Total Supply</span>
+              <span className="price-stat-value">{token?.totalSupply?.toLocaleString()} {token?.name}</span>
+            </div>
+          </div>
+          <div className={`token-description ${activeToken.toLowerCase()}`}>
+            <h4>About {token?.fullName}</h4>
+            <p>{token?.description}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Time Range Selector */}
+      <div className="time-selector">
         {TIME_RANGES.map((range) => (
           <button
             key={range.id}
-            className={timeRange === range.id ? "active" : ""}
+            className={`time-btn ${timeRange === range.id ? "active" : ""}`}
             onClick={() => setTimeRange(range.id)}
           >
             {range.label}
           </button>
         ))}
       </div>
-    );
-  };
 
-  // Get ANML price data for the chart
-  const getAnmlPriceData = () => {
-    // If we have no history or no latest data, return empty array
-    if (!history.length || !latest) return [];
+      {/* Chart */}
+      <div className="chart-container">
+        <Line data={chartData} options={chartOptions} />
+      </div>
 
-    // Get the filtered history based on selected time range
-    const filteredHistory = getFilteredHistory();
-
-    // If the API provides ANML history in each data point, use it
-    if (filteredHistory[0] && filteredHistory[0].anmlPrice !== undefined) {
-      return filteredHistory.map((d) => d.anmlPrice);
-    }
-
-    // Otherwise, generate synthetic data that's visually interesting but consistent
-    const seed = latest.anmlPrice || 0.05; // Use current price as seed for randomization
-
-    return filteredHistory.map((_, index) => {
-      // Use the index and seed to generate a deterministic "random" value
-      // This ensures the chart shows the same pattern on each render
-      const sinValue = Math.sin(index * 0.5 + seed * 100);
-      const variance = 0.05; // 5% variance
-      return seed * (1 + sinValue * variance);
-    });
-  };
-
-  // Calculate ANML price change based on selected timeframe
-  const getAnmlPriceChange = () => {
-    if (!history.length || !latest) return { value: 0, isPositive: true };
-
-    const filteredData = getFilteredHistory();
-    if (filteredData.length < 2 || !filteredData[0].anmlPrice) {
-      // If no real data, return random but consistent change
-      const seed = latest.anmlPrice || 0.05;
-      const randomValue = (Math.sin(seed * 100) * 5).toFixed(2);
-      return {
-        value: Math.abs(randomValue),
-        isPositive: randomValue >= 0,
-      };
-    }
-
-    const oldestPrice = filteredData[0].anmlPrice;
-    const newestPrice = filteredData[filteredData.length - 1].anmlPrice;
-
-    const change = ((newestPrice - oldestPrice) / oldestPrice) * 100;
-
-    return {
-      value: Math.abs(change).toFixed(2),
-      isPositive: change >= 0,
-    };
-  };
-
-  // Calculate total TVL from all pools
-  const calculateTotalTVL = () => {
-    if (!latest || !latest.pools || !latest.pools.length) return 0;
-
-    return latest.pools.reduce((total, pool) => total + pool.tvl, 0);
-  };
-
-  // Render tab content based on active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "ERTH":
-        return (
-          <div className="analytics-page-tabcontent active">
-            {latest && (
-              <>
-                <div className="analytics-info-display">
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">ERTH Price:</span>
-                    <span className="analytics-info-value">${latest.erthPrice.toFixed(6)}</span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Market Cap:</span>
-                    <span className="analytics-info-value">
-                      $
-                      {latest.erthMarketCap.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Total Supply:</span>
-                    <span className="analytics-info-value">{latest.erthTotalSupply.toLocaleString()} ERTH</span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Price Change ({getPriceChangeLabel()}):</span>
-                    <span
-                      className="analytics-info-value"
-                      style={{
-                        color: getPriceChange().isPositive ? "#4caf50" : "#e74c3c",
-                      }}
-                    >
-                      {getPriceChange().isPositive ? "+" : "-"}
-                      {getPriceChange().value}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Price chart with time range selector */}
-                {history.length > 1 && (
-                  <div className="analytics-section">
-                    <TimeRangeSelector />
-                    <div className="analytics-chart-container">
-                      <Line data={chartData} options={chartOptions} />
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+      {/* Stats Grid */}
+      {latest?.pools && (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <span className="stat-label">Total TVL</span>
+            <span className="stat-value">
+              {formatNumber(latest.pools.reduce((sum, p) => sum + p.tvl, 0))}
+            </span>
           </div>
-        );
-
-      case "ANML":
-        return (
-          <div className="analytics-page-tabcontent active">
-            {latest && (
-              <>
-                <div className="analytics-info-display">
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">ANML Price:</span>
-                    <span className="analytics-info-value">${latest.anmlPrice.toFixed(6)}</span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Market Cap:</span>
-                    <span className="analytics-info-value">
-                      $
-                      {latest.anmlMarketCap
-                        ? latest.anmlMarketCap.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })
-                        : (latest.anmlPrice * latest.anmlTotalSupply).toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
-                    </span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Total Supply:</span>
-                    <span className="analytics-info-value">
-                      {latest.anmlTotalSupply ? latest.anmlTotalSupply.toLocaleString() : "1,000,000"} ANML
-                    </span>
-                  </div>
-
-                  <div className="analytics-info-row">
-                    <span className="analytics-info-label">Price Change ({getPriceChangeLabel()}):</span>
-                    <span
-                      className="analytics-info-value"
-                      style={{
-                        color: getAnmlPriceChange().isPositive ? "#4caf50" : "#e74c3c",
-                      }}
-                    >
-                      {getAnmlPriceChange().isPositive ? "+" : "-"}
-                      {getAnmlPriceChange().value}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* ANML Price chart - using the same time selector */}
-                <div className="analytics-section">
-                  <TimeRangeSelector />
-                  <div className="analytics-chart-container anml-chart">
-                    <Line
-                      data={{
-                        labels: getTimeLabels(),
-                        datasets: [
-                          {
-                            label: "ANML Price",
-                            data: getAnmlPriceData(),
-                            fill: true,
-                            borderColor: "#1e3a8a",
-                            backgroundColor: "rgba(30, 58, 138, 0.1)",
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: "#1e3a8a",
-                            tension: 0.3,
-                          },
-                        ],
-                      }}
-                      options={{
-                        ...chartOptions,
-                        plugins: {
-                          ...chartOptions.plugins,
-                          tooltip: {
-                            ...chartOptions.plugins.tooltip,
-                            callbacks: {
-                              label: function (context) {
-                                return `$${context.parsed.y.toFixed(6)}`;
-                              },
-                              title: function (tooltipItems) {
-                                // Show date in tooltip
-                                const date = new Date(getFilteredHistory()[tooltipItems[0].dataIndex].timestamp);
-                                return `Date: ${date.toLocaleDateString()}`;
-                              },
-                            },
-                            backgroundColor: "rgba(30, 58, 138, 0.8)", // Royal blue background for ANML
-                          },
-                        },
-                        scales: {
-                          ...chartOptions.scales,
-                          y: {
-                            ...chartOptions.scales.y,
-                            ticks: {
-                              ...chartOptions.scales.y.ticks,
-                              callback: function (value) {
-                                return "$" + value.toFixed(6);
-                              },
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+          <div className="stat-card">
+            <span className="stat-label">Active Pools</span>
+            <span className="stat-value">{latest.pools.length}</span>
           </div>
-        );
+        </div>
+      )}
 
-      case "Pools":
-        return (
-          <div className="analytics-page-tabcontent active">
-            {/* Total TVL Summary */}
-            {latest && latest.pools && latest.pools.length > 0 && (
-              <div className="analytics-summary-container">
-                <div className="analytics-info-row">
-                  <span className="analytics-tvl-label">Total Value Locked:</span>
-                  <span className="analytics-tvl-value">
-                    $
-                    {calculateTotalTVL().toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })}
+      {/* Pools Section */}
+      {latest?.pools?.length > 0 && (
+        <div className="pools-section">
+          <h3>Liquidity Pools</h3>
+          <table className="pools-table">
+            <thead>
+              <tr>
+                <th>Pool</th>
+                <th>ERTH Price</th>
+                <th>Token Price</th>
+                <th>TVL</th>
+                <th>
+                  Arb Depth
+                  <span className="arb-tooltip">
+                    ?
+                    <span className="arb-tooltip-text">
+                      Positive = ERTH underpriced (buy ERTH). Negative = ERTH overpriced (sell ERTH).
+                    </span>
                   </span>
-                </div>
-              </div>
-            )}
-
-            <div className="analytics-divider"></div>
-            {latest && latest.pools && latest.pools.length > 0 ? (
-                <div className="pool-cards-container">
-                  {latest.pools.map((pool, i) => (
-                    <div key={i} className="pool-card">
-                      <div className="pool-card-header">
-                        <span className="pool-card-name">ERTH-{pool.token}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {latest.pools.map((pool, i) => (
+                <tr key={i}>
+                  <td className="pool-name-cell">
+                    <div className="pool-name-cell-content">
+                      <div className="pool-pair-logos">
+                        <img src="/images/coin/ERTH.png" alt="ERTH" className="pool-logo" />
+                        <img src={`/images/coin/${pool.token}.png`} alt={pool.token} className="pool-logo pool-logo-overlap" />
                       </div>
-                      <div className="pool-card-stats">
-                        <div className="pool-card-stat">
-                          <span className="pool-card-label">ERTH Price</span>
-                          <span className="pool-card-value">${pool.erthPrice.toFixed(6)}</span>
-                        </div>
-                        <div className="pool-card-stat">
-                          <span className="pool-card-label">TVL</span>
-                          <span className="pool-card-value">
-                            ${pool.tvl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                          </span>
-                        </div>
-                        <div className="pool-card-stat">
-                          <span className="pool-card-label arb-label">
-                            Arb Depth
-                            <span className="arb-tooltip">
-                              ?
-                              <span className="arb-tooltip-text">
-                                {pool.arbDepth > 0
-                                  ? "ERTH is cheap in this pool. Buy ERTH to arbitrage."
-                                  : pool.arbDepth < 0
-                                  ? "ERTH is expensive in this pool. Sell ERTH to arbitrage."
-                                  : "Pool is at equilibrium price."}
-                              </span>
-                            </span>
-                          </span>
-                          <span
-                            className="pool-card-value"
-                            style={{
-                              color: pool.arbDepth > 0 ? '#4caf50' : pool.arbDepth < 0 ? '#e74c3c' : 'inherit'
-                            }}
-                          >
-                            {pool.arbDepth > 0 ? '+' : ''}{pool.arbDepth.toFixed(2)} ERTH
-                          </span>
-                        </div>
-                      </div>
+                      ERTH-{pool.token}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="analytics-note">No pool data available at this time.</p>
-              )}
-          </div>
-        );
-
-      default:
-        return <div className="analytics-page-tabcontent active">Tab content not found</div>;
-    }
-  };
-
-  return (
-    <div className="analytics-page-box">
-      <h2>Analytics</h2>
-
-      {error ? (
-        <p className="analytics-error-message">{error}</p>
-      ) : (
-        <>
-          {/* Tab Navigation */}
-          <div className="analytics-page-tab">
-            <button className={activeTab === "ERTH" ? "active" : ""} onClick={() => setActiveTab("ERTH")}>
-              ERTH
-            </button>
-            <button className={activeTab === "ANML" ? "active" : ""} onClick={() => setActiveTab("ANML")}>
-              ANML
-            </button>
-            <button className={activeTab === "Pools" ? "active" : ""} onClick={() => setActiveTab("Pools")}>
-              Pools
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          {latest ? renderTabContent() : <p className="analytics-loading-message">Loading data...</p>}
-        </>
+                  </td>
+                  <td>{formatPrice(pool.erthPrice)}</td>
+                  <td>{formatPrice(pool.tokenPrice)}</td>
+                  <td>{formatNumber(pool.tvl)}</td>
+                  <td>
+                    <span className={`arb-value ${pool.arbDepth > 0 ? "positive" : pool.arbDepth < 0 ? "negative" : ""}`}>
+                      {pool.arbDepth > 0 ? "+" : ""}{pool.arbDepth.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
