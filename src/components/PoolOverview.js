@@ -234,36 +234,37 @@ const PoolOverview = ({
         <div className="pool-compact-info">
           <div className="pool-info-item">
             <span className="pool-info-value">{pendingRewards}</span>
-            {erthPrice && pendingRewards !== "-" && (
-              <span className="pool-info-usd">
-                {formatUSD(parseFloat(pendingRewards.replace(/,/g, '')) * erthPrice)}
-              </span>
-            )}
+            <span className="pool-info-usd">
+              {erthPrice && pendingRewards !== "-"
+                ? formatUSD(parseFloat(pendingRewards.replace(/,/g, '')) * erthPrice)
+                : '\u00A0'}
+            </span>
             <span className="pool-info-label">Rewards</span>
           </div>
 
           <div className="pool-info-item">
             <span className="pool-info-value">{liquidity}</span>
-            {erthPrice && liquidity !== "-" && (
-              <span className="pool-info-usd">
-                {formatUSD(parseFloat(liquidity.replace(/,/g, '')) * erthPrice)}
-              </span>
-            )}
-            <span className="pool-info-label">Liquidity (ERTH)</span>
+            <span className="pool-info-usd">
+              {erthPrice && liquidity !== "-"
+                ? formatUSD(parseFloat(liquidity.replace(/,/g, '')) * erthPrice)
+                : '\u00A0'}
+            </span>
+            <span className="pool-info-label">Liquidity</span>
           </div>
 
           <div className="pool-info-item">
             <span className="pool-info-value">{volume}</span>
-            {erthPrice && volume !== "-" && (
-              <span className="pool-info-usd">
-                {formatUSD(parseFloat(volume.replace(/,/g, '')) * erthPrice)}
-              </span>
-            )}
+            <span className="pool-info-usd">
+              {erthPrice && volume !== "-"
+                ? formatUSD(parseFloat(volume.replace(/,/g, '')) * erthPrice)
+                : '\u00A0'}
+            </span>
             <span className="pool-info-label">Volume (7d)</span>
           </div>
 
           <div className="pool-info-item">
             <span className="pool-info-value">{apr}</span>
+            <span className="pool-info-usd">{'\u00A0'}</span>
             <span className="pool-info-label">APR</span>
           </div>
         </div>
