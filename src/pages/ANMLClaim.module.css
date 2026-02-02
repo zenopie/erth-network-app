@@ -1,66 +1,136 @@
 /* ANML Claim Page - Mobile App Download */
-.testBox {
+.container {
   display: flex;
   flex-direction: column;
-  text-align: center;
-  justify-content: center;
   align-items: center;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  max-width: 400px;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
   box-sizing: border-box;
 }
 
-.logoImg {
-  max-width: 300px;
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
   width: 100%;
-  height: auto;
+  padding: 48px 32px;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
 }
 
-.disabledMessage {
-  font-size: 20px;
-  color: #293462;
-  margin-bottom: 10px;
-  padding: 10px;
-  text-align: center;
+
+.logoImg {
+  max-width: 180px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 4px 12px rgba(22, 163, 74, 0.15));
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.message {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0 0 32px 0;
+  max-width: 320px;
 }
 
 .googlePlayButton {
-  margin-top: 20px;
-  background-color: #4caf50;
-  border: none;
-  font-size: 18px;
-  border-radius: 30px;
-  color: white !important;
-  padding: 12px 25px;
-  box-sizing: border-box;
-  text-align: center;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
   font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 0.2s ease;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.googlePlayButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+}
+
+.googlePlayButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
 }
 
 .googlePlayButton i {
   font-size: 24px;
-  color: white !important;
+  color: #fff;
 }
 
 .googlePlayButton span {
-  color: white !important;
+  color: #fff;
 }
 
-.googlePlayButton:hover {
-  background-color: #45a049;
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  width: 100%;
 }
 
-.googlePlayButton:active {
-  background-color: #45a049;
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: left;
+}
+
+.featureIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(22, 163, 74, 0.08);
+  border-radius: 8px;
+  color: #16a34a;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 36px 24px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .message {
+    font-size: 15px;
+  }
+
+  .googlePlayButton {
+    width: 100%;
+  }
 }
