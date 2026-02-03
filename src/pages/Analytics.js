@@ -270,8 +270,22 @@ const Analytics = () => {
             </div>
             <div className="price-stat">
               <span className="price-stat-label">Total Supply</span>
-              <span className="price-stat-value">{token?.totalSupply?.toLocaleString()} {token?.name}</span>
+              <span className="price-stat-value">{Math.floor(token?.totalSupply)?.toLocaleString()} {token?.name}</span>
             </div>
+            {activeToken === "ERTH" && token?.totalSupply > 0 && (
+              <>
+                <div className="price-stat">
+                  <span className="price-stat-label">Inflation Rate</span>
+                  <span className="price-stat-value">4 ERTH / second</span>
+                </div>
+                <div className="price-stat">
+                  <span className="price-stat-label">Current Inflation %</span>
+                  <span className="price-stat-value">
+                    {((4 * 31557600 / token.totalSupply) * 100).toFixed(2)}%
+                  </span>
+                </div>
+              </>
+            )}
           </div>
           <div className={`token-description ${activeToken.toLowerCase()}`}>
             <h4>About {token?.fullName}</h4>

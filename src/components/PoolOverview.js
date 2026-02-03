@@ -4,7 +4,7 @@ import { contract, query } from "../utils/contractUtils";
 import tokens from "../utils/tokens";
 import contracts from "../utils/contracts";
 import { toMacroUnits } from "../utils/mathUtils";
-import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
+import { formatUSD } from "../utils/apiUtils";
 
 const PoolOverview = ({
   tokenKey,
@@ -15,31 +15,14 @@ const PoolOverview = ({
   onClaimSuccess,
   onClaimError,
   onClaimComplete,
+  erthPrice,
 }) => {
   const [pendingRewards, setPendingRewards] = useState("-");
   const [liquidity, setLiquidity] = useState("-");
   const [volume, setVolume] = useState("-");
   const [apr, setApr] = useState("-");
-  const [erthPrice, setErthPrice] = useState(null);
 
   const token = tokens[tokenKey];
-
-  // Fetch ERTH price on mount and update every minute
-  useEffect(() => {
-    const updateErthPrice = async () => {
-      try {
-        const priceData = await fetchErthPrice();
-        setErthPrice(priceData.price);
-      } catch (error) {
-        console.error('Failed to fetch ERTH price:', error);
-      }
-    };
-
-    updateErthPrice();
-    const interval = setInterval(updateErthPrice, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!poolData) return;
@@ -55,12 +38,12 @@ const PoolOverview = ({
       const erthReserveMicro = Number(pool_info.state.erth_reserve || 0);
       const erthReserveMacro = toMacroUnits(erthReserveMicro, tokens.ERTH);
       const totalLiquidityMacro = 2 * erthReserveMacro;
-      setLiquidity(totalLiquidityMacro.toLocaleString());
+      setLiquidity(Math.floor(totalLiquidityMacro).toLocaleString());
 
       if (Array.isArray(pool_info.state.daily_volumes)) {
         const totalVolumeMicro = pool_info.state.daily_volumes.slice(0, 7).reduce((acc, val) => acc + Number(val), 0);
         const totalVolumeMacro = toMacroUnits(totalVolumeMicro, tokens.ERTH);
-        setVolume(totalVolumeMacro.toLocaleString());
+        setVolume(Math.floor(totalVolumeMacro).toLocaleString());
       }
 
       const dailyRewards = pool_info.state.daily_rewards || [];
@@ -135,12 +118,12 @@ const PoolOverview = ({
         const erthReserveMicro = Number(updatedData.pool_info.state.erth_reserve || 0);
         const erthReserveMacro = toMacroUnits(erthReserveMicro, tokens.ERTH);
         const totalLiquidityMacro = 2 * erthReserveMacro;
-        setLiquidity(totalLiquidityMacro.toLocaleString());
+        setLiquidity(Math.floor(totalLiquidityMacro).toLocaleString());
 
         if (Array.isArray(updatedData.pool_info.state.daily_volumes)) {
           const totalVolumeMicro = updatedData.pool_info.state.daily_volumes.slice(0, 7).reduce((acc, val) => acc + Number(val), 0);
           const totalVolumeMacro = toMacroUnits(totalVolumeMicro, tokens.ERTH);
-          setVolume(totalVolumeMacro.toLocaleString());
+          setVolume(Math.floor(totalVolumeMacro).toLocaleString());
         }
 
         const dailyRewards = updatedData.pool_info.state.daily_rewards || [];
@@ -233,7 +216,7 @@ const PoolOverview = ({
 
         <div className="pool-compact-info">
           <div className="pool-info-item">
-            <span className="pool-info-value">{pendingRewards}</span>
+            <span className="pool-info-value">¤{pendingRewards}</span>
             <span className="pool-info-usd">
               {erthPrice && pendingRewards !== "-"
                 ? formatUSD(parseFloat(pendingRewards.replace(/,/g, '')) * erthPrice)
@@ -243,7 +226,7 @@ const PoolOverview = ({
           </div>
 
           <div className="pool-info-item">
-            <span className="pool-info-value">{liquidity}</span>
+            <span className="pool-info-value">¤{liquidity}</span>
             <span className="pool-info-usd">
               {erthPrice && liquidity !== "-"
                 ? formatUSD(parseFloat(liquidity.replace(/,/g, '')) * erthPrice)
@@ -253,7 +236,7 @@ const PoolOverview = ({
           </div>
 
           <div className="pool-info-item">
-            <span className="pool-info-value">{volume}</span>
+            <span className="pool-info-value">¤{volume}</span>
             <span className="pool-info-usd">
               {erthPrice && volume !== "-"
                 ? formatUSD(parseFloat(volume.replace(/,/g, '')) * erthPrice)

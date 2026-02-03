@@ -8,6 +8,7 @@ import contracts from "../utils/contracts";
 import StatusModal from "../components/StatusModal";
 import { showLoadingScreen } from "../utils/uiUtils";
 import { toMacroUnits } from "../utils/mathUtils.js";
+import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
 
 const ManageLP = ({ isKeplrConnected }) => {
   const [isManagingLiquidity, setIsManagingLiquidity] = useState(false);
@@ -19,8 +20,53 @@ const ManageLP = ({ isKeplrConnected }) => {
   const [activePoolKey, setActivePoolKey] = useState(null);
   const [sortBy, setSortBy] = useState("liquidity");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [erthPrice, setErthPrice] = useState(null);
+  const [countdown, setCountdown] = useState("");
+
+  // Countdown to next distribution (11pm UTC daily)
+  useEffect(() => {
+    const getTimeUntilDistribution = () => {
+      const now = new Date();
+      const target = new Date(now);
+      target.setUTCHours(23, 0, 0, 0); // 11pm UTC
+
+      // If we've passed 11pm UTC today, target tomorrow
+      if (now >= target) {
+        target.setUTCDate(target.getUTCDate() + 1);
+      }
+
+      const diff = target - now;
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    setCountdown(getTimeUntilDistribution());
+    const interval = setInterval(() => {
+      setCountdown(getTimeUntilDistribution());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const tokenKeys = useMemo(() => Object.keys(tokens).filter((t) => t !== "ERTH"), []);
+
+  // Fetch ERTH price
+  useEffect(() => {
+    const updateErthPrice = async () => {
+      try {
+        const priceData = await fetchErthPrice();
+        setErthPrice(priceData.price);
+      } catch (error) {
+        console.error('Failed to fetch ERTH price:', error);
+      }
+    };
+    updateErthPrice();
+    const interval = setInterval(updateErthPrice, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!isKeplrConnected) return;
@@ -174,14 +220,34 @@ const ManageLP = ({ isKeplrConnected }) => {
         />
       ) : (
         <>
-          {totalRewards > 0 && (
-            <div className="claim-all-container">
-              <span className="lp-total-rewards-text">Total Rewards: {totalRewards.toLocaleString()} ERTH</span>
-              <button onClick={handleClaimAll} disabled={!isKeplrConnected} className="lp-claim-all-button">
+          <div className="lp-rewards-display">
+            <div className="lp-rewards-header">
+              <img src="/images/coin/ERTH.png" alt="ERTH" className="lp-rewards-logo" />
+              <div className="lp-rewards-info">
+                <span className="lp-rewards-title">Unclaimed Rewards</span>
+                <span className={`lp-rewards-amount ${totalRewards <= 0 ? "muted" : ""}`}>
+                  {totalRewards.toLocaleString()} ERTH
+                </span>
+                {totalRewards > 0 && erthPrice && (
+                  <span className="lp-rewards-usd">{formatUSD(totalRewards * erthPrice)}</span>
+                )}
+              </div>
+            </div>
+            {totalRewards > 0 ? (
+              <button
+                onClick={handleClaimAll}
+                disabled={!isKeplrConnected}
+                className="lp-claim-all-button"
+              >
                 Claim All
               </button>
-            </div>
-          )}
+            ) : (
+              <div className="lp-countdown">
+                <span className="lp-countdown-label">Next distribution in</span>
+                <span className="lp-countdown-time">{countdown}</span>
+              </div>
+            )}
+          </div>
 
           {/* Header row with sortable columns */}
           <div className="pool-header-row">
@@ -230,7 +296,8 @@ const ManageLP = ({ isKeplrConnected }) => {
               onClaimStart={() => handleClaimStart(key)}
               onClaimSuccess={handleClaimSuccess}
               onClaimError={handleClaimError}
-              onClaimComplete={handleClaimComplete} // New callback
+              onClaimComplete={handleClaimComplete}
+              erthPrice={erthPrice}
             />
           ))}
         </>
