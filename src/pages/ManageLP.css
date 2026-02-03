@@ -1,33 +1,133 @@
-/*---- LP Rewards Display ----*/
-.lp-rewards-display {
+/*---- LP Page Container ----*/
+.lp-page-container {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  align-self: flex-start;
   padding: 20px;
+  padding-top: 100px;
+}
+
+/*---- LP Overview Card ----*/
+.lp-overview-card {
+  max-width: 650px;
+  margin: 0 auto 20px;
+  background-color: #ffffff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.lp-overview-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.lp-overview-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
+}
+
+.lp-overview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lp-overview-label {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lp-overview-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.lp-info-box {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border-left: 4px solid #16a34a;
+  max-width: 600px;
+}
+
+.lp-info-box p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+  margin: 0;
+}
+
+.lp-overview-content {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+}
+
+.lp-stats-grid {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.lp-stat-card {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.lp-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.lp-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lp-stat-usd {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/*---- LP Rewards Section ----*/
+.lp-rewards-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 900px;
-  margin: 0 auto 20px;
-}
-
-.lp-rewards-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.lp-rewards-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
+  justify-content: center;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1px solid #e5e7eb;
+  min-width: 200px;
 }
 
 .lp-rewards-info {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 2px;
+  text-align: center;
 }
 
 .lp-rewards-title {
@@ -94,7 +194,7 @@
 .pool-header-row {
   display: flex;
   align-items: center;
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto 10px;
   padding: 0 20px;
   box-sizing: border-box;
@@ -173,5 +273,22 @@
 @media (max-width: 768px) {
   .pool-header-row {
     display: none;
+  }
+
+  .lp-overview-content {
+    flex-direction: column;
+  }
+
+  .lp-rewards-section {
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+    padding-left: 0;
+    padding-top: 20px;
+    min-width: unset;
+    justify-content: center;
+  }
+
+  .lp-stats-grid {
+    flex-direction: column;
   }
 }

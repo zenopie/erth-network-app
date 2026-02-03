@@ -109,6 +109,25 @@ const ManageLP = ({ isKeplrConnected }) => {
     0
   );
 
+  // Calculate total TVL and volume across all pools
+  const { totalTVL, totalVolume } = useMemo(() => {
+    let tvl = 0;
+    let volume = 0;
+    Object.values(allPoolsData).forEach((data) => {
+      if (data?.pool_info?.state) {
+        const erthReserve = toMacroUnits(Number(data.pool_info.state.erth_reserve || 0), tokens.ERTH);
+        tvl += erthReserve * 2;
+        if (Array.isArray(data.pool_info.state.daily_volumes)) {
+          volume += toMacroUnits(
+            data.pool_info.state.daily_volumes.slice(0, 7).reduce((a, v) => a + Number(v), 0),
+            tokens.ERTH
+          );
+        }
+      }
+    });
+    return { totalTVL: tvl, totalVolume: volume };
+  }, [allPoolsData]);
+
   // Helper to get sortable values from pool data
   const getPoolValue = (key, field) => {
     const data = allPoolsData[key];
@@ -201,7 +220,7 @@ const ManageLP = ({ isKeplrConnected }) => {
   };
 
   return (
-    <>
+    <div className="lp-page-container">
       <StatusModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -220,33 +239,57 @@ const ManageLP = ({ isKeplrConnected }) => {
         />
       ) : (
         <>
-          <div className="lp-rewards-display">
-            <div className="lp-rewards-header">
-              <img src="/images/coin/ERTH.png" alt="ERTH" className="lp-rewards-logo" />
-              <div className="lp-rewards-info">
-                <span className="lp-rewards-title">Unclaimed Rewards</span>
-                <span className={`lp-rewards-amount ${totalRewards <= 0 ? "muted" : ""}`}>
-                  {totalRewards.toLocaleString()} ERTH
-                </span>
-                {totalRewards > 0 && erthPrice && (
-                  <span className="lp-rewards-usd">{formatUSD(totalRewards * erthPrice)}</span>
+          {/* LP Overview Header Card */}
+          <div className="lp-overview-card">
+            <div className="lp-overview-header">
+              <img src="/images/coin/ERTH.png" alt="ERTH" className="lp-overview-logo" />
+              <div className="lp-overview-info">
+                <span className="lp-overview-label">Liquidity Pools</span>
+                <span className="lp-overview-count">{tokenKeys.length} Active Pools</span>
+              </div>
+            </div>
+            <div className="lp-info-box">
+              <p>ERTH serves as the central routing token for all swaps. Every trade passes through an ERTH pair, and the 0.5% swap fee permanently burns ERTH, creating deflationary pressure on the token supply.</p>
+            </div>
+            <div className="lp-overview-content">
+              <div className="lp-stats-grid">
+                <div className="lp-stat-card">
+                  <span className="lp-stat-label">Total TVL</span>
+                  <span className="lp-stat-value">¤{Math.floor(totalTVL).toLocaleString()}</span>
+                  {erthPrice && <span className="lp-stat-usd">{formatUSD(totalTVL * erthPrice)}</span>}
+                </div>
+                <div className="lp-stat-card">
+                  <span className="lp-stat-label">Volume (7d)</span>
+                  <span className="lp-stat-value">¤{Math.floor(totalVolume).toLocaleString()}</span>
+                  {erthPrice && <span className="lp-stat-usd">{formatUSD(totalVolume * erthPrice)}</span>}
+                </div>
+              </div>
+              <div className="lp-rewards-section">
+                <div className="lp-rewards-info">
+                  <span className="lp-rewards-title">Unclaimed Rewards</span>
+                  <span className={`lp-rewards-amount ${totalRewards <= 0 ? "muted" : ""}`}>
+                    {totalRewards.toLocaleString()} ERTH
+                  </span>
+                  {totalRewards > 0 && erthPrice && (
+                    <span className="lp-rewards-usd">{formatUSD(totalRewards * erthPrice)}</span>
+                  )}
+                </div>
+                {totalRewards > 0 ? (
+                  <button
+                    onClick={handleClaimAll}
+                    disabled={!isKeplrConnected}
+                    className="lp-claim-all-button"
+                  >
+                    Claim All
+                  </button>
+                ) : (
+                  <div className="lp-countdown">
+                    <span className="lp-countdown-label">Next distribution in</span>
+                    <span className="lp-countdown-time">{countdown}</span>
+                  </div>
                 )}
               </div>
             </div>
-            {totalRewards > 0 ? (
-              <button
-                onClick={handleClaimAll}
-                disabled={!isKeplrConnected}
-                className="lp-claim-all-button"
-              >
-                Claim All
-              </button>
-            ) : (
-              <div className="lp-countdown">
-                <span className="lp-countdown-label">Next distribution in</span>
-                <span className="lp-countdown-time">{countdown}</span>
-              </div>
-            )}
           </div>
 
           {/* Header row with sortable columns */}
@@ -302,7 +345,7 @@ const ManageLP = ({ isKeplrConnected }) => {
           ))}
         </>
       )}
-    </>
+    </div>
   );
 };
 

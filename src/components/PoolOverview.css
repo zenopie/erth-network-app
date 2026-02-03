@@ -2,7 +2,7 @@
 .pool-overview-box {
   position: relative;
   width: 100%;
-  max-width: 900px; /* Keep increased width */
+  max-width: 900px;
   background-color: #ffffff;
   padding: 14px 20px; /* Reduced vertical padding, kept horizontal padding */
   border-radius: 20px;

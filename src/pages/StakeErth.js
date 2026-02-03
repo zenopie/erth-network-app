@@ -316,7 +316,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
               <span className="stake-stat-label">Your Staked</span>
               <span className="stake-stat-value">
                 {stakedBalance !== null && stakedBalance !== "Error"
-                  ? Number(stakedBalance).toLocaleString()
+                  ? "¤" + Math.floor(stakedBalance).toLocaleString()
                   : "—"}
               </span>
               <span className="stake-stat-usd">
@@ -329,7 +329,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
               <span className="stake-stat-label">Total Staked</span>
               <span className="stake-stat-value">
                 {totalStakedBalance !== null
-                  ? Number(totalStakedBalance).toLocaleString()
+                  ? "¤" + Math.floor(totalStakedBalance).toLocaleString()
                   : "—"}
               </span>
               <span className="stake-stat-usd">
@@ -342,7 +342,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
 
           {/* Info Box */}
           <div className="stake-info-box">
-            <p>Stake your ERTH tokens to earn a share of 1 ERTH per second distributed to all stakers. Unstaking requires a 21-day unbonding period.</p>
+            <p>Stake your ERTH tokens to take part in Deflation Fund governance and earn a share of 1 ERTH per second distributed to all stakers. Unstaking requires a 21-day unbonding period.</p>
           </div>
         </>
       )}
