@@ -5,7 +5,7 @@ import tokens from "../utils/tokens";
 import { calculateMinimumReceived } from "../utils/swapTokensUtils";
 import { showLoadingScreen } from "../utils/uiUtils";
 import { toMicroUnits } from "../utils/mathUtils";
-import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
+import { fetchErthPrice, fetchCoingeckoPrice, formatUSD } from "../utils/apiUtils";
 import StatusModal from "../components/StatusModal";
 import styles from "./SwapTokens.module.css";
 
@@ -148,23 +148,29 @@ const SwapTokens = ({ isKeplrConnected }) => {
     return reserves.erthReserve / reserves.tokenReserve;
   }, [getPoolReserves]);
 
+  // Get USD value for a token amount - uses CoinGecko if available, otherwise spot rate
+  const getUsdValue = useCallback(async (token, amount) => {
+    if (!amount || parseFloat(amount) <= 0) return null;
+
+    const tokenData = tokens[token];
+    if (tokenData.coingeckoId) {
+      const cgPrice = await fetchCoingeckoPrice(tokenData.coingeckoId);
+      if (cgPrice !== null) {
+        return parseFloat(amount) * cgPrice;
+      }
+    }
+
+    if (!erthPrice) return null;
+    const spotRate = await getSpotRate(token);
+    return spotRate ? parseFloat(amount) * spotRate * erthPrice : null;
+  }, [erthPrice, getSpotRate]);
+
   // Calculate USD values and price impact when amounts change
   useEffect(() => {
     const calculateValues = async () => {
-      // Reset if no ERTH price
-      if (!erthPrice) {
-        setFromUsd(null);
-        setToUsd(null);
-        setPriceImpact(null);
-        return;
-      }
-
-      // Calculate FROM USD using spot rate
+      // Calculate FROM USD
       if (fromAmount && parseFloat(fromAmount) > 0) {
-        const spotRate = await getSpotRate(fromToken);
-        setFromUsd(spotRate ? parseFloat(fromAmount) * spotRate * erthPrice : null);
-
-        // Calculate price impact
+        setFromUsd(await getUsdValue(fromToken, fromAmount));
         const impact = await calculatePriceImpact(fromAmount, fromToken, toToken);
         setPriceImpact(impact);
       } else {
@@ -172,17 +178,16 @@ const SwapTokens = ({ isKeplrConnected }) => {
         setPriceImpact(null);
       }
 
-      // Calculate TO USD using spot rate of output token
+      // Calculate TO USD
       if (toAmount && parseFloat(toAmount) > 0) {
-        const spotRate = await getSpotRate(toToken);
-        setToUsd(spotRate ? parseFloat(toAmount) * spotRate * erthPrice : null);
+        setToUsd(await getUsdValue(toToken, toAmount));
       } else {
         setToUsd(null);
       }
     };
 
     calculateValues();
-  }, [fromAmount, toAmount, fromToken, toToken, erthPrice, getSpotRate, calculatePriceImpact]);
+  }, [fromAmount, toAmount, fromToken, toToken, getUsdValue, calculatePriceImpact]);
 
   // Simulate swap output
   const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
@@ -375,22 +380,22 @@ const SwapTokens = ({ isKeplrConnected }) => {
                 <>Balance: {toBalance ?? "..."}</>
               )}
             </div>
-          </div>
+            </div>
 
-        <div className={styles.inputWrapper}>
-          <img src={tokens[toToken].logo} alt={`${toToken} logo`} className={styles.inputLogo} />
-          <select className={styles.tokenSelect} value={toToken} onChange={handleToTokenChange}>
-            {Object.keys(tokens).map((tk) => (
-              <option key={tk} value={tk}>
-                {tk}
-              </option>
-            ))}
-          </select>
-          <div className={styles.amountContainer}>
-            <input type="number" className={styles.tokenInput} placeholder="0.0" value={toAmount} disabled readOnly />
-            <div className={styles.usdValue}>{formatUSD(toUsd ?? 0)}</div>
+          <div className={styles.inputWrapper}>
+            <img src={tokens[toToken].logo} alt={`${toToken} logo`} className={styles.inputLogo} />
+            <select className={styles.tokenSelect} value={toToken} onChange={handleToTokenChange}>
+              {Object.keys(tokens).map((tk) => (
+                <option key={tk} value={tk}>
+                  {tk}
+                </option>
+              ))}
+            </select>
+            <div className={styles.amountContainer}>
+              <input type="number" className={styles.tokenInput} placeholder="0.0" value={toAmount} disabled readOnly />
+              <div className={styles.usdValue}>{formatUSD(toUsd ?? 0)}</div>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 

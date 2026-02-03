@@ -1,5 +1,41 @@
 import { ERTH_API_BASE_URL } from './config';
 
+const coingeckoPriceCache = new Map();
+const COINGECKO_CACHE_TTL = 60000; // 1 minute cache
+
+/**
+ * Fetches the current USD price for a token from CoinGecko
+ * @param {string} coingeckoId - The CoinGecko ID for the token
+ * @returns {Promise<number|null>} The USD price or null if fetch fails
+ */
+export async function fetchCoingeckoPrice(coingeckoId) {
+  if (!coingeckoId) return null;
+
+  const cached = coingeckoPriceCache.get(coingeckoId);
+  if (cached && Date.now() - cached.timestamp < COINGECKO_CACHE_TTL) {
+    return cached.price;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const data = await response.json();
+    const price = data[coingeckoId]?.usd ?? null;
+
+    if (price !== null) {
+      coingeckoPriceCache.set(coingeckoId, { price, timestamp: Date.now() });
+    }
+    return price;
+  } catch (error) {
+    console.error(`Error fetching CoinGecko price for ${coingeckoId}:`, error);
+    return null;
+  }
+}
+
 /**
  * Fetches the current ERTH price from the backend API
  * @returns {Promise<{price: number, timestamp: string, marketCap: number}>}
