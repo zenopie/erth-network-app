@@ -23,14 +23,14 @@ const ManageLP = ({ isKeplrConnected }) => {
   const [erthPrice, setErthPrice] = useState(null);
   const [countdown, setCountdown] = useState("");
 
-  // Countdown to next distribution (11pm UTC daily)
+  // Countdown to next distribution (0:00 UTC daily)
   useEffect(() => {
     const getTimeUntilDistribution = () => {
       const now = new Date();
       const target = new Date(now);
-      target.setUTCHours(23, 0, 0, 0); // 11pm UTC
+      target.setUTCHours(0, 0, 0, 0); // 0:00 UTC
 
-      // If we've passed 11pm UTC today, target tomorrow
+      // If we've passed 0:00 UTC today, target tomorrow
       if (now >= target) {
         target.setUTCDate(target.getUTCDate() + 1);
       }

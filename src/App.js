@@ -8,7 +8,6 @@ import ManageLP from './pages/ManageLP';
 import StakeErth from './pages/StakeErth';
 import PublicBenefitFund from './pages/PublicBenefitFund';
 import DeflationFund from './pages/DeflationFund';
-import GasStation from './pages/GasStation';
 import TransactionLogs from './pages/TransactionLogs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import WeeklyAirdropClaim from './pages/WeeklyAirdropClaim';
@@ -29,7 +28,6 @@ function App() {
           <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
           <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
           <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
-          <Route path="/gas-station" element={<Layout><GasStation /></Layout>} />
           <Route path="/transaction-logs" element={<Layout><TransactionLogs /></Layout>} />
           <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
           <Route path="/bridge" element={<Layout><Bridge /></Layout>} />

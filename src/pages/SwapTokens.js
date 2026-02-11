@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { querySnipBalance, query, snip, requestViewingKey } from "../utils/contractUtils";
+import { MsgExecuteContract } from "secretjs";
+import { querySnipBalance, queryNativeBalance, query, snip, requestViewingKey } from "../utils/contractUtils";
 import contracts from "../utils/contracts";
 import tokens from "../utils/tokens";
 import { calculateMinimumReceived } from "../utils/swapTokensUtils";
@@ -8,6 +9,16 @@ import { toMicroUnits } from "../utils/mathUtils";
 import { fetchErthPrice, fetchCoingeckoPrice, formatUSD } from "../utils/apiUtils";
 import StatusModal from "../components/StatusModal";
 import styles from "./SwapTokens.module.css";
+
+// GAS pseudo-token representing native SCRT
+const GAS_TOKEN = {
+  contract: null,
+  hash: null,
+  decimals: 6,
+  logo: null, // Will use icon instead
+  coingeckoId: "secret",
+  isGas: true,
+};
 
 const SwapTokens = ({ isKeplrConnected }) => {
   const [fromToken, setFromToken] = useState("ANML");
@@ -36,9 +47,22 @@ const SwapTokens = ({ isKeplrConnected }) => {
     }
     if (!refetch) showLoadingScreen(true);
     try {
-      const fromBal = await querySnipBalance(tokens[fromToken]);
-      const toBal = await querySnipBalance(tokens[toToken]);
+      // Fetch from balance
+      let fromBal;
+      if (fromToken === "GAS") {
+        fromBal = await queryNativeBalance();
+      } else {
+        fromBal = await querySnipBalance(tokens[fromToken]);
+      }
       setFromBalance(isNaN(fromBal) ? "Error" : parseFloat(fromBal));
+
+      // Fetch to balance
+      let toBal;
+      if (toToken === "GAS") {
+        toBal = await queryNativeBalance();
+      } else {
+        toBal = await querySnipBalance(tokens[toToken]);
+      }
       setToBalance(isNaN(toBal) ? "Error" : parseFloat(toBal));
     } catch (err) {
       console.error("[fetchData] error:", err);
@@ -72,10 +96,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const getPoolReserves = useCallback(async (token) => {
     if (token === "ERTH" || !isKeplrConnected) return null;
 
+    // For GAS, use SSCRT pool (they're 1:1)
+    const poolToken = token === "GAS" ? "SSCRT" : token;
+
     try {
       const msg = {
         query_user_info: {
-          pools: [tokens[token].contract],
+          pools: [tokens[poolToken].contract],
           user: window.secretjs.address,
         },
       };
@@ -98,27 +125,36 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const calculatePriceImpact = useCallback(async (inputAmount, inputToken, outputToken) => {
     if (!inputAmount || parseFloat(inputAmount) <= 0) return null;
 
+    // For GAS <-> SSCRT, no price impact (1:1)
+    if ((inputToken === "GAS" && outputToken === "SSCRT") || (inputToken === "SSCRT" && outputToken === "GAS")) {
+      return 0;
+    }
+
     try {
       // For swaps through ERTH, calculate impact on the relevant pool(s)
-      const inputAmountMicro = toMicroUnits(parseFloat(inputAmount), tokens[inputToken]);
+      // For GAS, treat as SSCRT for pool calculations
+      const effectiveInputToken = inputToken === "GAS" ? "SSCRT" : inputToken;
+      const effectiveOutputToken = outputToken === "GAS" ? "SSCRT" : outputToken;
+      const tokenInfo = effectiveInputToken === "ERTH" ? { decimals: 6 } : tokens[effectiveInputToken];
+      const inputAmountMicro = toMicroUnits(parseFloat(inputAmount), tokenInfo);
 
-      if (inputToken === "ERTH") {
+      if (effectiveInputToken === "ERTH") {
         // ERTH -> Token: impact on output token's pool
-        const reserves = await getPoolReserves(outputToken);
+        const reserves = await getPoolReserves(effectiveOutputToken);
         if (!reserves) return null;
         // Price impact = input / (input_reserve + input)
         const impact = (inputAmountMicro / (reserves.erthReserve + inputAmountMicro)) * 100;
         return impact;
-      } else if (outputToken === "ERTH") {
+      } else if (effectiveOutputToken === "ERTH") {
         // Token -> ERTH: impact on input token's pool
-        const reserves = await getPoolReserves(inputToken);
+        const reserves = await getPoolReserves(effectiveInputToken);
         if (!reserves) return null;
         const impact = (inputAmountMicro / (reserves.tokenReserve + inputAmountMicro)) * 100;
         return impact;
       } else {
         // Token -> Token: impact on both pools (A -> ERTH -> B)
-        const fromReserves = await getPoolReserves(inputToken);
-        const toReserves = await getPoolReserves(outputToken);
+        const fromReserves = await getPoolReserves(effectiveInputToken);
+        const toReserves = await getPoolReserves(effectiveOutputToken);
         if (!fromReserves || !toReserves) return null;
 
         // First leg: Token A -> ERTH
@@ -152,7 +188,8 @@ const SwapTokens = ({ isKeplrConnected }) => {
   const getUsdValue = useCallback(async (token, amount) => {
     if (!amount || parseFloat(amount) <= 0) return null;
 
-    const tokenData = tokens[token];
+    // Get token data (handle GAS pseudo-token)
+    const tokenData = token === "GAS" ? GAS_TOKEN : tokens[token];
     if (tokenData.coingeckoId) {
       const cgPrice = await fetchCoingeckoPrice(tokenData.coingeckoId);
       if (cgPrice !== null) {
@@ -194,7 +231,50 @@ const SwapTokens = ({ isKeplrConnected }) => {
     if (!isKeplrConnected) return "";
     if (!inputAmount) return "";
     try {
-      const amountInMicro = toMicroUnits(parseFloat(inputAmount), tokens[fromTk]);
+      const inputAmountFloat = parseFloat(inputAmount);
+
+      // Handle GAS <-> SSCRT direct wrap/unwrap (1:1)
+      if ((fromTk === "GAS" && toTk === "SSCRT") || (fromTk === "SSCRT" && toTk === "GAS")) {
+        return inputAmountFloat.toFixed(6);
+      }
+
+      // Handle swaps involving GAS
+      if (fromTk === "GAS") {
+        // GAS -> Token: simulate SSCRT -> Token (after wrap)
+        const amountInMicro = toMicroUnits(inputAmountFloat, { decimals: 6 });
+        const simulateMsg = {
+          simulate_swap: {
+            input_token: tokens.SSCRT.contract,
+            amount: amountInMicro.toString(),
+            output_token: tokens[toTk].contract,
+          },
+        };
+        const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
+        const out = result.output_amount;
+        const decimals = tokens[toTk].decimals || 6;
+        const outNumber = parseFloat(out) / 10 ** decimals;
+        return outNumber.toFixed(6);
+      }
+
+      if (toTk === "GAS") {
+        // Token -> GAS: simulate Token -> SSCRT (then unwrap)
+        const amountInMicro = toMicroUnits(inputAmountFloat, tokens[fromTk]);
+        const simulateMsg = {
+          simulate_swap: {
+            input_token: tokens[fromTk].contract,
+            amount: amountInMicro.toString(),
+            output_token: tokens.SSCRT.contract,
+          },
+        };
+        const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
+        const out = result.output_amount;
+        // SSCRT output = GAS output (1:1 unwrap)
+        const outNumber = parseFloat(out) / 10 ** 6;
+        return outNumber.toFixed(6);
+      }
+
+      // Regular token swap
+      const amountInMicro = toMicroUnits(inputAmountFloat, tokens[fromTk]);
       const simulateMsg = {
         simulate_swap: {
           input_token: tokens[fromTk].contract,
@@ -238,22 +318,157 @@ const SwapTokens = ({ isKeplrConnected }) => {
     setAnimationState("loading");
     try {
       const minReceived = calculateMinimumReceived(toAmount, slippage);
-      const inputInMicro = toMicroUnits(inputAmount, tokens[fromToken]);
-      const minInMicro = toMicroUnits(minReceived, tokens[toToken]);
-      const snipMsg = {
-        swap: {
-          output_token: tokens[toToken].contract,
-          min_received: minInMicro.toString(),
-        },
-      };
-      await snip(
-        tokens[fromToken].contract,
-        tokens[fromToken].hash,
-        contracts.exchange.contract,
-        contracts.exchange.hash,
-        snipMsg,
-        inputInMicro
-      );
+      const inputInMicro = toMicroUnits(inputAmount, { decimals: 6 });
+
+      // Handle GAS <-> SSCRT direct wrap/unwrap
+      if (fromToken === "GAS" && toToken === "SSCRT") {
+        // Wrap SCRT to SSCRT
+        const wrapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
+          msg: { deposit: {} },
+          sent_funds: [{ denom: "uscrt", amount: inputInMicro.toString() }],
+        });
+
+        const resp = await window.secretjs.tx.broadcast([wrapMsg], {
+          gasLimit: 150_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: "uscrt",
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      } else if (fromToken === "SSCRT" && toToken === "GAS") {
+        // Unwrap SSCRT to SCRT
+        const unwrapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
+          msg: { redeem: { amount: inputInMicro.toString() } },
+        });
+
+        const resp = await window.secretjs.tx.broadcast([unwrapMsg], {
+          gasLimit: 150_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: "uscrt",
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      } else if (fromToken === "GAS") {
+        // GAS -> Token: wrap SCRT to SSCRT, then swap SSCRT to target token
+        const minInMicro = toMicroUnits(minReceived, tokens[toToken]);
+
+        // Message 1: Wrap SCRT to SSCRT
+        const wrapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
+          msg: { deposit: {} },
+          sent_funds: [{ denom: "uscrt", amount: inputInMicro.toString() }],
+        });
+
+        // Message 2: Swap SSCRT to target token
+        const swapHookMsg = {
+          swap: {
+            output_token: tokens[toToken].contract,
+            min_received: minInMicro.toString(),
+          },
+        };
+        const hookmsg64 = btoa(JSON.stringify(swapHookMsg));
+        const swapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
+          msg: {
+            send: {
+              recipient: contracts.exchange.contract,
+              recipient_code_hash: contracts.exchange.hash,
+              amount: inputInMicro.toString(),
+              msg: hookmsg64,
+            },
+          },
+        });
+
+        const resp = await window.secretjs.tx.broadcast([wrapMsg, swapMsg], {
+          gasLimit: 500_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: "uscrt",
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      } else if (toToken === "GAS") {
+        // Token -> GAS: swap to SSCRT, then unwrap SSCRT to SCRT
+        const fromTokenInfo = tokens[fromToken];
+        const inputFromMicro = toMicroUnits(inputAmount, fromTokenInfo);
+        const minSscrtMicro = toMicroUnits(minReceived, { decimals: 6 });
+
+        // Message 1: Swap token to SSCRT
+        const swapHookMsg = {
+          swap: {
+            output_token: tokens.SSCRT.contract,
+            min_received: minSscrtMicro.toString(),
+          },
+        };
+        const hookmsg64 = btoa(JSON.stringify(swapHookMsg));
+        const swapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: fromTokenInfo.contract,
+          code_hash: fromTokenInfo.hash,
+          msg: {
+            send: {
+              recipient: contracts.exchange.contract,
+              recipient_code_hash: contracts.exchange.hash,
+              amount: inputFromMicro.toString(),
+              msg: hookmsg64,
+            },
+          },
+        });
+
+        // Message 2: Unwrap SSCRT to SCRT (use min_received as the amount to unwrap)
+        const unwrapMsg = new MsgExecuteContract({
+          sender: window.secretjs.address,
+          contract_address: tokens.SSCRT.contract,
+          code_hash: tokens.SSCRT.hash,
+          msg: { redeem: { amount: minSscrtMicro.toString() } },
+        });
+
+        const resp = await window.secretjs.tx.broadcast([swapMsg, unwrapMsg], {
+          gasLimit: 500_000,
+          gasPriceInFeeDenom: 0.25,
+          feeDenom: "uscrt",
+        });
+
+        if (resp.code !== 0) {
+          throw new Error(`Transaction failed: ${resp.rawLog}`);
+        }
+      } else {
+        // Regular token swap
+        const fromTokenInfo = tokens[fromToken];
+        const toTokenInfo = tokens[toToken];
+        const inputFromMicro = toMicroUnits(inputAmount, fromTokenInfo);
+        const minInMicro = toMicroUnits(minReceived, toTokenInfo);
+        const snipMsg = {
+          swap: {
+            output_token: toTokenInfo.contract,
+            min_received: minInMicro.toString(),
+          },
+        };
+        await snip(
+          fromTokenInfo.contract,
+          fromTokenInfo.hash,
+          contracts.exchange.contract,
+          contracts.exchange.hash,
+          snipMsg,
+          inputFromMicro
+        );
+      }
+
       setAnimationState("success");
       setFromAmount("");
       setToAmount("");
@@ -325,7 +540,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
           <div className={styles.labelRow}>
             <label className={styles.inputLabel}>From</label>
             <div className={styles.balance}>
-              {fromBalance === "Error" ? (
+              {fromBalance === "Error" && fromToken !== "GAS" ? (
                 <button className={styles.vkButton} onClick={() => handleRequestViewingKey(tokens[fromToken])}>
                   Get Viewing Key
                 </button>
@@ -341,8 +556,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
           </div>
 
           <div className={styles.inputWrapper}>
-            <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className={styles.inputLogo} />
+            {fromToken === "GAS" ? (
+              <i className={`bx bxs-gas-pump ${styles.inputLogo}`} aria-hidden="true"></i>
+            ) : (
+              <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className={styles.inputLogo} />
+            )}
             <select className={styles.tokenSelect} value={fromToken} onChange={handleFromTokenChange}>
+              <option value="GAS">GAS</option>
               {Object.keys(tokens).map((tk) => (
                 <option key={tk} value={tk}>
                   {tk}
@@ -372,7 +592,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
           <div className={styles.labelRow}>
             <label className={styles.inputLabel}>To</label>
             <div className={styles.balance}>
-              {toBalance === "Error" ? (
+              {toBalance === "Error" && toToken !== "GAS" ? (
                 <button className={styles.vkButton} onClick={() => handleRequestViewingKey(tokens[toToken])}>
                   Get Viewing Key
                 </button>
@@ -383,8 +603,13 @@ const SwapTokens = ({ isKeplrConnected }) => {
             </div>
 
           <div className={styles.inputWrapper}>
-            <img src={tokens[toToken].logo} alt={`${toToken} logo`} className={styles.inputLogo} />
+            {toToken === "GAS" ? (
+              <i className={`bx bxs-gas-pump ${styles.inputLogo}`} aria-hidden="true"></i>
+            ) : (
+              <img src={tokens[toToken].logo} alt={`${toToken} logo`} className={styles.inputLogo} />
+            )}
             <select className={styles.tokenSelect} value={toToken} onChange={handleToTokenChange}>
+              <option value="GAS">GAS</option>
               {Object.keys(tokens).map((tk) => (
                 <option key={tk} value={tk}>
                   {tk}
@@ -426,7 +651,7 @@ const SwapTokens = ({ isKeplrConnected }) => {
             <p>
               <span>Minimum received:</span>
               <span>
-                {parseFloat(calculateMinimumReceived(toAmount, slippage)).toFixed(tokens[toToken].decimals)} {toToken}
+                {parseFloat(calculateMinimumReceived(toAmount, slippage)).toFixed(toToken === "GAS" ? 6 : tokens[toToken].decimals)} {toToken}
               </span>
             </p>
             {priceImpact !== null && (

@@ -154,11 +154,6 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
                 </Link>
               </li>
               <li>
-                <Link to="/gas-station" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Gas Station
-                </Link>
-              </li>
-              <li>
                 <Link to="/transaction-logs" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   Transaction Logs
                 </Link>
