@@ -517,9 +517,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
     fetchData();
   };
 
-  const handleModalClose = useCallback(() => {
+  const handleModalClose = () => {
     setIsModalOpen(false);
-  }, []);
+  };
 
   if (!isKeplrConnected) {
     return <div className={styles.errorMessage}>Connect Keplr first</div>;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { query, contract } from "../utils/contractUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 import { showLoadingScreen } from "../utils/uiUtils";
@@ -108,9 +108,9 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     return apr.toFixed(2);
   };
 
-  const handleModalClose = useCallback(() => {
+  const handleModalClose = () => {
     setIsModalOpen(false);
-  }, []);
+  };
 
   const fetchAirdropData = async (refetch = false) => {
     if (!window.secretjs || !window.secretjs.address) {

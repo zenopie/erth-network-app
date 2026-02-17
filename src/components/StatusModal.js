@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./StatusModal.css"; // Include your CSS for animations
 
 const ReusableModal = ({ isOpen, onClose, animationState }) => {
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use a ref to store onClose so it doesn't need to be in the dependency array
+  // This prevents timer resets when parent components re-render
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Use effect to handle when the animationState changes
   useEffect(() => {
@@ -11,7 +16,7 @@ const ReusableModal = ({ isOpen, onClose, animationState }) => {
 
       // Set a timeout to close
       const timer = setTimeout(() => {
-        onClose(); // Automatically close the modal
+        onCloseRef.current(); // Automatically close the modal
       }, 1500); // Adjust the duration as needed
 
       // Cleanup the timer if the component unmounts before the timeout completes
@@ -19,7 +24,7 @@ const ReusableModal = ({ isOpen, onClose, animationState }) => {
     } else if (animationState === "loading") {
       setIsLoading(true); // Set loading back to true when a new action starts
     }
-  }, [animationState, onClose]);
+  }, [animationState]);
 
   return (
     isOpen && (
