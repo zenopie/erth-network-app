@@ -470,7 +470,11 @@ const LiquidityManagement = ({
             </div>
           </div>
 
-          <button className={styles.button} onClick={handleAddLiquidity}>
+          <button
+            className={styles.button}
+            onClick={handleAddLiquidity}
+            disabled={!(parseFloat(erthAmount) > 0 && parseFloat(tokenBAmount) > 0)}
+          >
             Add Liquidity
           </button>
         </div>
