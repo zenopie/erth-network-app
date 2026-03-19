@@ -94,7 +94,7 @@
   display: none;
 }
 
-.sidebar.collapsed .bx-chevron-right {
+.sidebar.collapsed .submenu .bx-chevron-right {
   display: none;
 }
 
@@ -112,6 +112,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
   transition: height 0.3s ease, width 0.3s ease;
 }
 
@@ -122,6 +123,37 @@
 
 .sidebar.collapsed .logo-details .logo-img {
   width: 50px;
+}
+
+.sidebar-toggle-btn {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.sidebar-toggle-btn i {
+  font-size: 16px;
+  color: #4056a1;
+  min-width: auto;
+  height: auto;
+  line-height: 1;
+}
+
+.sidebar-toggle-btn:hover {
+  background: #e8f4fc;
+  border-color: #4056a1;
 }
 
 /* Nav Links */

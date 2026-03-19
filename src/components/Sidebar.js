@@ -7,7 +7,7 @@ import keplr from "../images/keplr.png";
 const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, loginError, onLogin, onLogout }) => {
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
   const [isUtilitiesOpen, setIsUtilitiesOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -29,12 +29,13 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
     };
   }, []);
 
-  const handleMouseEnter = () => !isMobile && setIsCollapsed(false);
-  const handleMouseLeave = () => {
+  const toggleSidebar = () => {
     if (!isMobile) {
-      setIsCollapsed(true);
-      setIsGovernanceOpen(false);
-      setIsUtilitiesOpen(false);
+      setIsCollapsed((prev) => !prev);
+      if (!isCollapsed) {
+        setIsGovernanceOpen(false);
+        setIsUtilitiesOpen(false);
+      }
     }
   };
 
@@ -53,8 +54,6 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
         className={`sidebar ${isCollapsed && !isMobile ? "collapsed" : ""} ${isMobile ? "mobile" : ""} ${
           isMobileMenuOpen ? "mobile-open" : ""
         }`}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
         {isMobile && (
           <button className="close-mobile-menu" onClick={toggleMobileMenu} aria-label="Close navigation menu">
@@ -63,6 +62,11 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
         )}
         <div className="logo-details">
           <img src={logo} alt="Logo" className="logo-img" />
+          {!isMobile && (
+            <button className="sidebar-toggle-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
+              <i className={`bx ${isCollapsed ? "bx-chevron-right" : "bx-chevron-left"}`}></i>
+            </button>
+          )}
         </div>
         <ul className="nav-links">
           <li>
