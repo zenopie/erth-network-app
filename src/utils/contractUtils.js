@@ -3,9 +3,14 @@ import contracts, { populateContracts } from './contracts';
 import tokens, { populateTokens } from './tokens';
 
 let secretjs = null; // Signing client (LCD)
-let queryClient = null; // Query client (LCD)
 const url = "https://lcd.erth.network";      // LCD endpoint
 const chainId = 'secret-4';                  // Mainnet chain ID
+
+// Query client initialized at module level - no wallet needed for public queries
+let queryClient = new SecretNetworkClient({
+    url,
+    chainId: chainId,
+});
 
 // Contract Registry
 export const REGISTRY_CONTRACT = "secret1ql943kl7fd7pyv9njf7rmngxhzljncgx6eyw5j";
@@ -167,6 +172,18 @@ async function queryRegistry() {
     }
 }
 
+// Ensure registry is loaded (for first-time visitors without localStorage cache)
+export async function ensureRegistryLoaded() {
+    if (registryData.lastUpdated) return true;
+    try {
+        await queryRegistry();
+        return !!registryData.lastUpdated;
+    } catch (error) {
+        console.error("Failed to load registry:", error);
+        return false;
+    }
+}
+
 // Export function to get registry data
 export function getRegistryData() {
     // Try to load from localStorage if not in memory
@@ -225,6 +242,11 @@ export function getLoginPermit() {
 // Get the user address
 export function getUserAddress() {
     return localStorage.getItem('erth_user_address') || null;
+}
+
+// Get a valid address for contract queries (connected wallet > stored address > placeholder)
+export function getQueryAddress() {
+    return window.secretjs?.address || getUserAddress() || REGISTRY_CONTRACT;
 }
 
 // Query registry, populate contracts/tokens, and return token addresses for permit

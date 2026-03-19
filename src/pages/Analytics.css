@@ -1,4 +1,4 @@
-/* Analytics Page - CoinGecko Token Detail Style */
+/* Analytics Page - CoinGecko Compliant */
 
 .analytics-container {
   width: 100%;
@@ -8,15 +8,195 @@
   min-height: 100vh;
 }
 
-.analytics-container::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #fff;
-  z-index: -1;
+/* Overview Cards */
+.info-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.info-card {
+  padding: 20px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+
+.info-card-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.info-card-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.3px;
+}
+
+/* Trading Pairs Section */
+.pairs-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.pairs-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px 0;
+}
+
+.pairs-table-wrapper {
+  overflow-x: auto;
+}
+
+.pairs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pairs-table th,
+.pairs-table td {
+  text-align: left;
+  padding: 14px 12px;
+  vertical-align: middle;
+}
+
+.pairs-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.pairs-table td {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pairs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pairs-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.pair-index {
+  color: #9ca3af;
+  font-weight: 600;
+  width: 40px;
+}
+
+.pair-name-cell {
+  font-weight: 600 !important;
+}
+
+.pair-name-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pair-logos {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pair-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.pair-logo-overlap {
+  margin-left: -10px;
+}
+
+.pair-name-text {
+  color: #111827;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Price cell - two lines */
+.price-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-usd {
+  font-weight: 600;
+  color: #111827;
+}
+
+.price-rate {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+}
+
+/* Volume cell - two lines */
+.volume-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.volume-usd {
+  font-weight: 600;
+  color: #111827;
+}
+
+.volume-detail {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.liquidity-value {
+  font-weight: 600 !important;
+}
+
+.mono {
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-size: 13px !important;
+  color: #374151 !important;
+}
+
+/* Token Analysis Section */
+.token-analysis-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.token-analysis-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px 0;
 }
 
 /* Token Selector */
@@ -66,34 +246,35 @@
 }
 
 .token-logo-large {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 /* Price Header */
 .price-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 24px;
+  gap: 24px;
 }
 
 .price-main {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 14px;
 }
 
 .price-info {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 
 .price-text {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 4px;
 }
 
@@ -101,7 +282,6 @@
   font-size: 14px;
   font-weight: 500;
   color: #6b7280;
-  text-align: left;
 }
 
 .price-row {
@@ -110,16 +290,41 @@
   gap: 12px;
 }
 
-.price-details {
-  display: flex;
-  gap: 24px;
+.current-price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.5px;
+}
+
+.price-badge {
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.price-badge.positive {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.price-badge.negative {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.badge-period {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 4px;
 }
 
 .price-stats {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 160px;
+  gap: 32px;
+  align-items: flex-start;
 }
 
 .price-stat {
@@ -137,111 +342,6 @@
   font-size: 15px;
   font-weight: 600;
   color: #111827;
-}
-
-.badge-period {
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.8;
-  margin-left: 4px;
-}
-
-/* Token Description */
-.token-description {
-  flex: 1;
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  position: relative;
-  overflow: hidden;
-}
-
-.token-description::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(180deg, #16a34a 0%, #22c55e 100%);
-  border-radius: 4px 0 0 4px;
-}
-
-.token-description h4 {
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 12px 0;
-  letter-spacing: -0.01em;
-}
-
-.token-description p {
-  font-size: 14px;
-  line-height: 1.7;
-  color: #374151;
-  margin: 0;
-  letter-spacing: 0.01em;
-}
-
-.token-description.anml::before {
-  background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
-}
-
-.current-price {
-  font-size: 36px;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.5px;
-}
-
-.price-badge {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.price-badge.positive {
-  background: rgba(22, 163, 74, 0.12);
-  color: #16a34a;
-}
-
-.price-badge.negative {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-}
-
-.price-changes {
-  display: flex;
-  gap: 24px;
-}
-
-.change-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.change-label {
-  font-size: 12px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.change-value {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.change-value.positive {
-  color: #16a34a;
-}
-
-.change-value.negative {
-  color: #ef4444;
 }
 
 /* Time Selector */
@@ -279,271 +379,102 @@
 
 /* Chart Container */
 .chart-container {
-  height: 400px;
-  margin-bottom: 32px;
-  padding: 16px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-}
-
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.stat-label {
-  display: block;
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 6px;
-}
-
-.stat-value {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-/* Pools Section */
-.pools-section {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 20px;
-  overflow-x: auto;
-}
-
-.pools-section h3 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 16px 0;
-}
-
-.pools-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.pools-table th,
-.pools-table td {
-  text-align: left;
+  height: 380px;
   padding: 12px;
-  vertical-align: middle;
-}
-
-.pools-table th {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-}
-
-.pools-table td {
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  font-family: "SF Mono", Monaco, monospace;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.pools-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.pools-table tbody tr:hover {
-  background: #f9fafb;
-}
-
-.pools-table {
-  table-layout: fixed;
-}
-
-.pools-table th:nth-child(1),
-.pools-table td:nth-child(1) {
-  width: 25%;
-}
-
-.pools-table th:nth-child(2),
-.pools-table td:nth-child(2),
-.pools-table th:nth-child(3),
-.pools-table td:nth-child(3),
-.pools-table th:nth-child(4),
-.pools-table td:nth-child(4),
-.pools-table th:nth-child(5),
-.pools-table td:nth-child(5) {
-  width: 18.75%;
-}
-
-.pool-name-cell {
-  font-family: inherit;
-  font-weight: 600;
-  color: #1e3a8a;
-}
-
-.pool-name-cell-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pool-pair-logos {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.pool-logo {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #fff;
   background: #fff;
-}
-
-.pool-logo-overlap {
-  margin-left: -10px;
-}
-
-.arb-value {
-  font-weight: 600;
-}
-
-.arb-value.positive {
-  color: #16a34a;
-}
-
-.arb-value.negative {
-  color: #ef4444;
-}
-
-/* Arb Tooltip */
-.arb-tooltip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 4px;
-  background: #e5e7eb;
-  border-radius: 50%;
-  font-size: 9px;
-  font-weight: 700;
-  color: #6b7280;
-  cursor: help;
-}
-
-.arb-tooltip-text {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  width: 180px;
-  background: #1f2937;
-  color: #fff;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 400;
-  text-transform: none;
-  line-height: 1.4;
-  z-index: 100;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.arb-tooltip-text::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  right: 12px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #1f2937 transparent transparent transparent;
-}
-
-.arb-tooltip:hover .arb-tooltip-text {
-  visibility: visible;
-  opacity: 1;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
 }
 
 /* Loading & Error */
-.analytics-loading,
-.analytics-error {
+.info-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.info-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #16a34a;
+  border-radius: 50%;
+  animation: info-spin 0.8s linear infinite;
+}
+
+@keyframes info-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.info-error {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 40vh;
   font-size: 16px;
-  color: #6b7280;
-}
-
-.analytics-error {
   color: #ef4444;
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .analytics-container {
-    padding: 16px;
+@media (max-width: 900px) {
+  .info-overview {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .current-price {
-    font-size: 28px;
-  }
-
-  .price-main {
-    flex-wrap: wrap;
-  }
-
-  .price-info {
-    flex-wrap: wrap;
-  }
-
-  .price-details {
+  .price-header {
     flex-direction: column;
-    gap: 16px;
   }
 
   .price-stats {
     flex-direction: row;
     gap: 24px;
   }
+}
+
+@media (max-width: 640px) {
+  .info-page {
+    padding: 16px;
+  }
+
+  .info-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .info-overview {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .info-card {
+    padding: 16px;
+  }
+
+  .info-card-value {
+    font-size: 18px;
+  }
+
+  .current-price {
+    font-size: 26px;
+  }
 
   .token-logo-large {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
   }
 
   .chart-container {
-    height: 300px;
-    padding: 12px;
+    height: 280px;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
   .token-selector {
     flex-direction: column;
   }
@@ -559,5 +490,13 @@
   .time-btn {
     flex: 1;
     text-align: center;
+  }
+
+  .pairs-section {
+    padding: 16px;
+  }
+
+  .token-analysis-section {
+    padding: 16px;
   }
 }

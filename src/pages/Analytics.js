@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import "./Analytics.css";
-import { showLoadingScreen } from "../utils/uiUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 
-const API_URL = `${ERTH_API_BASE_URL}/analytics`;
+const ANALYTICS_URL = `${ERTH_API_BASE_URL}/analytics`;
+const TICKERS_URL = `${ERTH_API_BASE_URL}/tickers`;
 
 const TIME_RANGES = [
   { id: "24h", label: "24H", hours: 24 },
@@ -17,35 +17,95 @@ const TIME_RANGES = [
 const Analytics = () => {
   const [latest, setLatest] = useState(null);
   const [history, setHistory] = useState([]);
+  const [tickers, setTickers] = useState([]);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeToken, setActiveToken] = useState("ERTH");
   const [timeRange, setTimeRange] = useState("7d");
 
   useEffect(() => {
-    showLoadingScreen(true);
+    const fetchData = () => {
+      Promise.all([
+        fetch(ANALYTICS_URL).then((r) => {
+          if (!r.ok) throw new Error(`Analytics: ${r.status}`);
+          return r.json();
+        }),
+        fetch(TICKERS_URL).then((r) => {
+          if (!r.ok) throw new Error(`Tickers: ${r.status}`);
+          return r.json();
+        }),
+      ])
+        .then(([analyticsData, tickersData]) => {
+          setLatest(analyticsData.latest);
+          setHistory(analyticsData.history);
+          setTickers(tickersData);
+          setError(null);
+        })
+        .catch((err) => {
+          console.error("Error fetching data:", err);
+          setError("Failed to load exchange data. Please try again later.");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    };
 
-    fetch(API_URL)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! Status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setLatest(data.latest);
-        setHistory(data.history);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error("Error fetching analytics data:", err);
-        setError("Failed to load analytics data. Please try again later.");
-      })
-      .finally(() => {
-        showLoadingScreen(false);
-      });
+    fetchData();
+
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      Promise.all([
+        fetch(ANALYTICS_URL).then((r) => r.json()),
+        fetch(TICKERS_URL).then((r) => r.json()),
+      ])
+        .then(([analyticsData, tickersData]) => {
+          setLatest(analyticsData.latest);
+          setTickers(tickersData);
+        })
+        .catch(console.error);
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Get filtered history based on time range
+  // Merge tickers with analytics pool data for display names
+  const enrichedPairs = useMemo(() => {
+    if (!tickers.length || !latest?.pools) return [];
+
+    const sortedPools = [...latest.pools].sort((a, b) => b.tvl - a.tvl);
+    const sortedTickers = [...tickers].sort(
+      (a, b) => parseFloat(b.liquidity_in_usd) - parseFloat(a.liquidity_in_usd)
+    );
+
+    return sortedTickers.map((ticker, i) => {
+      const pool = sortedPools[i] || null;
+      const erthPriceUsd = pool?.erthPrice || latest.erthPrice;
+      return {
+        tickerId: ticker.ticker_id,
+        pairName: pool ? `ERTH / ${pool.token}` : ticker.ticker_id,
+        targetToken: pool?.token || "",
+        lastPrice: parseFloat(ticker.last_price),
+        erthPriceUsd,
+        baseVolume: parseFloat(ticker.base_volume),
+        targetVolume: parseFloat(ticker.target_volume),
+        volumeUsd: parseFloat(ticker.base_volume) * erthPriceUsd,
+        liquidityUsd: parseFloat(ticker.liquidity_in_usd),
+        bid: parseFloat(ticker.bid),
+        ask: parseFloat(ticker.ask),
+        tokenPriceUsd: pool?.tokenPrice || 0,
+      };
+    });
+  }, [tickers, latest]);
+
+  // Overview stats
+  const totalTvl = latest?.tvl || 0;
+  const total24hVolume = useMemo(
+    () => enrichedPairs.reduce((sum, p) => sum + p.volumeUsd, 0),
+    [enrichedPairs]
+  );
+
+  // --- Token analysis logic (existing) ---
+
   const getFilteredHistory = () => {
     if (!history.length) return [];
     const range = TIME_RANGES.find((r) => r.id === timeRange);
@@ -53,7 +113,6 @@ const Analytics = () => {
     return history.slice(-range.hours);
   };
 
-  // Calculate price change
   const calculatePriceChange = (hours) => {
     if (!history.length) return { value: 0, isPositive: true };
     const priceKey = activeToken === "ERTH" ? "erthPrice" : "anmlPrice";
@@ -71,7 +130,6 @@ const Analytics = () => {
     };
   };
 
-  // Get current token data
   const getTokenData = () => {
     if (!latest) return null;
     if (activeToken === "ERTH") {
@@ -84,7 +142,6 @@ const Analytics = () => {
         priceKey: "erthPrice",
         color: "#16a34a",
         bgColor: "rgba(22, 163, 74, 0.1)",
-        description: "ERTH is the native utility and governance token of the Earth Network. It serves as the primary medium of exchange across all liquidity pools, enables governance participation, and provides access to ecosystem services. Earth network fees burn ERTH tokens. Earth network distibutions are defined as 4 ERTH minted per second, 1 each to buyback and burn ANML token, ERTH stakers, Deflation fund, and the Caretaker Fund.",
       };
     }
     return {
@@ -96,11 +153,9 @@ const Analytics = () => {
       priceKey: "anmlPrice",
       color: "#1e3a8a",
       bgColor: "rgba(30, 58, 138, 0.1)",
-      description: "ANML is the proof of Identity token of the Earth Network. It is distributed at the rate of 1 ANML per person per day. 1/4 of ERTH emmissions buy back and burn ANML at the rate of 1 ERTH per second."
     };
   };
 
-  // Format price
   const formatPrice = (price) => {
     if (!price) return "$0.00";
     if (price < 0.0001) return `$${price.toFixed(8)}`;
@@ -109,7 +164,6 @@ const Analytics = () => {
     return `$${price.toFixed(2)}`;
   };
 
-  // Format large numbers
   const formatNumber = (num) => {
     if (!num) return "$0";
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
@@ -118,7 +172,14 @@ const Analytics = () => {
     return `$${num.toFixed(2)}`;
   };
 
-  // Get chart labels
+  const formatRate = (rate) => {
+    if (!rate) return "0";
+    if (rate < 0.0001) return rate.toFixed(8);
+    if (rate < 0.01) return rate.toFixed(6);
+    if (rate < 1) return rate.toFixed(4);
+    return rate.toFixed(4);
+  };
+
   const getChartLabels = () => {
     const filtered = getFilteredHistory();
     return filtered.map((d) => {
@@ -137,7 +198,6 @@ const Analytics = () => {
   const selectedRange = TIME_RANGES.find((r) => r.id === timeRange);
   const selectedChange = calculatePriceChange(selectedRange?.hours || 168);
 
-  // Chart configuration
   const chartData = {
     labels: getChartLabels(),
     datasets: [
@@ -160,10 +220,7 @@ const Analytics = () => {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: {
-      mode: "index",
-      intersect: false,
-    },
+    interaction: { mode: "index", intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -196,10 +253,7 @@ const Analytics = () => {
       y: {
         display: true,
         position: "right",
-        grid: {
-          color: "#f3f4f6",
-          drawBorder: false,
-        },
+        grid: { color: "#f3f4f6", drawBorder: false },
         ticks: {
           color: "#9ca3af",
           font: { size: 11 },
@@ -209,173 +263,180 @@ const Analytics = () => {
     },
   };
 
-  if (error) {
+  // --- Render ---
+
+  if (loading) {
     return (
       <div className="analytics-container">
-        <div className="analytics-error">{error}</div>
+        <div className="info-loading">
+          <div className="info-spinner"></div>
+          <p>Loading exchange data...</p>
+        </div>
       </div>
     );
   }
 
-  if (!latest) {
+  if (error) {
     return (
       <div className="analytics-container">
-        <div className="analytics-loading">Loading...</div>
+        <div className="info-error">{error}</div>
       </div>
     );
   }
 
   return (
     <div className="analytics-container">
-      {/* Token Selector */}
-      <div className="token-selector">
-        <button
-          className={`token-btn ${activeToken === "ERTH" ? "active erth" : ""}`}
-          onClick={() => setActiveToken("ERTH")}
-        >
-          <img src="/images/coin/ERTH.png" alt="ERTH" className="token-logo-small" />
-          ERTH
-        </button>
-        <button
-          className={`token-btn ${activeToken === "ANML" ? "active anml" : ""}`}
-          onClick={() => setActiveToken("ANML")}
-        >
-          <img src="/images/coin/ANML.png" alt="ANML" className="token-logo-small" />
-          ANML
-        </button>
+      {/* Overview Cards */}
+      <div className="info-overview">
+        <div className="info-card">
+          <span className="info-card-label">Total Value Locked</span>
+          <span className="info-card-value">{formatNumber(totalTvl)}</span>
+        </div>
+        <div className="info-card">
+          <span className="info-card-label">24h Trading Volume</span>
+          <span className="info-card-value">{formatNumber(total24hVolume)}</span>
+        </div>
+        <div className="info-card">
+          <span className="info-card-label">ERTH Price</span>
+          <span className="info-card-value">{formatPrice(latest?.erthPrice)}</span>
+        </div>
+        <div className="info-card">
+          <span className="info-card-label">Trading Pairs</span>
+          <span className="info-card-value">{enrichedPairs.length}</span>
+        </div>
       </div>
 
-      {/* Price Header */}
-      <div className="price-header">
-        <div className="price-main">
-          <img src={`/images/coin/${token?.name}.png`} alt={token?.name} className="token-logo-large" />
-          <div className="price-info">
-            <div className="price-text">
-              <span className="token-name">{token?.fullName}</span>
-              <div className="price-row">
-                <span className="current-price">{formatPrice(token?.price)}</span>
-                <span className={`price-badge ${selectedChange.isPositive ? "positive" : "negative"}`}>
-                  {selectedChange.isPositive ? "+" : "-"}{selectedChange.value}%
-                  <span className="badge-period">({timeRange.toUpperCase()})</span>
+      {/* Trading Pairs Table */}
+      {enrichedPairs.length > 0 && (
+        <div className="pairs-section">
+          <h2>Trading Pairs</h2>
+          <div className="pairs-table-wrapper">
+            <table className="pairs-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pair</th>
+                  <th>Last Price</th>
+                  <th>24h Volume</th>
+                  <th>Liquidity</th>
+                  <th>Bid</th>
+                  <th>Ask</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrichedPairs.map((pair, i) => (
+                  <tr key={pair.tickerId}>
+                    <td className="pair-index">{i + 1}</td>
+                    <td className="pair-name-cell">
+                      <div className="pair-name-content">
+                        <div className="pair-logos">
+                          <img src="/images/coin/ERTH.png" alt="ERTH" className="pair-logo" />
+                          <img
+                            src={`/images/coin/${pair.targetToken}.png`}
+                            alt={pair.targetToken}
+                            className="pair-logo pair-logo-overlap"
+                          />
+                        </div>
+                        <span className="pair-name-text">{pair.pairName}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="price-cell">
+                        <span className="price-usd">{formatPrice(pair.erthPriceUsd)}</span>
+                        <span className="price-rate">
+                          {formatRate(pair.lastPrice)} {pair.targetToken}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="volume-cell">
+                        <span className="volume-usd">{formatNumber(pair.volumeUsd)}</span>
+                        <span className="volume-detail">
+                          {pair.baseVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH
+                        </span>
+                      </div>
+                    </td>
+                    <td className="liquidity-value">{formatNumber(pair.liquidityUsd)}</td>
+                    <td className="mono">{formatRate(pair.bid)}</td>
+                    <td className="mono">{formatRate(pair.ask)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Token Analysis Section */}
+      {latest && (
+        <div className="token-analysis-section">
+          <h2>Token Analysis</h2>
+
+          <div className="token-selector">
+            <button
+              className={`token-btn ${activeToken === "ERTH" ? "active erth" : ""}`}
+              onClick={() => setActiveToken("ERTH")}
+            >
+              <img src="/images/coin/ERTH.png" alt="ERTH" className="token-logo-small" />
+              ERTH
+            </button>
+            <button
+              className={`token-btn ${activeToken === "ANML" ? "active anml" : ""}`}
+              onClick={() => setActiveToken("ANML")}
+            >
+              <img src="/images/coin/ANML.png" alt="ANML" className="token-logo-small" />
+              ANML
+            </button>
+          </div>
+
+          <div className="price-header">
+            <div className="price-main">
+              <img src={`/images/coin/${token?.name}.png`} alt={token?.name} className="token-logo-large" />
+              <div className="price-info">
+                <div className="price-text">
+                  <span className="token-name">{token?.fullName}</span>
+                  <div className="price-row">
+                    <span className="current-price">{formatPrice(token?.price)}</span>
+                    <span className={`price-badge ${selectedChange.isPositive ? "positive" : "negative"}`}>
+                      {selectedChange.isPositive ? "+" : "-"}{selectedChange.value}%
+                      <span className="badge-period">({timeRange.toUpperCase()})</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="price-stats">
+              <div className="price-stat">
+                <span className="price-stat-label">Market Cap</span>
+                <span className="price-stat-value">{formatNumber(token?.marketCap)}</span>
+              </div>
+              <div className="price-stat">
+                <span className="price-stat-label">Total Supply</span>
+                <span className="price-stat-value">
+                  {Math.floor(token?.totalSupply)?.toLocaleString()} {token?.name}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-        <div className="price-details">
-          <div className="price-stats">
-            <div className="price-stat">
-              <span className="price-stat-label">Market Cap</span>
-              <span className="price-stat-value">{formatNumber(token?.marketCap)}</span>
-            </div>
-            <div className="price-stat">
-              <span className="price-stat-label">Total Supply</span>
-              <span className="price-stat-value">{Math.floor(token?.totalSupply)?.toLocaleString()} {token?.name}</span>
-            </div>
-            {activeToken === "ERTH" && token?.totalSupply > 0 && (
-              <>
-                <div className="price-stat">
-                  <span className="price-stat-label">Inflation Rate</span>
-                  <span className="price-stat-value">4 ERTH / second</span>
-                </div>
-                <div className="price-stat">
-                  <span className="price-stat-label">Current Inflation %</span>
-                  <span className="price-stat-value">
-                    {((4 * 31557600 / token.totalSupply) * 100).toFixed(2)}%
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-          <div className={`token-description ${activeToken.toLowerCase()}`}>
-            <h4>About {token?.fullName}</h4>
-            <p>{token?.description}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Time Range Selector */}
-      <div className="time-selector">
-        {TIME_RANGES.map((range) => (
-          <button
-            key={range.id}
-            className={`time-btn ${timeRange === range.id ? "active" : ""}`}
-            onClick={() => setTimeRange(range.id)}
-          >
-            {range.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Chart */}
-      <div className="chart-container">
-        <Line data={chartData} options={chartOptions} />
-      </div>
-
-      {/* Stats Grid */}
-      {latest?.pools && (
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-label">Total TVL</span>
-            <span className="stat-value">
-              {formatNumber(latest.pools.reduce((sum, p) => sum + p.tvl, 0))}
-            </span>
+          <div className="time-selector">
+            {TIME_RANGES.map((range) => (
+              <button
+                key={range.id}
+                className={`time-btn ${timeRange === range.id ? "active" : ""}`}
+                onClick={() => setTimeRange(range.id)}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
-          <div className="stat-card">
-            <span className="stat-label">Active Pools</span>
-            <span className="stat-value">{latest.pools.length}</span>
+
+          <div className="chart-container">
+            <Line data={chartData} options={chartOptions} />
           </div>
         </div>
       )}
 
-      {/* Pools Section */}
-      {latest?.pools?.length > 0 && (
-        <div className="pools-section">
-          <h3>Liquidity Pools</h3>
-          <table className="pools-table">
-            <thead>
-              <tr>
-                <th>Pool</th>
-                <th>ERTH Price</th>
-                <th>Token Price</th>
-                <th>TVL</th>
-                <th>
-                  Arb Depth
-                  <span className="arb-tooltip">
-                    ?
-                    <span className="arb-tooltip-text">
-                      Positive = ERTH underpriced (buy ERTH). Negative = ERTH overpriced (sell ERTH).
-                    </span>
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {latest.pools.map((pool, i) => (
-                <tr key={i}>
-                  <td className="pool-name-cell">
-                    <div className="pool-name-cell-content">
-                      <div className="pool-pair-logos">
-                        <img src="/images/coin/ERTH.png" alt="ERTH" className="pool-logo" />
-                        <img src={`/images/coin/${pool.token}.png`} alt={pool.token} className="pool-logo pool-logo-overlap" />
-                      </div>
-                      ERTH-{pool.token}
-                    </div>
-                  </td>
-                  <td>{formatPrice(pool.erthPrice)}</td>
-                  <td>{formatPrice(pool.tokenPrice)}</td>
-                  <td>{formatNumber(pool.tvl)}</td>
-                  <td>
-                    <span className={`arb-value ${pool.arbDepth > 0 ? "positive" : pool.arbDepth < 0 ? "negative" : ""}`}>
-                      {pool.arbDepth > 0 ? "+" : ""}{pool.arbDepth.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 };

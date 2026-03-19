@@ -8,9 +8,7 @@ import contracts from "../utils/contracts";
 import StatusModal from "../components/StatusModal";
 import styles from "./WeeklyAirdropClaim.module.css";
 
-// Airdrop contract details
-const AIRDROP_CONTRACT = contracts.airdrop.contract;
-const AIRDROP_HASH = contracts.airdrop.hash;
+// Contract addresses accessed dynamically (populated by registry at runtime)
 
 // Validator address for staking link
 const VALIDATOR_ADDRESS = "secretvaloper19g3d3ug9xwtwswq4qef890xu3j0d4r4nvpz0jd";
@@ -26,10 +24,14 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
+    fetchPrices();
+    fetchRoundInfo();
+  }, []);
+
+  useEffect(() => {
     if (isKeplrConnected) {
       fetchAirdropData();
     }
-    fetchPrices();
   }, [isKeplrConnected]);
 
   useEffect(() => {
@@ -112,9 +114,33 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     setIsModalOpen(false);
   };
 
+  // Fetch round info (public - no wallet needed)
+  const fetchRoundInfo = async () => {
+    try {
+      const airdropContract = contracts.airdrop?.contract;
+      const airdropHash = contracts.airdrop?.hash;
+      let roundResp = null;
+
+      if (airdropContract) {
+        const roundQuery = { get_current_round: {} };
+        roundResp = await query(airdropContract, airdropHash, roundQuery);
+      }
+
+      const metaResponse = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/meta`);
+      if (metaResponse.ok) {
+        const metaJson = await metaResponse.json();
+        setRoundInfo({ ...metaJson, ...roundResp });
+      } else if (roundResp) {
+        setRoundInfo(roundResp);
+      }
+    } catch (err) {
+      console.error("Error fetching round info:", err);
+    }
+  };
+
+  // Fetch user-specific airdrop data (requires wallet)
   const fetchAirdropData = async (refetch = false) => {
     if (!window.secretjs || !window.secretjs.address) {
-      setError("Wallet not connected");
       return;
     }
 
@@ -123,20 +149,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
       setError(null);
 
       const userAddress = window.secretjs.address;
-
-      // Fetch claim data from backend API
-      // Query contract for current round info first (always do this)
-      const roundQuery = { get_current_round: {} };
-      const roundResp = await query(AIRDROP_CONTRACT, AIRDROP_HASH, roundQuery);
-
-      // Fetch round metadata from backend (always available)
-      const metaResponse = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/meta`);
-      if (metaResponse.ok) {
-        const metaJson = await metaResponse.json();
-        setRoundInfo({ ...metaJson, ...roundResp });
-      } else {
-        setRoundInfo(roundResp);
-      }
 
       const claimResponse = await fetch(
         `${ERTH_API_BASE_URL}/airdrop/current/${userAddress}`
@@ -156,7 +168,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
 
       // Check if user has already claimed
       const hasClaimedQuery = { has_claimed: { address: userAddress } };
-      const hasClaimedResp = await query(AIRDROP_CONTRACT, AIRDROP_HASH, hasClaimedQuery);
+      const hasClaimedResp = await query(contracts.airdrop.contract, contracts.airdrop.hash, hasClaimedQuery);
       setHasClaimed(hasClaimedResp.has_claimed);
 
       if (!refetch) showLoadingScreen(false);
@@ -181,7 +193,7 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
         },
       };
 
-      const resp = await contract(AIRDROP_CONTRACT, AIRDROP_HASH, claimMsg);
+      const resp = await contract(contracts.airdrop.contract, contracts.airdrop.hash, claimMsg);
 
       if (resp.code === 0) {
         setAnimationState("success");
@@ -222,16 +234,6 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleString();
   };
-
-  if (!isKeplrConnected) {
-    return (
-      <div className={styles.testBox}>
-        <div className={styles.message}>
-          Please connect your Keplr wallet to view your airdrop allocation.
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -277,7 +279,24 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
         </div>
       )}
 
-      {error ? (
+      {!isKeplrConnected ? (
+        <>
+          <button
+            className={styles.claimButton}
+            onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
+          >
+            Stake SCRT
+          </button>
+          <div className={styles.countdownText}>
+            Connect wallet to check your allocation
+          </div>
+          {countdown && (
+            <div className={styles.countdownText}>
+              Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
+            </div>
+          )}
+        </>
+      ) : error ? (
         <>
           <button
             className={styles.claimButton}

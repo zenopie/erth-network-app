@@ -4,7 +4,7 @@ import "./Sidebar.css";
 import logo from "../images/logo.png";
 import keplr from "../images/keplr.png";
 
-const Sidebar = ({ walletName, isKeplrConnected }) => {
+const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, loginError, onLogin, onLogout }) => {
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
   const [isUtilitiesOpen, setIsUtilitiesOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -40,15 +40,6 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const handleLogout = () => {
-    // Clear all login data
-    localStorage.removeItem('erth_login_permit');
-    localStorage.removeItem('erth_user_address');
-    localStorage.removeItem('erth_permit_expiration');
-    // Reload to show login screen
-    window.location.reload();
   };
 
   return (
@@ -87,9 +78,9 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
             </Link>
           </li>
           <li>
-            <Link to="/manage-lp" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-droplet-half"></i>
-              <span className="link_name">Manage LP</span>
+            <Link to="/markets" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-bar-chart-square"></i>
+              <span className="link_name">Markets</span>
             </Link>
           </li>
           <li>
@@ -129,12 +120,6 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
               <span className="link_name">Weekly{'\u00A0'}Airdrop</span>
             </Link>
           </li>
-          <li>
-            <Link to="/analytics" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-bar-chart-alt-2"></i>
-              <span className="link_name">Analytics</span>
-            </Link>
-          </li>
           <li className={`submenu ${isUtilitiesOpen ? "open" : ""}`}>
             <div
               onClick={() => {
@@ -163,28 +148,54 @@ const Sidebar = ({ walletName, isKeplrConnected }) => {
         </ul>
 
         <div className="profile-container">
-          <div className="profile-details">
-            <div className="profile-content">
-              <img src={keplr} alt="profileImg" />
-            </div>
-            <div className="name-job">
-              <div className="profile-name-row">
-                <div id="wallet-name" className="profile_name">
-                  {isKeplrConnected ? walletName : "Connecting..."}
-                </div>
-                {isKeplrConnected && (
+          {isKeplrConnected ? (
+            <div className="profile-details">
+              <div className="profile-content">
+                <img src={keplr} alt="Keplr" />
+              </div>
+              <div className="name-job">
+                <div className="profile-name-row">
+                  <div id="wallet-name" className="profile_name">
+                    {walletName}
+                  </div>
                   <button
                     className="logout-button"
-                    onClick={handleLogout}
+                    onClick={onLogout}
                     title="Logout"
                   >
                     <i className="bx bx-log-out"></i>
                   </button>
+                </div>
+                <div className="job"></div>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`profile-details sidebar-login-area ${isLoggingIn || isConnecting ? "disabled" : ""}`}
+              onClick={!(isLoggingIn || isConnecting) ? onLogin : undefined}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !(isLoggingIn || isConnecting)) onLogin();
+              }}
+            >
+              <div className="profile-content">
+                {isLoggingIn || isConnecting ? (
+                  <div className="sidebar-connect-spinner"></div>
+                ) : (
+                  <img src={keplr} alt="Keplr" />
                 )}
               </div>
-              <div className="job"></div>
+              <div className="name-job">
+                <div className="profile_name sidebar-login-text">
+                  {isLoggingIn ? "Signing..." : isConnecting ? "Connecting..." : "Sign In"}
+                </div>
+                {loginError && (
+                  <div className="sidebar-login-error">{loginError}</div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <li className="socials-link">
             <div className="socials-placeholder">
               <i className={`bx ${isCollapsed && !isMobile ? "bx-heart" : ""}`}></i>

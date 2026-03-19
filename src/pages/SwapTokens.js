@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MsgExecuteContract } from "secretjs";
-import { querySnipBalance, queryNativeBalance, query, snip, requestViewingKey } from "../utils/contractUtils";
+import { querySnipBalance, queryNativeBalance, query, snip, requestViewingKey, getQueryAddress } from "../utils/contractUtils";
 import contracts from "../utils/contracts";
 import tokens from "../utils/tokens";
 import { calculateMinimumReceived } from "../utils/swapTokensUtils";
@@ -92,18 +92,18 @@ const SwapTokens = ({ isKeplrConnected }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Query pool reserves for a token pair
+  // Query pool reserves for a token pair (public query - works without login)
   const getPoolReserves = useCallback(async (token) => {
-    if (token === "ERTH" || !isKeplrConnected) return null;
+    if (token === "ERTH") return null;
 
-    // For GAS, use SSCRT pool (they're 1:1)
     const poolToken = token === "GAS" ? "SSCRT" : token;
+    if (!tokens[poolToken]?.contract || !contracts.exchange?.contract) return null;
 
     try {
       const msg = {
         query_user_info: {
           pools: [tokens[poolToken].contract],
-          user: window.secretjs.address,
+          user: getQueryAddress(),
         },
       };
       const result = await query(contracts.exchange.contract, contracts.exchange.hash, msg);
@@ -226,9 +226,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
     calculateValues();
   }, [fromAmount, toAmount, fromToken, toToken, getUsdValue, calculatePriceImpact]);
 
-  // Simulate swap output
+  // Simulate swap output (public query - works without login)
   const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
-    if (!isKeplrConnected) return "";
+    if (!contracts.exchange?.contract) return "";
     if (!inputAmount) return "";
     try {
       const inputAmountFloat = parseFloat(inputAmount);
@@ -521,10 +521,6 @@ const SwapTokens = ({ isKeplrConnected }) => {
     setIsModalOpen(false);
   };
 
-  if (!isKeplrConnected) {
-    return <div className={styles.errorMessage}>Connect Keplr first</div>;
-  }
-
   return (
     <div className={styles.container}>
       <StatusModal isOpen={isModalOpen} onClose={handleModalClose} animationState={animationState} />
@@ -628,9 +624,9 @@ const SwapTokens = ({ isKeplrConnected }) => {
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!fromAmount || parseFloat(fromAmount) <= 0 || !toAmount}
+        disabled={!isKeplrConnected || !fromAmount || parseFloat(fromAmount) <= 0 || !toAmount}
       >
-        Swap
+        {isKeplrConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
 
       {/* Details */}

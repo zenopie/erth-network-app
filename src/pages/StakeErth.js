@@ -1,7 +1,7 @@
 // StakeErth.js
 
 import React, { useState, useEffect } from "react";
-import { query, contract, snip, querySnipBalance, requestViewingKey } from "../utils/contractUtils";
+import { query, contract, snip, querySnipBalance, requestViewingKey, getQueryAddress } from "../utils/contractUtils";
 import { toMicroUnits, toMacroUnits } from "../utils/mathUtils.js";
 import tokens from "../utils/tokens.js";
 import contracts from "../utils/contracts.js";
@@ -10,9 +10,7 @@ import { fetchErthPrice, formatUSD } from "../utils/apiUtils";
 import "./StakeErth.css";
 import StatusModal from "../components/StatusModal";
 
-// Using the staking contract from contracts.js utility
-const THIS_CONTRACT = contracts.staking.contract;
-const THIS_HASH = contracts.staking.hash;
+// Contract addresses accessed dynamically (populated by registry at runtime)
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const DAYS_PER_YEAR = 365;
@@ -47,9 +45,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
   const [erthPrice, setErthPrice] = useState(null);
 
   useEffect(() => {
-    if (isKeplrConnected) {
-      fetchStakingRewards();
-    }
+    fetchStakingRewards();
   }, [isKeplrConnected]);
 
   // Fetch ERTH price for USD display
@@ -68,20 +64,18 @@ const StakingManagement = ({ isKeplrConnected }) => {
   }, []);
 
   const fetchStakingRewards = async () => {
-    if (!window.secretjs || !window.secretjs.address) {
-      console.error("secretjs or secretjs.address is not defined.");
-      setStakingRewards("N/A");
-      return;
-    }
+    const stakingContract = contracts.staking?.contract;
+    const stakingHash = contracts.staking?.hash;
+    if (!stakingContract) return;
 
     try {
       showLoadingScreen(true);
 
       const queryMsg = {
-        get_user_info: { address: window.secretjs.address },
+        get_user_info: { address: getQueryAddress() },
       };
 
-      const resp = await query(THIS_CONTRACT, THIS_HASH, queryMsg);
+      const resp = await query(stakingContract, stakingHash, queryMsg);
 
       if (!resp || resp.staking_rewards_due === undefined) {
         console.error("Invalid response structure:", resp);
@@ -162,8 +156,8 @@ const StakingManagement = ({ isKeplrConnected }) => {
       await snip(
         tokens["ERTH"].contract,
         tokens["ERTH"].hash,
-        THIS_CONTRACT,
-        THIS_HASH,
+        contracts.staking.contract,
+        contracts.staking.hash,
         snipmsg,
         amountInMicroUnits.toString()
       );
@@ -199,7 +193,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         },
       };
 
-      await contract(THIS_CONTRACT, THIS_HASH, msg);
+      await contract(contracts.staking.contract, contracts.staking.hash, msg);
 
       setUnstakeAmount(""); // Clear the input
       fetchStakingRewards();
@@ -224,7 +218,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         claim: {},
       };
 
-      await contract(THIS_CONTRACT, THIS_HASH, msg);
+      await contract(contracts.staking.contract, contracts.staking.hash, msg);
 
       setAnimationState("success");
     } catch (error) {
@@ -248,7 +242,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         claim_unbonded: {},
       };
 
-      await contract(THIS_CONTRACT, THIS_HASH, msg);
+      await contract(contracts.staking.contract, contracts.staking.hash, msg);
 
       fetchStakingRewards();
     } catch (error) {
@@ -275,7 +269,7 @@ const StakingManagement = ({ isKeplrConnected }) => {
         },
       };
 
-      await contract(THIS_CONTRACT, THIS_HASH, msg);
+      await contract(contracts.staking.contract, contracts.staking.hash, msg);
 
       setAnimationState("success");
     } catch (error) {

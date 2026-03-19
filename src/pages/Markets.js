@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import "./ManageLP.css";
+import "./Markets.css";
 import LiquidityManagement from "../components/LiquidityManagement";
 import tokens from "../utils/tokens";
 import { query, contract, getQueryAddress } from "../utils/contractUtils";
@@ -13,7 +13,7 @@ import { ERTH_API_BASE_URL } from "../utils/config";
 const ANALYTICS_URL = `${ERTH_API_BASE_URL}/analytics`;
 const TICKERS_URL = `${ERTH_API_BASE_URL}/tickers`;
 
-const ManageLP = ({ isKeplrConnected }) => {
+const Markets = ({ isKeplrConnected }) => {
   const [isManagingLiquidity, setIsManagingLiquidity] = useState(false);
   const [poolInfo, setPoolInfo] = useState(null);
   const [allPoolsData, setAllPoolsData] = useState({});
@@ -99,7 +99,7 @@ const ManageLP = ({ isKeplrConnected }) => {
       if (pool) {
         const ep = analyticsLatest.erthPrice;
         map[pool.token] = {
-          erthPriceUsd: pool.erthPrice || ep,
+          tokenPriceUsd: pool.tokenPrice || 0,
           lastPrice: parseFloat(t.last_price),
           volumeUsd: parseFloat(t.base_volume) * (pool.erthPrice || ep),
           liquidityUsd: parseFloat(t.liquidity_in_usd),
@@ -122,16 +122,24 @@ const ManageLP = ({ isKeplrConnected }) => {
 
       const erthRes = toMacroUnits(Number(st?.erth_reserve || 0), tokens.ERTH);
       const tvl = erthRes * 2;
+      const dv = st?.daily_volumes || [];
+      const volume7d = toMacroUnits(dv.slice(0, 7).reduce((a, v) => a + Number(v), 0), tokens.ERTH);
       const dr = st?.daily_rewards || [];
       const weekRewards = toMacroUnits(dr.slice(0, 7).reduce((a, v) => a + Number(v), 0), tokens.ERTH);
       const apr = tvl > 0 ? (weekRewards / tvl) * 52 * 100 : 0;
       const userRewards = toMacroUnits(ui?.pending_rewards || 0, tokens.ERTH);
 
+      // Token price: from tickers API, or derive from pool reserves
+      const tokenPriceUsd = t?.tokenPriceUsd || 0;
+      // ERTH price per token (how many ERTH for 1 of this token)
+      const tokenRes = toMacroUnits(Number(st?.token_b_reserve || 0), tokens[key] || { decimals: 6 });
+      const erthPerToken = tokenRes > 0 ? erthRes / tokenRes : 0;
+
       return {
         key,
-        price: t?.erthPriceUsd || erthPrice || 0,
-        lastPrice: t?.lastPrice || 0,
-        volumeUsd: t?.volumeUsd || 0,
+        price: tokenPriceUsd,
+        erthPerToken,
+        volume7d,
         liquidityUsd: t?.liquidityUsd || (tvl * (erthPrice || 0)),
         bid: t?.bid || 0,
         ask: t?.ask || 0,
@@ -144,7 +152,7 @@ const ManageLP = ({ isKeplrConnected }) => {
   }, [tokenKeys, tickerByToken, allPoolsData, erthPrice]);
 
   const totalTvlUsd = marketRows.reduce((s, r) => s + r.liquidityUsd, 0);
-  const total24hVol = marketRows.reduce((s, r) => s + r.volumeUsd, 0);
+  const totalVolume7d = marketRows.reduce((s, r) => s + r.volume7d, 0);
   const totalRewards = marketRows.reduce((s, r) => s + r.userRewards, 0);
 
   const refreshParent = () => setRefreshKey(p => p + 1);
@@ -218,23 +226,37 @@ const ManageLP = ({ isKeplrConnected }) => {
         />
       ) : (
         <>
-          {/* Stats Bar */}
-          <div className="markets-stats-bar">
-            <div className="markets-stat">
-              <span className="markets-stat-label">ERTH Price</span>
-              <span className="markets-stat-value green">{fmt(erthPrice)}</span>
+          {/* Header */}
+          <div className="markets-header">
+            <div className="markets-header-top">
+              <h1 className="markets-title">Markets</h1>
+              <p className="markets-subtitle">Trade and provide liquidity on Earth Exchange</p>
             </div>
-            <div className="markets-stat">
-              <span className="markets-stat-label">24h Volume</span>
-              <span className="markets-stat-value">{fmtN(total24hVol)}</span>
-            </div>
-            <div className="markets-stat">
-              <span className="markets-stat-label">Total TVL</span>
-              <span className="markets-stat-value">{fmtN(totalTvlUsd)}</span>
-            </div>
-            <div className="markets-stat">
-              <span className="markets-stat-label">Next Rewards</span>
-              <span className="markets-stat-value mono">{countdown}</span>
+            <div className="markets-header-stats">
+              <div className="markets-header-stat">
+                <span className="markets-header-stat-label">ERTH Price</span>
+                <div className="markets-header-stat-row">
+                  <img src="/images/coin/ERTH.png" alt="ERTH" className="markets-erth-logo" />
+                  <span className="markets-header-stat-value green">{fmt(erthPrice)}</span>
+                </div>
+              </div>
+              <div className="markets-header-divider" />
+              <div className="markets-header-stat">
+                <span className="markets-header-stat-label">Volume (7d)</span>
+                <span className="markets-header-stat-value">{erthPrice ? fmtN(totalVolume7d * erthPrice) : "--"}</span>
+                {totalVolume7d > 0 && <span className="markets-header-stat-sub">¤{Math.floor(totalVolume7d).toLocaleString()}</span>}
+              </div>
+              <div className="markets-header-divider" />
+              <div className="markets-header-stat">
+                <span className="markets-header-stat-label">Total TVL</span>
+                <span className="markets-header-stat-value">{fmtN(totalTvlUsd)}</span>
+                {marketRows.some(r => r.tvl > 0) && <span className="markets-header-stat-sub">¤{Math.floor(marketRows.reduce((s, r) => s + r.tvl, 0)).toLocaleString()}</span>}
+              </div>
+              <div className="markets-header-divider" />
+              <div className="markets-header-stat">
+                <span className="markets-header-stat-label">Next Rewards</span>
+                <span className="markets-header-stat-value mono">{countdown}</span>
+              </div>
             </div>
           </div>
 
@@ -259,10 +281,9 @@ const ManageLP = ({ isKeplrConnected }) => {
                 <tr>
                   <th className="th-pair">Pair</th>
                   <th>Price</th>
-                  <th>24h Volume</th>
+                  <th>Volume (7d)</th>
                   <th>Liquidity</th>
                   <th>APR</th>
-                  <th>Bid / Ask</th>
                   <th className="th-actions">Actions</th>
                 </tr>
               </thead>
@@ -271,29 +292,28 @@ const ManageLP = ({ isKeplrConnected }) => {
                   <tr key={row.key}>
                     <td className="td-pair">
                       <div className="pair-cell">
-                        <div className="pair-logos">
-                          <img src="/images/coin/ERTH.png" alt="ERTH" className="pair-logo" />
-                          <img src={`/images/coin/${row.key}.png`} alt={row.key} className="pair-logo pair-logo-overlap" />
-                        </div>
+                        <img src={`/images/coin/${row.key}.png`} alt={row.key} className="pair-logo" />
                         <div className="pair-names">
-                          <span className="pair-base">ERTH</span>
-                          <span className="pair-sep">/</span>
-                          <span className="pair-quote">{row.key}</span>
+                          <span className="pair-base">{row.key}</span>
+                          <span className="pair-quote">/ ERTH</span>
                         </div>
                       </div>
                     </td>
                     <td>
                       <span className="cell-primary green">{fmt(row.price)}</span>
-                      {row.lastPrice > 0 && (
-                        <span className="cell-secondary">{fmtR(row.lastPrice)} {row.key}</span>
+                      {row.erthPerToken > 0 && (
+                        <span className="cell-secondary">¤{row.erthPerToken.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       )}
                     </td>
                     <td>
-                      <span className="cell-primary">{fmtN(row.volumeUsd)}</span>
+                      <span className="cell-primary">{row.volume7d > 0 && erthPrice ? fmtN(row.volume7d * erthPrice) : "--"}</span>
+                      {row.volume7d > 0 && (
+                        <span className="cell-secondary">¤{Math.floor(row.volume7d).toLocaleString()}</span>
+                      )}
                     </td>
                     <td>
                       <span className="cell-primary">{fmtN(row.liquidityUsd)}</span>
-                      {row.tvl > 0 && erthPrice && (
+                      {row.tvl > 0 && (
                         <span className="cell-secondary">¤{Math.floor(row.tvl).toLocaleString()}</span>
                       )}
                     </td>
@@ -301,9 +321,6 @@ const ManageLP = ({ isKeplrConnected }) => {
                       <span className={`cell-primary ${row.apr > 0 ? "green" : ""}`}>
                         {row.apr > 0 ? `${row.apr.toFixed(1)}%` : "--"}
                       </span>
-                    </td>
-                    <td>
-                      <span className="cell-secondary mono">{fmtR(row.bid)} / {fmtR(row.ask)}</span>
                     </td>
                     <td className="td-actions">
                       <a href="/swap-tokens" className="action-btn trade-btn">Trade</a>
@@ -327,4 +344,4 @@ const ManageLP = ({ isKeplrConnected }) => {
   );
 };
 
-export default ManageLP;
+export default Markets;

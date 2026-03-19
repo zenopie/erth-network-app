@@ -345,19 +345,19 @@ const Bridge = ({ isKeplrConnected }) => {
     navigator.clipboard.writeText(text);
   };
 
-  // Initial data fetch
+  // Fetch public data always, user data when connected
   useEffect(() => {
+    showLoadingScreen(true);
+    const fetches = [fetchBridgeInfo(), fetchBridgeBalance()];
     if (isKeplrConnected) {
-      showLoadingScreen(true);
-      Promise.all([
-        fetchBridgeInfo(),
-        fetchBridgeBalance(),
+      fetches.push(
         fetchDepositStatus(),
         fetchXmrBalance(),
         fetchPendingWithdrawals(),
-        fetchCompletedWithdrawals(),
-      ]).finally(() => showLoadingScreen(false));
+        fetchCompletedWithdrawals()
+      );
     }
+    Promise.all(fetches).finally(() => showLoadingScreen(false));
   }, [isKeplrConnected, fetchBridgeInfo, fetchBridgeBalance, fetchDepositStatus, fetchXmrBalance, fetchPendingWithdrawals, fetchCompletedWithdrawals]);
 
   // Poll for deposit status when there are pending deposits

@@ -130,10 +130,13 @@
 .nav-links li {
   position: relative;
   list-style: none;
+  margin: 2px 8px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
 }
 
 .nav-links li:hover {
-  background: #eee;
+  background: #f0f4f0;
 }
 
 .nav-links li i {
@@ -193,15 +196,16 @@
   transform: rotate(90deg);
 }
 
-/* Hide submenu list when not open; show when open */
+/* Submenu list - slide down animation */
 .submenu .submenu-list {
-  display: none;
   padding-left: 40px;
-  transition: all 0.3s ease;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
 .submenu.open .submenu-list {
-  display: block;
+  max-height: 200px;
 }
 
 /* Prevent submenu link text from wrapping */
@@ -217,7 +221,7 @@
 }
 
 .submenu-list li:hover {
-  background: #ddd;
+  background: #e8ece8;
 }
 
 /* Profile */
@@ -314,11 +318,60 @@
   color: #d9534f;
 }
 
+/* Sidebar Login Area */
+.sidebar-login-area {
+  cursor: pointer;
+  border-radius: 12px;
+  margin: 0 8px;
+  padding: 12px 4px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-login-area:hover {
+  background: #f0f4f0;
+}
+
+.sidebar-login-area.disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
+.sidebar-login-text {
+  color: #4caf50;
+  font-weight: 600 !important;
+}
+
+.sidebar-connect-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(64, 86, 161, 0.2);
+  border-top-color: #4056a1;
+  border-radius: 50%;
+  animation: sidebar-spin 0.8s linear infinite;
+  margin: 8px 20px 8px 20px;
+}
+
+@keyframes sidebar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sidebar-login-error {
+  font-size: 11px;
+  color: #d9534f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
 /* Socials */
 .socials-link {
   display: flex;
   justify-content: center;
   text-align: center;
+  padding-top: 8px;
   transition: all 0.5s ease;
 }
 

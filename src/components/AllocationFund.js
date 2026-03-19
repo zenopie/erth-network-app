@@ -78,12 +78,10 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
   const [animationState, setAnimationState] = useState("loading");
 
   useEffect(() => {
-    if (isKeplrConnected) {
-      if (activeTab === "Actual") {
-        fetchDataActual();
-      } else if (activeTab === "Preferred") {
-        fetchUserInfo();
-      }
+    if (activeTab === "Actual") {
+      fetchDataActual();
+    } else if (activeTab === "Preferred" && isKeplrConnected) {
+      fetchUserInfo();
     }
   }, [isKeplrConnected, activeTab]);
 

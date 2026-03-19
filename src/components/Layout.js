@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar.js";
-import Login from "./Login.js";
-import { connectKeplr } from "../utils/contractUtils";
-import { showLoadingScreen } from "../utils/uiUtils";
-import "./Layout.css"; // Ensure you import the global and layout-specific styles
+import { connectKeplr, queryRegistryAndGetTokens, ensureRegistryLoaded } from "../utils/contractUtils";
+import contracts from "../utils/contracts";
+import tokens from "../utils/tokens";
+import "./Layout.css";
 
 const Layout = ({ children }) => {
   const [walletName, setWalletName] = useState("");
   const [isKeplrConnected, setKeplrConnected] = useState(false);
-  const [isRegistryLoaded, setRegistryLoaded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [isRegistryLoaded, setRegistryLoaded] = useState(!!contracts.exchange?.contract);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile viewport
@@ -25,6 +28,13 @@ const Layout = ({ children }) => {
       window.removeEventListener("resize", checkIfMobile);
     };
   }, []);
+
+  // Load registry on mount (enables public queries without login)
+  useEffect(() => {
+    if (!isRegistryLoaded) {
+      ensureRegistryLoaded().then((loaded) => setRegistryLoaded(loaded));
+    }
+  }, [isRegistryLoaded]);
 
   // Check for existing login on mount and verify wallet matches
   useEffect(() => {
@@ -78,14 +88,11 @@ const Layout = ({ children }) => {
     checkExistingLogin();
   }, []);
 
-  // Handle login success
-  const handleLoginSuccess = async () => {
-    setIsLoggedIn(true);
-  };
-
   // Connect Keplr after login
   useEffect(() => {
     if (!isLoggedIn) return;
+
+    setIsConnecting(true);
 
     const connectWallet = async (retryCount = 0) => {
       try {
@@ -93,7 +100,7 @@ const Layout = ({ children }) => {
         window.secretjs = secretjs;
         setWalletName(walletName);
         setKeplrConnected(true);
-        setRegistryLoaded(true); // Registry is loaded in connectKeplr
+        setIsConnecting(false);
         console.log("Keplr connected and registry loaded, retry count:", retryCount);
       } catch (error) {
         if (retryCount < 5) {
@@ -103,6 +110,8 @@ const Layout = ({ children }) => {
           setTimeout(() => connectWallet(retryCount + 1), delay);
         } else {
           console.log("Failed to connect to Keplr after multiple attempts:", error);
+          setIsConnecting(false);
+          setLoginError("Failed to connect wallet. Please try again.");
         }
       }
     };
@@ -130,27 +139,139 @@ const Layout = ({ children }) => {
     };
   }, [isLoggedIn]);
 
-  // Show login screen if not logged in
-  if (!isLoggedIn) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
+  // Handle login - sign permit via Keplr
+  const handleLogin = async () => {
+    setIsLoggingIn(true);
+    setLoginError("");
 
-  // Show loading spinner while connecting to Keplr
-  if (!isKeplrConnected || !isRegistryLoaded) {
+    try {
+      if (!window.keplr) {
+        throw new Error("Please install Keplr extension");
+      }
+
+      const chainId = 'secret-4';
+
+      await window.keplr.enable(chainId);
+
+      const offlineSigner = window.getOfflineSignerOnlyAmino(chainId);
+      const accounts = await offlineSigner.getAccounts();
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found in Keplr");
+      }
+
+      const userAddress = accounts[0].address;
+
+      // Query registry and get token addresses for permit
+      const tokenAddresses = await queryRegistryAndGetTokens();
+
+      // Add XMR token address if not already included
+      if (tokens.XMR?.contract && !tokenAddresses.includes(tokens.XMR.contract)) {
+        tokenAddresses.push(tokens.XMR.contract);
+      }
+
+      // Calculate expiration: 1 week from now (in seconds)
+      const oneWeekInSeconds = 7 * 24 * 60 * 60;
+      const expirationTimestamp = Math.floor(Date.now() / 1000) + oneWeekInSeconds;
+
+      // Create permit for signing
+      const permit = {
+        chain_id: chainId,
+        account_number: "0",
+        sequence: "0",
+        msgs: [
+          {
+            type: "query_permit",
+            value: {
+              permit_name: "erth_network_login",
+              allowed_tokens: tokenAddresses,
+              permissions: ["owner"]
+            }
+          }
+        ],
+        fee: {
+          amount: [{ denom: "uscrt", amount: "0" }],
+          gas: "1"
+        },
+        memo: ""
+      };
+
+      console.log("Requesting permit signature...");
+
+      const signedPermit = await window.keplr.signAmino(
+        chainId,
+        userAddress,
+        permit,
+        {
+          preferNoSetFee: true,
+          preferNoSetMemo: true
+        }
+      );
+
+      // Clear any existing permit first
+      localStorage.removeItem('erth_login_permit');
+      localStorage.removeItem('erth_user_address');
+      localStorage.removeItem('erth_permit_expiration');
+
+      const permitData = {
+        params: {
+          permit_name: "erth_network_login",
+          allowed_tokens: tokenAddresses,
+          chain_id: chainId,
+          permissions: ["owner"]
+        },
+        signature: signedPermit.signature
+      };
+
+      // Store new permit, address, and expiration
+      localStorage.setItem('erth_login_permit', JSON.stringify(permitData));
+      localStorage.setItem('erth_user_address', userAddress);
+      localStorage.setItem('erth_permit_expiration', expirationTimestamp.toString());
+
+      console.log("Login permit signed successfully for:", userAddress);
+
+      setIsLoggedIn(true);
+
+    } catch (err) {
+      console.error('Login error:', err);
+      setLoginError(err.message || 'Failed to login. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('erth_login_permit');
+    localStorage.removeItem('erth_user_address');
+    localStorage.removeItem('erth_permit_expiration');
+    window.location.reload();
+  };
+
+  // Brief loading while registry loads (instant for returning users with cache)
+  if (!isRegistryLoaded) {
     return (
       <div className="layout-loading">
         <div className="loading-spinner">
           <div className="spinner"></div>
-          <h2>Logging in</h2>
+          <h2>Loading</h2>
         </div>
       </div>
     );
   }
 
-  // Render the main layout
+  // Always render the layout - pages are accessible without login
   return (
     <div className={`layout ${isMobile ? "mobile" : ""}`}>
-      <Sidebar walletName={walletName} isKeplrConnected={isKeplrConnected} />
+      <Sidebar
+        walletName={walletName}
+        isKeplrConnected={isKeplrConnected}
+        isLoggingIn={isLoggingIn}
+        isConnecting={isConnecting}
+        loginError={loginError}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      />
       <div className="home-section">
         {/* Loading Screen - for page transitions */}
         <div id="loading-screen" className="loading remove"></div>
