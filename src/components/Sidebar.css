@@ -179,6 +179,22 @@
   background: #e8f4fc;
 }
 
+.nav-links li.active {
+  background: #4056a1;
+}
+
+.nav-links li.active i {
+  color: #fff;
+}
+
+.nav-links li.active .link_name {
+  color: #fff;
+}
+
+.nav-links li.active a {
+  color: #fff;
+}
+
 .nav-links li i {
   height: 45px;
   min-width: 80px;
@@ -265,6 +281,14 @@
 
 .submenu-list li:hover {
   background: #dceef8;
+}
+
+.submenu-list li.active {
+  background: #4056a1;
+}
+
+.submenu-list li.active a {
+  color: #fff;
 }
 
 /* Profile */

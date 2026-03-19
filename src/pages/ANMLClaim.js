@@ -1,32 +1,39 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import styles from "./ANMLClaim.module.css";
 import { showLoadingScreen } from "../utils/uiUtils";
+import { ERTH_API_BASE_URL } from "../utils/config";
 import anmlImage from "../images/anml.png";
 
-
 const ANMLClaim = () => {
-
-  const showMobileAppMessage = () => {
-    // Always show the mobile app download message - no loading needed
-    showLoadingScreen(false); // Ensure loading screen is hidden
-  };
+  const [anmlPrice, setAnmlPrice] = useState(null);
 
   useEffect(() => {
-    // Always show the mobile app download message immediately
-    showMobileAppMessage();
+    showLoadingScreen(false);
+
+    fetch(`${ERTH_API_BASE_URL}/analytics`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.latest?.anmlPrice) setAnmlPrice(data.latest.anmlPrice);
+      })
+      .catch(console.error);
   }, []);
+
+  const formatPrice = (price) => {
+    if (!price) return "";
+    if (price < 0.0001) return `$${price.toFixed(8)}`;
+    if (price < 0.01) return `$${price.toFixed(6)}`;
+    if (price < 1) return `$${price.toFixed(4)}`;
+    return `$${price.toFixed(2)}`;
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img
-          src={anmlImage}
-          alt="ANML"
-          className={styles.logoImg}
-        />
-        <h1 className={styles.title}>Claim ANML</h1>
+        <img src={anmlImage} alt="ANML" className={styles.logoImg} />
+        <h1 className={styles.title}>One ANML per day</h1>
+        {anmlPrice && <span className={styles.price}>{formatPrice(anmlPrice)}</span>}
         <p className={styles.message}>
-          Download the Earth Network mobile app to register your identity and claim your daily ANML tokens.
+          Download the mobile app to register and claim
         </p>
         <button
           className={styles.googlePlayButton}
@@ -35,26 +42,6 @@ const ANMLClaim = () => {
           <i className="bx bxl-play-store"></i>
           <span>Get it on Google Play</span>
         </button>
-        <div className={styles.features}>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>
-              <i className="bx bx-user-check"></i>
-            </span>
-            <span>Register your unique identity</span>
-          </div>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>
-              <i className="bx bx-coin-stack"></i>
-            </span>
-            <span>Claim 1 ANML per day</span>
-          </div>
-          <div className={styles.feature}>
-            <span className={styles.featureIcon}>
-              <i className="bx bx-shield-quarter"></i>
-            </span>
-            <span>Passport cryptographic signature secured</span>
-          </div>
-        </div>
       </div>
     </div>
   );
