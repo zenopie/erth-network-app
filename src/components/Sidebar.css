@@ -167,15 +167,9 @@
 
 /* Ensure link names do not wrap */
 .nav-links li a .link_name {
-  font-size: 15px;
-  font-weight: 500;
-  color: #9ca3af;
+  font-size: 18px;
+  font-weight: 600;
   white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-.nav-links li:hover .link_name {
-  color: #4056a1;
 }
 
 /* Submenu Styling */
@@ -196,15 +190,9 @@
 }
 
 .submenu .submenu-toggle .link_name {
-  font-size: 15px;
-  font-weight: 500;
-  color: #9ca3af;
+  font-size: 18px;
+  font-weight: 600;
   white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-.submenu:hover .submenu-toggle .link_name {
-  color: #4056a1;
 }
 
 .submenu .arrow {
@@ -235,18 +223,12 @@
   white-space: nowrap;
   display: flex;
   align-items: center;
-  height: 40px;
-  line-height: 40px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #9ca3af;
+  height: 45px;
+  line-height: 45px;
+  font-size: 16px;
+  font-weight: 600;
   text-decoration: none;
   padding-left: 20px;
-  transition: color 0.2s ease;
-}
-
-.submenu-list li:hover a {
-  color: #4056a1;
 }
 
 .submenu-list li:hover {
