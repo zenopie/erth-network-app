@@ -106,6 +106,7 @@ const Markets = ({ isKeplrConnected }) => {
           bid: parseFloat(t.bid),
           ask: parseFloat(t.ask),
           tickerId: t.ticker_id,
+          arbDepth: pool.arbDepth || 0,
         };
       }
     });
@@ -141,8 +142,7 @@ const Markets = ({ isKeplrConnected }) => {
         erthPerToken,
         volume7d,
         liquidityUsd: t?.liquidityUsd || (tvl * (erthPrice || 0)),
-        bid: t?.bid || 0,
-        ask: t?.ask || 0,
+        arbDepth: t?.arbDepth || 0,
         tvl,
         apr,
         userRewards,
@@ -284,6 +284,15 @@ const Markets = ({ isKeplrConnected }) => {
                   <th>Volume (7d)</th>
                   <th>Liquidity</th>
                   <th>APR</th>
+                  <th>
+                    Arb Depth
+                    <span className="arb-tooltip">
+                      ?
+                      <span className="arb-tooltip-text">
+                        Positive = ERTH underpriced (buy ERTH). Negative = ERTH overpriced (sell ERTH).
+                      </span>
+                    </span>
+                  </th>
                   <th className="th-actions">Actions</th>
                 </tr>
               </thead>
@@ -320,6 +329,11 @@ const Markets = ({ isKeplrConnected }) => {
                     <td>
                       <span className={`cell-primary ${row.apr > 0 ? "green" : ""}`}>
                         {row.apr > 0 ? `${row.apr.toFixed(1)}%` : "--"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`cell-primary ${row.arbDepth > 0 ? "green" : row.arbDepth < 0 ? "red" : ""}`}>
+                        {row.arbDepth !== 0 ? `${row.arbDepth > 0 ? "+" : "-"}¤${Math.abs(row.arbDepth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "¤0"}
                       </span>
                     </td>
                     <td className="td-actions">
