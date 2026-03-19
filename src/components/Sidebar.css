@@ -98,6 +98,14 @@
   display: none;
 }
 
+.sidebar.collapsed .nav-links li {
+  margin: 2px 0;
+}
+
+.sidebar.collapsed .nav-links li i {
+  min-width: 80px;
+}
+
 /* Logo */
 .logo-details {
   height: 110px;
@@ -132,7 +140,7 @@
   list-style: none;
   margin: 2px 8px;
   border-radius: 12px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, margin 0.5s ease;
 }
 
 .nav-links li:hover {
@@ -159,8 +167,15 @@
 
 /* Ensure link names do not wrap */
 .nav-links li a .link_name {
-  font-size: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #9ca3af;
   white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.nav-links li:hover .link_name {
+  color: #4056a1;
 }
 
 /* Submenu Styling */
@@ -181,8 +196,15 @@
 }
 
 .submenu .submenu-toggle .link_name {
-  font-size: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #9ca3af;
   white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.submenu:hover .submenu-toggle .link_name {
+  color: #4056a1;
 }
 
 .submenu .arrow {
@@ -213,11 +235,18 @@
   white-space: nowrap;
   display: flex;
   align-items: center;
-  height: 45px;
-  line-height: 45px;
-  font-size: 18px;
+  height: 40px;
+  line-height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #9ca3af;
   text-decoration: none;
   padding-left: 20px;
+  transition: color 0.2s ease;
+}
+
+.submenu-list li:hover a {
+  color: #4056a1;
 }
 
 .submenu-list li:hover {
