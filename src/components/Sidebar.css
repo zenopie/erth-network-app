@@ -12,7 +12,7 @@
 /* Home Section */
 .home-section {
   position: relative;
-  background: #f1f0ea;
+  background: #f8f7f2;
   height: 100vh;
   margin-left: 260px;
   width: calc(100% - 260px);
@@ -144,7 +144,7 @@
 }
 
 .nav-links li:hover {
-  background: #f0f4f0;
+  background: #e8f4fc;
 }
 
 .nav-links li i {
@@ -232,7 +232,7 @@
 }
 
 .submenu-list li:hover {
-  background: #e8ece8;
+  background: #dceef8;
 }
 
 /* Profile */
@@ -339,7 +339,7 @@
 }
 
 .sidebar-login-area:hover {
-  background: #f0f4f0;
+  background: #e8f4fc;
 }
 
 .sidebar-login-area.disabled {
