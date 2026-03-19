@@ -8,9 +8,6 @@ import contracts from "../utils/contracts";
 import StatusModal from "../components/StatusModal";
 import styles from "./WeeklyAirdropClaim.module.css";
 
-// Contract addresses accessed dynamically (populated by registry at runtime)
-
-// Validator address for staking link
 const VALIDATOR_ADDRESS = "secretvaloper19g3d3ug9xwtwswq4qef890xu3j0d4r4nvpz0jd";
 
 const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
@@ -29,313 +26,159 @@ const WeeklyAirdropClaim = ({ isKeplrConnected }) => {
   }, []);
 
   useEffect(() => {
-    if (isKeplrConnected) {
-      fetchAirdropData();
-    }
+    if (isKeplrConnected) fetchAirdropData();
   }, [isKeplrConnected]);
 
   useEffect(() => {
-    const updateCountdown = () => {
+    const tick = () => {
       const now = new Date();
-      const nextSunday = new Date(now);
-
-      // Get current day (0 = Sunday, 1 = Monday, etc.)
-      const currentDay = now.getUTCDay();
-
-      // Calculate days until next Sunday (0)
-      const daysUntilSunday = currentDay === 0 ? 7 : 7 - currentDay;
-
-      // Set to next Sunday at midnight UTC
-      nextSunday.setUTCDate(now.getUTCDate() + daysUntilSunday);
-      nextSunday.setUTCHours(0, 0, 0, 0);
-
-      const diff = nextSunday - now;
-
-      if (diff <= 0) {
-        setCountdown("00:00:00:00");
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setCountdown(
-        `${String(days).padStart(2, '0')}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-      );
+      const next = new Date(now);
+      const day = now.getUTCDay();
+      next.setUTCDate(now.getUTCDate() + (day === 0 ? 7 : 7 - day));
+      next.setUTCHours(0, 0, 0, 0);
+      const diff = next - now;
+      if (diff <= 0) { setCountdown("00:00:00:00"); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(d).padStart(2,'0')}:${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
     };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(interval);
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, []);
 
   const fetchPrices = async () => {
     try {
-      const response = await fetch(`${ERTH_API_BASE_URL}/analytics`);
-      if (response.ok) {
-        const data = await response.json();
-        setPrices(data.latest);
-      }
-    } catch (err) {
-      console.error("Error fetching prices:", err);
-    }
+      const r = await fetch(`${ERTH_API_BASE_URL}/analytics`);
+      if (r.ok) setPrices((await r.json()).latest);
+    } catch (e) { console.error(e); }
   };
 
-  const calculateAirdropAPR = () => {
-    if (!roundInfo || !prices) return null;
-
-    const erthPrice = prices.erthPrice || 0;
-    const scrtPrice = prices.scrtPrice || 0;
-
-    if (erthPrice === 0 || scrtPrice === 0) return null;
-
-    const totalStake = parseFloat(formatAmount(roundInfo.total_stake));
-    const weeklyRewards = parseFloat(formatAmount(roundInfo.total_amount));
-
-    if (totalStake === 0) return null;
-
-    // Calculate weekly return in USD
-    const weeklyRewardsUSD = weeklyRewards * erthPrice;
-    const totalStakeUSD = totalStake * scrtPrice;
-
-    // Weekly return percentage
-    const weeklyReturn = (weeklyRewardsUSD / totalStakeUSD) * 100;
-
-    // Annualize (52 weeks)
-    const apr = weeklyReturn * 52;
-
-    return apr.toFixed(2);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-  };
-
-  // Fetch round info (public - no wallet needed)
   const fetchRoundInfo = async () => {
     try {
-      const airdropContract = contracts.airdrop?.contract;
-      const airdropHash = contracts.airdrop?.hash;
-      let roundResp = null;
-
-      if (airdropContract) {
-        const roundQuery = { get_current_round: {} };
-        roundResp = await query(airdropContract, airdropHash, roundQuery);
-      }
-
-      const metaResponse = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/meta`);
-      if (metaResponse.ok) {
-        const metaJson = await metaResponse.json();
-        setRoundInfo({ ...metaJson, ...roundResp });
-      } else if (roundResp) {
-        setRoundInfo(roundResp);
-      }
-    } catch (err) {
-      console.error("Error fetching round info:", err);
-    }
+      const ac = contracts.airdrop?.contract;
+      let rr = null;
+      if (ac) rr = await query(ac, contracts.airdrop.hash, { get_current_round: {} });
+      const mr = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/meta`);
+      if (mr.ok) setRoundInfo({ ...(await mr.json()), ...rr });
+      else if (rr) setRoundInfo(rr);
+    } catch (e) { console.error(e); }
   };
 
-  // Fetch user-specific airdrop data (requires wallet)
   const fetchAirdropData = async (refetch = false) => {
-    if (!window.secretjs || !window.secretjs.address) {
-      return;
-    }
-
+    if (!window.secretjs?.address) return;
     try {
       if (!refetch) showLoadingScreen(true);
       setError(null);
-
-      const userAddress = window.secretjs.address;
-
-      const claimResponse = await fetch(
-        `${ERTH_API_BASE_URL}/airdrop/current/${userAddress}`
-      );
-
-      if (!claimResponse.ok) {
-        if (claimResponse.status === 404) {
-          setError("No airdrop allocation found for your address");
-          if (!refetch) showLoadingScreen(false);
-          return;
-        }
-        throw new Error(`Failed to fetch claim data: ${claimResponse.statusText}`);
+      const addr = window.secretjs.address;
+      const cr = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/${addr}`);
+      if (!cr.ok) {
+        if (cr.status === 404) { setError("No allocation found"); if (!refetch) showLoadingScreen(false); return; }
+        throw new Error(cr.statusText);
       }
-
-      const claimJson = await claimResponse.json();
-      setClaimData(claimJson);
-
-      // Check if user has already claimed
-      const hasClaimedQuery = { has_claimed: { address: userAddress } };
-      const hasClaimedResp = await query(contracts.airdrop.contract, contracts.airdrop.hash, hasClaimedQuery);
-      setHasClaimed(hasClaimedResp.has_claimed);
-
+      setClaimData(await cr.json());
+      const hc = await query(contracts.airdrop.contract, contracts.airdrop.hash, { has_claimed: { address: addr } });
+      setHasClaimed(hc.has_claimed);
       if (!refetch) showLoadingScreen(false);
-    } catch (err) {
-      console.error("Error fetching airdrop data:", err);
-      setError(err.message || "Failed to load airdrop data");
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "Failed to load");
       if (!refetch) showLoadingScreen(false);
     }
   };
 
   const handleClaim = async () => {
     if (!claimData || hasClaimed) return;
-
     try {
       setIsModalOpen(true);
       setAnimationState("loading");
-
-      const claimMsg = {
-        claim: {
-          amount: claimData.amount,
-          proof: claimData.proof,
-        },
-      };
-
-      const resp = await contract(contracts.airdrop.contract, contracts.airdrop.hash, claimMsg);
-
-      if (resp.code === 0) {
-        setAnimationState("success");
-        setHasClaimed(true);
-      } else {
-        setAnimationState("error");
-        console.error("Claim failed:", resp);
-      }
-    } catch (err) {
-      console.error("Error claiming airdrop:", err);
+      const resp = await contract(contracts.airdrop.contract, contracts.airdrop.hash, {
+        claim: { amount: claimData.amount, proof: claimData.proof },
+      });
+      setAnimationState(resp.code === 0 ? "success" : "error");
+      if (resp.code === 0) setHasClaimed(true);
+    } catch (e) {
+      console.error(e);
       setAnimationState("error");
     } finally {
-      fetchAirdropData(true); // Refresh data
+      fetchAirdropData(true);
     }
   };
 
-  const calculateClaimableAmount = () => {
+  const formatAmount = (micro) => micro ? toMacroUnits(micro, tokens["ERTH"]) : "0";
+
+  const getClaimable = () => {
     if (!claimData || !roundInfo) return "0";
-
-    const stakeAmount = parseFloat(claimData.amount);
-    const totalStake = parseFloat(roundInfo.total_stake);
-    const totalAmount = parseFloat(roundInfo.total_amount);
-
-    if (totalStake === 0) return "0";
-
-    // Calculate: (stake_amount * total_amount) / total_stake
-    const claimableAmount = (totalAmount * stakeAmount) / totalStake;
-
-    return toMacroUnits(claimableAmount.toString(), tokens["ERTH"]);
+    const amt = (parseFloat(roundInfo.total_amount) * parseFloat(claimData.amount)) / parseFloat(roundInfo.total_stake);
+    return parseFloat(toMacroUnits(amt.toString(), tokens["ERTH"])).toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
-  const formatAmount = (microAmount) => {
-    if (!microAmount) return "0";
-    return toMacroUnits(microAmount, tokens["ERTH"]);
+  const getAPR = () => {
+    if (!roundInfo || !prices) return null;
+    const ep = prices.erthPrice || 0, sp = prices.scrtPrice || 0;
+    if (!ep || !sp) return null;
+    const ts = parseFloat(formatAmount(roundInfo.total_stake));
+    const wr = parseFloat(formatAmount(roundInfo.total_amount));
+    if (!ts) return null;
+    return ((wr * ep) / (ts * sp) * 52 * 100).toFixed(1);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleString();
-  };
+  const apr = getAPR();
 
   return (
     <>
-    <div className={styles.testBox}>
-      <img
-        src="/images/coin/ERTH.png"
-        alt="ERTH"
-        className={styles.logoImg}
-      />
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.logoImg} />
 
-      {error ? (
-        <div className={styles.noAirdropMessage}>
-          {error}
-        </div>
-      ) : claimData && (
-        <div className={styles.amountDisplay}>
-          {calculateClaimableAmount()}
-          <span className={styles.tokenSymbol}>ERTH</span>
-        </div>
-      )}
-
-      {calculateAirdropAPR() && (
-        <div className={styles.combinedAPRContainer}>
-          <div className={styles.combinedAPR}>
-            {(20.29 + parseFloat(calculateAirdropAPR())).toFixed(2)}% <span className={styles.aprText}>APR</span>
-          </div>
-          <div className={styles.infoIcon}>
-            <i className="bx bx-info-circle"></i>
-            <div className={styles.tooltip}>
-              <span className={styles.baseAPR}>20.29%</span>
-              <span className={styles.aprSubLabel}> (validator)</span>
-              <span className={styles.plusSign}> + </span>
-              <span className={styles.airdropAPR}>{calculateAirdropAPR()}%</span>
-              <span className={styles.aprSubLabel}> (airdrop)</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {roundInfo && (
-        <div className={styles.infoText}>
-          Round {roundInfo.round_id || 'N/A'} • Snapshot: {formatDate(roundInfo.generated_at || claimData?.run_generated_at)}
-        </div>
-      )}
-
-      {!isKeplrConnected ? (
-        <>
-          <button
-            className={styles.claimButton}
-            onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
-          >
-            Stake SCRT
-          </button>
-          <div className={styles.countdownText}>
-            Connect wallet to check your allocation
-          </div>
-          {countdown && (
-            <div className={styles.countdownText}>
-              Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
-            </div>
+          {isKeplrConnected && claimData && !error ? (
+            <h1 className={styles.title}>{getClaimable()} ERTH</h1>
+          ) : (
+            <h1 className={styles.title}>Weekly Airdrop</h1>
           )}
-        </>
-      ) : error ? (
-        <>
-          <button
-            className={styles.claimButton}
-            onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
-          >
-            Stake SCRT
-          </button>
-          {countdown && (
-            <div className={styles.countdownText}>
-              Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
-            </div>
-          )}
-        </>
-      ) : claimData && (
-        hasClaimed ? (
-          <>
-            <div className={styles.claimedMessage}>
-              Already Claimed
-            </div>
-            {countdown && (
-              <div className={styles.countdownText}>
-                Next airdrop in: <span className={styles.countdownTimer}>{countdown}</span>
-              </div>
-            )}
-          </>
-        ) : (
-          <button className={styles.claimButton} onClick={handleClaim}>
-            Claim Airdrop
-          </button>
-        )
-      )}
-    </div>
 
-    <StatusModal
-      isOpen={isModalOpen}
-      onClose={handleModalClose}
-      animationState={animationState}
-    />
-  </>
+          {apr && <span className={styles.apr}>{(20.29 + parseFloat(apr)).toFixed(1)}% APR</span>}
+
+          <p className={styles.countdown}>
+            Next airdrop in <span className={styles.timer}>{countdown}</span>
+          </p>
+
+          {!isKeplrConnected ? (
+            <>
+              <button
+                className={styles.button}
+                onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
+              >
+                Stake SCRT
+              </button>
+              <p className={styles.sub}>Connect wallet to check your allocation</p>
+            </>
+          ) : error ? (
+            <>
+              <button
+                className={styles.button}
+                onClick={() => window.open(`https://wallet.keplr.app/chains/secret-network?modal=validator&chain=secret-4&validator_address=${VALIDATOR_ADDRESS}`, '_blank')}
+              >
+                Stake SCRT
+              </button>
+              <p className={styles.sub}>{error}</p>
+            </>
+          ) : hasClaimed ? (
+            <>
+              <div className={styles.claimed}>Already Claimed</div>
+            </>
+          ) : claimData ? (
+            <button className={styles.button} onClick={handleClaim}>
+              Claim Airdrop
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <StatusModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} animationState={animationState} />
+    </>
   );
 };
 

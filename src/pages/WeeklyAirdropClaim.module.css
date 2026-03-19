@@ -1,244 +1,87 @@
-/* Airdrop Claim Page */
-.testBox {
+/* Weekly Airdrop Page */
+.container {
   display: flex;
   flex-direction: column;
-  text-align: center;
-  justify-content: center;
   align-items: center;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  max-width: 500px;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
   box-sizing: border-box;
-  padding: 20px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 300px;
+  width: 100%;
 }
 
 .logoImg {
-  max-width: 300px;
-  width: 100%;
-  height: auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
   margin-bottom: 20px;
 }
 
-.amountDisplay {
-  font-size: 4rem;
+.title {
+  font-size: 22px;
   font-weight: 700;
-  color: #4CAF50;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+  color: #111827;
+  margin: 0 0 8px 0;
 }
 
-.combinedAPRContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 0.5rem;
-}
-
-.combinedAPR {
-  font-size: 2rem;
+.apr {
+  font-size: 28px;
   font-weight: 700;
-  color: #4CAF50;
-  text-align: center;
+  color: #16a34a;
+  margin-bottom: 12px;
 }
 
-.aprText {
-  font-size: 1.5rem;
-  color: #293462;
+.countdown {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0 0 24px 0;
 }
 
-.infoIcon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  margin-top: 6px;
+.timer {
+  font-weight: 700;
+  color: #4caf50;
+  font-variant-numeric: tabular-nums;
 }
 
-.infoIcon i {
-  font-size: 1.2rem;
-  color: #293462;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tooltip {
-  display: none;
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  border: 2px solid #293462;
-  border-radius: 8px;
-  padding: 8px 12px;
-  white-space: nowrap;
-  margin-bottom: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-}
-
-.infoIcon:hover .tooltip {
-  display: block;
-}
-
-.tokenSymbol {
-  font-size: 2rem;
-  color: #293462;
-}
-
-.infoText {
-  font-size: 16px;
-  color: #293462;
-  margin-bottom: 5px;
-  padding: 5px;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.baseAPR {
-  color: #293462;
-  font-weight: 600;
-}
-
-.plusSign {
-  color: #293462;
-}
-
-.airdropAPR {
-  color: #4CAF50;
-  font-weight: 600;
-}
-
-.aprLabel {
-  color: #293462;
-  font-weight: 600;
-}
-
-.aprSubLabel {
-  color: #293462;
-  font-weight: 400;
-  font-size: 12px;
-}
-
-.message {
-  font-size: 20px;
-  color: #293462;
-  margin-bottom: 10px;
-  padding: 10px;
-  text-align: center;
-}
-
-.noAirdropMessage {
-  font-size: 20px;
-  color: #f44336;
-  padding: 10px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.claimedMessage {
-  display: inline-block;
-  padding: 15px 40px;
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
-  border: 2px solid #4CAF50;
-  border-radius: 25px;
-  font-weight: 600;
+.button {
+  width: 100%;
+  padding: 15px;
   font-size: 18px;
-  margin-top: 20px;
-}
-
-.countdownText {
-  margin-top: 15px;
-  font-size: 16px;
-  color: #293462;
-  text-align: center;
-}
-
-.countdownTimer {
-  font-weight: 700;
-  color: #4CAF50;
-  font-family: monospace;
-  font-size: 18px;
-}
-
-.claimButton {
-  margin-top: 20px;
+  font-weight: 600;
   background-color: #4caf50;
+  color: white;
   border: none;
-  font-size: 20px;
-  border-radius: 30px;
-  color: white !important;
-  padding: 12px 25px;
-  box-sizing: border-box;
-  text-align: center;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
-  white-space: nowrap;
   transition: background-color 0.2s ease;
 }
 
-.claimButton:hover {
+.button:hover {
   background-color: #45a049;
 }
 
-.claimButton:active {
-  background-color: #45a049;
+.sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 12px;
 }
 
-.claimButton:disabled {
-  background-color: #4caf50;
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.retryButton {
-  padding: 12px 40px;
-  font-size: 16px;
+.claimed {
+  padding: 15px;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
   font-weight: 600;
-  color: #293462;
-  background: transparent;
-  border: 2px solid #293462;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 10px;
-}
-
-.retryButton:hover {
-  background: #293462;
-  color: #fff;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .testBox {
-    max-width: 90%;
-    padding: 15px;
-  }
-
-  .amountDisplay {
-    font-size: 2.5rem;
-  }
-
-  .tokenSymbol {
-    font-size: 1.5rem;
-  }
-
-  .infoText {
-    font-size: 14px;
-  }
-
-  .claimButton {
-    padding: 12px 40px;
-    font-size: 16px;
-  }
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.08);
+  border-radius: 12px;
 }
