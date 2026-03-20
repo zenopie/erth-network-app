@@ -97,6 +97,8 @@ const Markets = ({ isKeplrConnected }) => {
   }), [marketRows, sortBy, sortOrder]);
 
   const totalRewards = marketRows.reduce((s,r) => s + r.userRewards, 0);
+  const totalTvlUsd = marketRows.reduce((s,r) => s + r.liquidityUsd, 0);
+  const totalVolume7d = marketRows.reduce((s,r) => s + r.volume7d, 0);
   const refreshParent = () => setRefreshKey(p => p+1);
   const toggleManageLiquidity = (pd = null) => { setPoolInfo(pd); setIsManagingLiquidity(p => !p); };
 
@@ -134,6 +136,14 @@ const Markets = ({ isKeplrConnected }) => {
               <div>
                 <span className="markets-erth-label">ERTH Price</span>
                 <span className="markets-erth-price">{fmt(erthPrice)}</span>
+              </div>
+              <div className="markets-header-stat">
+                <span className="markets-erth-label">Total TVL</span>
+                <span className="markets-header-val">{fmtN(totalTvlUsd)}</span>
+              </div>
+              <div className="markets-header-stat">
+                <span className="markets-erth-label">Volume (7d)</span>
+                <span className="markets-header-val">{erthPrice ? fmtN(totalVolume7d * erthPrice) : "--"}</span>
               </div>
             </div>
             <div className="markets-header-right">
