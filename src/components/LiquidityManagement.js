@@ -20,6 +20,7 @@ const LiquidityManagement = ({
   isKeplrConnected,
   toggleManageLiquidity,
   poolData,         // { pool_info, user_info, tokenKey }
+  embedded = false,
 }) => {
   // Tabs
   const [activeTab, setActiveTab] = useState('Info');
@@ -308,20 +309,19 @@ const LiquidityManagement = ({
   });
 
   return (
-    <div className={styles.box}>
+    <div className={embedded ? styles.embedded : styles.box}>
       <StatusModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         animationState={animationState}
       />
 
-      <h2>Manage Liquidity</h2>
-      <div
-        className={styles.closeButton}
-        onClick={toggleManageLiquidity}
-      >
-        X
-      </div>
+      {!embedded && (
+        <>
+          <h2>Manage Liquidity</h2>
+          <div className={styles.closeButton} onClick={toggleManageLiquidity}>X</div>
+        </>
+      )}
 
       <div className={styles.tab}>
         <button

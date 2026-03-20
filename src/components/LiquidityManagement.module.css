@@ -10,6 +10,10 @@
   margin: 0 auto;
 }
 
+.embedded {
+  width: 100%;
+}
+
 .closeButton {
   position: absolute;
   top: -20px;
