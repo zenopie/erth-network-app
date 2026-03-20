@@ -1,415 +1,279 @@
-/*---- Markets Page ----*/
+/* Markets Page */
 .markets-page {
   width: 100%;
-  max-width: 960px;
+  max-width: 900px;
   margin: 0 auto;
-  align-self: flex-start;
   padding: 20px;
   padding-top: 80px;
+  align-self: flex-start;
 }
 
-/*---- Header ----*/
+/* Header */
 .markets-header {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 24px 28px;
-  margin-bottom: 16px;
-}
-
-.markets-header-top {
-  margin-bottom: 20px;
-}
-
-.markets-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 2px 0;
-}
-
-.markets-subtitle {
-  font-size: 13px;
-  color: #9ca3af;
-  margin: 0;
-  font-weight: 400;
-}
-
-.markets-header-stats {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-}
-
-.markets-header-divider {
-  width: 1px;
-  height: 36px;
-  background: #e5e7eb;
-  align-self: center;
-  flex-shrink: 0;
-}
-
-.markets-header-stat {
-  flex: 1;
-  min-width: 0;
-}
-
-.markets-header-stat-label {
-  display: block;
-  font-size: 12px;
-  color: #9ca3af;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.markets-header-stat-value {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.markets-header-stat-value.green {
-  color: #16a34a;
-}
-
-.markets-header-stat-value.mono {
-  font-variant-numeric: tabular-nums;
-}
-
-.markets-header-stat-sub {
-  display: block;
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 1px;
-}
-
-.markets-header-stat-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.markets-erth-logo {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/*---- Rewards Banner ----*/
-.markets-rewards-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
   margin-bottom: 16px;
+  padding: 0 4px;
 }
 
-.markets-rewards-left {
+.markets-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.markets-rewards-label {
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 500;
+.markets-erth-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
 }
 
-.markets-rewards-amount {
-  font-size: 16px;
+.markets-erth-label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.markets-erth-price {
+  display: block;
+  font-size: 22px;
   font-weight: 700;
   color: #16a34a;
 }
 
-.markets-rewards-usd {
-  font-size: 13px;
-  color: #6b7280;
+.markets-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.markets-claim-btn {
-  padding: 8px 24px;
-  background: #16a34a;
-  color: #fff;
+.markets-countdown {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.markets-timer {
+  font-weight: 700;
+  color: #4caf50;
+  font-variant-numeric: tabular-nums;
+}
+
+.markets-claim-all {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
-.markets-claim-btn:hover {
-  background: #15803d;
+.markets-claim-all:hover {
+  background-color: #45a049;
 }
 
-/*---- Markets Table ----*/
-.markets-table-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  overflow: visible;
-}
-
-.markets-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.markets-table th {
-  text-align: left;
-  padding: 14px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  border-bottom: 1px solid #f3f4f6;
-  white-space: nowrap;
-}
-
-.markets-table td {
-  padding: 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.markets-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.markets-table tbody tr {
-  transition: background 0.15s;
-}
-
-.markets-table tbody tr:hover {
-  background: #fafafa;
-}
-
-.th-pair {
-  padding-left: 24px !important;
-}
-
-.th-actions {
-  text-align: right !important;
-  padding-right: 24px !important;
-}
-
-/*---- Pair Cell ----*/
-.td-pair {
-  padding-left: 24px !important;
-}
-
-.pair-cell {
+/* Column Headers */
+.pool-row-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  padding: 0 24px 8px;
 }
 
-.pair-logo {
-  width: 30px;
-  height: 30px;
+.pool-row-header .pool-row-pair {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.pool-header-label {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.pool-header-label:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.pool-header-label.active {
+  color: #4caf50;
+}
+
+.pool-row-actions-placeholder {
+  min-width: 130px;
+  margin-left: 16px;
+}
+
+/* Pool Row Card */
+.pool-row {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px 24px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s;
+}
+
+.pool-row:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Left: pair */
+.pool-row-pair {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 160px;
+}
+
+.pool-row-logo {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  flex-shrink: 0;
 }
 
-.pair-names {
+.pool-row-name {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
 }
 
-.pair-base {
-  font-size: 15px;
-  font-weight: 600;
+.pool-row-token {
+  font-size: 16px;
+  font-weight: 700;
   color: #111827;
 }
 
-.pair-quote {
-  font-size: 12px;
-  font-weight: 400;
+.pool-row-slash {
+  font-size: 13px;
   color: #9ca3af;
 }
 
-/*---- Data Cells ----*/
-.cell-primary {
-  display: block;
+.pool-row-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+/* Middle: stats */
+.pool-row-stats {
+  display: flex;
+  flex: 1;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.pool-row-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+.pool-row-stat-val {
   font-size: 14px;
   font-weight: 600;
   color: #111827;
 }
 
-.cell-primary.green {
+.pool-row-stat-val.green {
   color: #16a34a;
 }
 
-.cell-primary.red {
+.pool-row-stat-val.red {
   color: #ef4444;
 }
 
-/*---- Arb Depth Tooltip ----*/
-.arb-tooltip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 4px;
-  background: #e5e7eb;
-  border-radius: 50%;
-  font-size: 9px;
-  font-weight: 700;
-  color: #6b7280;
-  cursor: help;
-  vertical-align: middle;
-}
-
-.arb-tooltip-text {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 220px;
-  background: #fff;
-  color: #374151;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #4caf50;
-  font-size: 12px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  line-height: 1.5;
-  z-index: 100;
-  transition: opacity 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  white-space: normal;
-}
-
-.arb-tooltip-text::after {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent #4caf50 transparent;
-}
-
-.arb-tooltip:hover .arb-tooltip-text {
-  visibility: visible;
-  opacity: 1;
-}
-
-.cell-secondary {
-  display: block;
-  font-size: 12px;
+.pool-row-stat-label {
+  font-size: 11px;
   color: #9ca3af;
-  margin-top: 2px;
 }
 
-.cell-secondary.mono {
-  font-family: "SF Mono", Monaco, monospace;
-  font-size: 12px;
+/* Right: actions */
+.pool-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: 16px;
 }
 
-/*---- Action Buttons ----*/
-.td-actions {
-  text-align: right !important;
-  padding-right: 24px !important;
+.pool-row-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background-color 0.2s;
   white-space: nowrap;
 }
 
-.action-btn {
-  display: inline-block;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  text-decoration: none;
-  transition: all 0.15s;
-  margin-left: 6px;
+.pool-row-btn.primary {
+  background-color: #4caf50;
+  color: white;
 }
 
-.trade-btn {
-  background: #f3f4f6;
+.pool-row-btn.primary:hover {
+  background-color: #45a049;
+}
+
+.pool-row-btn.secondary {
+  background-color: #f3f4f6;
   color: #374151;
 }
 
-.trade-btn:hover {
-  background: #e5e7eb;
+.pool-row-btn.secondary:hover {
+  background-color: #e5e7eb;
 }
 
-.lp-btn {
-  background: #ecfdf5;
+.pool-row-btn.claim {
+  background-color: #ecfdf5;
   color: #16a34a;
 }
 
-.lp-btn:hover {
-  background: #dcfce7;
+.pool-row-btn.claim:hover {
+  background-color: #dcfce7;
 }
 
-.claim-btn {
-  background: #16a34a;
-  color: #fff;
-}
-
-.claim-btn:hover {
-  background: #15803d;
-}
-
-/*---- Responsive ----*/
+/* Responsive */
 @media (max-width: 768px) {
   .markets-page {
     padding: 12px;
     padding-top: 60px;
   }
 
-  .markets-header {
-    padding: 18px 16px;
-  }
-
-  .markets-header-stats {
+  .pool-row {
     flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .markets-header-divider {
-    display: none;
-  }
-
-  .markets-header-stat {
-    flex: 0 0 calc(50% - 8px);
-  }
-
-  .markets-rewards-banner {
-    flex-direction: column;
     gap: 12px;
-    text-align: center;
+    padding: 16px;
   }
 
-  .markets-rewards-left {
-    flex-direction: column;
-    gap: 4px;
+  .pool-row-pair {
+    min-width: unset;
+    flex: 1;
   }
 
-  .markets-table-card {
-    overflow-x: auto;
+  .pool-row-stats {
+    width: 100%;
+    order: 3;
   }
 
-  .markets-table {
-    min-width: 700px;
+  .pool-row-actions {
+    margin-left: auto;
+    order: 2;
   }
 }
