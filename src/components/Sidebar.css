@@ -346,8 +346,12 @@
   flex-grow: 1;
 }
 
-.profile-details .job {
-  font-size: 12px;
+.wallet-address {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: monospace;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
 }
 
 .logout-button {
@@ -369,8 +373,7 @@
   line-height: 1;
 }
 
-.logout-button:hover {
-  background: #f0f0f0;
+.logout-button:hover i {
   color: #d9534f;
 }
 

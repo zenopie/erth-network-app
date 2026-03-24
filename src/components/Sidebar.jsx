@@ -4,6 +4,7 @@ import "./Sidebar.css";
 import logo from "../images/logo.png";
 import keplr from "../images/keplr.png";
 import useIsMobile from "../hooks/useIsMobile";
+import { getUserAddress } from "../utils/contractUtils";
 
 const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, loginError, onLogin, onLogout }) => {
   const location = useLocation();
@@ -159,7 +160,9 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
                     <i className="bx bx-log-out"></i>
                   </button>
                 </div>
-                <div className="job"></div>
+                <div className="wallet-address">
+                  {(() => { const addr = getUserAddress(); return addr ? `${addr.slice(0, 10)}...${addr.slice(-4)}` : ""; })()}
+                </div>
               </div>
             </div>
           ) : (
