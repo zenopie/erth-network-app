@@ -1,0 +1,146 @@
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(248, 247, 242, 0.85);
+  z-index: 9998;
+}
+
+.modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160px;
+  height: 160px;
+  margin-top: -80px;
+  margin-left: -80px;
+  z-index: 9999;
+}
+
+/* ---- Orbit ---- */
+.orbit {
+  position: absolute;
+  inset: 0;
+}
+
+.erth {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  top: 40px;
+  left: 40px;
+}
+
+.track {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  top: 10px;
+  left: 10px;
+  border: 2px dashed rgba(39, 54, 107, 0.1);
+  border-radius: 50%;
+}
+
+.path {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  top: 10px;
+  left: 10px;
+  animation: spin 2.5s linear infinite;
+}
+
+.anml {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  top: 50px;
+  right: -20px;
+  animation: unspin 2.5s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes unspin {
+  to { transform: rotate(-360deg); }
+}
+
+/* ---- Result ---- */
+.result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+}
+
+/* ---- Success: pure CSS checkmark ---- */
+.success-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #7ac142;
+  position: relative;
+  animation: pop 0.4s cubic-bezier(0.65, 0, 0.45, 1) both;
+}
+
+.success-icon::after {
+  content: "";
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: 12px;
+  height: 22px;
+  border: solid #fff;
+  border-width: 0 4px 4px 0;
+  transform: translate(-50%, -55%) rotate(45deg);
+  opacity: 0;
+  animation: check-appear 0.3s ease-out 0.35s forwards;
+}
+
+@keyframes pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes check-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Error: pure CSS crossmark ---- */
+.error-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 4px solid #dc3545;
+  position: relative;
+  animation: pop 0.4s cubic-bezier(0.65, 0, 0.45, 1) both;
+}
+
+.error-icon::before,
+.error-icon::after {
+  content: "";
+  width: 24px;
+  height: 4px;
+  background: #dc3545;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 2px;
+  opacity: 0;
+  animation: check-appear 0.3s ease-out 0.35s forwards;
+}
+
+.error-icon::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.error-icon::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}

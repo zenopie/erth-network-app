@@ -1,1 +1,0 @@
-export const ERTH_API_BASE_URL = "https://api.erth.network";

@@ -1,40 +1,27 @@
-/* Google Fonts Import Link */
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
-
-/* Global Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Lexend', sans-serif;
-  font-weight: 450;
-  color: #27366b;
-}
-
 /* Home Section Styling */
 
 .home-content {
   display: flex;
-  flex-direction: column; /* Stack elements vertically */
-  align-items: center; /* Centers horizontally within home-content */
-  justify-content: center; /* Centers vertically within home-content */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
 }
 
 /*--- Loading Screen Styling ---*/
 #loading-screen {
-    background: url('../images/loading.gif') no-repeat center center;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    z-index: 9999;
-    background-size: 800px;
-    background-color: rgba(255, 255, 255, 0.9);
-  }
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  background-color: rgba(248, 247, 242, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .layout-loading {
   display: flex;
@@ -42,37 +29,63 @@
   justify-content: center;
   width: 100vw;
   height: 100vh;
-  background-color: #f1f0ea;
+  background-color: #f8f7f2;
 }
 
-.loading-spinner {
-  text-align: center;
-  padding: 2rem;
+/* Orbit loader */
+.orbit-loader {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.loading-spinner .spinner {
-  width: 60px;
-  height: 60px;
-  border: 4px solid rgba(39, 54, 107, 0.2);
-  border-top-color: #27366b;
+.orbit-loader-erth {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 2rem;
+  filter: drop-shadow(0 4px 12px rgba(39, 54, 107, 0.2));
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* Orbit track (visual guide ring) */
+.orbit-track {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border: 2px dashed rgba(39, 54, 107, 0.1);
+  border-radius: 50%;
 }
 
-.loading-spinner h2 {
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  color: #27366b;
+/* Orbiting ANML container */
+.orbit-path {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  animation: orbit 2.5s linear infinite;
 }
 
-.loading-spinner p {
-  color: #666;
-  font-size: 1rem;
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.orbit-loader-anml {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  /* Position at the right edge of the orbit circle */
+  top: 50%;
+  right: -20px;
+  transform: translateY(-50%);
+  animation: counter-rotate 2.5s linear infinite;
+  filter: drop-shadow(0 2px 6px rgba(39, 54, 107, 0.15));
+}
+
+/* Counter-rotate so ANML stays upright while orbiting */
+@keyframes counter-rotate {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(-360deg); }
 }
