@@ -177,10 +177,6 @@ const StakeErth = () => {
           </span>
         </div>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Your Share</span>
-          <span className={styles.statValue}>{yourShare > 0 ? `${yourShare.toFixed(4)}%` : "—"}</span>
-        </div>
-        <div className={styles.stat}>
           <span className={styles.statLabel}>Daily Rewards</span>
           <span className={styles.statValue}>{dailyRewards > 0 ? `¤${dailyRewards.toFixed(2)}` : "—"}</span>
           <span className={styles.statSub}>
