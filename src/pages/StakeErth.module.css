@@ -1,366 +1,252 @@
-/* StakingErth Page Styling - Cleaner Style */
-
-/* Main Staking Container */
-.stake-page-box {
+/* Full-width page layout — matches Markets */
+.page {
   width: 100%;
-  max-width: 420px;
-  background-color: #ffffff;
-  padding: 30px;
-  border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
   margin: 0 auto;
-  position: relative;
-  z-index: 1;
+  padding: 20px;
+  padding-top: 80px;
+  align-self: flex-start;
 }
 
-/* Header with ERTH Logo */
-.stake-header {
+/* Header — flat row like Markets */
+.header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 4px;
 }
 
-.stake-header-logo {
-  width: 56px;
-  height: 56px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
 }
 
-.stake-header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.header-label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
 }
 
-.stake-header-label {
+.header-apr {
+  display: block;
   font-size: 22px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stake-header-apr {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.apr-value {
-  font-size: 24px;
   font-weight: 700;
   color: #16a34a;
 }
 
-.apr-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #6b7280;
-}
-
-/* Stats Cards Grid */
-.stake-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.stake-stat-card {
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+.header-right {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
 }
 
-.stake-stat-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.stake-stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stake-stat-usd {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-/* Info Box */
-.stake-info-box {
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-  border-radius: 12px;
-  margin-bottom: 24px;
-  position: relative;
-  border-left: 4px solid #16a34a;
-}
-
-.stake-info-box p {
-  font-size: 13px;
-  line-height: 1.6;
-  color: #374151;
-  margin: 0;
-}
-
-/* Heading Styling - Hidden since we have new header */
-.stake-page-box h2 {
-  display: none;
-  margin-bottom: 20px;
-  text-align: center;
-  font-size: 24px;
-  color: #333;
-  font-weight: 600;
-}
-
-/* Tab Navigation Styling */
-.stake-page-tab {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 25px;
-  width: 100%;
-  background-color: #f1f0ea; /* Light beige */
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.stake-page-tab button {
-  background-color: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 14px 0;
-  transition: all 0.3s ease;
-  font-size: 14px;
-  flex-grow: 1;
-  text-align: center;
-  color: #1e3a8a; /* Royal blue */
-  font-weight: 500;
-  border-radius: 0;
-}
-
-.stake-page-tab button:first-child {
-  border-radius: 10px 0 0 10px;
-}
-
-.stake-page-tab button:last-child {
-  border-radius: 0 10px 10px 0;
-}
-
-.stake-page-tab button.active {
-  background-color: #4caf50;
+.claim-all-btn {
+  background: #4caf50;
   color: white;
-  transform: none;
-  box-shadow: none;
-}
-
-.stake-page-tab button:not(.active):hover {
-  background-color: #ccc;
-  color: #1e3a8a; /* Keep royal blue on hover */
-}
-
-/* Tab Content Styling - Fix display issue */
-.stake-page-tabcontent {
-  width: 100%;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.stake-page-tabcontent.active {
-  display: block;
-}
-
-/* Section Styling */
-.stake-page-section {
-  margin-bottom: 0;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.section-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.stake-page-section h3 {
-  font-size: 18px;
-  color: #333;
-  margin: 0;
-  font-weight: 600;
-}
-
-/* Divider */
-.stake-page-divider {
-  height: 1px;
-  background-color: #e0e0e0; /* Lighter gray divider */
-  width: 100%;
-  margin: 24px 0;
-}
-
-/* Info Display Section */
-.stake-page-info-display {
-  background-color: transparent;
+  border: none;
   border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: none;
-}
-
-/* Info Row Styling */
-.stake-page-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.stake-page-info-row:last-child {
-  border-bottom: none;
-}
-
-.stake-page-info-label {
-  color: #333;
+  padding: 10px 18px;
   font-size: 14px;
-}
-
-.stake-page-info-value {
-  font-size: 15px;
-  color: #333;
   font-weight: 600;
-  text-align: right;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-/* Input Group Styling */
-.stake-page-input-group {
-  margin-bottom: 15px;
+.claim-all-btn:hover {
+  background: #45a049;
+}
+
+/* Stats row — flat inline stats */
+.stats-row {
   display: flex;
-  flex-direction: column;
-}
-
-/* Label Wrapper Styling */
-.stake-page-label-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-/* Input Label Styling */
-.stake-page-input-label {
-  font-size: 14px;
-  color: #1e3a8a; /* Royal blue */
-  font-weight: 500;
-}
-
-/* Token Balance and Max Button */
-.stake-page-token-balance {
-  display: flex;
-  align-items: center;
   gap: 8px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-.stake-page-token-balance span {
-  font-size: 13px;
-  color: #555;
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-/* Max Button */
-.stake-page-max-button {
-  background-color: #66bb6a;
-  color: white;
+.stat-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Action card */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
+}
+
+/* Tabs — Markets style (grey pill, white active) */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
   border: none;
   border-radius: 8px;
-  padding: 5px 10px;
+  background: transparent;
   font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab content */
+.tab-content {
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Rewards display */
+.rewards-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rewards-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.rewards-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.rewards-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rewards-title {
+  font-size: 13px;
+  color: #9ca3af;
   font-weight: 500;
 }
 
-.stake-page-max-button:hover {
-  background-color: #4caf50;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(76, 175, 80, 0.3);
+.rewards-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: #16a34a;
 }
 
-/* Inline Button for viewing key */
-.stake-page-inline-button {
-  display: inline-flex;
+.rewards-muted {
+  font-size: 22px;
+  font-weight: 700;
+  color: #d1d5db;
+}
+
+.rewards-sub {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* Input group — matches Markets LP inputs */
+.input-group {
+  margin-bottom: 12px;
+}
+
+.input-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  background-color: #43a047;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.balance {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.max-btn,
+.vk-btn {
+  background: #4caf50;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
+  padding: 3px 10px;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight: 500;
+  margin-left: 6px;
+  transition: background-color 0.2s;
 }
 
-.stake-page-inline-button:hover {
-  background-color: #388e3c;
-  transform: translateY(-1px);
+.max-btn:hover,
+.vk-btn:hover {
+  background: #45a049;
 }
 
-/* Input Wrapper Styling */
-.stake-page-input-wrapper {
-  position: relative;
-}
-
-/* Input Styling */
-.stake-page-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  border-radius: 8px;
-  font-size: 16px;
-  color: #333;
-  background-color: #f1f0ea; /* Light beige */
-  transition: all 0.3s ease;
-}
-
-.stake-page-input:focus {
-  outline: none;
-  border-color: #4caf50;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
-}
-
-.stake-page-input::-webkit-outer-spin-button,
-.stake-page-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* New Input Wrapper with Logo (like SwapTokens) */
-.stake-input-wrapper {
+.input-wrapper {
   display: flex;
   align-items: center;
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  background-color: #f1f0ea;
+  background-color: #f3f4f6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.stake-input-logo {
+.input-logo {
   width: 44px;
   height: 44px;
   position: absolute;
@@ -370,16 +256,16 @@
   border-radius: 50%;
 }
 
-.stake-input-container {
+.input-inner {
   display: flex;
   flex-direction: column;
   width: 100%;
   padding-left: 75px;
-  padding-right: 70px;
+  padding-right: 16px;
   min-height: 70px;
 }
 
-.stake-input {
+.input {
   background-color: transparent;
   width: 100%;
   padding: 14px 0 2px 0;
@@ -391,359 +277,155 @@
   -moz-appearance: textfield;
 }
 
-.stake-input::-webkit-outer-spin-button,
-.stake-input::-webkit-inner-spin-button {
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.stake-input-usd {
+.input-usd {
   font-size: 12px;
   color: #888;
   text-align: left;
   height: 18px;
 }
 
-.stake-input-token {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-weight: 600;
-  font-size: 16px;
-  color: #333;
-}
-
-/* Note text */
-.stake-page-note {
+/* Note */
+.note {
   text-align: center;
-  color: #1e3a8a; /* Royal blue */
-  font-size: 14px;
-  margin: 10px 0;
-  font-style: italic;
+  color: #9ca3af;
+  font-size: 13px;
+  margin: 12px 0 0;
 }
 
-/* Button Styling */
-.stake-page-button {
+/* Action button */
+.action-btn {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   font-size: 16px;
   background-color: #4caf50;
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   margin-top: 8px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  transition: background-color 0.2s;
+  font-weight: 600;
 }
 
-.stake-page-button:hover {
-  background-color: #388e3c;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+.action-btn:hover {
+  background-color: #45a049;
 }
 
-.stake-page-button:disabled {
+.action-btn:disabled {
   background-color: #4caf50;
   color: white;
   cursor: not-allowed;
-  opacity: 0.85;
-  position: relative;
+  opacity: 0.5;
 }
 
-.stake-page-button:disabled:hover {
-  background-color: #4caf50;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-  transform: none;
-}
-
-/* Tooltip styling for disabled buttons */
-.stake-page-button[title]:disabled:hover::after {
-  content: attr(title);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 8px;
-  padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: white;
-  border-radius: 4px;
-  font-size: 14px;
-  white-space: nowrap;
-  z-index: 10;
-  pointer-events: none;
-  opacity: 0;
-  animation: fadeIn 0.2s ease-in forwards;
-}
-
-/* Arrow for the tooltip */
-.stake-page-button[title]:disabled:hover::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent;
-  margin-bottom: -2px;
-  z-index: 10;
-  opacity: 0;
-  animation: fadeIn 0.2s ease-in forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Rewards Display (no box) */
-.rewards-display {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.rewards-display.no-rewards .stake-page-note {
-  margin-top: 0;
-}
-
-.rewards-display .stake-page-button {
-  width: 100%;
-}
-
-.rewards-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.rewards-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
-}
-
-.rewards-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.rewards-title {
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.rewards-amount {
-  font-size: 22px;
-  font-weight: 700;
-  color: #16a34a;
-}
-
-.rewards-amount.muted {
-  color: #9ca3af;
-}
-
-.rewards-usd {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-
-/* Unbonding Entries Section - Matching rewards section style */
-.unbonding-entries-section {
-  background-color: #f8fbf8; /* Light green background like rewards section */
-  border-radius: 12px;
-  padding: 18px;
-  margin-top: 20px;
-  border: 1px solid #4caf50; /* Adding a tiny green outline */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.unbonding-entries-section h3 {
-  font-size: 16px;
-  color: #1e3a8a;
-  margin: 0 0 16px 0;
-  font-weight: 600;
-  text-align: center;
-}
-
-.unbonding-entries-section.empty {
-  border-color: #e5e7eb;
-  background-color: #f9fafb;
-}
-
-.unbonding-list {
-  list-style-type: none;
-  padding: 0;
-  margin: 0 0 15px 0;
-}
-
-.unbonding-item {
-  padding: 14px;
-  margin-bottom: 10px;
-  background-color: white;
-  border-radius: 10px;
-  border: 1px solid #e0e0e0;
-  font-size: 14px;
-  line-height: 1.5;
+/* Unbonding items */
+.unbond-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f4f6;
   gap: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.unbonding-item:last-child {
-  margin-bottom: 0;
+.unbond-item:last-child {
+  border-bottom: none;
 }
 
-.unbonding-details {
+.unbond-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.unbonding-amount-row {
+.unbond-amount-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.unbonding-logo {
+.unbond-logo {
   width: 28px;
   height: 28px;
   border-radius: 50%;
 }
 
-.unbonding-value {
-  color: #111827;
+.unbond-value {
   font-weight: 600;
   font-size: 16px;
 }
 
-.unbonding-date {
+.unbond-date {
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
-/* Unbonding Actions Container */
-.unbonding-actions {
-  flex-shrink: 0;
-}
-
-.unbonding-actions .stake-page-button {
-  width: auto;
+.small-btn {
   padding: 8px 16px;
-  font-size: 14px;
-  margin-top: 0;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #4caf50;
+  color: white;
+  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-/* Cancel Button Styling */
-.stake-page-button.cancel-button {
-  background-color: #ef5350; /* Red to indicate cancellation */
-  box-shadow: 0 2px 8px rgba(239, 83, 80, 0.3);
+.small-btn:hover {
+  background: #45a049;
 }
 
-.stake-page-button.cancel-button:hover {
-  background-color: #d32f2f; /* Darker red on hover */
-  box-shadow: 0 4px 12px rgba(239, 83, 80, 0.4);
+.cancel-btn {
+  background: #ef4444 !important;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 480px) {
-  .stake-page-box {
-    padding: 25px 20px;
-    border-radius: 15px;
+.cancel-btn:hover {
+  background: #dc2626 !important;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .page {
+    padding: 16px;
+    padding-top: 60px;
   }
 
-  .stake-page-box h2 {
-    font-size: 22px;
+  .stats-row {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .stake-page-tab button {
-    font-size: 13px;
+  .stat {
+    flex: 0 0 calc(50% - 4px);
     padding: 8px 0;
   }
 
-  .unbonding-item {
+  .header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .tab {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+
+  .unbond-item {
     flex-direction: column;
     align-items: flex-start;
-    padding: 12px;
+    gap: 8px;
   }
 
-  .unbonding-actions {
+  .small-btn {
     width: 100%;
-  }
-
-  .unbonding-actions .stake-page-button {
-    width: 100%;
-  }
-
-  /* Input wrapper responsive */
-  .stake-input-container {
-    padding-left: 65px;
-    padding-right: 60px;
-  }
-
-  .stake-input-logo {
-    width: 36px;
-    height: 36px;
-    left: 12px;
-  }
-
-  .stake-input {
-    font-size: 18px;
-  }
-
-  .stake-input-token {
-    right: 12px;
-    font-size: 14px;
-  }
-
-  /* New header responsive */
-  .stake-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .stake-header-info {
-    align-items: center;
-  }
-
-  .stake-header-logo {
-    width: 48px;
-    height: 48px;
-  }
-
-  .stake-header-label {
-    font-size: 20px;
-  }
-
-  .apr-value {
-    font-size: 20px;
-  }
-
-  .stake-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stake-stat-value {
-    font-size: 16px;
   }
 }

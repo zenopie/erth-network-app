@@ -8,6 +8,7 @@ import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import { toMicroUnits, toMacroUnits } from "../utils/mathUtils";
+import { formatUSD } from "../utils/apiUtils";
 import { ERTH_API_BASE_URL } from "../utils/config";
 import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice, formatCompact } from "../utils/formatUtils";
@@ -263,7 +264,7 @@ const Markets = () => {
           <span className={styles.marketsCountdown}>Rewards in <span className={styles.marketsTimer}>{countdown}</span></span>
           {totalRewards > 0 && isKeplrConnected && (
             <button className={styles.marketsClaimAll} onClick={handleClaimAll}>
-              Claim {totalRewards.toLocaleString(undefined, {maximumFractionDigits: 1})} ERTH
+              Claim {totalRewards.toLocaleString(undefined, {maximumFractionDigits: 1})} ERTH{erthPrice ? ` (${formatPrice(totalRewards * erthPrice)})` : ""}
             </button>
           )}
         </div>
@@ -345,7 +346,10 @@ const Markets = () => {
                       </div>
                       <div className={styles.lpInputWrapper}>
                         <img src={`/images/coin/${row.key}.png`} alt={row.key} className={styles.lpInputLogo} />
-                        <input type="number" placeholder="0.0" value={tokenBAmount} onChange={e => handleTokenBChange(e.target.value, row.key)} className={styles.lpInput} />
+                        <div className={styles.lpInputInner}>
+                          <input type="number" placeholder="0.0" value={tokenBAmount} onChange={e => handleTokenBChange(e.target.value, row.key)} className={styles.lpInput} />
+                          <span className={styles.lpInputUsd}>{tokenBAmount && row.price ? formatUSD(parseFloat(tokenBAmount) * row.price) : ""}</span>
+                        </div>
                       </div>
                     </div>
                     <div className={styles.lpInputGroup}>
@@ -357,7 +361,10 @@ const Markets = () => {
                       </div>
                       <div className={styles.lpInputWrapper}>
                         <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.lpInputLogo} />
-                        <input type="number" placeholder="0.0" value={erthAmount} onChange={e => handleErthChange(e.target.value, row.key)} className={styles.lpInput} />
+                        <div className={styles.lpInputInner}>
+                          <input type="number" placeholder="0.0" value={erthAmount} onChange={e => handleErthChange(e.target.value, row.key)} className={styles.lpInput} />
+                          <span className={styles.lpInputUsd}>{erthAmount && erthPrice ? formatUSD(parseFloat(erthAmount) * erthPrice) : ""}</span>
+                        </div>
                       </div>
                     </div>
                     <button className={styles.lpActionBtn} onClick={() => handleAddLiquidity(row.key)} disabled={!(parseFloat(erthAmount) > 0 && parseFloat(tokenBAmount) > 0) || parseFloat(erthAmount) > parseFloat(erthBalance) || parseFloat(tokenBAmount) > parseFloat(tokenBBalance)}>Add Liquidity</button>
@@ -372,7 +379,9 @@ const Markets = () => {
                         <span className={styles.lpBalance}>Bal: {calcs.userShares.toLocaleString()} <button className={styles.lpMaxBtn} onClick={() => setRemoveAmount(String(calcs.userShares))}>Max</button></span>
                       </div>
                       <div className={styles.lpInputWrapper}>
-                        <input type="number" placeholder="0.0" value={removeAmount} onChange={e => setRemoveAmount(e.target.value)} className={styles.lpInput} />
+                        <div className={styles.lpInputInner} style={{paddingLeft: 16}}>
+                          <input type="number" placeholder="0.0" value={removeAmount} onChange={e => setRemoveAmount(e.target.value)} className={styles.lpInput} />
+                        </div>
                       </div>
                     </div>
                     <button className={styles.lpActionBtn} onClick={() => handleRemoveLiquidity(row.key)} disabled={!parseFloat(removeAmount) || parseFloat(removeAmount) > calcs.userShares}>Remove Liquidity</button>

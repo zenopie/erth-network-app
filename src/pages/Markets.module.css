@@ -368,22 +368,34 @@
   display: flex;
   align-items: center;
   border-radius: 12px;
+  overflow: hidden;
+  position: relative;
   background-color: #f3f4f6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  padding: 0 16px;
-  gap: 10px;
 }
 
 .lp-input-logo {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
   border-radius: 50%;
-  flex-shrink: 0;
+}
+
+.lp-input-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-left: 62px;
+  padding-right: 16px;
+  min-height: 62px;
 }
 
 .lp-input {
   width: 100%;
-  padding: 16px 0;
+  padding: 12px 0 2px 0;
   font-size: 18px;
   font-weight: 500;
   border: none;
@@ -396,6 +408,14 @@
 .lp-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.lp-input-usd {
+  font-size: 12px;
+  color: #888;
+  height: 18px;
+  text-align: left;
+  display: block;
 }
 
 .lp-action-btn {
