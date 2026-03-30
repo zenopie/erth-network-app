@@ -182,6 +182,7 @@ export const WalletProvider = ({ children }) => {
 
   const handleLogout = () => {
     clearLoginPermit();
+    localStorage.removeItem('contractRegistry');
     window.location.reload();
   };
 
