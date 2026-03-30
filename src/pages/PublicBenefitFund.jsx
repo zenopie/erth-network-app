@@ -3,10 +3,6 @@ import styles from "./PublicBenefitFund.module.css";
 import AllocationFund from "../components/AllocationFund";
 import contracts from "../utils/contracts";
 
-const allocationNames = [
-  { id: "1", name: "Registration Rewards" },
-];
-
 const PublicBenefitFund = () => {
   return (
     <div className={styles.container}>
@@ -14,7 +10,6 @@ const PublicBenefitFund = () => {
         title="Caretaker Fund"
         contract={contracts.registration?.contract}
         contractHash={contracts.registration?.hash}
-        allocationNames={allocationNames}
       />
     </div>
   );

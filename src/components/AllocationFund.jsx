@@ -69,13 +69,14 @@ const getChartDataWithUnallocated = (allocations = []) => {
   return chartData;
 };
 
-const AllocationFund = ({ title, contract: contractAddress, contractHash, allocationNames }) => {
+const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
   const { isKeplrConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, execute, closeModal } = useTransaction();
 
   const [activeTab, setActiveTab] = useState("Actual");
   const [dataActual, setDataActual] = useState([]);
+  const [allocationOptions, setAllocationOptions] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [totalPercentage, setTotalPercentage] = useState(0);
@@ -87,7 +88,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
     } else if (activeTab === "Preferred" && isKeplrConnected) {
       fetchUserInfo();
     }
-  }, [isKeplrConnected, activeTab]);
+  }, [isKeplrConnected, activeTab, allocationOptions]);
 
   useEffect(() => {
     // Calculate total percentage whenever selectedAllocations changes
@@ -103,42 +104,45 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
 
       // Process allocations from response
       let transformedData = [];
+      let options = [];
 
       if (Array.isArray(response)) {
-        // Check if it's the new direct vector format or PublicBenefitFund style response
         if (response.length > 0 && response[0].allocation_id !== undefined) {
-          // Direct vector response (new format)
-          transformedData = response.map((allocation) => {
-            const nameMatch = allocationNames.find((item) => item.id === String(allocation.allocation_id));
-            return {
-              id: allocation.allocation_id,
-              name: nameMatch ? nameMatch.name : `Unknown (${allocation.allocation_id})`,
-              value: parseInt(allocation.amount_allocated, 10),
-            };
-          });
+          // Direct vector response (staking format)
+          transformedData = response.map((allocation) => ({
+            id: allocation.allocation_id,
+            name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
+            value: parseInt(allocation.amount_allocated, 10),
+          }));
+          options = response.map((allocation) => ({
+            id: allocation.allocation_id,
+            name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
+          }));
         } else if (response.length > 0 && response[0].state) {
-          // PublicBenefitFund style response
-          transformedData = response.map((allocation) => {
-            const nameMatch = allocationNames.find((item) => item.id === String(allocation.state?.allocation_id));
-            return {
-              id: allocation.state?.allocation_id,
-              name: nameMatch ? nameMatch.name : `Unknown (${allocation.state?.allocation_id})`,
-              value: parseInt(allocation.state?.amount_allocated, 10),
-            };
-          });
+          // Registration format (config.description)
+          transformedData = response.map((allocation) => ({
+            id: allocation.state?.allocation_id,
+            name: `#${allocation.state?.allocation_id} ${allocation.config?.description || "Unknown"}`,
+            value: parseInt(allocation.state?.amount_allocated, 10),
+          }));
+          options = response.map((allocation) => ({
+            id: allocation.state?.allocation_id,
+            name: `#${allocation.state?.allocation_id} ${allocation.config?.description || "Unknown"}`,
+          }));
         }
       } else if (response && response.allocations) {
-        // DeflationFund style response (old format)
-        transformedData = response.allocations.map((allocation) => {
-          const nameMatch = allocationNames.find((item) => item.id === String(allocation.allocation_id));
-          return {
-            id: allocation.allocation_id,
-            name: nameMatch ? nameMatch.name : `Unknown (${allocation.allocation_id})`,
-            value: parseInt(allocation.amount_allocated, 10),
-          };
-        });
+        transformedData = response.allocations.map((allocation) => ({
+          id: allocation.allocation_id,
+          name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
+          value: parseInt(allocation.amount_allocated, 10),
+        }));
+        options = response.allocations.map((allocation) => ({
+          id: allocation.allocation_id,
+          name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
+        }));
       }
 
+      setAllocationOptions(options);
       setDataActual(transformedData);
     } catch (error) {
       console.error(`Error fetching actual data for ${title}:`, error);
@@ -161,12 +165,11 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
       let transformedData = [];
 
       if (Array.isArray(response)) {
-        // New direct array response format from query_user_allocations
         transformedData = response.map((percentage) => {
-          const nameMatch = allocationNames.find((item) => item.id === String(percentage.allocation_id));
+          const nameMatch = allocationOptions.find((item) => String(item.id) === String(percentage.allocation_id));
           return {
             id: percentage.allocation_id,
-            name: nameMatch ? nameMatch.name : `Unknown (${percentage.allocation_id})`,
+            name: nameMatch ? nameMatch.name : `#${percentage.allocation_id}`,
             value: parseInt(percentage.percentage, 10),
           };
         });
@@ -364,7 +367,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
               <select
                 onChange={(e) => {
                   if (e.target.value) {
-                    const selectedOption = allocationNames.find(
+                    const selectedOption = allocationOptions.find(
                       (option) => String(option.id) === String(e.target.value)
                     );
                     if (selectedOption) {
@@ -374,7 +377,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash, alloca
                 }}
               >
                 <option value="">Select an option</option>
-                {allocationNames
+                {allocationOptions
                   .filter((option) => !selectedAllocations.some((alloc) => String(alloc.id) === String(option.id)))
                   .map((option) => (
                     <option key={option.id} value={option.id}>
