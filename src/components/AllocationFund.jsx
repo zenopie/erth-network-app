@@ -29,7 +29,7 @@ const renderCustomLegend = (props, data) => {
       {payload.map((entry, index) => {
         const value = entry.payload.value || 0;
         const name = entry.payload.name || "N/A";
-        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
         const formattedPercentage = percentage.endsWith(".0") ? parseInt(percentage) : percentage;
 
         return (
