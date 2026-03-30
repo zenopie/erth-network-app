@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { snip, getUserAddress, querySnipBalance, query, contract } from "../utils/contractUtils";
-import { BRIDGE_API_BASE_URL } from "../utils/config";
+import { ERTH_API_BASE_URL } from "../utils/config";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { toMicroUnits } from "../utils/mathUtils";
@@ -43,7 +43,7 @@ const Bridge = () => {
   // Fetch bridge info
   const fetchBridgeInfo = useCallback(async () => {
     try {
-      const response = await fetch(`${BRIDGE_API_BASE_URL}/bridge/info`);
+      const response = await fetch(`${ERTH_API_BASE_URL}/bridge/info`);
       if (response.ok) {
         const data = await response.json();
         setBridgeInfo(data);
@@ -56,7 +56,7 @@ const Bridge = () => {
   // Fetch bridge balance
   const fetchBridgeBalance = useCallback(async () => {
     try {
-      const response = await fetch(`${BRIDGE_API_BASE_URL}/bridge/balance`);
+      const response = await fetch(`${ERTH_API_BASE_URL}/bridge/balance`);
       if (response.ok) {
         const data = await response.json();
         setBridgeBalance(data);
@@ -122,7 +122,7 @@ const Bridge = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${BRIDGE_API_BASE_URL}/bridge/retry-mint`, {
+      const response = await fetch(`${ERTH_API_BASE_URL}/bridge/retry-mint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -157,7 +157,7 @@ const Bridge = () => {
 
     try {
       const response = await fetch(
-        `${BRIDGE_API_BASE_URL}/bridge/deposit-status/${secretAddress}`
+        `${ERTH_API_BASE_URL}/bridge/deposit-status/${secretAddress}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -210,7 +210,7 @@ const Bridge = () => {
       }
 
       // Notify backend to generate the Monero deposit address
-      const response = await fetch(`${BRIDGE_API_BASE_URL}/bridge/deposit-address`, {
+      const response = await fetch(`${ERTH_API_BASE_URL}/bridge/deposit-address`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ secret_address: secretAddress }),
@@ -278,7 +278,7 @@ const Bridge = () => {
 
       // Request withdrawal processing from bridge backend
       const secretAddress = getUserAddress();
-      const response = await fetch(`${BRIDGE_API_BASE_URL}/bridge/withdraw`, {
+      const response = await fetch(`${ERTH_API_BASE_URL}/bridge/withdraw`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
