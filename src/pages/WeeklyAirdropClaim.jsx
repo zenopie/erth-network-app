@@ -23,6 +23,10 @@ const WeeklyAirdropClaim = () => {
   const [error, setError] = useState(null);
   const [prices, setPrices] = useState(null);
   const [countdown, setCountdown] = useState("");
+  const [nextSharePercent, setNextSharePercent] = useState(null);
+  const [userStake, setUserStake] = useState(null);
+  const [totalStake, setTotalStake] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     fetchPrices();
@@ -32,6 +36,10 @@ const WeeklyAirdropClaim = () => {
   useEffect(() => {
     if (isKeplrConnected) fetchAirdropData();
   }, [isKeplrConnected]);
+
+  useEffect(() => {
+    if (isKeplrConnected && roundInfo) fetchNextShare();
+  }, [isKeplrConnected, roundInfo]);
 
   useEffect(() => {
     const tick = () => {
@@ -71,6 +79,23 @@ const WeeklyAirdropClaim = () => {
     } catch (e) { console.error(e); }
   };
 
+  const fetchNextShare = async () => {
+    try {
+      if (!window.secretjs?.address) return;
+      const delegation = await window.secretjs.query.staking.delegation({
+        delegator_addr: window.secretjs.address,
+        validator_addr: VALIDATOR_ADDRESS,
+      });
+      const staked = parseFloat(delegation?.delegation_response?.balance?.amount || "0");
+      const total = parseFloat(roundInfo.total_stake);
+      setUserStake(staked);
+      setTotalStake(total);
+      if (staked > 0 && total > 0) {
+        setNextSharePercent(((staked / total) * 100).toFixed(2));
+      }
+    } catch (e) { console.error("Error fetching delegation:", e); }
+  };
+
   const fetchAirdropData = async (refetch = false) => {
     if (!window.secretjs?.address) return;
     try {
@@ -79,7 +104,7 @@ const WeeklyAirdropClaim = () => {
       const addr = window.secretjs.address;
       const cr = await fetch(`${ERTH_API_BASE_URL}/airdrop/current/${addr}`);
       if (!cr.ok) {
-        if (cr.status === 404) { setError("No allocation found"); if (!refetch) hideLoading(); return; }
+        if (cr.status === 404) { setError("No allocation for current round"); if (!refetch) hideLoading(); return; }
         throw new Error(cr.statusText);
       }
       setClaimData(await cr.json());
@@ -143,6 +168,23 @@ const WeeklyAirdropClaim = () => {
             Next airdrop in <span className={styles.timer}>{countdown}</span>
           </p>
 
+          {isKeplrConnected && (nextSharePercent || totalStake != null || userStake != null || roundInfo?.total_amount) && (
+            <div className={styles.detailsDropdown}>
+              <button className={styles.detailsToggle} onClick={() => setShowDetails(!showDetails)}>
+                Info {showDetails ? "▲" : "▼"}
+              </button>
+              {showDetails && (
+                <div className={styles.detailsContent}>
+                  {userStake != null && <p>Your stake: {(userStake / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SCRT</p>}
+                  {nextSharePercent && <p>Your share: {nextSharePercent}%</p>}
+                  {nextSharePercent && roundInfo?.total_amount && <p>Estimated airdrop: {(parseFloat(formatAmount(roundInfo.total_amount)) * parseFloat(nextSharePercent) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} ERTH</p>}
+                  {roundInfo?.total_amount && <p>Airdrop pool: {parseFloat(formatAmount(roundInfo.total_amount)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH</p>}
+                  {totalStake != null && <p>Total staked: {(totalStake / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SCRT</p>}
+                </div>
+              )}
+            </div>
+          )}
+
           {!isKeplrConnected ? (
             <>
               <button
@@ -164,9 +206,7 @@ const WeeklyAirdropClaim = () => {
               <p className={styles.sub}>{error}</p>
             </>
           ) : hasClaimed ? (
-            <>
-              <div className={styles.claimed}>Already Claimed</div>
-            </>
+            <div className={styles.claimed}>Already Claimed</div>
           ) : claimData ? (
             <button className={styles.button} onClick={handleClaim}>
               Claim Airdrop

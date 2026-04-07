@@ -43,7 +43,7 @@
 .countdown {
   font-size: 13px;
   color: #9ca3af;
-  margin: 0 0 24px 0;
+  margin: 0 0 4px 0;
 }
 
 .timer {
@@ -84,4 +84,39 @@
   color: #4caf50;
   background: rgba(76, 175, 80, 0.08);
   border-radius: 12px;
+}
+
+.detailsDropdown {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+
+.detailsToggle {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  width: 100%;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.detailsToggle:hover {
+  color: #4caf50;
+}
+
+.detailsContent {
+  margin-top: 8px;
+  padding: 12px;
+  background: rgba(76, 175, 80, 0.04);
+  border-radius: 8px;
+}
+
+.detailsContent p {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 4px 0;
 }
