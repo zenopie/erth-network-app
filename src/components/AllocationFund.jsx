@@ -88,7 +88,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
     } else if (activeTab === "Preferred" && isKeplrConnected) {
       fetchUserInfo();
     }
-  }, [isKeplrConnected, activeTab, allocationOptions]);
+  }, [isKeplrConnected, activeTab]);
 
   useEffect(() => {
     // Calculate total percentage whenever selectedAllocations changes
@@ -143,7 +143,7 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
       }
 
       setAllocationOptions(options);
-      setDataActual(transformedData);
+      setDataActual(transformedData.filter((alloc) => alloc.value > 0));
     } catch (error) {
       console.error(`Error fetching actual data for ${title}:`, error);
     } finally {
