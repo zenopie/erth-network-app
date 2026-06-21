@@ -4,7 +4,7 @@ import { populateTokens } from './tokens';
 import { toMacroUnits } from './mathUtils';
 
 let secretjs = null; // Signing client (LCD)
-const url = "https://lcd.erth.network";      // LCD endpoint
+const url = "https://rest.lavenderfive.com:443/secretnetwork";      // LCD endpoint
 const chainId = 'secret-4';                  // Mainnet chain ID
 
 // Query client initialized at module level - no wallet needed for public queries
