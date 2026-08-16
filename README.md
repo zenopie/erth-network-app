@@ -1,176 +1,124 @@
 # ERTH Network Application
 
-A full-stack decentralized application for the ERTH Network ecosystem that provides token management, staking, swapping, and analytics functionalities.
+The web interface for the **earth network** — a sovereign Cosmos SDK chain. It provides
+token swapping, staking, liquidity management and governance over the two allocation funds.
 
 ## Overview
 
-ERTH Network is a blockchain-based platform built on the Secret Network that offers various decentralized finance (DeFi) capabilities including token swapping, staking, liquidity provision, and analytics tracking. This application serves as the main interface for users to interact with the ERTH ecosystem.
+Earth is a transparent Cosmos SDK chain with native bank denoms (`uerth`, `uanml`, spoke
+tokens, and `dexlp/{poolId}` LP shares), native `x/staking`, and three custom modules:
+
+| Module | Role |
+| --- | --- |
+| `x/dex` | Spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH with one spoke token. |
+| `x/allocation` | Both vote-directed emission streams over one engine: the stake-weighted `capital` stream (the **Deflation Fund**) and the one-human-one-vote `human` stream (the **Caretaker Fund**). Ids, totals and epochs are per stream. |
+| `x/personhood` | Proof-of-personhood registration and the daily ANML claim. It gates who may vote in the `human` stream; the votes themselves live in `x/allocation`. |
+
+Because the chain is transparent, there are no contracts, SNIP-20 tokens, viewing keys or
+query permits: every balance is public and read straight off the LCD. Pages render chain
+state before a wallet is connected; connecting only determines *who you are* for signing.
 
 ## Features
 
-- **Token Swapping**: Exchange ERTH, ANML, and other tokens directly through the interface
-- **Staking**: Stake ERTH tokens to earn rewards
-- **Liquidity Management**: Add or remove liquidity to various token pairs
-- **Analytics Dashboard**: Monitor token prices, market cap, and TVL (Total Value Locked)
-- **TOTP Authentication**: Secure access with time-based one-time passwords
-- **Secret AI Chat**: Interact with AI powered by Secret Network's privacy features
-- **Agent Chat**: Communicate with specialized AI agents
-- **Public Benefit Fund**: Interface for interacting with the network's public benefit fund
-- **Deflation Fund**: Track and interact with the network's deflation mechanism
-- **ANML Token Claiming**: Claim ANML tokens through the dedicated interface
+- **Token Swapping** — single `MsgSwap` against `x/dex`; ERTH is the hub, so token→token
+  routes through it on-chain.
+- **Staking** — native `x/staking`. Staking delegates to the largest bonded validator (no
+  picker UI); unstaking draws largest-first across delegations; rewards are withdrawn from
+  every validator you have delegated to. Unbonding is display-only and auto-releases.
+- **Liquidity Management** — add/remove liquidity on `x/dex`. LP rewards **auto-compound**
+  into each pool's reserves, so there is nothing to claim and no LP bonding queue.
+- **Caretaker Fund** — direct the democratic emission stream (one registered human, one vote).
+- **Deflation Fund** — direct the stake-weighted emission stream (your bonded stake is your weight).
+- **ANML Claim** — registration and the daily claim happen in the mobile app (passport ZK
+  proofs are generated on-device); this page links to it.
+- **Explorer** — blocks, transactions, accounts and validators, read straight from the LCD.
+  Search accepts a block height, a 64-character tx hash, or an `earth1…` address:
+  `/explorer`, `/explorer/validators`, `/explorer/registrations`, `/explorer/block/:height`,
+  `/explorer/tx/:hash`, `/explorer/account/:address`. The registrations view maps proof-of-
+  personhood signups by the passport's issuing country, which the chain derives from the
+  Document Signer certificate at registration time. Validator uptime is measured over the slashing window
+  (`signed_blocks_window`) — the window that actually decides jailing — rather than all time.
 
-## Technical Architecture
+## Architecture
 
-### Frontend
+All chain I/O lives in **`src/chain/`**. Nothing else builds transactions or parses chain JSON.
 
-The frontend is built using React.js with the following structure:
+| File | Responsibility |
+| --- | --- |
+| `config.js` | LCD URL, chain id, denoms, Keplr chain registration. |
+| `rest.js` | LCD GET helpers (`get` throws, `getOr` falls back). |
+| `tx.js` | Keplr connect, the cosmjs message registry, sign + broadcast. |
+| `bank.js` | Balances, supply, `MsgSend`. |
+| `dex.js` | Pools, swap quoting, swap/add/remove-liquidity messages. |
+| `staking.js` | Delegations, rewards, unbonding, delegate/undelegate/withdraw messages. |
+| `personhood.js` | Registration status, ANML claim, registration counts by country / signer. |
+| `allocation.js` | Options, voter splits and allocation messages for both streams — every call takes a `STREAM_HUMAN` / `STREAM_CAPITAL` argument. |
+| `explorer.js` | Blocks, transaction search, validator monikers, search-term routing. |
+| `tokens.js` | Denom metadata and micro/macro unit conversion. |
 
-- **pages/**: Main application pages (Analytics, StakeErth, SwapTokens, etc.)
-- **components/**: Reusable UI components
-- **utils/**: Utility functions for common operations
-- **styles/**: CSS and style-related files
-- **images/**: Static image assets
+Transactions are signed with Keplr using **direct (protobuf) signing** and broadcast through
+the **LCD** rather than a Tendermint RPC endpoint, so the app only needs one host.
 
-### Backend
-
-The Node.js backend provides the following services:
-
-- **API Endpoints**: RESTful services for frontend data requests
-- **Blockchain Interaction**: Communication with Secret Network using secretjs
-- **Analytics Management**: Collection and serving of token and market analytics
-- **CORS Proxy**: Handling cross-origin requests for development
+`src/proto/` holds JS encoders generated from the chain's `.proto` files — regenerate with
+`./scripts/gen-proto.sh` whenever the chain's messages change (requires
+[`buf`](https://buf.build); no `protoc` needed).
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js v18.20.7 or later
-- npm package manager
-- Secret Network wallet (for blockchain interactions)
+- npm
+- [Keplr](https://www.keplr.app/) browser extension
+- A reachable earth LCD endpoint (see below)
 
 ### Installation
 
-1. Clone the repository:
-
-   ```
-   git clone https://github.com/zenopie/erth-mainnet-app.git
-   cd erth-mainnet-app
-   ```
-
-2. Install frontend dependencies:
-
-   ```
-   npm install
-   ```
-
-3. Install server dependencies:
-   ```
-   cd server
-   npm install
-   cd ..
-   ```
+```bash
+npm install
+```
 
 ### Development
 
-1. Start the frontend development server:
+Run a local chain from the `earth-network-chain` repo:
 
-   ```
-   npm start
-   ```
+```bash
+ignite chain serve            # LCD on :1317
+```
 
-   This runs the app in development mode at [http://localhost:3000](http://localhost:3000)
+Then start the app:
 
-2. Start the backend server (in a separate terminal):
-   ```
-   cd server
-   node server.js
-   ```
+```bash
+npm run dev                   # http://localhost:3000
+```
+
+Vite proxies `/lcd` to `http://localhost:1317`. To develop against a different node:
+
+```bash
+EARTH_LCD=https://lcd.example.network npm run dev
+```
+
+Earth is not in Keplr's built-in registry, so the app calls `experimentalSuggestChain` on
+connect. `VITE_EARTH_RPC` should be set for that to fully register the chain in Keplr.
+
+### Environment variables
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `EARTH_LCD` | Dev-only: proxy target for `/lcd`. | `http://localhost:1317` |
+| `VITE_EARTH_LCD` | Production LCD endpoint. | `https://lcd.erth.network` |
+| `VITE_EARTH_RPC` | Tendermint RPC, used for Keplr chain registration. | *(empty)* |
+| `VITE_EARTH_CHAIN_ID` | Chain id. | `earth` |
+
+> **TODO before deploying:** point `VITE_EARTH_LCD`/`VITE_EARTH_RPC` at the real endpoints.
 
 ### Building for Production
 
-Build the frontend for production:
-
+```bash
+npm run build                 # outputs to build/
 ```
-npm run build
-```
-
-This creates optimized production files in the `build` folder.
-
-## Analytics Management
-
-The application includes an analytics system that tracks token prices, market caps, and other metrics over time.
-
-### Analytics Features
-
-- Daily data collection at midnight
-- Historical data visualization with various time ranges (1W, 1M, All)
-- Price change calculation and display
-- Support for multiple tokens (ERTH, ANML)
-
-### Analytics Management Scripts
-
-- **Reset Analytics**: `node server/reset-analytics.js` - Resets all analytics data
-- **Migrate Analytics**: `node server/migrate-analytics.js` - Converts existing analytics data to new format with one entry per day
 
 ## Deployment
 
-The application is configured for deployment using GitHub Actions. The workflow automatically:
-
-1. Checks out the repository
-2. Deploys to a remote server via SSH
-3. Builds the frontend
-4. Installs dependencies
-5. Restarts the server using PM2
-
-For manual deployment, follow these steps:
-
-1. Build the frontend: `npm run build`
-2. Copy the build files to your web server
-3. Set up the Node.js server with PM2: `pm2 start server/server.js --name "erth-network-server"`
-
-## Project Structure
-
-```
-erth-network-app/
-├── .github/workflows/    # GitHub Actions deployment workflow
-├── public/              # Static public assets
-├── server/              # Backend Node.js server
-│   ├── analyticsManager.js    # Analytics data management
-│   ├── migrate-analytics.js   # Analytics migration script
-│   ├── reset-analytics.js     # Analytics reset script
-│   └── server.js        # Main server file
-├── src/                 # Frontend React application
-│   ├── components/      # Reusable UI components
-│   ├── pages/           # Application pages
-│   ├── utils/           # Utility functions
-│   └── App.js           # Main React component
-└── package.json         # Project dependencies and scripts
-```
-
-## License
-
-MIT License
-
-Copyright (c) 2023-2024 ERTH Network
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-## Contact
-
-For more information, visit [https://erth.network](https://erth.network)
+Deployment is driven by GitHub Actions, which builds the frontend and serves `build/` via
+nginx (see `Dockerfile` and `nginx.conf`).

@@ -3,7 +3,8 @@ import { PieChart, Pie, Cell, Legend } from "recharts";
 import styles from "./AllocationFund.module.css";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
-import { query, contract } from "../utils/contractUtils";
+import { broadcast } from "../chain/tx";
+import * as allocation from "../chain/allocation";
 import StatusModal from "../components/StatusModal";
 import useTransaction from "../hooks/useTransaction";
 
@@ -69,8 +70,13 @@ const getChartDataWithUnallocated = (allocations = []) => {
   return chartData;
 };
 
-const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
-  const { isKeplrConnected } = useWallet();
+/**
+ * Shared UI for both allocation streams. `stream` selects which one — the
+ * chain runs them over one engine with the same option shape, so the only
+ * difference here is the value threaded into every read and message.
+ */
+const AllocationFund = ({ title, stream }) => {
+  const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, execute, closeModal } = useTransaction();
 
@@ -85,10 +91,10 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
   useEffect(() => {
     if (activeTab === "Actual") {
       fetchDataActual();
-    } else if (activeTab === "Preferred" && isKeplrConnected) {
+    } else if (activeTab === "Preferred" && isConnected) {
       fetchUserInfo();
     }
-  }, [isKeplrConnected, activeTab]);
+  }, [isConnected, activeTab, stream]);
 
   useEffect(() => {
     // Calculate total percentage whenever selectedAllocations changes
@@ -96,54 +102,19 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
     setTotalPercentage(total);
   }, [selectedAllocations]);
 
+  const labelFor = (option) => `#${option.id} ${option.description || "Unknown"}`;
+
   const fetchDataActual = async () => {
     try {
       showLoading();
-      const querymsg = { query_allocation_options: {} };
-      const response = await query(contractAddress, contractHash, querymsg);
+      const options = await allocation.allocationOptions(stream);
 
-      // Process allocations from response
-      let transformedData = [];
-      let options = [];
-
-      if (Array.isArray(response)) {
-        if (response.length > 0 && response[0].allocation_id !== undefined) {
-          // Direct vector response (staking format)
-          transformedData = response.map((allocation) => ({
-            id: allocation.allocation_id,
-            name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
-            value: parseInt(allocation.amount_allocated, 10),
-          }));
-          options = response.map((allocation) => ({
-            id: allocation.allocation_id,
-            name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
-          }));
-        } else if (response.length > 0 && response[0].state) {
-          // Registration format (config.description)
-          transformedData = response.map((allocation) => ({
-            id: allocation.state?.allocation_id,
-            name: `#${allocation.state?.allocation_id} ${allocation.config?.description || "Unknown"}`,
-            value: parseInt(allocation.state?.amount_allocated, 10),
-          }));
-          options = response.map((allocation) => ({
-            id: allocation.state?.allocation_id,
-            name: `#${allocation.state?.allocation_id} ${allocation.config?.description || "Unknown"}`,
-          }));
-        }
-      } else if (response && response.allocations) {
-        transformedData = response.allocations.map((allocation) => ({
-          id: allocation.allocation_id,
-          name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
-          value: parseInt(allocation.amount_allocated, 10),
-        }));
-        options = response.allocations.map((allocation) => ({
-          id: allocation.allocation_id,
-          name: `#${allocation.allocation_id} ${allocation.description || "Unknown"}`,
-        }));
-      }
-
-      setAllocationOptions(options);
-      setDataActual(transformedData.filter((alloc) => alloc.value > 0));
+      setAllocationOptions(options.map((o) => ({ id: o.id, name: labelFor(o) })));
+      setDataActual(
+        options
+          .map((o) => ({ id: o.id, name: labelFor(o), value: Number(o.amountAllocated) }))
+          .filter((alloc) => alloc.value > 0),
+      );
     } catch (error) {
       console.error(`Error fetching actual data for ${title}:`, error);
     } finally {
@@ -152,28 +123,19 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
   };
 
   const fetchUserInfo = async () => {
+    if (!address) return;
     try {
       showLoading();
-      const querymsg = {
-        query_user_allocations: {
-          address: window.secretjs.address,
-        },
-      };
-      const response = await query(contractAddress, contractHash, querymsg);
+      const weights = await allocation.voterAllocations(stream, address);
 
-      // Process user allocations from response
-      let transformedData = [];
-
-      if (Array.isArray(response)) {
-        transformedData = response.map((percentage) => {
-          const nameMatch = allocationOptions.find((item) => String(item.id) === String(percentage.allocation_id));
-          return {
-            id: percentage.allocation_id,
-            name: nameMatch ? nameMatch.name : `#${percentage.allocation_id}`,
-            value: parseInt(percentage.percentage, 10),
-          };
-        });
-      }
+      const transformedData = weights.map((w) => {
+        const nameMatch = allocationOptions.find((item) => String(item.id) === String(w.optionId));
+        return {
+          id: w.optionId,
+          name: nameMatch ? nameMatch.name : `#${w.optionId}`,
+          value: w.percent,
+        };
+      });
 
       setSelectedAllocations(transformedData);
     } catch (error) {
@@ -225,25 +187,12 @@ const AllocationFund = ({ title, contract: contractAddress, contractHash }) => {
     setIsSubmitting(true);
 
     await execute(async () => {
-      // Format allocations as expected by the contracts
-      const formattedAllocations = selectedAllocations.map((alloc) => ({
-        allocation_id: Number(alloc.id),
-        percentage: alloc.value.toString(),
+      const weights = selectedAllocations.map((alloc) => ({
+        optionId: Number(alloc.id),
+        percent: Number(alloc.value),
       }));
 
-      // Create message structure
-      const contractMsg = {
-        set_allocation: {
-          percentages: formattedAllocations,
-        },
-      };
-
-      // Call the contract function
-      const response = await contract(contractAddress, contractHash, contractMsg);
-
-      if (response.code !== undefined && response.code !== 0) {
-        throw new Error(`Transaction failed with code ${response.code}: ${response.rawLog || "No error details"}`);
-      }
+      await broadcast([allocation.msgSetAllocations(address, stream, weights)]);
 
       // Refresh the preferred tab data
       fetchUserInfo();

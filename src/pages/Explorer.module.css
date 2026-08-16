@@ -1,0 +1,278 @@
+/* Chain Explorer — shared by the overview, block, tx and account views. */
+
+.page {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  padding-top: 80px;
+  align-self: flex-start;
+}
+
+/* Header + search */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.searchForm {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.searchInput:focus {
+  border-color: #4caf50;
+}
+
+.searchButton {
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.searchButton:hover {
+  background-color: #45a049;
+}
+
+.searchError {
+  width: 100%;
+  color: #dc2626;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+/* Stats */
+
+.statsRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  flex: 1;
+  min-width: 130px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.statLabel {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.statValue {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Cards + tables */
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  padding: 6px 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.link {
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.muted {
+  color: #9ca3af;
+}
+
+/* Key/value detail rows */
+
+.kv {
+  display: flex;
+  gap: 12px;
+  padding: 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+}
+
+.kv:last-child {
+  border-bottom: none;
+}
+
+.kvLabel {
+  flex: 0 0 150px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.kvValue {
+  flex: 1;
+  color: #374151;
+  word-break: break-all;
+}
+
+/* Badges */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #374151;
+  margin-right: 4px;
+}
+
+.badgeSuccess {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.badgeFailed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Raw JSON blocks (message bodies, failure logs) */
+
+.pre {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #374151;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorLog {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 12px 8px;
+}
+
+/* Uptime, relative to the slashing window's jail threshold */
+
+.uptimeGood {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.uptimeWarn {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.uptimeBad {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.backLink:hover {
+  color: #4caf50;
+}
+
+/* Registration map */
+
+.mapWrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fafbfc;
+}

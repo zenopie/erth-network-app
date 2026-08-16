@@ -16,28 +16,22 @@ const OrbitLoader = () => (
 );
 
 const Layout = ({ children }) => {
-  const { walletName, isKeplrConnected, isLoggingIn, isConnecting, loginError, isRegistryLoaded, handleLogin, handleLogout } = useWallet();
+  const { address, walletName, isConnected, isConnecting, connectError, connect, disconnect } =
+    useWallet();
   const { isLoading } = useLoading();
   const isMobile = useIsMobile();
 
-  if (!isRegistryLoaded) {
-    return (
-      <div className="layout-loading">
-        <OrbitLoader />
-      </div>
-    );
-  }
-
+  // No registry to wait for: earth state is public, so pages render immediately.
   return (
     <div className={`layout ${isMobile ? "mobile" : ""}`}>
       <Sidebar
         walletName={walletName}
-        isKeplrConnected={isKeplrConnected}
-        isLoggingIn={isLoggingIn}
+        address={address}
+        isConnected={isConnected}
         isConnecting={isConnecting}
-        loginError={loginError}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
+        connectError={connectError}
+        onConnect={connect}
+        onDisconnect={disconnect}
       />
       <div className="home-section">
         {isLoading && (

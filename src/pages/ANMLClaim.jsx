@@ -1,24 +1,33 @@
 import { useEffect, useState } from "react";
 import styles from "./ANMLClaim.module.css";
 import { useLoading } from "../contexts/LoadingContext";
-import { ERTH_API_BASE_URL } from "../utils/config";
+import { poolForToken } from "../chain/dex";
+import { UANML, UERTH } from "../chain/config";
+import { toMacro } from "../chain/tokens";
+import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice } from "../utils/formatUtils";
 import anmlImage from "../images/anml.png";
 
 const ANMLClaim = () => {
   const { hideLoading } = useLoading();
   const [anmlPrice, setAnmlPrice] = useState(null);
+  const erthPrice = useErthPrice();
 
+  // ANML has no external price feed, so it is derived from the on-chain
+  // ANML/ERTH pool's spot rate priced in ERTH.
   useEffect(() => {
     hideLoading();
+    if (!erthPrice) return;
 
-    fetch(`${ERTH_API_BASE_URL}/analytics`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.latest?.anmlPrice) setAnmlPrice(data.latest.anmlPrice);
+    poolForToken(UANML)
+      .then((pool) => {
+        if (!pool) return;
+        const erthReserve = toMacro(pool.erthReserve, UERTH);
+        const anmlReserve = toMacro(pool.tokenReserve, UANML);
+        if (anmlReserve > 0) setAnmlPrice((erthReserve / anmlReserve) * erthPrice);
       })
       .catch(console.error);
-  }, []);
+  }, [erthPrice]);
 
   return (
     <div className={styles.container}>

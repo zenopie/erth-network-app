@@ -4,12 +4,10 @@ import "./Sidebar.css";
 import logo from "../images/logo.png";
 import keplr from "../images/keplr.png";
 import useIsMobile from "../hooks/useIsMobile";
-import { getUserAddress } from "../utils/contractUtils";
 
-const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, loginError, onLogin, onLogout }) => {
+const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError, onConnect, onDisconnect }) => {
   const location = useLocation();
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
-  const [isUtilitiesOpen, setIsUtilitiesOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,7 +22,6 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
       setIsCollapsed((prev) => !prev);
       if (!isCollapsed) {
         setIsGovernanceOpen(false);
-        setIsUtilitiesOpen(false);
       }
     }
   };
@@ -83,11 +80,16 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
               <span className="link_name">Stake ERTH</span>
             </Link>
           </li>
+          <li className={location.pathname.startsWith("/explorer") ? "active" : ""}>
+            <Link to="/explorer" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-cube"></i>
+              <span className="link_name">Explorer</span>
+            </Link>
+          </li>
           <li className={`submenu ${isGovernanceOpen ? "open" : ""}`}>
             <div
               onClick={() => {
                 setIsGovernanceOpen((prev) => !prev);
-                setIsUtilitiesOpen(false);
               }}
               className="submenu-toggle"
             >
@@ -108,41 +110,10 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
               </li>
             </ul>
           </li>
-          <li className={location.pathname === "/airdrop" ? "active" : ""}>
-            <Link to="/airdrop" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-gift"></i>
-              <span className="link_name">Weekly{'\u00A0'}Airdrop</span>
-            </Link>
-          </li>
-          <li className={`submenu ${isUtilitiesOpen ? "open" : ""}`}>
-            <div
-              onClick={() => {
-                setIsUtilitiesOpen((prev) => !prev);
-                setIsGovernanceOpen(false);
-              }}
-              className="submenu-toggle"
-            >
-              <i className="bx bxs-cog"></i>
-              <span className="link_name">Utilities</span>
-              <i className="bx bx-chevron-right arrow"></i>
-            </div>
-            <ul className="submenu-list">
-              <li className={location.pathname === "/bridge" ? "active" : ""}>
-                <Link to="/bridge" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  XMR Bridge
-                </Link>
-              </li>
-              <li className={location.pathname === "/transaction-logs" ? "active" : ""}>
-                <Link to="/transaction-logs" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Transaction Logs
-                </Link>
-              </li>
-            </ul>
-          </li>
         </ul>
 
         <div className="profile-container">
-          {isKeplrConnected ? (
+          {isConnected ? (
             <div className="profile-details">
               <div className="profile-content">
                 <img src={keplr} alt="Keplr" />
@@ -154,29 +125,29 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
                   </div>
                   <button
                     className="logout-button"
-                    onClick={onLogout}
-                    title="Logout"
+                    onClick={onDisconnect}
+                    title="Disconnect"
                   >
                     <i className="bx bx-log-out"></i>
                   </button>
                 </div>
                 <div className="wallet-address">
-                  {(() => { const addr = getUserAddress(); return addr ? `${addr.slice(0, 10)}...${addr.slice(-4)}` : ""; })()}
+                  {address ? `${address.slice(0, 10)}...${address.slice(-4)}` : ""}
                 </div>
               </div>
             </div>
           ) : (
             <div
-              className={`profile-details sidebar-login-area ${isLoggingIn || isConnecting ? "disabled" : ""}`}
-              onClick={!(isLoggingIn || isConnecting) ? onLogin : undefined}
+              className={`profile-details sidebar-login-area ${isConnecting ? "disabled" : ""}`}
+              onClick={!isConnecting ? onConnect : undefined}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !(isLoggingIn || isConnecting)) onLogin();
+                if (e.key === "Enter" && !isConnecting) onConnect();
               }}
             >
               <div className="profile-content">
-                {isLoggingIn || isConnecting ? (
+                {isConnecting ? (
                   <div className="sidebar-connect-spinner"></div>
                 ) : (
                   <img src={keplr} alt="Keplr" />
@@ -184,10 +155,10 @@ const Sidebar = ({ walletName, isKeplrConnected, isLoggingIn, isConnecting, logi
               </div>
               <div className="name-job">
                 <div className="profile_name sidebar-login-text">
-                  {isLoggingIn ? "Signing..." : isConnecting ? "Connecting..." : "Sign In"}
+                  {isConnecting ? "Connecting..." : "Connect Wallet"}
                 </div>
-                {loginError && (
-                  <div className="sidebar-login-error">{loginError}</div>
+                {connectError && (
+                  <div className="sidebar-login-error">{connectError}</div>
                 )}
               </div>
             </div>

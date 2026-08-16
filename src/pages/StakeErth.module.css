@@ -429,3 +429,30 @@
     width: 100%;
   }
 }
+
+/* Validator picker */
+
+.validatorSelect {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fff;
+  color: #111827;
+  outline: none;
+  cursor: pointer;
+}
+
+.validatorSelect:focus {
+  border-color: #4caf50;
+}
+
+.warn {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #b45309;
+  background: #fffbeb;
+  border-radius: 8px;
+  padding: 8px 10px;
+}

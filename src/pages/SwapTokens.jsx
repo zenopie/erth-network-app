@@ -1,503 +1,186 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { MsgExecuteContract } from "secretjs";
-import { querySnipBalance, queryNativeBalance, query, snip, requestViewingKey, getQueryAddress } from "../utils/contractUtils";
-import contracts from "../utils/contracts";
-import tokens from "../utils/tokens";
-import { calculateMinimumReceived } from "../utils/mathUtils";
+import * as dex from "../chain/dex";
+import { balances } from "../chain/bank";
+import { broadcast } from "../chain/tx";
+import { UANML, UERTH } from "../chain/config";
+import { TOKENS, minimumReceived, symbolOf, toMacro, toMicro, tokenInfo } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
-import { toMicroUnits } from "../utils/mathUtils";
 import { fetchCoingeckoPrice, formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import StatusModal from "../components/StatusModal";
 import styles from "./SwapTokens.module.css";
 
-// GAS pseudo-token representing native SCRT
-const GAS_TOKEN = {
-  contract: null,
-  hash: null,
-  decimals: 6,
-  logo: null, // Will use icon instead
-  coingeckoId: "secret",
-  isGas: true,
-};
-
+/**
+ * Token swaps against x/dex.
+ *
+ * ERTH is the chain's native gas coin, so there is no wrapped-token dance here:
+ * the Secret build had to wrap SCRT into sSCRT and route swaps through SNIP-20
+ * send-hooks, whereas on earth a swap is a single MsgSwap over bank denoms.
+ * ERTH is also the AMM hub, so a token->token swap routes through it on-chain.
+ */
 const SwapTokens = () => {
-  const { isKeplrConnected } = useWallet();
+  const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, execute, closeModal } = useTransaction();
 
-  const [fromToken, setFromToken] = useState("ANML");
-  const [toToken, setToToken] = useState("ERTH");
+  const [fromDenom, setFromDenom] = useState(UANML);
+  const [toDenom, setToDenom] = useState(UERTH);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
 
-  const [fromBalance, setFromBalance] = useState(null);
-  const [toBalance, setToBalance] = useState(null);
-
+  const [walletBalances, setWalletBalances] = useState({});
   const [slippage, setSlippage] = useState(1);
   const [showDetails, setShowDetails] = useState(false);
+  const [pools, setPools] = useState([]);
 
   const erthPrice = useErthPrice();
   const [fromUsd, setFromUsd] = useState(null);
   const [toUsd, setToUsd] = useState(null);
   const [priceImpact, setPriceImpact] = useState(null);
 
-  // Fetch balances
-  const fetchData = useCallback(async (refetch = false) => {
-    if (!isKeplrConnected) {
-      console.warn("Keplr not connected");
+  // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool.
+  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom)];
+
+  const fromBalance = toMacro(walletBalances[fromDenom] ?? 0, fromDenom);
+  const toBalance = toMacro(walletBalances[toDenom] ?? 0, toDenom);
+
+  // Pools are public, so quotes work before a wallet is connected.
+  useEffect(() => {
+    (async () => {
+      showLoading();
+      try {
+        setPools(await dex.pools());
+      } finally {
+        hideLoading();
+      }
+    })();
+  }, []);
+
+  const fetchBalances = useCallback(async () => {
+    if (!address) {
+      setWalletBalances({});
       return;
     }
-    if (!refetch) showLoading();
-    try {
-      // Fetch from balance
-      let fromBal;
-      if (fromToken === "GAS") {
-        fromBal = await queryNativeBalance();
-      } else {
-        fromBal = await querySnipBalance(tokens[fromToken]);
-      }
-      setFromBalance(isNaN(fromBal) ? "Error" : parseFloat(fromBal));
-
-      // Fetch to balance
-      let toBal;
-      if (toToken === "GAS") {
-        toBal = await queryNativeBalance();
-      } else {
-        toBal = await querySnipBalance(tokens[toToken]);
-      }
-      setToBalance(isNaN(toBal) ? "Error" : parseFloat(toBal));
-    } catch (err) {
-      console.error("[fetchData] error:", err);
-      setFromBalance("Error");
-      setToBalance("Error");
-    } finally {
-      if (!refetch) hideLoading();
-    }
-  }, [isKeplrConnected, fromToken, toToken]);
+    setWalletBalances(await balances(address));
+  }, [address]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchBalances();
+  }, [fetchBalances]);
 
-  // Query pool reserves for a token pair (public query - works without login)
-  const getPoolReserves = useCallback(async (token) => {
-    if (token === "ERTH") return null;
+  /** Spot price of a denom in ERTH, from pool reserves. */
+  const spotRateInErth = useCallback(
+    (denom) => {
+      if (denom === UERTH) return 1;
+      const p = pools.find((x) => x.tokenDenom === denom);
+      if (!p || Number(p.tokenReserve) === 0) return null;
+      return Number(p.erthReserve) / Number(p.tokenReserve);
+    },
+    [pools],
+  );
 
-    const poolToken = token === "GAS" ? "SSCRT" : token;
-    if (!tokens[poolToken]?.contract || !contracts.exchange?.contract) return null;
-
-    try {
-      const msg = {
-        query_user_info: {
-          pools: [tokens[poolToken].contract],
-          user: getQueryAddress(),
-        },
-      };
-      const result = await query(contracts.exchange.contract, contracts.exchange.hash, msg);
-      const poolState = result[0]?.pool_info?.state;
-      if (poolState) {
-        return {
-          erthReserve: Number(poolState.erth_reserve || 0),
-          tokenReserve: Number(poolState.token_b_reserve || 0),
-        };
+  const usdValue = useCallback(
+    async (denom, amount) => {
+      if (!(parseFloat(amount) > 0)) return null;
+      const info = tokenInfo(denom);
+      if (info.coingeckoId) {
+        const cg = await fetchCoingeckoPrice(info.coingeckoId);
+        if (cg !== null) return parseFloat(amount) * cg;
       }
-      return null;
-    } catch (err) {
-      console.error("[getPoolReserves] error:", err);
-      return null;
-    }
-  }, [isKeplrConnected]);
+      if (!erthPrice) return null;
+      const rate = spotRateInErth(denom);
+      return rate ? parseFloat(amount) * rate * erthPrice : null;
+    },
+    [erthPrice, spotRateInErth],
+  );
 
-  // Calculate price impact from pool reserves
-  const calculatePriceImpact = useCallback(async (inputAmount, inputToken, outputToken) => {
-    if (!inputAmount || parseFloat(inputAmount) <= 0) return null;
+  /**
+   * Price impact: how far the trade moves the pool(s) it touches. A token->token
+   * swap crosses two pools, so the two impacts compound.
+   */
+  const calcPriceImpact = useCallback(
+    (amount) => {
+      const micro = toMicro(amount, fromDenom);
+      if (!micro) return null;
 
-    // For GAS <-> SSCRT, no price impact (1:1)
-    if ((inputToken === "GAS" && outputToken === "SSCRT") || (inputToken === "SSCRT" && outputToken === "GAS")) {
-      return 0;
-    }
-
-    try {
-      // For swaps through ERTH, calculate impact on the relevant pool(s)
-      // For GAS, treat as SSCRT for pool calculations
-      const effectiveInputToken = inputToken === "GAS" ? "SSCRT" : inputToken;
-      const effectiveOutputToken = outputToken === "GAS" ? "SSCRT" : outputToken;
-      const tokenInfo = effectiveInputToken === "ERTH" ? { decimals: 6 } : tokens[effectiveInputToken];
-      const inputAmountMicro = toMicroUnits(parseFloat(inputAmount), tokenInfo);
-
-      if (effectiveInputToken === "ERTH") {
-        // ERTH -> Token: impact on output token's pool
-        const reserves = await getPoolReserves(effectiveOutputToken);
-        if (!reserves) return null;
-        // Price impact = input / (input_reserve + input)
-        const impact = (inputAmountMicro / (reserves.erthReserve + inputAmountMicro)) * 100;
-        return impact;
-      } else if (effectiveOutputToken === "ERTH") {
-        // Token -> ERTH: impact on input token's pool
-        const reserves = await getPoolReserves(effectiveInputToken);
-        if (!reserves) return null;
-        const impact = (inputAmountMicro / (reserves.tokenReserve + inputAmountMicro)) * 100;
-        return impact;
-      } else {
-        // Token -> Token: impact on both pools (A -> ERTH -> B)
-        const fromReserves = await getPoolReserves(effectiveInputToken);
-        const toReserves = await getPoolReserves(effectiveOutputToken);
-        if (!fromReserves || !toReserves) return null;
-
-        // First leg: Token A -> ERTH
-        const impactA = inputAmountMicro / (fromReserves.tokenReserve + inputAmountMicro);
-        // Estimate ERTH output from first leg (simplified)
-        const erthOutput = (fromReserves.erthReserve * inputAmountMicro) / (fromReserves.tokenReserve + inputAmountMicro);
-        // Second leg: ERTH -> Token B
-        const impactB = erthOutput / (toReserves.erthReserve + erthOutput);
-        // Combined impact (approximate)
-        const totalImpact = (1 - (1 - impactA) * (1 - impactB)) * 100;
-        return totalImpact;
+      if (fromDenom === UERTH) {
+        const p = pools.find((x) => x.tokenDenom === toDenom);
+        return p ? (micro / (Number(p.erthReserve) + micro)) * 100 : null;
       }
-    } catch (err) {
-      console.error("[calculatePriceImpact] error:", err);
-      return null;
-    }
-  }, [getPoolReserves]);
-
-  // Get spot rate for a token (price per 1 token in ERTH, from pool reserves)
-  const getSpotRate = useCallback(async (token) => {
-    if (token === "ERTH") return 1;
-
-    const reserves = await getPoolReserves(token);
-    if (!reserves || reserves.tokenReserve === 0) return null;
-
-    // Spot rate = ERTH reserve / Token reserve
-    return reserves.erthReserve / reserves.tokenReserve;
-  }, [getPoolReserves]);
-
-  // Get USD value for a token amount - uses CoinGecko if available, otherwise spot rate
-  const getUsdValue = useCallback(async (token, amount) => {
-    if (!amount || parseFloat(amount) <= 0) return null;
-
-    // Get token data (handle GAS pseudo-token)
-    const tokenData = token === "GAS" ? GAS_TOKEN : tokens[token];
-    if (tokenData.coingeckoId) {
-      const cgPrice = await fetchCoingeckoPrice(tokenData.coingeckoId);
-      if (cgPrice !== null) {
-        return parseFloat(amount) * cgPrice;
+      if (toDenom === UERTH) {
+        const p = pools.find((x) => x.tokenDenom === fromDenom);
+        return p ? (micro / (Number(p.tokenReserve) + micro)) * 100 : null;
       }
-    }
+      const pIn = pools.find((x) => x.tokenDenom === fromDenom);
+      const pOut = pools.find((x) => x.tokenDenom === toDenom);
+      if (!pIn || !pOut) return null;
+      const impactA = micro / (Number(pIn.tokenReserve) + micro);
+      const erthOut = (Number(pIn.erthReserve) * micro) / (Number(pIn.tokenReserve) + micro);
+      const impactB = erthOut / (Number(pOut.erthReserve) + erthOut);
+      return (1 - (1 - impactA) * (1 - impactB)) * 100;
+    },
+    [pools, fromDenom, toDenom],
+  );
 
-    if (!erthPrice) return null;
-    const spotRate = await getSpotRate(token);
-    return spotRate ? parseFloat(amount) * spotRate * erthPrice : null;
-  }, [erthPrice, getSpotRate]);
-
-  // Calculate USD values and price impact when amounts change
   useEffect(() => {
-    const calculateValues = async () => {
-      // Calculate FROM USD
-      if (fromAmount && parseFloat(fromAmount) > 0) {
-        setFromUsd(await getUsdValue(fromToken, fromAmount));
-        const impact = await calculatePriceImpact(fromAmount, fromToken, toToken);
-        setPriceImpact(impact);
+    (async () => {
+      if (parseFloat(fromAmount) > 0) {
+        setFromUsd(await usdValue(fromDenom, fromAmount));
+        setPriceImpact(calcPriceImpact(fromAmount));
       } else {
         setFromUsd(null);
         setPriceImpact(null);
       }
-
-      // Calculate TO USD
-      if (toAmount && parseFloat(toAmount) > 0) {
-        setToUsd(await getUsdValue(toToken, toAmount));
-      } else {
-        setToUsd(null);
-      }
-    };
-
-    calculateValues();
-  }, [fromAmount, toAmount, fromToken, toToken, getUsdValue, calculatePriceImpact]);
-
-  // Simulate swap output (public query - works without login)
-  const simulateSwapQuery = async (inputAmount, fromTk, toTk) => {
-    if (!contracts.exchange?.contract) return "";
-    if (!inputAmount) return "";
-    try {
-      const inputAmountFloat = parseFloat(inputAmount);
-
-      // Handle GAS <-> SSCRT direct wrap/unwrap (1:1)
-      if ((fromTk === "GAS" && toTk === "SSCRT") || (fromTk === "SSCRT" && toTk === "GAS")) {
-        return inputAmountFloat.toFixed(6);
-      }
-
-      // Handle swaps involving GAS
-      if (fromTk === "GAS") {
-        // GAS -> Token: simulate SSCRT -> Token (after wrap)
-        const amountInMicro = toMicroUnits(inputAmountFloat, { decimals: 6 });
-        const simulateMsg = {
-          simulate_swap: {
-            input_token: tokens.SSCRT.contract,
-            amount: amountInMicro.toString(),
-            output_token: tokens[toTk].contract,
-          },
-        };
-        const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
-        const out = result.output_amount;
-        const decimals = tokens[toTk].decimals || 6;
-        const outNumber = parseFloat(out) / 10 ** decimals;
-        return outNumber.toFixed(6);
-      }
-
-      if (toTk === "GAS") {
-        // Token -> GAS: simulate Token -> SSCRT (then unwrap)
-        const amountInMicro = toMicroUnits(inputAmountFloat, tokens[fromTk]);
-        const simulateMsg = {
-          simulate_swap: {
-            input_token: tokens[fromTk].contract,
-            amount: amountInMicro.toString(),
-            output_token: tokens.SSCRT.contract,
-          },
-        };
-        const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
-        const out = result.output_amount;
-        // SSCRT output = GAS output (1:1 unwrap)
-        const outNumber = parseFloat(out) / 10 ** 6;
-        return outNumber.toFixed(6);
-      }
-
-      // Regular token swap
-      const amountInMicro = toMicroUnits(inputAmountFloat, tokens[fromTk]);
-      const simulateMsg = {
-        simulate_swap: {
-          input_token: tokens[fromTk].contract,
-          amount: amountInMicro.toString(),
-          output_token: tokens[toTk].contract,
-        },
-      };
-      const result = await query(contracts.exchange.contract, contracts.exchange.hash, simulateMsg);
-      const out = result.output_amount;
-      const decimals = tokens[toTk].decimals || 6;
-      const outNumber = parseFloat(out) / 10 ** decimals;
-      return outNumber.toFixed(6);
-    } catch (err) {
-      console.error("[simulateSwapQuery] error:", err);
-      return "";
-    }
-  };
+      setToUsd(parseFloat(toAmount) > 0 ? await usdValue(toDenom, toAmount) : null);
+    })();
+  }, [fromAmount, toAmount, fromDenom, toDenom, usdValue, calcPriceImpact]);
 
   const handleFromAmountChange = async (val) => {
     setFromAmount(val);
-    if (!val || isNaN(val) || parseFloat(val) <= 0) {
+    if (!(parseFloat(val) > 0)) {
       setToAmount("");
       return;
     }
-    const simulated = await simulateSwapQuery(val, fromToken, toToken);
-    if (simulated) setToAmount(simulated);
+    const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
+    setToAmount(outMicro ? toMacro(outMicro, toDenom).toFixed(6) : "");
   };
 
-  // Execute swap
   const handleSwap = async () => {
-    if (!isKeplrConnected) {
-      console.warn("Keplr not connected.");
-      return;
-    }
-    const inputAmount = parseFloat(fromAmount);
-    if (isNaN(inputAmount) || inputAmount <= 0) {
-      console.warn("Invalid inputAmount");
-      return;
-    }
+    if (!isConnected || !(parseFloat(fromAmount) > 0) || !toAmount) return;
     execute(async () => {
-      const minReceived = calculateMinimumReceived(toAmount, slippage);
-      const inputInMicro = toMicroUnits(inputAmount, { decimals: 6 });
-
-      // Handle GAS <-> SSCRT direct wrap/unwrap
-      if (fromToken === "GAS" && toToken === "SSCRT") {
-        // Wrap SCRT to SSCRT
-        const wrapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: tokens.SSCRT.contract,
-          code_hash: tokens.SSCRT.hash,
-          msg: { deposit: {} },
-          sent_funds: [{ denom: "uscrt", amount: inputInMicro.toString() }],
-        });
-
-        const resp = await window.secretjs.tx.broadcast([wrapMsg], {
-          gasLimit: 150_000,
-          gasPriceInFeeDenom: 0.25,
-          feeDenom: "uscrt",
-        });
-
-        if (resp.code !== 0) {
-          throw new Error(`Transaction failed: ${resp.rawLog}`);
-        }
-      } else if (fromToken === "SSCRT" && toToken === "GAS") {
-        // Unwrap SSCRT to SCRT
-        const unwrapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: tokens.SSCRT.contract,
-          code_hash: tokens.SSCRT.hash,
-          msg: { redeem: { amount: inputInMicro.toString() } },
-        });
-
-        const resp = await window.secretjs.tx.broadcast([unwrapMsg], {
-          gasLimit: 150_000,
-          gasPriceInFeeDenom: 0.25,
-          feeDenom: "uscrt",
-        });
-
-        if (resp.code !== 0) {
-          throw new Error(`Transaction failed: ${resp.rawLog}`);
-        }
-      } else if (fromToken === "GAS") {
-        // GAS -> Token: wrap SCRT to SSCRT, then swap SSCRT to target token
-        const minInMicro = toMicroUnits(minReceived, tokens[toToken]);
-
-        // Message 1: Wrap SCRT to SSCRT
-        const wrapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: tokens.SSCRT.contract,
-          code_hash: tokens.SSCRT.hash,
-          msg: { deposit: {} },
-          sent_funds: [{ denom: "uscrt", amount: inputInMicro.toString() }],
-        });
-
-        // Message 2: Swap SSCRT to target token
-        const swapHookMsg = {
-          swap: {
-            output_token: tokens[toToken].contract,
-            min_received: minInMicro.toString(),
-          },
-        };
-        const hookmsg64 = btoa(JSON.stringify(swapHookMsg));
-        const swapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: tokens.SSCRT.contract,
-          code_hash: tokens.SSCRT.hash,
-          msg: {
-            send: {
-              recipient: contracts.exchange.contract,
-              recipient_code_hash: contracts.exchange.hash,
-              amount: inputInMicro.toString(),
-              msg: hookmsg64,
-            },
-          },
-        });
-
-        const resp = await window.secretjs.tx.broadcast([wrapMsg, swapMsg], {
-          gasLimit: 500_000,
-          gasPriceInFeeDenom: 0.25,
-          feeDenom: "uscrt",
-        });
-
-        if (resp.code !== 0) {
-          throw new Error(`Transaction failed: ${resp.rawLog}`);
-        }
-      } else if (toToken === "GAS") {
-        // Token -> GAS: swap to SSCRT, then unwrap SSCRT to SCRT
-        const fromTokenInfo = tokens[fromToken];
-        const inputFromMicro = toMicroUnits(inputAmount, fromTokenInfo);
-        const minSscrtMicro = toMicroUnits(minReceived, { decimals: 6 });
-
-        // Message 1: Swap token to SSCRT
-        const swapHookMsg = {
-          swap: {
-            output_token: tokens.SSCRT.contract,
-            min_received: minSscrtMicro.toString(),
-          },
-        };
-        const hookmsg64 = btoa(JSON.stringify(swapHookMsg));
-        const swapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: fromTokenInfo.contract,
-          code_hash: fromTokenInfo.hash,
-          msg: {
-            send: {
-              recipient: contracts.exchange.contract,
-              recipient_code_hash: contracts.exchange.hash,
-              amount: inputFromMicro.toString(),
-              msg: hookmsg64,
-            },
-          },
-        });
-
-        // Message 2: Unwrap SSCRT to SCRT (use min_received as the amount to unwrap)
-        const unwrapMsg = new MsgExecuteContract({
-          sender: window.secretjs.address,
-          contract_address: tokens.SSCRT.contract,
-          code_hash: tokens.SSCRT.hash,
-          msg: { redeem: { amount: minSscrtMicro.toString() } },
-        });
-
-        const resp = await window.secretjs.tx.broadcast([swapMsg, unwrapMsg], {
-          gasLimit: 500_000,
-          gasPriceInFeeDenom: 0.25,
-          feeDenom: "uscrt",
-        });
-
-        if (resp.code !== 0) {
-          throw new Error(`Transaction failed: ${resp.rawLog}`);
-        }
-      } else {
-        // Regular token swap
-        const fromTokenInfo = tokens[fromToken];
-        const toTokenInfo = tokens[toToken];
-        const inputFromMicro = toMicroUnits(inputAmount, fromTokenInfo);
-        const minInMicro = toMicroUnits(minReceived, toTokenInfo);
-        const snipMsg = {
-          swap: {
-            output_token: toTokenInfo.contract,
-            min_received: minInMicro.toString(),
-          },
-        };
-        await snip(
-          fromTokenInfo.contract,
-          fromTokenInfo.hash,
-          contracts.exchange.contract,
-          contracts.exchange.hash,
-          snipMsg,
-          inputFromMicro
-        );
-      }
-
+      const minOut = toMicro(minimumReceived(toAmount, slippage), toDenom);
+      await broadcast([
+        dex.msgSwap(address, fromDenom, toMicro(fromAmount, fromDenom), toDenom, minOut),
+      ]);
       setFromAmount("");
       setToAmount("");
-      fetchData(true);
+      fetchBalances();
     });
   };
 
-  // Token handlers
-  const handleFromTokenChange = (e) => {
+  const handleFromDenomChange = (e) => {
     const selected = e.target.value;
-    if (selected === toToken) setToToken(fromToken);
-    setFromToken(selected);
+    if (selected === toDenom) setToDenom(fromDenom);
+    setFromDenom(selected);
     setFromAmount("");
     setToAmount("");
   };
 
-  const handleToTokenChange = (e) => {
+  const handleToDenomChange = (e) => {
     const selected = e.target.value;
-    if (selected === fromToken) setFromToken(toToken);
-    setToToken(selected);
+    if (selected === fromDenom) setFromDenom(toDenom);
+    setToDenom(selected);
     setFromAmount("");
     setToAmount("");
   };
 
   const handleTogglePair = () => {
-    const prevFrom = fromToken;
-    const prevTo = toToken;
-    setFromToken(prevTo);
-    setToToken(prevFrom);
+    setFromDenom(toDenom);
+    setToDenom(fromDenom);
     setFromAmount("");
     setToAmount("");
-  };
-
-  const handleMaxFromAmount = () => {
-    if (typeof fromBalance === "number") {
-      handleFromAmountChange(fromBalance.toString());
-    }
-  };
-
-  const handleRequestViewingKey = async (tk) => {
-    await requestViewingKey(tk);
-    fetchData();
   };
 
   return (
@@ -508,39 +191,32 @@ const SwapTokens = () => {
         <h2 className={styles.title}>Swap Tokens</h2>
       </div>
 
-      {/* Swap Section with overlapping toggle */}
       <div className={styles.swapSection}>
         {/* FROM */}
         <div className={styles.inputGroup}>
           <div className={styles.labelRow}>
             <label className={styles.inputLabel}>From</label>
             <div className={styles.balance}>
-              {fromBalance === "Error" && fromToken !== "GAS" ? (
-                <button className={styles.vkButton} onClick={() => handleRequestViewingKey(tokens[fromToken])}>
-                  Get Viewing Key
-                </button>
-              ) : (
-                <>
-                  Balance: {fromBalance ?? "..."}
-                  <button className={styles.maxButton} onClick={handleMaxFromAmount}>
-                    Max
-                  </button>
-                </>
-              )}
+              Balance: {isConnected ? fromBalance.toLocaleString() : "—"}
+              <button
+                className={styles.maxButton}
+                onClick={() => handleFromAmountChange(String(fromBalance))}
+              >
+                Max
+              </button>
             </div>
           </div>
 
           <div className={styles.inputWrapper}>
-            {fromToken === "GAS" ? (
-              <i className={`bx bxs-gas-pump ${styles.inputLogo}`} aria-hidden="true"></i>
-            ) : (
-              <img src={tokens[fromToken].logo} alt={`${fromToken} logo`} className={styles.inputLogo} />
-            )}
-            <select className={styles.tokenSelect} value={fromToken} onChange={handleFromTokenChange}>
-              <option value="GAS">GAS</option>
-              {Object.keys(tokens).map((tk) => (
-                <option key={tk} value={tk}>
-                  {tk}
+            <img
+              src={tokenInfo(fromDenom).logo ?? TOKENS[UERTH].logo}
+              alt={`${symbolOf(fromDenom)} logo`}
+              className={styles.inputLogo}
+            />
+            <select className={styles.tokenSelect} value={fromDenom} onChange={handleFromDenomChange}>
+              {denomOptions.map((d) => (
+                <option key={d} value={d}>
+                  {symbolOf(d)}
                 </option>
               ))}
             </select>
@@ -557,7 +233,6 @@ const SwapTokens = () => {
           </div>
         </div>
 
-        {/* Toggle - overlapping */}
         <button className={styles.toggleButton} onClick={handleTogglePair} aria-label="Swap tokens">
           <i className="bx bx-transfer-alt" aria-hidden="true"></i>
         </button>
@@ -566,49 +241,45 @@ const SwapTokens = () => {
         <div className={styles.inputGroup}>
           <div className={styles.labelRow}>
             <label className={styles.inputLabel}>To</label>
-            <div className={styles.balance}>
-              {toBalance === "Error" && toToken !== "GAS" ? (
-                <button className={styles.vkButton} onClick={() => handleRequestViewingKey(tokens[toToken])}>
-                  Get Viewing Key
-                </button>
-              ) : (
-                <>Balance: {toBalance ?? "..."}</>
-              )}
-            </div>
-            </div>
+            <div className={styles.balance}>Balance: {isConnected ? toBalance.toLocaleString() : "—"}</div>
+          </div>
 
           <div className={styles.inputWrapper}>
-            {toToken === "GAS" ? (
-              <i className={`bx bxs-gas-pump ${styles.inputLogo}`} aria-hidden="true"></i>
-            ) : (
-              <img src={tokens[toToken].logo} alt={`${toToken} logo`} className={styles.inputLogo} />
-            )}
-            <select className={styles.tokenSelect} value={toToken} onChange={handleToTokenChange}>
-              <option value="GAS">GAS</option>
-              {Object.keys(tokens).map((tk) => (
-                <option key={tk} value={tk}>
-                  {tk}
+            <img
+              src={tokenInfo(toDenom).logo ?? TOKENS[UERTH].logo}
+              alt={`${symbolOf(toDenom)} logo`}
+              className={styles.inputLogo}
+            />
+            <select className={styles.tokenSelect} value={toDenom} onChange={handleToDenomChange}>
+              {denomOptions.map((d) => (
+                <option key={d} value={d}>
+                  {symbolOf(d)}
                 </option>
               ))}
             </select>
             <div className={styles.amountContainer}>
-              <input type="number" className={styles.tokenInput} placeholder="0.0" value={toAmount} disabled readOnly />
+              <input
+                type="number"
+                className={styles.tokenInput}
+                placeholder="0.0"
+                value={toAmount}
+                disabled
+                readOnly
+              />
               <div className={styles.usdValue}>{formatUSD(toUsd ?? 0)}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action */}
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!isKeplrConnected || !fromAmount || parseFloat(fromAmount) <= 0 || !toAmount}
+        disabled={!isConnected || !fromAmount || parseFloat(fromAmount) <= 0 || !toAmount}
       >
-        {isKeplrConnected ? "Swap" : "Connect Wallet to Swap"}
+        {isConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
 
-      {/* Details */}
       <button className={styles.detailsToggle} onClick={() => setShowDetails(!showDetails)}>
         {showDetails ? "Hide Details" : "Show Details"}
         <span className={`${styles.caretIcon} ${showDetails ? styles.caretIconOpen : ""}`}>▼</span>
@@ -620,19 +291,24 @@ const SwapTokens = () => {
             <p>
               <span>Rate:</span>
               <span>
-                1 {fromToken} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken}
+                1 {symbolOf(fromDenom)} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)}{" "}
+                {symbolOf(toDenom)}
               </span>
             </p>
             <p>
               <span>Minimum received:</span>
               <span>
-                {parseFloat(calculateMinimumReceived(toAmount, slippage)).toFixed(toToken === "GAS" ? 6 : tokens[toToken].decimals)} {toToken}
+                {minimumReceived(toAmount, slippage).toFixed(6)} {symbolOf(toDenom)}
               </span>
             </p>
             {priceImpact !== null && (
               <p>
                 <span>Price Impact:</span>
-                <span className={priceImpact > 5 ? styles.highImpact : priceImpact > 1 ? styles.mediumImpact : ""}>
+                <span
+                  className={
+                    priceImpact > 5 ? styles.highImpact : priceImpact > 1 ? styles.mediumImpact : ""
+                  }
+                >
                   {priceImpact.toFixed(2)}%
                 </span>
               </p>
