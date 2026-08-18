@@ -56,10 +56,10 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
           )}
         </div>
         <ul className="nav-links">
-          <li className={location.pathname === "/anml-claim" ? "active" : ""}>
-            <Link to="/anml-claim" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-coin"></i>
-              <span className="link_name">ANML Claim</span>
+          <li className={location.pathname === "/about" ? "active" : ""}>
+            <Link to="/about" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-info-circle"></i>
+              <span className="link_name">About</span>
             </Link>
           </li>
           <li className={location.pathname === "/swap-tokens" ? "active" : ""}>

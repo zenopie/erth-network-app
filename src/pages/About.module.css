@@ -1,0 +1,294 @@
+/* About — the app's front door.
+ *
+ * Wider than the app's other pages (which cap at 500px for forms) because this
+ * one is read rather than operated. The 2x2 is the only place colour does any
+ * work: it is the argument of the page, so it gets the green and everything
+ * else stays in ink and grey.
+ */
+
+.page {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 20px 64px;
+  color: #111827;
+}
+
+/* --- hero --- */
+
+.hero {
+  padding: 32px 0 40px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4caf50;
+}
+
+.title {
+  margin: 0 0 20px;
+  font-size: 42px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0;
+  max-width: 34em;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.lede em {
+  font-style: normal;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  margin-top: 32px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  /* Digits that change on load should not shift what sits beside them. */
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* --- sections --- */
+
+.section {
+  padding: 40px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.h2 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.body {
+  margin: 0;
+  max-width: 34em;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #374151;
+}
+
+.aside {
+  margin: 24px 0 0;
+  padding: 14px 16px;
+  max-width: 34em;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+  background: #f3f9f3;
+  border-left: 3px solid #4caf50;
+  border-radius: 0 8px 8px 0;
+}
+
+/* --- steps --- */
+
+.steps {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* Numbered because the order is real: you cannot prove before you read. */
+.stepNum {
+  flex: 0 0 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #4caf50;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stepTitle {
+  margin: 3px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.stepBody {
+  margin: 0;
+  max-width: 32em;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+/* --- the 2x2 --- */
+
+.matrix {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.6fr) 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.matrixHead,
+.matrixSide {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.matrixSide em {
+  font-style: normal;
+  color: #4caf50;
+}
+
+.pillar {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f3f9f3;
+  border: 1px solid #dcecdc;
+}
+
+.pillarTitle {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pillarBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #374151;
+}
+
+/* --- plain list --- */
+
+.plain {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  max-width: 34em;
+}
+
+.plain li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+/* --- cta --- */
+
+.cta {
+  padding: 40px 0 0;
+}
+
+.ctaTitle {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primary,
+.secondary {
+  display: inline-block;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.primary {
+  background: #4caf50;
+  color: #ffffff;
+}
+
+.primary:hover {
+  background: #45a049;
+}
+
+.secondary {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+}
+
+.secondary:hover {
+  border-color: #9ca3af;
+}
+
+.fine {
+  margin: 20px 0 0;
+  max-width: 34em;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #9ca3af;
+}
+
+/* Narrow: the matrix stops being a matrix and becomes four cards, each
+   carrying its own row label, because a 3-column grid at 360px makes every
+   cell too narrow to read. */
+@media (max-width: 640px) {
+  .title { font-size: 32px; }
+  .lede { font-size: 17px; }
+  .stats { gap: 28px; }
+
+  .matrix { grid-template-columns: 1fr 1fr; }
+  .matrixHead:first-child,
+  .matrixSide { display: none; }
+  .matrixHead { padding-left: 2px; }
+}
+
+@media (max-width: 420px) {
+  .matrix { grid-template-columns: 1fr; }
+  .matrixHead { display: none; }
+}
