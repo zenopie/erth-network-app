@@ -29,10 +29,10 @@ const PrivacyPolicy = () => {
         <h3>Passport Document Processing</h3>
         <ul>
           <li><strong>Data Collection:</strong> When you scan your passport, we temporarily access document information for verification</li>
-          <li><strong>Processing Method:</strong> Passport data is processed in a Trusted Execution Environment (TEE) to generate a cryptographic identity hash</li>
+          <li><strong>Processing Method:</strong> Passport data is read on your device and used to build a zero-knowledge proof there. The proof shows that a validly signed passport was read, without revealing anything it contains</li>
           <li><strong>Data Retention:</strong> We do NOT retain, store, or have access to your passport information, personal details, or biometric data</li>
-          <li><strong>Output:</strong> Only the anonymized cryptographic hash is used for identity verification on the blockchain</li>
-          <li><strong>Security:</strong> The TEE ensures that passport data cannot be accessed, viewed, or extracted by the application or any external parties</li>
+          <li><strong>Output:</strong> Only the proof and a one-way identifier derived from it are broadcast. The identifier is what stops one passport registering twice; it cannot be reversed into your passport</li>
+          <li><strong>Security:</strong> The passport data never leaves your device. This is a property of where the proof is generated, not a promise about how we handle data we receive — we do not receive it</li>
         </ul>
 
         <h3>Wallet Data</h3>
@@ -44,8 +44,9 @@ const PrivacyPolicy = () => {
 
         <h3>Network Communications</h3>
         <ul>
-          <li><strong>Blockchain:</strong> The app communicates with the Secret Network blockchain for transaction processing</li>
-          <li><strong>Backend:</strong> Limited communication with our servers for app updates and network status</li>
+          <li><strong>Blockchain:</strong> The app communicates with the Earth Network blockchain for transaction processing</li>
+          <li><strong>Public Ledger:</strong> Earth is a transparent chain. Your address, balances, transactions and votes are readable by anyone — this is not private data, and an address that has been linked to you links everything it has ever done</li>
+          <li><strong>Backend:</strong> Limited communication with our servers for network status and, if you choose to watch an advert for transaction fees, to send you that grant</li>
           <li><strong>No Personal Data:</strong> No personal information is transmitted in these communications</li>
         </ul>
       </section>
@@ -53,7 +54,7 @@ const PrivacyPolicy = () => {
       <section>
         <h2>DATA SECURITY</h2>
         <ul>
-          <li>All sensitive operations are performed in secure environments (TEE)</li>
+          <li>Passport reading and proof generation happen entirely on your device</li>
           <li>Local data is encrypted using industry-standard encryption</li>
           <li>Network communications use secure protocols</li>
           <li>We employ privacy-by-design principles throughout the application</li>

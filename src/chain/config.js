@@ -8,9 +8,9 @@
 const isDev = import.meta.env.DEV;
 
 // In dev, vite proxies /lcd -> http://localhost:1317 (see vite.config.js) so a
-// local `ignite chain serve` works without CORS. In production this must point
-// at a public LCD (cosmos gRPC-gateway) for the earth chain.
-// TODO: set VITE_EARTH_LCD to the real endpoint before deploying.
+// local `ignite chain serve` works without CORS. In production these default to
+// the public endpoints, which the deployed bundle relies on: the image is built
+// without VITE_ vars, so whatever is written here is what ships.
 export const EARTH_LCD_URL = isDev
   ? "/lcd"
   : (import.meta.env.VITE_EARTH_LCD ?? "https://lcd.erth.network");
@@ -21,7 +21,15 @@ export const EARTH_CHAIN_ID = import.meta.env.VITE_EARTH_CHAIN_ID ?? "earth";
 // LCD has no equivalent for: a range of blocks in a single request. In dev,
 // vite proxies /rpc -> localhost:26657. Everything else goes through the LCD,
 // and the explorer degrades to per-height LCD reads when this is unreachable.
-export const EARTH_RPC_URL = isDev ? "/rpc" : (import.meta.env.VITE_EARTH_RPC ?? "");
+//
+// Defaulting this to "" shipped a build that could not connect at all:
+// suggestChain refuses a chain whose rpc is empty, so Keplr never registered
+// Earth and every connection failed before it reached the chain. The LCD had a
+// real default and this did not, which made the failure look like a Keplr
+// problem rather than a missing build variable.
+export const EARTH_RPC_URL = isDev
+  ? "/rpc"
+  : (import.meta.env.VITE_EARTH_RPC ?? "https://rpc.erth.network");
 
 export const ADDRESS_PREFIX = "earth";
 
