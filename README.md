@@ -108,7 +108,7 @@ connect. `VITE_EARTH_RPC` should be set for that to fully register the chain in 
 | `EARTH_LCD` | Dev-only: proxy target for `/lcd`. | `http://localhost:1317` |
 | `VITE_EARTH_LCD` | Production LCD endpoint. | `https://lcd.erth.network` |
 | `VITE_EARTH_RPC` | Tendermint RPC, used for Keplr chain registration. | *(empty)* |
-| `VITE_EARTH_CHAIN_ID` | Chain id. | `earth` |
+| `VITE_EARTH_CHAIN_ID` | Chain id. | `earth-1` |
 
 > **TODO before deploying:** point `VITE_EARTH_LCD`/`VITE_EARTH_RPC` at the real endpoints.
 
