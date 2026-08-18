@@ -1,0 +1,19 @@
+/* Inline value + unit symbol. The symbol sits on the text baseline and scales
+   with the surrounding font, so this drops into a table cell or a heading
+   without either one having to know about it. */
+.amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28em;
+  white-space: nowrap;
+  /* Digits line up in columns of figures. */
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-symbol {
+  /* em, not px: the mark tracks whatever size it is used at. */
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  flex-shrink: 0;
+}

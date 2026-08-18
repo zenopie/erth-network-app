@@ -13,6 +13,8 @@ import useTransaction from "../hooks/useTransaction";
 import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice, formatCompact } from "../utils/formatUtils";
+import Amount from "../components/Amount";
+import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
 // The deflation stream emits a flat 1 ERTH/sec, split across allocation options
 // by staker vote. Whatever share lands on the LP-rewards option is what funds
@@ -37,6 +39,12 @@ const Markets = () => {
   const [erthAmount, setErthAmount] = useState("");
   const [tokenBAmount, setTokenBAmount] = useState("");
   const [removeAmount, setRemoveAmount] = useState("");
+  const { currency } = useDisplayCurrency();
+  // In ERTH mode every value is already ERTH-denominated, so the rate is 1 and
+  // nothing depends on the price feed. USD mode multiplies by the fetched price
+  // — and is disabled precisely because that feed has nothing to report.
+  const rate = currency === "USD" ? erthPrice : 1;
+
   const [sortBy, setSortBy] = useState("liquidityUsd");
   const [sortOrder, setSortOrder] = useState("desc");
 
@@ -95,7 +103,7 @@ const Markets = () => {
         const tokenReserve = toMacro(p.tokenReserve, p.tokenDenom);
         // A pool is half ERTH by construction, so TVL is twice the ERTH side.
         const tvlErth = erthReserve * 2;
-        const liquidityUsd = tvlErth * (erthPrice ?? 0);
+        const liquidityUsd = tvlErth * (rate ?? 0);
         const volumeErth = toMacro(p.volume, UERTH);
 
         // This pool's slice of LP rewards is its share of chain-wide volume.
@@ -103,7 +111,7 @@ const Markets = () => {
         const annualErth = SECONDS_PER_YEAR * lpRewardShare * volumeShare;
         const apr = tvlErth > 0 ? (annualErth / tvlErth) * 100 : 0;
 
-        const price = tokenReserve > 0 ? (erthReserve / tokenReserve) * (erthPrice ?? 0) : 0;
+        const price = tokenReserve > 0 ? (erthReserve / tokenReserve) * (rate ?? 0) : 0;
 
         const userShares = toMacro(walletBalances[p.lpDenom] ?? 0, p.lpDenom);
         const totalShares = toMacro(lpSupplies[p.lpDenom] ?? 0, p.lpDenom);
@@ -127,7 +135,7 @@ const Markets = () => {
           userTokenB: (tokenReserve * ownership) / 100,
         };
       }),
-    [pools, erthPrice, totalVolume, lpRewardShare, walletBalances, lpSupplies],
+    [pools, rate, totalVolume, lpRewardShare, walletBalances, lpSupplies],
   );
 
   const handleSort = (field) => {
@@ -232,12 +240,12 @@ const Markets = () => {
           </div>
           <div className={styles.marketsHeaderStat}>
             <span className={styles.marketsErthLabel}>Total TVL</span>
-            <span className={styles.marketsHeaderVal}>{formatCompact(totalTvlUsd)}</span>
+            <span className={styles.marketsHeaderVal}><Amount value={totalTvlUsd} /></span>
           </div>
           <div className={styles.marketsHeaderStat}>
             <span className={styles.marketsErthLabel}>Volume</span>
             <span className={styles.marketsHeaderVal}>
-              {erthPrice ? formatCompact(totalVolumeErth * erthPrice) : "--"}
+              {rate ? <Amount value={totalVolumeErth * rate} /> : "--"}
             </span>
           </div>
         </div>
@@ -304,12 +312,12 @@ const Markets = () => {
               </div>
               <div className={styles.poolRowStats}>
                 <div className={styles.poolRowStat}>
-                  <span className={styles.poolRowStatVal}>{formatCompact(row.liquidityUsd)}</span>
+                  <span className={styles.poolRowStatVal}><Amount value={row.liquidityUsd} /></span>
                   <span className={styles.poolRowStatLabel}>Liquidity</span>
                 </div>
                 <div className={styles.poolRowStat}>
                   <span className={styles.poolRowStatVal}>
-                    {row.volumeErth > 0 && erthPrice ? formatCompact(row.volumeErth * erthPrice) : "--"}
+                    {row.volumeErth > 0 && rate ? <Amount value={row.volumeErth * rate} /> : "--"}
                   </span>
                   <span className={styles.poolRowStatLabel}>Volume</span>
                 </div>

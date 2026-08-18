@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./Sidebar.css";
 import logo from "../images/logo.png";
+import { CURRENCIES, useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 import keplr from "../images/keplr.png";
 import useIsMobile from "../hooks/useIsMobile";
 
 const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError, onConnect, onDisconnect }) => {
+  const { currency, setCurrency } = useDisplayCurrency();
   const location = useLocation();
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -107,6 +109,29 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
         </ul>
 
         <div className="profile-container">
+          <div className="sidebar-settings">
+            <div className="profile-content">
+              <i className="bx bx-cog sidebar-settings-icon"></i>
+            </div>
+            <div className="name-job sidebar-settings-body">
+              <label className="sidebar-settings-label" htmlFor="display-currency">
+                Display currency
+              </label>
+              <select
+                id="display-currency"
+                className="sidebar-settings-select"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                {Object.values(CURRENCIES).map((c) => (
+                  <option key={c.code} value={c.code} disabled={!c.enabled} title={c.reason || ""}>
+                    {c.label}
+                    {c.enabled ? "" : " (soon)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           {isConnected ? (
             <div className="profile-details">
               <div className="profile-content">

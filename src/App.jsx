@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { WalletProvider } from './contexts/WalletContext';
 import { LoadingProvider } from './contexts/LoadingContext';
+import { DisplayCurrencyProvider } from './contexts/DisplayCurrencyContext';
 import Layout from './components/Layout';
 import SwapTokens from './pages/SwapTokens';
 import Markets from './pages/Markets';
@@ -22,6 +23,7 @@ function App() {
     <Router>
       <WalletProvider>
         <LoadingProvider>
+          <DisplayCurrencyProvider>
           <div className="App">
             <Routes>
               <Route path="/" element={<Navigate to="/swap-tokens" />} />
@@ -46,6 +48,7 @@ function App() {
               <Route path="/explorer/account/:address" element={<Layout><ExplorerAccount /></Layout>} />
             </Routes>
           </div>
+          </DisplayCurrencyProvider>
         </LoadingProvider>
       </WalletProvider>
     </Router>
