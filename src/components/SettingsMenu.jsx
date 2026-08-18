@@ -9,12 +9,12 @@ import "./SettingsMenu.css";
  * attention and grow the rail every time a setting is added. A popout keeps the
  * rail a list of destinations and gives settings somewhere to accumulate.
  *
- * It opens to the right because the sidebar is pinned left, and upward from the
- * button because it sits near the bottom of the rail — opening downward would
- * push it off-screen. Both work the same when the rail is collapsed, since the
- * panel is positioned against the button rather than the rail's width.
+ * The trigger is the cog alone. It lives in the sidebar header opposite the
+ * collapse toggle, which is the one spot that is present in every state — the
+ * rail collapses, the wallet block appears and disappears with connection, but
+ * the header is always there.
  */
-export default function SettingsMenu({ collapsed = false }) {
+export default function SettingsMenu() {
   const { currency, setCurrency } = useDisplayCurrency();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -47,12 +47,10 @@ export default function SettingsMenu({ collapsed = false }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="Settings"
         title="Settings"
       >
-        <span className="settings-trigger-icon">
-          <i className="bx bx-cog"></i>
-        </span>
-        {!collapsed && <span className="settings-trigger-label">Settings</span>}
+        <i className="bx bx-cog"></i>
       </button>
 
       {open && (

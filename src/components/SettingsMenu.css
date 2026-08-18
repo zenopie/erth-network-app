@@ -1,61 +1,59 @@
 /* Palette taken from Sidebar.css rather than invented: the rail is #fff, its
    ink is #4056a1, and selection is the pale #e8f4fc used by active nav links
    and the submenu. */
+/* Mirrors .sidebar-toggle-btn on the opposite edge of the header: same 24px
+   circle, same border and shadow, so the two read as a pair rather than as one
+   control and one afterthought. The header is the only region present in every
+   state — the rail collapses and the wallet block comes and goes, but this
+   stays. */
 .settings-menu {
-  position: relative;
+  position: absolute;
+  left: -12px;
+  bottom: 12px;
+  z-index: 11;
 }
 
 .settings-trigger {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  width: 100%;
-  padding: 10px 0;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: #4056a1;
-  font: inherit;
+  justify-content: center;
   cursor: pointer;
-  text-align: left;
-  transition: background 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
-.settings-trigger:hover,
-.settings-trigger.open {
+.settings-trigger i {
+  font-size: 15px;
+  color: #4056a1;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.settings-trigger:hover {
   background: #e8f4fc;
+}
+
+.settings-trigger.open i {
+  transform: rotate(45deg);
 }
 
 .settings-trigger:focus-visible {
   outline: 2px solid #4056a1;
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-/* The same 52px column the Keplr avatar and the nav icons occupy, so the cog
-   lands on the icon axis the rest of the rail already shares. */
-.settings-trigger-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  margin-left: 12px;
-  flex-shrink: 0;
-  font-size: 24px;
-}
-
-.settings-trigger-label {
-  margin-left: 14px;
-  font-size: 15px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* Opens up and to the right: the trigger sits low in a left-pinned rail, so
-   downward would run off the viewport. */
+/* Opens downward from the header, aligned to the trigger's left edge. There is
+   a full rail of height below it, so nothing runs off the viewport. */
 .settings-panel {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 12px;
+  top: calc(100% + 8px);
+  left: 0;
   z-index: 1200;
   min-width: 230px;
   padding: 14px;
@@ -108,8 +106,5 @@
   color: #8a93ad;
 }
 
-/* A collapsed rail is 80px; the panel overhangs it either way, so it only
-   needs re-aligning with the narrower icon column. */
-.sidebar.collapsed .settings-panel {
-  left: 8px;
-}
+/* The panel is wider than a collapsed 80px rail either way, so it overhangs on
+   purpose rather than being squeezed. Nothing to adjust. */

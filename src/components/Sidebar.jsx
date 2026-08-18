@@ -49,6 +49,7 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
           </button>
         )}
         <div className="logo-details">
+          <SettingsMenu />
           <img src={logo} alt="Logo" className="logo-img" />
           {!isMobile && (
             <button className="sidebar-toggle-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
@@ -108,7 +109,6 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
         </ul>
 
         <div className="profile-container">
-          <SettingsMenu collapsed={isCollapsed && !isMobile} />
           {isConnected ? (
             <div className="profile-details">
               <div className="profile-content">
