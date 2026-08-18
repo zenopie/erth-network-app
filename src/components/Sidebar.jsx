@@ -92,14 +92,14 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <i className="bx bx-chevron-right arrow"></i>
             </div>
             <ul className="submenu-list">
-              <li className={location.pathname === "/public-benefit-fund" ? "active" : ""}>
-                <Link to="/public-benefit-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <li className={location.pathname === "/caretaker-fund" ? "active" : ""}>
+                <Link to="/caretaker-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   Caretaker Fund
                 </Link>
               </li>
-              <li className={location.pathname === "/deflation-fund" ? "active" : ""}>
-                <Link to="/deflation-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Deflation Fund
+              <li className={location.pathname === "/groundworks-fund" ? "active" : ""}>
+                <Link to="/groundworks-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Groundworks Fund
                 </Link>
               </li>
             </ul>

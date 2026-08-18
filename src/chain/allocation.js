@@ -10,15 +10,15 @@ import { getOr } from "./rest";
  *
  *   HUMAN   — the Public Benefit Fund. One human, one vote; requires a live
  *             proof-of-personhood registration (see ./personhood.js).
- *   CAPITAL — the Deflation Fund. Weighted by bonded stake.
+ *   GROUNDWORKS — the Groundworks Fund. Weighted by bonded stake.
  */
 
 /**
  * Stream ids as the chain's protobuf enum numbers them. Messages carry these
  * values; the LCD wants the *name* in the URL path (see streamPath).
  */
-export const STREAM_HUMAN = 1;
-export const STREAM_CAPITAL = 2;
+export const STREAM_CARETAKER = 1;
+export const STREAM_GROUNDWORKS = 2;
 
 /**
  * The LCD spells the stream out in full — grpc-gateway parses the enum by name
@@ -27,10 +27,10 @@ export const STREAM_CAPITAL = 2;
  */
 function streamPath(stream) {
   switch (stream) {
-    case STREAM_HUMAN:
-      return "STREAM_ID_HUMAN";
-    case STREAM_CAPITAL:
-      return "STREAM_ID_CAPITAL";
+    case STREAM_CARETAKER:
+      return "STREAM_ID_CARETAKER";
+    case STREAM_GROUNDWORKS:
+      return "STREAM_ID_GROUNDWORKS";
     default:
       throw new Error(`unknown allocation stream: ${stream}`);
   }

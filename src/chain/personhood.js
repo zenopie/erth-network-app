@@ -4,7 +4,7 @@ import { getOr } from "./rest";
  * x/personhood — proof-of-personhood registration and the daily ANML claim.
  *
  * The one-human-one-vote allocation stream this module gates lives in
- * x/allocation (see ./allocation.js, STREAM_HUMAN). This module only decides who
+ * x/allocation (see ./allocation.js, STREAM_CARETAKER). This module only decides who
  * counts as a live human; the votes and options are the allocation module's.
  */
 

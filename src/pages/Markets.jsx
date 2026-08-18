@@ -50,7 +50,7 @@ const Markets = () => {
       try {
         const [ps, options] = await Promise.all([
           dex.pools(),
-          allocation.allocationOptions(allocation.STREAM_CAPITAL),
+          allocation.allocationOptions(allocation.STREAM_GROUNDWORKS),
         ]);
         if (cancelled) return;
         setPools(ps);

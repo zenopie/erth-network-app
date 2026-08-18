@@ -6,8 +6,8 @@ import Layout from './components/Layout';
 import SwapTokens from './pages/SwapTokens';
 import Markets from './pages/Markets';
 import StakeErth from './pages/StakeErth';
-import PublicBenefitFund from './pages/PublicBenefitFund';
-import DeflationFund from './pages/DeflationFund';
+import CaretakerFund from './pages/CaretakerFund';
+import GroundworksFund from './pages/GroundworksFund';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Explorer from './pages/Explorer';
 import ExplorerBlock from './pages/ExplorerBlock';
@@ -32,8 +32,11 @@ function App() {
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
               <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
-              <Route path="/public-benefit-fund" element={<Layout><PublicBenefitFund /></Layout>} />
-              <Route path="/deflation-fund" element={<Layout><DeflationFund /></Layout>} />
+              <Route path="/caretaker-fund" element={<Layout><CaretakerFund /></Layout>} />
+              <Route path="/groundworks-fund" element={<Layout><GroundworksFund /></Layout>} />
+              {/* The funds were renamed; old links still resolve. */}
+              <Route path="/public-benefit-fund" element={<Navigate to="/caretaker-fund" replace />} />
+              <Route path="/deflation-fund" element={<Navigate to="/groundworks-fund" replace />} />
               <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
               <Route path="/explorer" element={<Layout><Explorer /></Layout>} />
               <Route path="/explorer/registrations" element={<Layout><ExplorerRegistrations /></Layout>} />

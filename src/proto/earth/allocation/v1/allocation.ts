@@ -19,15 +19,21 @@ export enum StreamId {
   /** STREAM_ID_UNSPECIFIED - STREAM_ID_UNSPECIFIED is an invalid default; every message must name a stream. */
   STREAM_ID_UNSPECIFIED = 0,
   /**
-   * STREAM_ID_HUMAN - STREAM_ID_HUMAN is the one-human-one-vote stream. Weight comes from a live
-   * proof-of-personhood registration and is the same for every human.
+   * STREAM_ID_CARETAKER - STREAM_ID_CARETAKER is the Caretaker Fund: one human, one vote. Weight
+   * comes from a live proof-of-personhood registration and is the same for
+   * every human.
+   *
+   * Numbered 1 as it always was. The name changed, the wire did not — enums
+   * travel as numbers, so existing state and any in-flight message decode
+   * unchanged. What does change is the JSON the LCD emits and accepts, since
+   * grpc-gateway spells enums by name.
    */
-  STREAM_ID_HUMAN = 1,
+  STREAM_ID_CARETAKER = 1,
   /**
-   * STREAM_ID_CAPITAL - STREAM_ID_CAPITAL is the stake-weighted stream. Weight is the voter's bonded
-   * stake, normalized by the stake compounding index.
+   * STREAM_ID_GROUNDWORKS - STREAM_ID_GROUNDWORKS is the Groundworks Fund: stake-weighted. Weight is
+   * the voter's bonded stake, normalized by the stake compounding index.
    */
-  STREAM_ID_CAPITAL = 2,
+  STREAM_ID_GROUNDWORKS = 2,
   UNRECOGNIZED = -1,
 }
 
@@ -37,11 +43,11 @@ export function streamIdFromJSON(object: any): StreamId {
     case "STREAM_ID_UNSPECIFIED":
       return StreamId.STREAM_ID_UNSPECIFIED;
     case 1:
-    case "STREAM_ID_HUMAN":
-      return StreamId.STREAM_ID_HUMAN;
+    case "STREAM_ID_CARETAKER":
+      return StreamId.STREAM_ID_CARETAKER;
     case 2:
-    case "STREAM_ID_CAPITAL":
-      return StreamId.STREAM_ID_CAPITAL;
+    case "STREAM_ID_GROUNDWORKS":
+      return StreamId.STREAM_ID_GROUNDWORKS;
     case -1:
     case "UNRECOGNIZED":
     default:
@@ -53,10 +59,10 @@ export function streamIdToJSON(object: StreamId): string {
   switch (object) {
     case StreamId.STREAM_ID_UNSPECIFIED:
       return "STREAM_ID_UNSPECIFIED";
-    case StreamId.STREAM_ID_HUMAN:
-      return "STREAM_ID_HUMAN";
-    case StreamId.STREAM_ID_CAPITAL:
-      return "STREAM_ID_CAPITAL";
+    case StreamId.STREAM_ID_CARETAKER:
+      return "STREAM_ID_CARETAKER";
+    case StreamId.STREAM_ID_GROUNDWORKS:
+      return "STREAM_ID_GROUNDWORKS";
     case StreamId.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
