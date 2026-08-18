@@ -1,42 +1,35 @@
 /* Palette taken from Sidebar.css rather than invented: the rail is #fff, its
    ink is #4056a1, and selection is the pale #e8f4fc used by active nav links
    and the submenu. */
-/* Mirrors .sidebar-toggle-btn on the opposite edge of the header: same 24px
-   circle, same border and shadow, so the two read as a pair rather than as one
-   control and one afterthought. The header is the only region present in every
-   state — the rail collapses and the wallet block comes and goes, but this
-   stays. */
+/* Sits in the wallet row where the disconnect button used to, and inherits its
+   exact metrics so the row's proportions are unchanged. */
 .settings-menu {
-  position: absolute;
-  left: -12px;
-  bottom: 12px;
-  z-index: 11;
+  position: relative;
+  display: inline-flex;
 }
 
 .settings-trigger {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #4056a1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
 
 .settings-trigger i {
-  font-size: 15px;
-  color: #4056a1;
+  font-size: 20px;
   line-height: 1;
   transition: transform 0.3s ease;
 }
 
-.settings-trigger:hover {
-  background: #e8f4fc;
+.settings-trigger:hover,
+.settings-trigger.open {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .settings-trigger.open i {
@@ -45,15 +38,16 @@
 
 .settings-trigger:focus-visible {
   outline: 2px solid #4056a1;
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
 
-/* Opens downward from the header, aligned to the trigger's left edge. There is
-   a full rail of height below it, so nothing runs off the viewport. */
+/* Opens upward and leftward. The trigger sits at the bottom-right of a
+   260px rail, so a 230px panel anchored left would run off into the page;
+   anchored right it opens back across the rail it belongs to. */
 .settings-panel {
   position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  bottom: calc(100% + 10px);
+  right: 0;
   z-index: 1200;
   min-width: 230px;
   padding: 14px;
@@ -108,3 +102,42 @@
 
 /* The panel is wider than a collapsed 80px rail either way, so it overhangs on
    purpose rather than being squeezed. Nothing to adjust. */
+
+.settings-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 12px -14px 10px;
+}
+
+/* Destructive, so it is coloured as such and given a full-width target rather
+   than the bare icon it replaced. */
+.settings-danger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #c0392b;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.settings-danger:hover {
+  background: #fdecea;
+}
+
+.settings-danger i {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.settings-danger:focus-visible {
+  outline: 2px solid #c0392b;
+  outline-offset: -2px;
+}

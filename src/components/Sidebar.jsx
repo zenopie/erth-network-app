@@ -49,7 +49,6 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
           </button>
         )}
         <div className="logo-details">
-          <SettingsMenu />
           <img src={logo} alt="Logo" className="logo-img" />
           {!isMobile && (
             <button className="sidebar-toggle-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
@@ -119,18 +118,12 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
                   <div id="wallet-name" className="profile_name">
                     {walletName}
                   </div>
-                  <button
-                    className="logout-button"
-                    onClick={onDisconnect}
-                    title="Disconnect"
-                  >
-                    <i className="bx bx-log-out"></i>
-                  </button>
                 </div>
                 <div className="wallet-address">
                   {address ? `${address.slice(0, 10)}...${address.slice(-4)}` : ""}
                 </div>
               </div>
+              <SettingsMenu onDisconnect={onDisconnect} showDisconnect />
             </div>
           ) : (
             <div
@@ -160,15 +153,20 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
             </div>
           )}
           <li className="socials-link">
-            <div className="socials-placeholder">
-              <i className={`bx ${isCollapsed && !isMobile ? "bx-heart" : ""}`}></i>
-            </div>
+            {isCollapsed && !isMobile && (
+              <div className="socials-placeholder">
+                <i className="bx bx-heart"></i>
+              </div>
+            )}
             {(!isCollapsed || (isMobile && isMobileMenuOpen)) && (
               <div className="expanded-socials">
-                <a href="https://discord.gg/uNKar4EbCZ" target="_blank" rel="noopener noreferrer">
+                <a href="https://discord.gg/uNKar4EbCZ" target="_blank" rel="noopener noreferrer" aria-label="Discord">
                   <i className="bx bxl-discord-alt"></i>
                 </a>
-                <a href="https://github.com/zenopie" target="_blank" rel="noopener noreferrer">
+                <a href="https://t.me/earth_network" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+                  <i className="bx bxl-telegram"></i>
+                </a>
+                <a href="https://github.com/zenopie" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
                   <i className="bx bxl-github"></i>
                 </a>
               </div>

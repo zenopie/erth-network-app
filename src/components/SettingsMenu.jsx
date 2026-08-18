@@ -9,12 +9,13 @@ import "./SettingsMenu.css";
  * attention and grow the rail every time a setting is added. A popout keeps the
  * rail a list of destinations and gives settings somewhere to accumulate.
  *
- * The trigger is the cog alone. It lives in the sidebar header opposite the
- * collapse toggle, which is the one spot that is present in every state — the
- * rail collapses, the wallet block appears and disappears with connection, but
- * the header is always there.
+ * Disconnect lives in here too, rather than as its own button in the wallet
+ * row. It is used rarely and it is destructive, so a bare icon sitting next to
+ * the wallet name is the wrong weight for it — one mis-aimed click and the
+ * session is gone. Behind the cog it needs a deliberate second action, and the
+ * wallet row is left showing only what it is for: which wallet is connected.
  */
-export default function SettingsMenu() {
+export default function SettingsMenu({ onDisconnect, showDisconnect = false }) {
   const { currency, setCurrency } = useDisplayCurrency();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -81,6 +82,23 @@ export default function SettingsMenu() {
               <p className="settings-hint">{CURRENCIES.USD.reason}</p>
             )}
           </div>
+
+          {showDisconnect && (
+            <>
+              <div className="settings-divider" />
+              <button
+                type="button"
+                className="settings-danger"
+                onClick={() => {
+                  setOpen(false);
+                  onDisconnect?.();
+                }}
+              >
+                <i className="bx bx-log-out"></i>
+                Disconnect wallet
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
