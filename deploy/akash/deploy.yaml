@@ -1,0 +1,97 @@
+---
+# Akash deployment — earth web app
+#
+# Two services: nginx serving the built static bundle, and a Cloudflare Tunnel
+# connector in front of it. Same shape as the chain's deployment, and for the
+# same reason: nothing is published on a provider port, so there is no address
+# to update when Akash reassigns ports on a new lease.
+#
+# ONE TUNNEL PER DEPLOYMENT. A tunnel's replicas are chosen by proximity with no
+# traffic steering, so connectors reaching different origins black-hole requests
+# non-deterministically. This tunnel serves this deployment; the chain and the
+# backend each have their own.
+version: "2.0"
+
+services:
+  web:
+    # PINNED BY CI — .github/workflows/docker-build.yml rewrites this line with
+    # the digest it just pushed. Editing it by hand will be overwritten on the
+    # next release.
+    image: ghcr.io/zenopie/erth-network-app:latest
+    expose:
+      - port: 80
+        to:
+          - service: cloudflared
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    # `cloudflared` first: Akash's `command` maps to Kubernetes `command`, which
+    # REPLACES the image entrypoint rather than appending to it. Without the
+    # binary name the container tries to exec something called `tunnel` and the
+    # service never starts — the lease reports available=0/1 with no other clue.
+    command:
+      - cloudflared
+      - tunnel
+      - --no-autoupdate
+      # Akash rejects a manifest with "zero global services", so something has
+      # to be published. Publishing the connector's metrics rather than the app
+      # keeps the site reachable only through the tunnel, and /ready gives a
+      # health check without the Cloudflare dashboard — which matters because
+      # the Console API has no logs endpoint and a connector that fails to
+      # start is otherwise silent.
+      - --metrics
+      - 0.0.0.0:2000
+      - run
+
+    expose:
+      - port: 2000
+        as: 2000
+        to:
+          - global: true
+
+    # TUNNEL_TOKEN is injected at deploy time from .env, never committed.
+    # Anyone holding it can attach a replica and receive this tunnel's traffic.
+    env: []
+
+profiles:
+  compute:
+    # A static bundle behind nginx. It serves files from memory-backed page
+    # cache and does no work per request, so this is sized for the container
+    # rather than for the load.
+    web:
+      resources:
+        cpu:
+          units: 0.1
+        memory:
+          size: 128Mi
+        storage:
+          - size: 512Mi
+
+    cloudflared:
+      resources:
+        cpu:
+          units: 0.1
+        memory:
+          size: 128Mi
+        storage:
+          - size: 512Mi
+
+  placement:
+    dcloud:
+      pricing:
+        web:
+          denom: uakt
+          amount: 10000
+        cloudflared:
+          denom: uakt
+          amount: 10000
+
+deployment:
+  web:
+    dcloud:
+      profile: web
+      count: 1
+  cloudflared:
+    dcloud:
+      profile: cloudflared
+      count: 1

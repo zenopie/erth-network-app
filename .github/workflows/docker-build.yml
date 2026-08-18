@@ -1,0 +1,81 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    # Tags only. Listing branches alongside tags makes them alternatives rather
+    # than a conjunction, so adding `branches` here means every push to master
+    # builds and publishes an image.
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Set lowercase repository name
+        id: set_repo
+        run: echo "REPO_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push
+        id: push
+        run: |
+          IMAGE=ghcr.io/${{ steps.set_repo.outputs.REPO_NAME }}
+          docker build -t $IMAGE:latest -f Dockerfile .
+          docker push $IMAGE:latest
+          docker tag $IMAGE:latest $IMAGE:${{ steps.get_version.outputs.VERSION }}
+          docker push $IMAGE:${{ steps.get_version.outputs.VERSION }}
+
+          # The digest of what was actually pushed, so the SDL names bytes
+          # rather than a tag that can be moved under it later.
+          DIGEST=$(docker inspect $IMAGE:latest --format='{{index .RepoDigests 0}}' | cut -d'@' -f2)
+          echo "IMAGE_REF=${IMAGE}@${DIGEST}" >> $GITHUB_OUTPUT
+
+      - name: Pin the Akash SDL and commit
+        run: |
+          git fetch origin
+          git checkout master
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          SDL="deploy/akash/deploy.yaml"
+          IMAGE="${{ steps.push.outputs.IMAGE_REF }}"
+
+          # Only the app's image line is rewritten. cloudflared is upstream's
+          # and is matched out by requiring the ghcr.io host, so a single
+          # pattern cannot accidentally pin the connector to this app's digest.
+          sed -i -E "s|^([[:space:]]*image:[[:space:]]*)ghcr\.io/[^[:space:]]+|\1${IMAGE}|" "$SDL"
+
+          # Fail loudly if that matched nothing. A silent no-op is the worst
+          # outcome available: the SDL keeps whatever it had, and a deployment
+          # made from it runs an image nobody chose while the release looks
+          # clean.
+          if ! grep -qF "$IMAGE" "$SDL"; then
+            echo "::error file=$SDL::image line not rewritten - the sed pattern no longer matches"
+            exit 1
+          fi
+          echo "pinned $SDL to $IMAGE"
+
+          git add "$SDL"
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Pin the Akash SDL to ${{ steps.get_version.outputs.VERSION }}"
+            git push origin master
+          fi
