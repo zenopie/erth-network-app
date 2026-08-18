@@ -1,0 +1,115 @@
+/* Palette taken from Sidebar.css rather than invented: the rail is #fff, its
+   ink is #4056a1, and selection is the pale #e8f4fc used by active nav links
+   and the submenu. */
+.settings-menu {
+  position: relative;
+}
+
+.settings-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #4056a1;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.settings-trigger:hover,
+.settings-trigger.open {
+  background: #e8f4fc;
+}
+
+.settings-trigger:focus-visible {
+  outline: 2px solid #4056a1;
+  outline-offset: -2px;
+}
+
+/* The same 52px column the Keplr avatar and the nav icons occupy, so the cog
+   lands on the icon axis the rest of the rail already shares. */
+.settings-trigger-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  margin-left: 12px;
+  flex-shrink: 0;
+  font-size: 24px;
+}
+
+.settings-trigger-label {
+  margin-left: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Opens up and to the right: the trigger sits low in a left-pinned rail, so
+   downward would run off the viewport. */
+.settings-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 12px;
+  z-index: 1200;
+  min-width: 230px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #d9e2ef;
+  box-shadow: 0 12px 32px rgba(39, 54, 107, 0.18);
+}
+
+.settings-panel-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a93ad;
+  margin-bottom: 10px;
+}
+
+.settings-field + .settings-field {
+  margin-top: 14px;
+}
+
+.settings-label {
+  display: block;
+  font-size: 13px;
+  color: #27366b;
+  margin-bottom: 5px;
+}
+
+.settings-select {
+  width: 100%;
+  font-size: 14px;
+  font-family: inherit;
+  color: #27366b;
+  background: #f8f7f2;
+  border: 1px solid #d9e2ef;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.settings-select:focus-visible {
+  outline: 2px solid #4056a1;
+  outline-offset: 1px;
+}
+
+.settings-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8a93ad;
+}
+
+/* A collapsed rail is 80px; the panel overhangs it either way, so it only
+   needs re-aligning with the narrower icon column. */
+.sidebar.collapsed .settings-panel {
+  left: 8px;
+}
