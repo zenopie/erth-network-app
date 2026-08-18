@@ -12,7 +12,7 @@ import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
-import { formatPrice, formatCompact } from "../utils/formatUtils";
+import { formatPrice, formatApr } from "../utils/formatUtils";
 import Amount from "../components/Amount";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
@@ -237,10 +237,12 @@ const Markets = () => {
       <div className={styles.marketsHeader}>
         <div className={styles.marketsHeaderLeft}>
           <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.marketsErthLogo} />
-          <div>
-            <span className={styles.marketsErthLabel}>ERTH Price</span>
-            <span className={styles.marketsErthPrice}>{formatPrice(erthPrice)}</span>
-          </div>
+          {currency === "USD" && (
+            <div>
+              <span className={styles.marketsErthLabel}>ERTH Price</span>
+              <span className={styles.marketsErthPrice}>{formatPrice(erthPrice)}</span>
+            </div>
+          )}
           <div className={styles.marketsHeaderStat}>
             <span className={styles.marketsErthLabel}>Total TVL</span>
             <span className={styles.marketsHeaderVal}><Amount value={totalTvlUsd} /></span>
@@ -310,7 +312,7 @@ const Markets = () => {
                     <span className={styles.poolRowToken}>{row.symbol}</span>
                     <span className={styles.poolRowSlash}>/ ERTH</span>
                   </div>
-                  <span className={styles.poolRowPrice}>{formatPrice(row.price)}</span>
+                  <span className={styles.poolRowPrice}><Amount value={row.price} mode="price" /></span>
                 </div>
               </div>
               <div className={styles.poolRowStats}>
@@ -326,7 +328,7 @@ const Markets = () => {
                 </div>
                 <div className={styles.poolRowStat}>
                   <span className={`${styles.poolRowStatVal} ${row.apr > 0 ? styles.green : ""}`}>
-                    {row.apr > 0 ? `${row.apr.toFixed(1)}%` : "--"}
+                    {formatApr(row.apr)}
                   </span>
                   <span className={styles.poolRowStatLabel}>APR</span>
                 </div>
@@ -376,7 +378,7 @@ const Markets = () => {
                     <div className={styles.lpInfoItem}>
                       <span className={styles.lpInfoLabel}>APR</span>
                       <span className={`${styles.lpInfoVal} ${styles.green}`}>
-                        {row.apr > 0 ? `${row.apr.toFixed(1)}%` : "--"}
+                        {formatApr(row.apr)}
                       </span>
                     </div>
                     <div className={styles.lpInfoItem}>
@@ -432,9 +434,11 @@ const Markets = () => {
                                 className={styles.lpInput}
                               />
                               <span className={styles.lpInputUsd}>
-                                {tokenBAmount && row.price
-                                  ? formatUSD(parseFloat(tokenBAmount) * row.price)
-                                  : ""}
+                                {tokenBAmount && row.price ? (
+                                  <Amount value={parseFloat(tokenBAmount) * row.price} mode="price" />
+                                ) : (
+                                  ""
+                                )}
                               </span>
                             </div>
                           </div>
@@ -463,7 +467,7 @@ const Markets = () => {
                                 className={styles.lpInput}
                               />
                               <span className={styles.lpInputUsd}>
-                                {erthAmount && erthPrice
+                                {currency === "USD" && erthAmount && erthPrice
                                   ? formatUSD(parseFloat(erthAmount) * erthPrice)
                                   : ""}
                               </span>

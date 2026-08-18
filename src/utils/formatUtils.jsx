@@ -13,3 +13,18 @@ export const formatCompact = (n) => {
   if (n >= 1e3) return `$${(n / 1e3).toFixed(2)}K`;
   return `$${n.toFixed(2)}`;
 };
+
+/**
+ * An annual rate, as a percent.
+ *
+ * A rate can be real and still round to nothing: a deep pool earning fees on
+ * thin volume yields a genuinely tiny number, and "0.0%" reads as a confident
+ * zero rather than "too small to show at this precision". The distinction that
+ * matters to a reader is earning-nothing versus earning-almost-nothing, so the
+ * floor is spelled out instead of rounded away.
+ */
+export const formatApr = (pct) => {
+  if (!pct || pct <= 0) return "--";
+  if (pct < 0.01) return "<0.01%";
+  return `${pct.toFixed(1)}%`;
+};
