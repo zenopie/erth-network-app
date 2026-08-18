@@ -14,12 +14,12 @@ import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice, formatCompact } from "../utils/formatUtils";
 import Amount from "../components/Amount";
+import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
 // The deflation stream emits a flat 1 ERTH/sec, split across allocation options
 // by staker vote. Whatever share lands on the LP-rewards option is what funds
 // LP yield, distributed across pools by their share of trading volume.
-const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
 const Markets = () => {
   const { address, isConnected } = useWallet();
@@ -29,7 +29,8 @@ const Markets = () => {
   const [pools, setPools] = useState([]);
   const [lpSupplies, setLpSupplies] = useState({}); // lpDenom -> total shares
   const [walletBalances, setWalletBalances] = useState({});
-  const [lpRewardShare, setLpRewardShare] = useState(0); // 0..1 of the deflation stream
+  const [lpRewardShare, setLpRewardShare] = useState(0); // 0..1 of the Groundworks stream
+  const [swapFee, setSwapFee] = useState(0); // percent, e.g. 0.3
   const [refreshKey, setRefreshKey] = useState(0);
   const erthPrice = useErthPrice();
 
@@ -56,12 +57,14 @@ const Markets = () => {
     (async () => {
       showLoading();
       try {
-        const [ps, options] = await Promise.all([
+        const [ps, options, fee] = await Promise.all([
           dex.pools(),
           allocation.allocationOptions(allocation.STREAM_GROUNDWORKS),
+          dex.swapFeePercent(),
         ]);
         if (cancelled) return;
         setPools(ps);
+        setSwapFee(fee);
 
         const totalWeight = options.reduce((s, o) => s + Number(o.amountAllocated), 0);
         const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED");
@@ -91,11 +94,6 @@ const Markets = () => {
     fetchBalances();
   }, [fetchBalances, refreshKey]);
 
-  const totalVolume = useMemo(
-    () => pools.reduce((s, p) => s + Number(p.volume), 0),
-    [pools],
-  );
-
   const marketRows = useMemo(
     () =>
       pools.map((p) => {
@@ -106,10 +104,13 @@ const Markets = () => {
         const liquidityUsd = tvlErth * (rate ?? 0);
         const volumeErth = toMacro(p.volume, UERTH);
 
-        // This pool's slice of LP rewards is its share of chain-wide volume.
-        const volumeShare = totalVolume > 0 ? Number(p.volume) / totalVolume : 0;
-        const annualErth = SECONDS_PER_YEAR * lpRewardShare * volumeShare;
-        const apr = tvlErth > 0 ? (annualErth / tvlErth) * 100 : 0;
+        // Fees plus emissions, the same arithmetic the mobile app runs — see
+        // chain/apr.js. Fees are live from the first trade; emissions are zero
+        // until voters allocate weight to the LP-rewards option.
+        const rates = aprFor(p, pools, lpRewardShare, swapFee);
+        const apr = (rates?.total ?? 0) * 100;
+        const aprFee = (rates?.fee ?? 0) * 100;
+        const aprEmission = (rates?.emission ?? 0) * 100;
 
         const price = tokenReserve > 0 ? (erthReserve / tokenReserve) * (rate ?? 0) : 0;
 
@@ -126,6 +127,8 @@ const Markets = () => {
           liquidityUsd,
           tvlErth,
           apr,
+          aprFee,
+          aprEmission,
           erthReserve,
           tokenReserve,
           userShares,
@@ -135,7 +138,7 @@ const Markets = () => {
           userTokenB: (tokenReserve * ownership) / 100,
         };
       }),
-    [pools, rate, totalVolume, lpRewardShare, walletBalances, lpSupplies],
+    [pools, rate, lpRewardShare, swapFee, walletBalances, lpSupplies],
   );
 
   const handleSort = (field) => {

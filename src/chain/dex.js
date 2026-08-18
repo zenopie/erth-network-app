@@ -32,6 +32,8 @@ function toPool(p) {
     tokenDenom: p.reserve_token.denom,
     tokenReserve: p.reserve_token.amount,
     volume: p.volume ?? "0",
+    // Needed to reapply the chain's daily decay client-side — see chain/apr.js.
+    lastVolumeDay: Number(p.last_volume_day ?? 0),
   };
 }
 
