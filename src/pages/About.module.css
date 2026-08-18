@@ -1,156 +1,178 @@
 /* About — the app's front door.
  *
- * Wider than the app's other pages (which cap at 500px for forms) because this
- * one is read rather than operated. The 2x2 is the only place colour does any
- * work: it is the argument of the page, so it gets the green and everything
- * else stays in ink and grey.
+ * Full-bleed bands rather than one narrow column. The first draft ran
+ * everything down a 720px measure separated by hairlines, which is the shape of
+ * a terms-of-service page: correct, and read by nobody. Sections that own the
+ * full width and alternate their ground give the page a rhythm you can feel
+ * while scrolling, and let each idea arrive on its own.
+ *
+ * The app's ground is #f8f7f2, a warm off-white — not white. Panels are true
+ * white against it, so the contrast is a shift in warmth rather than a line.
  */
 
 .page {
   width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 8px 20px 64px;
+  /* .home-section centres its child and scrolls. A tall child gets centred and
+     the overflow above it becomes unreachable — you cannot scroll to the top of
+     your own page. Every other page in this app pins itself to the start for
+     the same reason. */
+  align-self: flex-start;
   color: #111827;
+}
+
+.inner {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* --- bands --- */
+
+.hero {
+  background: #ffffff;
+  border-bottom: 1px solid #ece9e1;
+  padding: 96px 0 72px;
+}
+
+.band {
+  padding: 80px 0;
+}
+
+.bandAlt {
+  padding: 80px 0;
+  background: #ffffff;
+  border-top: 1px solid #ece9e1;
+  border-bottom: 1px solid #ece9e1;
 }
 
 /* --- hero --- */
 
-.hero {
-  padding: 32px 0 40px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
 .eyebrow {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #4caf50;
 }
 
 .title {
-  margin: 0 0 20px;
-  font-size: 42px;
-  line-height: 1.12;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+  font-size: 52px;
+  line-height: 1.06;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
 .lede {
   margin: 0;
-  max-width: 34em;
-  font-size: 18px;
-  line-height: 1.6;
+  max-width: 30em;
+  font-size: 20px;
+  line-height: 1.55;
   color: #374151;
 }
 
 .lede em {
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   color: #111827;
 }
 
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 40px;
-  margin-top: 32px;
+  gap: 56px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid #ece9e1;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-}
+.stat { display: flex; flex-direction: column; }
 
 .statValue {
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-  /* Digits that change on load should not shift what sits beside them. */
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  /* Digits arrive after load; tabular keeps the labels from shifting. */
   font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
-  margin-top: 4px;
+  margin-top: 8px;
   font-size: 13px;
+  letter-spacing: 0.02em;
   color: #9ca3af;
 }
 
-/* --- sections --- */
-
-.section {
-  padding: 40px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
+/* --- section headings --- */
 
 .h2 {
-  margin: 0 0 12px;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .body {
   margin: 0;
-  max-width: 34em;
-  font-size: 16px;
+  max-width: 32em;
+  font-size: 17px;
   line-height: 1.65;
   color: #374151;
 }
 
 .aside {
-  margin: 24px 0 0;
-  padding: 14px 16px;
-  max-width: 34em;
+  margin: 32px 0 0;
+  padding: 18px 20px;
+  max-width: 32em;
   font-size: 15px;
   line-height: 1.6;
   color: #374151;
-  background: #f3f9f3;
+  background: #f2f8f2;
   border-left: 3px solid #4caf50;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 10px 10px 0;
 }
 
 /* --- steps --- */
 
 .steps {
   list-style: none;
-  margin: 24px 0 0;
+  margin: 40px 0 0;
   padding: 0;
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
 }
 
-.step {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
+.step { display: flex; flex-direction: column; }
 
 /* Numbered because the order is real: you cannot prove before you read. */
 .stepNum {
-  flex: 0 0 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #4caf50;
   color: #ffffff;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
+  margin-bottom: 16px;
 }
 
 .stepTitle {
-  margin: 3px 0 4px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .stepBody {
   margin: 0;
-  max-width: 32em;
   font-size: 15px;
   line-height: 1.6;
   color: #374151;
@@ -160,86 +182,76 @@
 
 .matrix {
   display: grid;
-  grid-template-columns: minmax(88px, 0.6fr) 1fr 1fr;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.matrixHead,
-.matrixSide {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #9ca3af;
-}
-
-.matrixSide em {
-  font-style: normal;
-  color: #4caf50;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 40px;
 }
 
 .pillar {
-  padding: 16px;
-  border-radius: 12px;
-  background: #f3f9f3;
-  border: 1px solid #dcecdc;
+  padding: 24px;
+  border-radius: 14px;
+  background: #f8f7f2;
+  border: 1px solid #ece9e1;
+}
+
+.bandAlt .pillar { background: #f8f7f2; }
+
+.pillarTag {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4caf50;
 }
 
 .pillarTitle {
-  margin: 0 0 6px;
-  font-size: 15px;
+  margin: 0 0 8px;
+  font-size: 19px;
   font-weight: 700;
 }
 
 .pillarBody {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.6;
   color: #374151;
 }
 
 /* --- plain list --- */
 
 .plain {
-  margin: 20px 0 0;
+  margin: 32px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 14px;
+  gap: 20px;
   max-width: 34em;
 }
 
 .plain li {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   color: #374151;
+  padding-left: 18px;
+  border-left: 2px solid #ece9e1;
 }
 
 /* --- cta --- */
 
-.cta {
-  padding: 40px 0 0;
-}
-
 .ctaTitle {
-  margin: 0 0 16px;
-  font-size: 20px;
-  font-weight: 700;
+  margin: 0 0 20px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-.ctaRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.ctaRow { display: flex; flex-wrap: wrap; gap: 12px; }
 
 .primary,
 .secondary {
   display: inline-block;
-  padding: 11px 20px;
+  padding: 13px 24px;
   border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
@@ -247,48 +259,40 @@
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.primary {
-  background: #4caf50;
-  color: #ffffff;
-}
-
-.primary:hover {
-  background: #45a049;
-}
+.primary { background: #4caf50; color: #ffffff; }
+.primary:hover { background: #45a049; }
 
 .secondary {
   background: #ffffff;
   color: #111827;
   border: 1px solid #e5e7eb;
 }
-
-.secondary:hover {
-  border-color: #9ca3af;
-}
+.secondary:hover { border-color: #9ca3af; }
 
 .fine {
-  margin: 20px 0 0;
+  margin: 28px 0 0;
   max-width: 34em;
   font-size: 14px;
   line-height: 1.6;
   color: #9ca3af;
 }
 
-/* Narrow: the matrix stops being a matrix and becomes four cards, each
-   carrying its own row label, because a 3-column grid at 360px makes every
-   cell too narrow to read. */
-@media (max-width: 640px) {
-  .title { font-size: 32px; }
-  .lede { font-size: 17px; }
-  .stats { gap: 28px; }
+/* --- narrow --- */
 
-  .matrix { grid-template-columns: 1fr 1fr; }
-  .matrixHead:first-child,
-  .matrixSide { display: none; }
-  .matrixHead { padding-left: 2px; }
+@media (max-width: 820px) {
+  .steps { grid-template-columns: 1fr; gap: 24px; }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 640px) {
+  .hero { padding: 56px 0 48px; }
+  .band, .bandAlt { padding: 56px 0; }
+  .inner { padding: 0 20px; }
+  .title { font-size: 34px; }
+  .lede { font-size: 17px; }
+  .h2 { font-size: 25px; }
+  .stats { gap: 32px; }
+  .statValue { font-size: 28px; }
+  /* Four cards in one column: at this width two columns leaves each too narrow
+     for its own title. */
   .matrix { grid-template-columns: 1fr; }
-  .matrixHead { display: none; }
 }

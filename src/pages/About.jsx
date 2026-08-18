@@ -47,6 +47,7 @@ const About = () => {
     <div className={styles.page}>
 
       <header className={styles.hero}>
+        <div className={styles.inner}>
         <p className={styles.eyebrow}>Earth Network</p>
         <h1 className={styles.title}>
           A blockchain that can tell<br />one person from a thousand.
@@ -62,9 +63,11 @@ const About = () => {
           <Stat value={countries} label="countries" />
           <Stat value={height} label="blocks" />
         </div>
+        </div>
       </header>
 
-      <section className={styles.section}>
+      <section className={styles.band}>
+        <div className={styles.inner}>
         <h2 className={styles.h2}>How you prove you are a person</h2>
         <p className={styles.body}>
           Your passport already carries a chip signed by the country that issued
@@ -94,9 +97,11 @@ const About = () => {
           not to us, not to the chain, not to anyone. We could not hand them
           over if we were asked, because we never receive them.
         </p>
+        </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={styles.bandAlt}>
+        <div className={styles.inner}>
         <h2 className={styles.h2}>Four streams, forever</h2>
         <p className={styles.body}>
           Earth issues exactly <strong>4 ERTH every second</strong> and always
@@ -104,26 +109,23 @@ const About = () => {
         </p>
 
         <div className={styles.matrix}>
-          <div className={styles.matrixHead} />
-          <div className={styles.matrixHead}>Paid to individuals</div>
-          <div className={styles.matrixHead}>Directed collectively</div>
-
-          <div className={styles.matrixSide}>Weighted by <em>people</em></div>
           <Pillar
+            tag="People · individual"
             title="ANML"
             body="One human, one daily claim. The same for everyone, whatever they hold."
           />
           <Pillar
+            tag="People · collective"
             title="Caretaker Fund"
             body="One human, one vote, on where this share of the emission goes."
           />
-
-          <div className={styles.matrixSide}>Weighted by <em>capital</em></div>
           <Pillar
+            tag="Capital · individual"
             title="Staking"
             body="Ordinary staking rewards, in proportion to what you have bonded."
           />
           <Pillar
+            tag="Capital · collective"
             title="Groundworks Fund"
             body="Stake-weighted votes on what the network builds next."
           />
@@ -133,9 +135,11 @@ const About = () => {
           Half of what Earth issues is decided by people rather than by holdings.
           That is the part you cannot buy more of.
         </p>
+        </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={styles.band}>
+        <div className={styles.inner}>
         <h2 className={styles.h2}>Why a fixed rate gets gentler</h2>
         <p className={styles.body}>
           Because the rate never changes while the supply it adds to keeps
@@ -143,9 +147,11 @@ const About = () => {
           drifting toward 2.5% by the twentieth. Nobody has to vote for that. It
           is arithmetic, and there is no schedule anyone can get wrong.
         </p>
+        </div>
       </section>
 
-      <section className={styles.section}>
+      <section className={styles.bandAlt}>
+        <div className={styles.inner}>
         <h2 className={styles.h2}>Plainly said</h2>
         <ul className={styles.plain}>
           <li>
@@ -161,9 +167,11 @@ const About = () => {
             your device. We cannot freeze, move or recover them.
           </li>
         </ul>
+        </div>
       </section>
 
-      <footer className={styles.cta}>
+      <footer className={styles.band}>
+        <div className={styles.inner}>
         <h2 className={styles.ctaTitle}>Start where you like</h2>
         <div className={styles.ctaRow}>
           <Link to="/stake-erth" className={styles.primary}>Stake ERTH</Link>
@@ -174,6 +182,7 @@ const About = () => {
           To register as a verified human you will need the Earth Wallet mobile
           app — the passport chip is read over NFC, which a browser cannot do.
         </p>
+        </div>
       </footer>
     </div>
   );
@@ -205,8 +214,17 @@ const Step = ({ n, title, children }) => (
   </li>
 );
 
-const Pillar = ({ title, body }) => (
+/**
+ * One of the four streams.
+ *
+ * The tag carries the axes — people or capital, individual or collective —
+ * rather than a row and column label around the grid. Labels outside the grid
+ * vanish the moment it collapses to one column on a phone, taking the whole
+ * point of the 2x2 with them; on the card they survive.
+ */
+const Pillar = ({ tag, title, body }) => (
   <div className={styles.pillar}>
+    <p className={styles.pillarTag}>{tag}</p>
     <h3 className={styles.pillarTitle}>{title}</h3>
     <p className={styles.pillarBody}>{body}</p>
   </div>
