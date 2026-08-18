@@ -56,12 +56,6 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
           )}
         </div>
         <ul className="nav-links">
-          <li className={location.pathname === "/about" ? "active" : ""}>
-            <Link to="/about" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-              <i className="bx bxs-info-circle"></i>
-              <span className="link_name">About</span>
-            </Link>
-          </li>
           <li className={location.pathname === "/swap-tokens" ? "active" : ""}>
             <Link to="/swap-tokens" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-store-alt"></i>

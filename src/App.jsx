@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { WalletProvider } from './contexts/WalletContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import Layout from './components/Layout';
-import About from './pages/About';
 import SwapTokens from './pages/SwapTokens';
 import Markets from './pages/Markets';
 import StakeErth from './pages/StakeErth';
@@ -25,11 +24,11 @@ function App() {
         <LoadingProvider>
           <div className="App">
             <Routes>
-              <Route path="/" element={<Navigate to="/about" />} />
-              <Route path="/about" element={<Layout><About /></Layout>} />
-              {/* The claim page was the old front door. Anyone with it bookmarked
-                  lands on the page that explains what they were claiming. */}
-              <Route path="/anml-claim" element={<Navigate to="/about" replace />} />
+              <Route path="/" element={<Navigate to="/swap-tokens" />} />
+              {/* Both former front doors. Anyone holding an old link lands on
+                  the thing the app is actually for. */}
+              <Route path="/about" element={<Navigate to="/swap-tokens" replace />} />
+              <Route path="/anml-claim" element={<Navigate to="/swap-tokens" replace />} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
               <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
