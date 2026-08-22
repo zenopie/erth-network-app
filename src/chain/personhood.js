@@ -11,7 +11,7 @@ import { getOr } from "./rest";
 /** Registration status for an address. */
 export async function registrationStatus(address) {
   const data = await getOr(
-    `/earth-network/earth/personhood/v1/registration/${address}`,
+    `/earth/personhood/v1/registration/${address}`,
     null,
   );
   if (!data) return { registered: false, expired: false, lastAnmlClaim: 0 };
@@ -36,7 +36,7 @@ export function isAnmlClaimable(status) {
  * query now that the options belong to x/allocation.
  */
 export async function registrationCount() {
-  const data = await getOr("/earth-network/earth/personhood/v1/registration_count", null);
+  const data = await getOr("/earth/personhood/v1/registration_count", null);
   return Number(data?.count ?? 0);
 }
 
@@ -46,7 +46,7 @@ export async function registrationCount() {
  * country). Powers the explorer's registration map.
  */
 export async function registrationCountries() {
-  const data = await getOr("/earth-network/earth/personhood/v1/registration_countries", {
+  const data = await getOr("/earth/personhood/v1/registration_countries", {
     countries: [],
   });
   return (data.countries ?? [])
@@ -57,7 +57,7 @@ export async function registrationCountries() {
 /** How many humans registered with a given Document Signer (hex dsc_key). */
 export async function registrationsByDsc(dscKeyHex) {
   const data = await getOr(
-    `/earth-network/earth/personhood/v1/registrations_by_dsc/${dscKeyHex.replace(/^0x/, "")}`,
+    `/earth/personhood/v1/registrations_by_dsc/${dscKeyHex.replace(/^0x/, "")}`,
     null,
   );
   return Number(data?.count ?? 0);

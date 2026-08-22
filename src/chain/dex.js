@@ -9,13 +9,13 @@ import { UERTH, lpDenom } from "./config";
 
 /** All pools: { id, erthReserve, tokenDenom, tokenReserve, volume }. */
 export async function pools() {
-  const data = await getOr("/earth-network/earth/dex/v1/pool", { pool: [] });
+  const data = await getOr("/earth/dex/v1/pool", { pool: [] });
   return (data.pool ?? []).map(toPool);
 }
 
 /** A single pool by id, or null. */
 export async function pool(poolId) {
-  const data = await getOr(`/earth-network/earth/dex/v1/pool/${poolId}`, null);
+  const data = await getOr(`/earth/dex/v1/pool/${poolId}`, null);
   return data?.pool ? toPool(data.pool) : null;
 }
 
@@ -39,7 +39,7 @@ function toPool(p) {
 
 /** Swap fee as a percent number (e.g. 0.3 for 0.3%). */
 export async function swapFeePercent() {
-  const data = await getOr("/earth-network/earth/dex/v1/params", null);
+  const data = await getOr("/earth/dex/v1/params", null);
   return Number(data?.params?.swap_fee ?? 0);
 }
 
