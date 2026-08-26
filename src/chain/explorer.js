@@ -485,3 +485,44 @@ export async function blockFlows(height) {
       .sort((a, b) => a.source.localeCompare(b.source)),
   };
 }
+
+/**
+ * Mint and burn measured over the most recent blocks.
+ *
+ * This replaces a supply-delta reading taken against height 1. That was exact,
+ * but it needed the `x-cosmos-block-height` header, and the CORS preflight for a
+ * custom header is refused in front of the LCD — so a browser never got to send
+ * it, while curl (which does not preflight) saw it work. Block events carry the
+ * same two facts and travel over the RPC the explorer already uses.
+ *
+ * A recent window is also the more honest figure while the chain is young. The
+ * pillars come online one at a time — the allocation streams once allocations
+ * are set, the buyback once its price window fills — so an average since genesis
+ * describes a chain that no longer exists. This describes the one running now.
+ *
+ * Returns null when the RPC cannot serve it; the caller should show nothing
+ * rather than a figure it cannot stand behind.
+ */
+export async function recentFlows(count = 20) {
+  const blocks = await recentBlocks(count);
+  if (blocks.length < 2) return null;
+
+  const asc = [...blocks].sort((a, b) => a.height - b.height);
+  const first = asc[0];
+  const last = asc[asc.length - 1];
+  const seconds = (new Date(last.time).getTime() - new Date(first.time).getTime()) / 1000;
+  if (!(seconds > 0)) return null;
+
+  // The flows of block h cover the interval that ended at h, so the blocks
+  // AFTER `first` are exactly the intervals `seconds` measures. Including
+  // `first` itself would count an interval the elapsed time does not cover.
+  const flows = await Promise.all(asc.slice(1).map((b) => blockFlows(b.height)));
+  if (flows.some((f) => f === null)) return null;
+
+  const sum = (pick) => {
+    const acc = {};
+    for (const f of flows) for (const c of f[pick]) acc[c.denom] = (acc[c.denom] ?? 0) + Number(c.amount);
+    return acc;
+  };
+  return { seconds, blocks: flows.length, minted: sum("minted"), burned: sum("burned") };
+}

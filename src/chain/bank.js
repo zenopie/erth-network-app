@@ -1,4 +1,4 @@
-import { get, getAtHeight, getOr } from "./rest";
+import { get, getOr } from "./rest";
 
 /** All balances for an address as { denom: amount } in base units. */
 export async function balances(address) {
@@ -18,23 +18,6 @@ export async function supply(denom) {
     null,
   );
   return data?.amount?.amount ?? "0";
-}
-
-/**
- * Total supply of a denom as it stood at a past height, or null if the node has
- * pruned that far back.
- *
- * Used with height 1 to recover the genesis supply, which is what makes net
- * issuance computable without the chain storing it: supply moves only when
- * coins are minted or burned, so today's supply minus genesis is exactly the
- * net, and adding the burn counters back gives what was minted.
- */
-export async function supplyAt(denom, height) {
-  const data = await getAtHeight(
-    `/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(denom)}`,
-    height,
-  );
-  return data?.amount?.amount ?? null;
 }
 
 export function msgSend(from, to, denom, amount) {
