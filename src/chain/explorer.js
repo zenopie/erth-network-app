@@ -378,3 +378,110 @@ export async function burns() {
     total: coins(data.total),
   };
 }
+
+/** "277uanml,23983639uerth" -> [{denom, amount}]. */
+function parseCoins(s) {
+  if (!s) return [];
+  return s
+    .split(",")
+    .map((part) => part.trim().match(/^(\d+)(.+)$/))
+    .filter(Boolean)
+    .map((m) => ({ denom: m[2], amount: m[1] }));
+}
+
+/** Adds coins into a { denom: bigint-as-number } accumulator. */
+function addCoins(into, coins) {
+  for (const c of coins) into[c.denom] = (into[c.denom] ?? 0) + Number(c.amount);
+  return into;
+}
+
+const attrs = (ev) =>
+  Object.fromEntries((ev.attributes ?? []).map((a) => [a.key, a.value]));
+
+/**
+ * What one block created and destroyed.
+ *
+ * Read from the block's own events rather than from x/earth's counters: the
+ * counters are running totals and cannot answer "what happened in block N".
+ * Both numbers are already in every block — x/bank emits `coinbase` when it
+ * mints and `burn` when it destroys — so this needs nothing from the chain that
+ * is not there today.
+ *
+ * Two things have to be handled or the figures mislead:
+ *
+ *   - LP share denoms are dropped. Withdrawing liquidity burns shares, which is
+ *     bookkeeping rather than supply leaving; counting them would make an
+ *     ordinary withdrawal look like the largest burn the chain had ever done.
+ *   - Transaction burns are included alongside the block's own. The swap fee is
+ *     burned inside the transaction, so a block-events-only reading would show
+ *     nothing burned in the block that carried the chain's biggest trade.
+ *
+ * Returns null when the RPC is not configured or not reachable; the caller
+ * should render the block without these figures rather than as an error.
+ */
+export async function blockFlows(height) {
+  const data = await rpcOrNull(`/block_results?height=${height}`);
+  if (!data?.result) return null;
+
+  const minted = {};
+  const burned = {};
+  const bySource = {};
+
+  const isShare = (denom) => denom.startsWith("dexlp/");
+  const real = (coins) => coins.filter((c) => !isShare(c.denom));
+
+  // x/bank's `burn` is the authority on how much left the supply. The module
+  // events describe the SAME coins from the mechanism's side, so they label the
+  // total rather than adding to it — summing both would double every figure.
+  const takeBurn = (coins) => addCoins(burned, real(coins));
+  const label = (coins, source) => {
+    const r = real(coins);
+    if (r.length) bySource[source] = addCoins(bySource[source] ?? {}, r);
+  };
+
+  // Block-level: the emission, the gas split, the pol retirement, the buyback.
+  for (const ev of data.result.finalize_block_events ?? []) {
+    const a = attrs(ev);
+    switch (ev.type) {
+      case "coinbase":
+        addCoins(minted, parseCoins(a.amount));
+        break;
+      case "burn":
+        takeBurn(parseCoins(a.amount));
+        break;
+      case "burn_pol":
+        label([...parseCoins(a.burned_erth), ...parseCoins(a.burned_token)], "pol_retire");
+        break;
+      case "gas_fees_split":
+        label(parseCoins(a.burned), "gas_fees");
+        break;
+      case "anml_buyback_burn":
+        label(parseCoins(a.burned ?? a.amount), "anml_buyback");
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Transaction-level: the swap fee, and the option fee on a new allocation.
+  for (const tx of data.result.txs_results ?? []) {
+    for (const ev of tx.events ?? []) {
+      const a = attrs(ev);
+      if (ev.type === "burn") takeBurn(parseCoins(a.amount));
+      else if (ev.type === "swap") label(parseCoins(a.erth_burned), "swap_fee");
+    }
+  }
+
+  const toList = (m) =>
+    Object.entries(m)
+      .map(([denom, amount]) => ({ denom, amount: String(amount) }))
+      .sort((x, y) => x.denom.localeCompare(y.denom));
+
+  return {
+    minted: toList(minted),
+    burned: toList(burned),
+    bySource: Object.entries(bySource)
+      .map(([source, m]) => ({ source, amount: toList(m) }))
+      .sort((a, b) => a.source.localeCompare(b.source)),
+  };
+}
