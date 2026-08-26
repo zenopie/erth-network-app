@@ -11,18 +11,31 @@ import { SearchBar, timeAgo } from "../components/ExplorerBits";
 
 const REFRESH_MS = 15000;
 
-// The chain issues a fixed 4 ERTH/sec forever — one per pillar, see
-// x/earth/types/keys.go. It is a constant rather than a query because nothing
-// can change it: there is no parameter behind it and no schedule to read.
-const UERTH_PER_SECOND = 4_000_000;
+// What the chain is designed to issue: 4 ERTH/sec forever, one per pillar (see
+// x/earth/types/keys.go). Shown as the design rate and never used to compute
+// net, because the pillars do not all start issuing at launch — the allocation
+// streams wait for allocations to be set and the buyback waits for its TWAP
+// window. A chain minting one pillar is not broken, but a page that assumed
+// four would report it as inflationary while supply was falling.
+const DESIGN_UERTH_PER_SECOND = 4_000_000;
 const SECONDS_PER_DAY = 86400;
 
-/** Base units -> a display figure with thousands separators. */
-const amount = (base, denom, digits = 2) =>
-  toMacro(base, denom).toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
+/**
+ * Base units -> a display figure, with precision that follows magnitude.
+ *
+ * The figures on this page span nine orders of magnitude, and one row holds
+ * both ends of that: a pol retirement burns thousands of ERTH and, in the same
+ * tranche, a fraction of an ANML, because it destroys both sides of the pool in
+ * proportion to reserves that sit at 86,400:1. Rounding to whole units printed
+ * that ANML as "0" — a burn that happened, reported as nothing. Reporting a
+ * real burn as zero is the one thing this page must never do.
+ */
+const amount = (base, denom) => {
+  const n = toMacro(base, denom);
+  if (!n) return "0";
+  const digits = n >= 1000 ? 0 : n >= 1 ? 2 : 6;
+  return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: digits });
+};
 
 /**
  * A share, as a percent.
@@ -40,6 +53,13 @@ const pct = (part, whole) => {
   return `${p.toFixed(2)}%`;
 };
 
+/** An ERTH-per-day figure, signed when it is a net. */
+const fmtDay = (v, signed = false) => {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  const sign = signed && v > 0 ? "+" : "";
+  return `${sign}${v.toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH / day`;
+};
+
 const amountOf = (coins, denom) =>
   Number(coins.find((c) => c.denom === denom)?.amount ?? 0);
 
@@ -55,6 +75,7 @@ const ExplorerBurns = () => {
   const { hideLoading } = useLoading();
   const [burns, setBurns] = useState(null);
   const [supplies, setSupplies] = useState({});
+  const [genesisSupplies, setGenesisSupplies] = useState({});
   const [pol, setPol] = useState([]);
   const [genesis, setGenesis] = useState(null);
   const [now, setNow] = useState(null);
@@ -63,10 +84,17 @@ const ExplorerBurns = () => {
 
   // Block 1's timestamp is the chain's age, and it never changes, so it is read
   // once rather than on every poll.
+  // Block 1 fixes both the chain's age and its opening supply. Neither changes,
+  // so both are read once. The supply at height 1 is what makes net issuance
+  // exact: bank supply moves only on mint and burn, so today minus genesis is
+  // the net, with no counter and no estimate involved.
   useEffect(() => {
     explorer
       .block(1)
       .then((b) => b && setGenesis(new Date(b.time).getTime()))
+      .catch(console.error);
+    Promise.all([bank.supplyAt(UERTH, 1), bank.supplyAt(UANML, 1)])
+      .then(([e, a]) => setGenesisSupplies({ [UERTH]: e, [UANML]: a }))
       .catch(console.error);
   }, []);
 
@@ -114,11 +142,25 @@ const ExplorerBurns = () => {
   // Averages since genesis, not current rates: without a stored time series the
   // chain cannot say what today's burn was, and a figure labelled "per day" that
   // silently meant "since launch" would be the page's worst lie.
-  const burnedErthPerDay = ageSeconds
-    ? (toMacro(burnedErth, UERTH) / ageSeconds) * SECONDS_PER_DAY
-    : null;
-  const issuedPerDay = (UERTH_PER_SECOND / 1e6) * SECONDS_PER_DAY;
-  const netPerDay = burnedErthPerDay === null ? null : issuedPerDay - burnedErthPerDay;
+  const perDay = (base) =>
+    ageSeconds === null ? null : (toMacro(base, UERTH) / ageSeconds) * SECONDS_PER_DAY;
+
+  // Net is measured, not assumed: supply now minus supply at height 1. Minting
+  // and burning are the only two things that move it, so this is the whole
+  // answer and it cannot drift from what the chain actually did.
+  const genesisErth = Number(genesisSupplies[UERTH] ?? NaN);
+  const haveNet = Number.isFinite(genesisErth) && Number.isFinite(supplies[UERTH]);
+  const netBase = haveNet ? supplies[UERTH] - genesisErth : null;
+
+  // Issuance follows from the identity supply = genesis + minted - burned, so
+  // the burn counters turn the measured net into a measured mint. No second
+  // counter is needed on the chain to show what it issued.
+  const mintedBase = haveNet ? netBase + burnedErth : null;
+
+  const burnedErthPerDay = perDay(burnedErth);
+  const mintedPerDay = mintedBase === null ? null : perDay(mintedBase);
+  const netPerDay = netBase === null ? null : perDay(netBase);
+  const designPerDay = (DESIGN_UERTH_PER_SECOND / 1e6) * SECONDS_PER_DAY;
 
   // Sorted largest first: the reader wants to know what is doing the burning,
   // and the chain's own ordering is alphabetical by source key.
@@ -148,14 +190,14 @@ const ExplorerBurns = () => {
       <div className={styles.statsRow}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>ERTH burned</span>
-          <span className={styles.statValue}>{burns ? amount(burnedErth, UERTH, 0) : "—"}</span>
+          <span className={styles.statValue}>{burns ? amount(burnedErth, UERTH) : "—"}</span>
           <span className={styles.statLabel}>
             {burns && supplies[UERTH] ? `${pct(burnedErth, supplies[UERTH])} of supply` : ""}
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>ANML burned</span>
-          <span className={styles.statValue}>{burns ? amount(burnedAnml, UANML, 0) : "—"}</span>
+          <span className={styles.statValue}>{burns ? amount(burnedAnml, UANML) : "—"}</span>
           <span className={styles.statLabel}>
             {burns && supplies[UANML] ? `${pct(burnedAnml, supplies[UANML])} of supply` : ""}
           </span>
@@ -169,56 +211,51 @@ const ExplorerBurns = () => {
                   maximumFractionDigits: 0,
                 })}`}
           </span>
-          <span className={styles.statLabel}>average since genesis</span>
+          <span className={styles.statLabel}>
+            measured, average since genesis
+          </span>
         </div>
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Issuance against burn</h3>
         <p className={styles.empty}>
-          The chain issues a fixed 4 ERTH per second — one for each of the four pillars — forever.
-          Because that rate is constant while the supply it adds to grows, inflation falls on its
-          own without a schedule or a halving. Burning is what could take it below zero.
+          Net is measured, not assumed: bank supply today against bank supply at height 1. Minting
+          and burning are the only two things that move it, so the difference is the whole answer.
+          Issued is then that net plus what the burn counters recorded, which is why the chain does
+          not need to count its own minting for this to be exact.
         </p>
         <table className={styles.table}>
           <tbody>
             <tr>
               <td>Issued</td>
-              <td className={styles.mono}>
-                {issuedPerDay.toLocaleString(undefined, { maximumFractionDigits: 0 })} ERTH / day
-              </td>
-              <td className={styles.muted}>fixed by design</td>
+              <td className={styles.mono}>{fmtDay(mintedPerDay)}</td>
+              <td className={styles.muted}>measured</td>
             </tr>
             <tr>
               <td>Burned</td>
-              <td className={styles.mono}>
-                {burnedErthPerDay === null
-                  ? "—"
-                  : `${burnedErthPerDay.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })} ERTH / day`}
-              </td>
-              <td className={styles.muted}>average since genesis</td>
+              <td className={styles.mono}>{fmtDay(burnedErthPerDay)}</td>
+              <td className={styles.muted}>measured</td>
             </tr>
             <tr>
               <td>Net</td>
-              <td className={styles.mono}>
-                {netPerDay === null
-                  ? "—"
-                  : `${netPerDay > 0 ? "+" : ""}${netPerDay.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })} ERTH / day`}
-              </td>
+              <td className={styles.mono}>{fmtDay(netPerDay, true)}</td>
               <td className={styles.muted}>
                 {netPerDay === null ? "" : netPerDay > 0 ? "inflationary" : "deflationary"}
               </td>
             </tr>
+            <tr>
+              <td className={styles.muted}>Design rate</td>
+              <td className={`${styles.mono} ${styles.muted}`}>{fmtDay(designPerDay)}</td>
+              <td className={styles.muted}>4 ERTH/s, all four pillars</td>
+            </tr>
           </tbody>
         </table>
         <p className={styles.empty}>
-          Burn is an average over the chain's whole life, because the counters are running totals
-          rather than a time series. On a young chain that average is dominated by however much has
-          been traded so far.
+          Issued sits below the design rate until every pillar is live: the allocation streams wait
+          for allocations to be set, and the ANML buyback waits for its price window to fill. Rates
+          are averages over the chain's whole life, because the counters are running totals rather
+          than a time series.
         </p>
       </div>
 
@@ -245,7 +282,7 @@ const ExplorerBurns = () => {
                   <td className={styles.mono}>
                     {row.amount.map((c) => (
                       <div key={c.denom}>
-                        {amount(c.amount, c.denom, 0)} {symbolOf(c.denom)}
+                        {amount(c.amount, c.denom)} {symbolOf(c.denom)}
                       </div>
                     ))}
                   </td>
@@ -333,8 +370,8 @@ const ExplorerBurns = () => {
               return (
                 <tr key={denom}>
                   <td>{symbolOf(denom)}</td>
-                  <td className={styles.mono}>{amount(supply, denom, 0)}</td>
-                  <td className={styles.mono}>{amount(burned, denom, 0)}</td>
+                  <td className={styles.mono}>{amount(supply, denom)}</td>
+                  <td className={styles.mono}>{amount(burned, denom)}</td>
                   <td className={styles.muted}>{pct(burned, supply + burned)}</td>
                 </tr>
               );
