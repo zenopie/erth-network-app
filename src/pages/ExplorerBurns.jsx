@@ -75,7 +75,7 @@ const ExplorerBurns = () => {
   const { hideLoading } = useLoading();
   const [burns, setBurns] = useState(null);
   const [supplies, setSupplies] = useState({});
-  const [flows, setFlows] = useState(null);
+  const [genesisErthSupply, setGenesisErthSupply] = useState(null);
   const [pol, setPol] = useState([]);
   const [genesis, setGenesis] = useState(null);
   const [now, setNow] = useState(null);
@@ -86,11 +86,17 @@ const ExplorerBurns = () => {
   // once rather than on every poll.
   // Block 1's timestamp is the chain's age, and it never changes, so it is read
   // once rather than on every poll.
+  // Block 1 fixes the chain's age and its opening supply. Neither changes, so
+  // both are read once.
   useEffect(() => {
     explorer
       .block(1)
       .then((b) => b && setGenesis(new Date(b.time).getTime()))
       .catch(console.error);
+    explorer
+      .supplyAtHeight(UERTH, 1)
+      .then(setGenesisErthSupply)
+      .catch(() => setGenesisErthSupply(null));
   }, []);
 
   useEffect(() => {
@@ -112,13 +118,6 @@ const ExplorerBurns = () => {
         setPol(p);
         setNow(new Date(status.time).getTime());
         setError("");
-        // Separate from the reads above: this is ~20 RPC round trips, so a
-        // failure here must leave the totals on screen rather than blanking the
-        // page, and it is not worth blocking them on.
-        explorer
-          .recentFlows()
-          .then((f) => !cancelled && setFlows(f))
-          .catch(() => !cancelled && setFlows(null));
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -141,18 +140,27 @@ const ExplorerBurns = () => {
   // wrong does not see a wrong burn rate.
   const ageSeconds = genesis && now ? Math.max(1, (now - genesis) / 1000) : null;
 
-  // Rates are measured over the recent window rather than since genesis: the
-  // pillars come online one at a time, so a lifetime average describes a chain
-  // that is no longer running.
-  const rate = (base) =>
-    flows && flows.seconds > 0 ? (toMacro(base, UERTH) / flows.seconds) * SECONDS_PER_DAY : null;
+  // Issuance is measured over the chain's whole life, not a recent window. The
+  // ANML buyback mints ten minutes of emission in a single block, so any window
+  // shorter than its cadence reads roughly triple whenever it contains one — the
+  // figure would swing between 259k and 800k a day depending on when you looked.
+  //
+  // Supply moves only on mint and burn, so supply now minus supply at height 1
+  // is the net exactly, and adding the burn counters back gives what was minted.
+  const genesisErth = Number(genesisErthSupply ?? NaN);
+  const haveNet = Number.isFinite(genesisErth) && Number.isFinite(supplies[UERTH]);
+  const netBase = haveNet ? supplies[UERTH] - genesisErth : null;
+  const mintedBase = haveNet ? netBase + burnedErth : null;
 
-  const mintedPerDay = rate(flows?.minted?.[UERTH] ?? 0);
-  const burnedPerDay = rate(flows?.burned?.[UERTH] ?? 0);
-  const netPerDay =
-    mintedPerDay === null || burnedPerDay === null ? null : mintedPerDay - burnedPerDay;
+  const perDay = (base) =>
+    ageSeconds === null || base === null
+      ? null
+      : (toMacro(base, UERTH) / ageSeconds) * SECONDS_PER_DAY;
+
+  const mintedPerDay = perDay(mintedBase);
+  const burnedPerDay = perDay(burnedErth);
+  const netPerDay = perDay(netBase);
   const designPerDay = (DESIGN_UERTH_PER_SECOND / 1e6) * SECONDS_PER_DAY;
-  const windowLabel = flows ? `last ${flows.blocks} blocks (~${Math.round(flows.seconds)}s)` : "";
 
   // Sorted largest first: the reader wants to know what is doing the burning,
   // and the chain's own ordering is alphabetical by source key.
@@ -203,17 +211,17 @@ const ExplorerBurns = () => {
                   maximumFractionDigits: 0,
                 })}`}
           </span>
-          <span className={styles.statLabel}>{windowLabel || "measured"}</span>
+          <span className={styles.statLabel}>measured, average since genesis</span>
         </div>
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Issuance against burn</h3>
         <p className={styles.empty}>
-          Measured from the blocks themselves — x/bank emits an event when it mints and when it
-          burns — over the {windowLabel || "recent window"}. Not assumed from the design rate, and
-          not averaged over the chain's whole life: the pillars start issuing at different moments,
-          so both of those describe something other than what is running now.
+          Measured, not assumed: supply today against supply at height 1, which moves only when
+          coins are minted or burned. Averaged over the chain's whole life rather than a recent
+          window, because the ANML buyback mints ten minutes of emission in one block and a shorter
+          window reads triple whenever it catches one.
         </p>
         <table className={styles.table}>
           <tbody>
@@ -242,9 +250,9 @@ const ExplorerBurns = () => {
           </tbody>
         </table>
         <p className={styles.empty}>
-          Issued sits below the design rate until every pillar is live: the allocation streams wait
-          for allocations to be set, and the ANML buyback waits for its price window to fill. The
-          totals above are lifetime figures from the chain's counters; only these rates are windowed.
+          Issued sits below the design rate while pillars are still coming online — the allocation
+          streams wait for allocations to be set, the buyback for its price window — and climbs
+          toward it as the early quiet period is averaged away.
         </p>
       </div>
 
