@@ -487,42 +487,50 @@ export async function blockFlows(height) {
 }
 
 /**
- * Mint and burn measured over the most recent blocks.
+ * Total supply of a denom as it stood at a past height.
  *
- * This replaces a supply-delta reading taken against height 1. That was exact,
- * but it needed the `x-cosmos-block-height` header, and the CORS preflight for a
- * custom header is refused in front of the LCD — so a browser never got to send
- * it, while curl (which does not preflight) saw it work. Block events carry the
- * same two facts and travel over the RPC the explorer already uses.
+ * Goes through the RPC's abci_query rather than the LCD, because the LCD wants
+ * the height as an `x-cosmos-block-height` header and the CORS preflight for a
+ * custom header is refused in front of it — a browser never gets to ask. The
+ * RPC takes the height as a query parameter and is already CORS-open, since the
+ * explorer's block list uses it.
  *
- * A recent window is also the more honest figure while the chain is young. The
- * pillars come online one at a time — the allocation streams once allocations
- * are set, the buyback once its price window fills — so an average since genesis
- * describes a chain that no longer exists. This describes the one running now.
+ * Reading height 1 gives the genesis supply, which is what makes issuance
+ * measurable: supply moves only when coins are minted or burned, so supply now
+ * minus supply at genesis, plus what the burn counters recorded, is exactly what
+ * was minted. That figure is immune to the thing a short window is not — the
+ * ANML buyback mints ten minutes of emission in a single block, so any window
+ * shorter than its cadence reads triple whenever it happens to contain one.
  *
- * Returns null when the RPC cannot serve it; the caller should show nothing
- * rather than a figure it cannot stand behind.
+ * The request and response are protobuf, hand-encoded because they are trivial:
+ * one length-delimited string in, one Coin out.
  */
-export async function recentFlows(count = 20) {
-  const blocks = await recentBlocks(count);
-  if (blocks.length < 2) return null;
+export async function supplyAtHeight(denom, height) {
+  const bytes = new TextEncoder().encode(denom);
+  if (bytes.length > 127) return null; // would need a multi-byte varint length
+  const req = [0x0a, bytes.length, ...bytes];
+  const hex = req.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-  const asc = [...blocks].sort((a, b) => a.height - b.height);
-  const first = asc[0];
-  const last = asc[asc.length - 1];
-  const seconds = (new Date(last.time).getTime() - new Date(first.time).getTime()) / 1000;
-  if (!(seconds > 0)) return null;
+  const data = await rpcOrNull(
+    `/abci_query?path=%22/cosmos.bank.v1beta1.Query/SupplyOf%22&data=0x${hex}&height=${height}`,
+  );
+  const res = data?.result?.response;
+  if (!res || Number(res.code ?? 0) !== 0 || !res.value) return null;
 
-  // The flows of block h cover the interval that ended at h, so the blocks
-  // AFTER `first` are exactly the intervals `seconds` measures. Including
-  // `first` itself would count an interval the elapsed time does not cover.
-  const flows = await Promise.all(asc.slice(1).map((b) => blockFlows(b.height)));
-  if (flows.some((f) => f === null)) return null;
+  // QuerySupplyOfResponse { Coin amount = 1 }, Coin { denom = 1, amount = 2 }
+  const raw = atob(res.value);
+  const buf = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  if (buf[0] !== 0x0a) return null;
+  const coin = buf.subarray(2, 2 + buf[1]);
 
-  const sum = (pick) => {
-    const acc = {};
-    for (const f of flows) for (const c of f[pick]) acc[c.denom] = (acc[c.denom] ?? 0) + Number(c.amount);
-    return acc;
-  };
-  return { seconds, blocks: flows.length, minted: sum("minted"), burned: sum("burned") };
+  let i = 0;
+  let amount = null;
+  while (i + 1 < coin.length) {
+    const tag = coin[i];
+    const len = coin[i + 1];
+    const val = String.fromCharCode(...coin.subarray(i + 2, i + 2 + len));
+    if (tag === 0x12) amount = val;
+    i += 2 + len;
+  }
+  return amount;
 }
