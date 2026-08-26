@@ -67,6 +67,10 @@ const Explorer = () => {
       <Link className={styles.backLink} to="/explorer/registrations">
         Registrations →
       </Link>
+      &nbsp;&nbsp;
+      <Link className={styles.backLink} to="/explorer/burns">
+        Burns →
+      </Link>
 
       {error && (
         <div className={styles.card}>

@@ -16,6 +16,7 @@ import ExplorerBlock from './pages/ExplorerBlock';
 import ExplorerTx from './pages/ExplorerTx';
 import ExplorerAccount from './pages/ExplorerAccount';
 import ExplorerValidators from './pages/ExplorerValidators';
+import ExplorerBurns from './pages/ExplorerBurns';
 import ExplorerRegistrations from './pages/ExplorerRegistrations';
 import './App.css';
 
@@ -45,6 +46,7 @@ function App() {
               <Route path="/explorer" element={<Layout><Explorer /></Layout>} />
               <Route path="/explorer/registrations" element={<Layout><ExplorerRegistrations /></Layout>} />
               <Route path="/explorer/validators" element={<Layout><ExplorerValidators /></Layout>} />
+              <Route path="/explorer/burns" element={<Layout><ExplorerBurns /></Layout>} />
               <Route path="/explorer/block/:height" element={<Layout><ExplorerBlock /></Layout>} />
               <Route path="/explorer/tx/:hash" element={<Layout><ExplorerTx /></Layout>} />
               <Route path="/explorer/account/:address" element={<Layout><ExplorerAccount /></Layout>} />
