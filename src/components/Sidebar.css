@@ -1,4 +1,4 @@
-/* Home Section */
+/* Home Section — also the scroll container for every page. */
 .home-section {
   position: relative;
   background: #f8f7f2;
@@ -7,7 +7,12 @@
   width: calc(100% - 260px);
   display: flex;
   justify-content: center;
-  align-items: center;
+  /* `safe` matters on a scroll container: plain `center` overflows a tall page
+     equally above and below, and scrollTop cannot go below zero, so the top of
+     the page is off-screen and unreachable. `safe center` falls back to start
+     alignment the moment the content overflows, which keeps short pages
+     centered and tall ones scrollable from their real top. */
+  align-items: safe center;
   overflow-y: auto;
   transition: margin-left 0.5s ease, width 0.5s ease;
 }
@@ -332,11 +337,11 @@
   opacity: 0;
 }
 
-/* The cog is a sibling of .name-job, not a child of it: .name-job clips its
-   overflow for the collapse animation, which silently swallowed the settings
-   panel — it rendered and was invisible. Hidden here alongside the rest of the
-   wallet text when the rail collapses. */
-.sidebar.collapsed .profile-details .settings-menu {
+/* The button is a sibling of .name-job, not a child of it, so it does not
+   collapse with the wallet text — left visible it stays laid out beside the
+   avatar in an 80px rail and spills out of it. Hidden here alongside the rest
+   of the wallet text when the rail collapses. */
+.sidebar.collapsed .profile-details .logout-button {
   display: none;
 }
 
@@ -391,6 +396,11 @@
 
 .logout-button:hover i {
   color: #d9534f;
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid #4056a1;
+  outline-offset: 1px;
 }
 
 /* Sidebar Login Area */
@@ -448,6 +458,13 @@
   text-align: center;
   padding-top: 8px;
   transition: all 0.5s ease;
+  /* The rail animates between 80px and 260px, and this row's icons have a
+     min-width that does not fit the narrow end — so for the half-second of the
+     animation they overflow, and .profile-container is position:fixed with
+     nothing to clip them, which puts them out over the page. Clipping here
+     rather than on .profile-container: the settings menu opens upward out of
+     that box on purpose, and hiding its overflow would cut the panel off. */
+  overflow: hidden;
 }
 
 .socials-placeholder {
@@ -471,13 +488,20 @@
   transition: all 0.3s ease;
 }
 
+
+
 /* space-evenly, not space-around: with two items space-around gives the outer
    edges half the gap the middle gets, so the pair reads as drifting left and
    right rather than sitting centred. */
 .expanded-socials {
   display: flex;
   justify-content: space-evenly;
-  width: 100%;
+  /* The expanded rail's width, held rather than measured from the parent: laid
+     out against an animating width the icons reflow every frame and squeeze
+     together before snapping apart. Fixed here and clipped above, they hold
+     their final positions and the rail simply uncovers them. */
+  width: 260px;
+  flex-shrink: 0;
 }
 
 /* Responsive adjustments for mobile */
@@ -629,10 +653,13 @@
     display: none;
   }
 
+  /* The rail is full width here and never animates, so the row can size to it
+     again and the logo just tracks the larger icons. */
   .expanded-socials {
     display: flex;
     justify-content: center;
     width: 100%;
+    flex-shrink: 1;
     padding: 10px 0;
   }
 

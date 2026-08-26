@@ -10,8 +10,8 @@ import { UANML, UERTH } from "./config";
 export const TOKENS = {
   [UERTH]: { symbol: "ERTH", decimals: 6, logo: "/images/coin/ERTH.png" },
   [UANML]: { symbol: "ANML", decimals: 6, logo: "/images/coin/ANML.png" },
-  uusdc: { symbol: "USDC", decimals: 6, logo: "/images/coin/USDC.png", coingeckoId: "usd-coin" },
-  uatom: { symbol: "ATOM", decimals: 6, logo: "/images/coin/ATOM.png", coingeckoId: "cosmos" },
+  uusdc: { symbol: "USDC", decimals: 6, logo: "/images/coin/USDC.png" },
+  uatom: { symbol: "ATOM", decimals: 6, logo: "/images/coin/ATOM.png" },
 };
 
 /**

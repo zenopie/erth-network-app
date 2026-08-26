@@ -103,7 +103,7 @@
   appearance: none;
 }
 
-/* Amount container (holds input + USD value) */
+/* Amount container (holds input + its value in the display currency) */
 .amountContainer {
   display: flex;
   flex-direction: column;
@@ -136,8 +136,9 @@
   margin: 0;
 }
 
-/* USD value display */
-.usdValue {
+/* What the amount is worth, in the display currency. Fixed height so the row
+   does not shift when there is no price to show. */
+.quoteValue {
   font-size: 12px;
   color: #888;
   text-align: left;

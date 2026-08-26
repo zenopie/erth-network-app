@@ -6,6 +6,7 @@ import { DisplayCurrencyProvider } from './contexts/DisplayCurrencyContext';
 import Layout from './components/Layout';
 import SwapTokens from './pages/SwapTokens';
 import Markets from './pages/Markets';
+import LiquidityAuction from './pages/LiquidityAuction';
 import StakeErth from './pages/StakeErth';
 import CaretakerFund from './pages/CaretakerFund';
 import GroundworksFund from './pages/GroundworksFund';
@@ -33,6 +34,7 @@ function App() {
               <Route path="/anml-claim" element={<Navigate to="/swap-tokens" replace />} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
+              <Route path="/liquidity-auction" element={<Layout><LiquidityAuction /></Layout>} />
               <Route path="/stake-erth" element={<Layout><StakeErth /></Layout>} />
               <Route path="/caretaker-fund" element={<Layout><CaretakerFund /></Layout>} />
               <Route path="/groundworks-fund" element={<Layout><GroundworksFund /></Layout>} />

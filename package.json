@@ -31,6 +31,7 @@
     "preview": "vite preview",
     "clean-install": "rm -rf node_modules package-lock.json && npm install",
     "check:explorer": "./scripts/check-explorer.sh",
-    "check:staking": "./scripts/check-staking.sh"
+    "check:staking": "./scripts/check-staking.sh",
+    "check:dex": "./scripts/check-dex.sh"
   }
 }

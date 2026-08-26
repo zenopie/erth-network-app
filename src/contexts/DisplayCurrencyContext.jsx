@@ -14,17 +14,26 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
  * backend route that no longer exists, and `?? 0` turned every value into $0.00
  * with no error anywhere.
  */
+/**
+ * `label` is the ticker, which is what the open list names each option by — the
+ * unit a figure is quoted in is the ticker, not a prose name for the network
+ * behind it. The symbol is what marks it elsewhere: a coin logo for ERTH, which
+ * has no typographic sign, and the sign itself for USD, which does. One of
+ * `logo` or `symbol`, never both — the control renders whichever is set.
+ */
 export const CURRENCIES = {
   ERTH: {
     code: "ERTH",
     label: "ERTH",
+    logo: "/images/coin/ERTH.png",
     enabled: true,
   },
   USD: {
     code: "USD",
     label: "USD",
+    symbol: "$",
     enabled: false,
-    // Shown as a tooltip on the disabled option.
+    // Shown on the unselectable option, which otherwise gives no reason.
     reason: "Needs a USD-denominated pool — available after the liquidity auction",
   },
 };

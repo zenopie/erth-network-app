@@ -448,8 +448,18 @@
   text-align: center;
 }
 
+.lp-unbond-list {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
 .lp-unbond-item {
-  padding: 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
   border-bottom: 1px solid #f3f4f6;
   font-size: 14px;
 }

@@ -7,7 +7,14 @@ import { TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
 import { EARTH_CHAIN_ID, EARTH_LCD_URL, UERTH, earthChainInfo } from "./config";
 import { get } from "./rest";
 
-import { MsgSwap, MsgAddLiquidity, MsgRemoveLiquidity, MsgCreatePool } from "../proto/earth/dex/v1/tx";
+import {
+  MsgSwap,
+  MsgAddLiquidity,
+  MsgRemoveLiquidity,
+  MsgCreatePool,
+  MsgBidLiquidityAuction,
+  MsgClaimLiquidityAuction,
+} from "../proto/earth/dex/v1/tx";
 import {
   MsgSetAllocations,
   MsgClaimAllocation,
@@ -26,6 +33,10 @@ export const registry = new Registry([
   ["/earth.dex.v1.MsgAddLiquidity", MsgAddLiquidity],
   ["/earth.dex.v1.MsgRemoveLiquidity", MsgRemoveLiquidity],
   ["/earth.dex.v1.MsgCreatePool", MsgCreatePool],
+  // Starting the auction is governance's (MsgStartLiquidityAuction is authority-
+  // signed), so only the two a bidder sends are registered here.
+  ["/earth.dex.v1.MsgBidLiquidityAuction", MsgBidLiquidityAuction],
+  ["/earth.dex.v1.MsgClaimLiquidityAuction", MsgClaimLiquidityAuction],
   // One set of allocation messages covers both streams; the stream is a field on
   // the message rather than a separate module.
   ["/earth.allocation.v1.MsgSetAllocations", MsgSetAllocations],

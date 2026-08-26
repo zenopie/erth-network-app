@@ -12,7 +12,7 @@ import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
-import { formatPrice, formatApr } from "../utils/formatUtils";
+import { formatPrice, formatApr, formatDuration } from "../utils/formatUtils";
 import Amount from "../components/Amount";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
@@ -31,6 +31,9 @@ const Markets = () => {
   const [walletBalances, setWalletBalances] = useState({});
   const [lpRewardShare, setLpRewardShare] = useState(0); // 0..1 of the Groundworks stream
   const [swapFee, setSwapFee] = useState(0); // percent, e.g. 0.3
+  const [unbondSeconds, setUnbondSeconds] = useState(0);
+  const [unbondings, setUnbondings] = useState([]); // this wallet's pending withdrawals
+  const [burns, setBurns] = useState([]); // live protocol-owned-liquidity schedules
   const [refreshKey, setRefreshKey] = useState(0);
   const erthPrice = useErthPrice();
 
@@ -57,14 +60,18 @@ const Markets = () => {
     (async () => {
       showLoading();
       try {
-        const [ps, options, fee] = await Promise.all([
+        const [ps, options, fee, escrowSeconds, polSchedules] = await Promise.all([
           dex.pools(),
           allocation.allocationOptions(allocation.STREAM_GROUNDWORKS),
           dex.swapFeePercent(),
+          dex.lpUnbondingSeconds(),
+          dex.polBurns(),
         ]);
         if (cancelled) return;
         setPools(ps);
         setSwapFee(fee);
+        setUnbondSeconds(escrowSeconds);
+        setBurns(polSchedules);
 
         const totalWeight = options.reduce((s, o) => s + Number(o.amountAllocated), 0);
         const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED");
@@ -94,6 +101,19 @@ const Markets = () => {
     fetchBalances();
   }, [fetchBalances, refreshKey]);
 
+  // Pending withdrawals are per wallet, and they mature on their own — nothing
+  // is signed to collect them, so this is the only place they are visible at all.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = address ? await dex.lpUnbondings(address) : [];
+      if (!cancelled) setUnbondings(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [address, refreshKey]);
+
   const marketRows = useMemo(
     () =>
       pools.map((p) => {
@@ -102,7 +122,7 @@ const Markets = () => {
         // A pool is half ERTH by construction, so TVL is twice the ERTH side.
         const tvlErth = erthReserve * 2;
         const liquidityUsd = tvlErth * (rate ?? 0);
-        const volumeErth = toMacro(p.volume, UERTH);
+        const volumeErth = toMacro(p.volumeErth, UERTH);
 
         // Fees plus emissions, the same arithmetic the mobile app runs — see
         // chain/apr.js. Fees are live from the first trade; emissions are zero
@@ -117,6 +137,28 @@ const Markets = () => {
         const userShares = toMacro(walletBalances[p.lpDenom] ?? 0, p.lpDenom);
         const totalShares = toMacro(lpSupplies[p.lpDenom] ?? 0, p.lpDenom);
         const ownership = totalShares > 0 ? (userShares / totalShares) * 100 : 0;
+
+        // Shares of this pool the wallet has withdrawn and is waiting out. They
+        // are off the balance but still working for the pool, so they still
+        // count as a position — the row shows them beside the live shares
+        // rather than folding them in, since they cannot be withdrawn twice.
+        const pending = unbondings.filter((u) => u.poolId === p.id);
+        const pendingShares = pending.reduce((s, u) => s + toMacro(u.shares, p.lpDenom), 0);
+
+        // Protocol-owned liquidity, if this pool still has a live retirement
+        // schedule. `remaining` is what the module account still holds; the
+        // straight line is what it is being retired on.
+        const burn = burns.find((b) => b.poolId === p.id) ?? null;
+        const polRemaining = burn ? toMacro(burn.sharesRemaining, p.lpDenom) : 0;
+        const polShare = burn && totalShares > 0 ? (polRemaining / totalShares) * 100 : 0;
+        const polRetiredPct = burn
+          ? 100 * (1 - polRemaining / Math.max(toMacro(burn.totalShares, p.lpDenom), 1e-9))
+          : 0;
+        // start_time is zero on the genesis schedule — the genesis file cannot
+        // know the chain's first block time — so there is no end date to show
+        // for it, only a duration.
+        const polEnds =
+          burn && burn.startTime > 0 ? (burn.startTime + burn.durationSeconds) * 1000 : null;
 
         return {
           pool: p,
@@ -136,9 +178,15 @@ const Markets = () => {
           ownership,
           userErth: (erthReserve * ownership) / 100,
           userTokenB: (tokenReserve * ownership) / 100,
+          pending,
+          pendingShares,
+          burn,
+          polShare,
+          polRetiredPct,
+          polEnds,
         };
       }),
-    [pools, rate, lpRewardShare, swapFee, walletBalances, lpSupplies],
+    [pools, rate, lpRewardShare, swapFee, walletBalances, lpSupplies, unbondings, burns],
   );
 
   const handleSort = (field) => {
@@ -389,6 +437,22 @@ const Markets = () => {
                       <span className={styles.lpInfoLabel}>Your {row.symbol} Value</span>
                       <span className={styles.lpInfoVal}>{row.userTokenB.toFixed(4)}</span>
                     </div>
+                    {row.burn && (
+                      <div className={`${styles.lpInfoItem} ${styles.wide}`}>
+                        <span className={styles.lpInfoLabel}>
+                          Protocol-Owned{" "}
+                          {row.polEnds
+                            ? `(retiring by ${new Date(row.polEnds).toLocaleDateString()})`
+                            : `(retiring over ${Math.round(
+                                row.burn.durationSeconds / (365 * 24 * 60 * 60),
+                              )}y)`}
+                        </span>
+                        <span className={styles.lpInfoVal}>
+                          {row.polShare.toFixed(2)}% of pool · {row.polRetiredPct.toFixed(1)}%
+                          retired
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.poolExpandActions}>
@@ -527,8 +591,36 @@ const Markets = () => {
                         >
                           Remove Liquidity
                         </button>
-                        {/* Native LP shares redeem immediately — no unbonding queue. */}
-                        <p className={styles.lpNote}>Tokens are returned immediately</p>
+                        {/* Withdrawn shares are escrowed, not burned: the pool
+                            keeps trading on the liquidity behind them, so the
+                            position keeps earning fees and LP rewards for the
+                            whole wait and is priced at maturity. The cost of
+                            leaving is time, not yield. */}
+                        <p className={styles.lpNote}>
+                          {unbondSeconds > 0
+                            ? `Escrowed for ${formatDuration(unbondSeconds)} — the position keeps earning until it matures, then pays out on its own.`
+                            : "Tokens are returned immediately"}
+                        </p>
+
+                        {row.pending.length > 0 && (
+                          <div className={styles.lpUnbondList}>
+                            <span className={styles.lpUnbondLabel}>
+                              Pending withdrawals ({row.pendingShares.toLocaleString()} shares)
+                            </span>
+                            {row.pending.map((u, i) => (
+                              <div key={i} className={styles.lpUnbondItem}>
+                                <span>
+                                  {toMacro(u.shares, row.pool.lpDenom).toLocaleString()} shares
+                                </span>
+                                <span className={styles.lpUnbondLabel}>
+                                  {u.completionTime * 1000 <= Date.now()
+                                    ? "Maturing now"
+                                    : new Date(u.completionTime * 1000).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
