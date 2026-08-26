@@ -324,3 +324,57 @@ export function classifySearch(term) {
   if (/^earth[0-9a-z]{6,}$/.test(t)) return { kind: "account", value: t };
   return null;
 }
+
+/**
+ * Human labels for the burn sources x/earth records under.
+ *
+ * The chain stores a bare key (`gas_fees`) because renaming one would orphan its
+ * counter; the wording readers see belongs here, where it costs nothing to
+ * change. A source the UI has not been taught about still renders — as its raw
+ * key — rather than vanishing from a total it contributed to.
+ */
+const BURN_SOURCES = {
+  gas_fees: {
+    label: "Gas fees",
+    note: "Half of every block's gas is destroyed; the rest pays the validators who executed it.",
+  },
+  swap_fee: {
+    label: "Swap fees",
+    note: "Half of each dex swap fee. The other half stays in the pool for its liquidity providers.",
+  },
+  pol_retire: {
+    label: "Protocol liquidity",
+    note: "The chain's own liquidity, retired on a straight line and destroyed rather than withdrawn.",
+  },
+  anml_buyback: {
+    label: "ANML buyback",
+    note: "ANML bought with the individual pillar's emission and burned.",
+  },
+  allocation: {
+    label: "Allocation",
+    note: "Rewards an option earned but nobody claimed, plus the fee for opening one.",
+  },
+};
+
+export const burnSourceLabel = (source) => BURN_SOURCES[source]?.label ?? source;
+export const burnSourceNote = (source) => BURN_SOURCES[source]?.note ?? "";
+
+/**
+ * Everything the chain has destroyed, by mechanism and in total.
+ *
+ * Read from x/earth's counters rather than assembled from events, because three
+ * of the five mechanisms burn in EndBlock where no transaction search can see
+ * them. See x/earth/keeper/burns.go for why the chain keeps this at all.
+ */
+export async function burns() {
+  const data = await getOr("/earth/earth/v1/burns", { by_source: [], total: [] });
+  const coins = (list) =>
+    (list ?? []).map((c) => ({ denom: c.denom, amount: c.amount ?? "0" }));
+  return {
+    bySource: (data.by_source ?? []).map((b) => ({
+      source: b.source ?? "",
+      amount: coins(b.amount),
+    })),
+    total: coins(data.total),
+  };
+}
