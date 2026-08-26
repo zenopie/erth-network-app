@@ -75,7 +75,7 @@ const ExplorerBurns = () => {
   const { hideLoading } = useLoading();
   const [burns, setBurns] = useState(null);
   const [supplies, setSupplies] = useState({});
-  const [genesisSupplies, setGenesisSupplies] = useState({});
+  const [flows, setFlows] = useState(null);
   const [pol, setPol] = useState([]);
   const [genesis, setGenesis] = useState(null);
   const [now, setNow] = useState(null);
@@ -84,17 +84,12 @@ const ExplorerBurns = () => {
 
   // Block 1's timestamp is the chain's age, and it never changes, so it is read
   // once rather than on every poll.
-  // Block 1 fixes both the chain's age and its opening supply. Neither changes,
-  // so both are read once. The supply at height 1 is what makes net issuance
-  // exact: bank supply moves only on mint and burn, so today minus genesis is
-  // the net, with no counter and no estimate involved.
+  // Block 1's timestamp is the chain's age, and it never changes, so it is read
+  // once rather than on every poll.
   useEffect(() => {
     explorer
       .block(1)
       .then((b) => b && setGenesis(new Date(b.time).getTime()))
-      .catch(console.error);
-    Promise.all([bank.supplyAt(UERTH, 1), bank.supplyAt(UANML, 1)])
-      .then(([e, a]) => setGenesisSupplies({ [UERTH]: e, [UANML]: a }))
       .catch(console.error);
   }, []);
 
@@ -117,6 +112,13 @@ const ExplorerBurns = () => {
         setPol(p);
         setNow(new Date(status.time).getTime());
         setError("");
+        // Separate from the reads above: this is ~20 RPC round trips, so a
+        // failure here must leave the totals on screen rather than blanking the
+        // page, and it is not worth blocking them on.
+        explorer
+          .recentFlows()
+          .then((f) => !cancelled && setFlows(f))
+          .catch(() => !cancelled && setFlows(null));
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -139,28 +141,18 @@ const ExplorerBurns = () => {
   // wrong does not see a wrong burn rate.
   const ageSeconds = genesis && now ? Math.max(1, (now - genesis) / 1000) : null;
 
-  // Averages since genesis, not current rates: without a stored time series the
-  // chain cannot say what today's burn was, and a figure labelled "per day" that
-  // silently meant "since launch" would be the page's worst lie.
-  const perDay = (base) =>
-    ageSeconds === null ? null : (toMacro(base, UERTH) / ageSeconds) * SECONDS_PER_DAY;
+  // Rates are measured over the recent window rather than since genesis: the
+  // pillars come online one at a time, so a lifetime average describes a chain
+  // that is no longer running.
+  const rate = (base) =>
+    flows && flows.seconds > 0 ? (toMacro(base, UERTH) / flows.seconds) * SECONDS_PER_DAY : null;
 
-  // Net is measured, not assumed: supply now minus supply at height 1. Minting
-  // and burning are the only two things that move it, so this is the whole
-  // answer and it cannot drift from what the chain actually did.
-  const genesisErth = Number(genesisSupplies[UERTH] ?? NaN);
-  const haveNet = Number.isFinite(genesisErth) && Number.isFinite(supplies[UERTH]);
-  const netBase = haveNet ? supplies[UERTH] - genesisErth : null;
-
-  // Issuance follows from the identity supply = genesis + minted - burned, so
-  // the burn counters turn the measured net into a measured mint. No second
-  // counter is needed on the chain to show what it issued.
-  const mintedBase = haveNet ? netBase + burnedErth : null;
-
-  const burnedErthPerDay = perDay(burnedErth);
-  const mintedPerDay = mintedBase === null ? null : perDay(mintedBase);
-  const netPerDay = netBase === null ? null : perDay(netBase);
+  const mintedPerDay = rate(flows?.minted?.[UERTH] ?? 0);
+  const burnedPerDay = rate(flows?.burned?.[UERTH] ?? 0);
+  const netPerDay =
+    mintedPerDay === null || burnedPerDay === null ? null : mintedPerDay - burnedPerDay;
   const designPerDay = (DESIGN_UERTH_PER_SECOND / 1e6) * SECONDS_PER_DAY;
+  const windowLabel = flows ? `last ${flows.blocks} blocks (~${Math.round(flows.seconds)}s)` : "";
 
   // Sorted largest first: the reader wants to know what is doing the burning,
   // and the chain's own ordering is alphabetical by source key.
@@ -211,19 +203,17 @@ const ExplorerBurns = () => {
                   maximumFractionDigits: 0,
                 })}`}
           </span>
-          <span className={styles.statLabel}>
-            measured, average since genesis
-          </span>
+          <span className={styles.statLabel}>{windowLabel || "measured"}</span>
         </div>
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Issuance against burn</h3>
         <p className={styles.empty}>
-          Net is measured, not assumed: bank supply today against bank supply at height 1. Minting
-          and burning are the only two things that move it, so the difference is the whole answer.
-          Issued is then that net plus what the burn counters recorded, which is why the chain does
-          not need to count its own minting for this to be exact.
+          Measured from the blocks themselves — x/bank emits an event when it mints and when it
+          burns — over the {windowLabel || "recent window"}. Not assumed from the design rate, and
+          not averaged over the chain's whole life: the pillars start issuing at different moments,
+          so both of those describe something other than what is running now.
         </p>
         <table className={styles.table}>
           <tbody>
@@ -234,7 +224,7 @@ const ExplorerBurns = () => {
             </tr>
             <tr>
               <td>Burned</td>
-              <td className={styles.mono}>{fmtDay(burnedErthPerDay)}</td>
+              <td className={styles.mono}>{fmtDay(burnedPerDay)}</td>
               <td className={styles.muted}>measured</td>
             </tr>
             <tr>
@@ -253,9 +243,8 @@ const ExplorerBurns = () => {
         </table>
         <p className={styles.empty}>
           Issued sits below the design rate until every pillar is live: the allocation streams wait
-          for allocations to be set, and the ANML buyback waits for its price window to fill. Rates
-          are averages over the chain's whole life, because the counters are running totals rather
-          than a time series.
+          for allocations to be set, and the ANML buyback waits for its price window to fill. The
+          totals above are lifetime figures from the chain's counters; only these rates are windowed.
         </p>
       </div>
 

@@ -15,26 +15,6 @@ export async function get(path) {
 }
 
 /**
- * A read at a specific past height.
- *
- * The LCD takes the height as a header rather than a query parameter. Resolves
- * to null when the node no longer holds that height: a pruning node keeps only
- * recent state, and a caller has to be able to tell "pruned" from "zero".
- */
-export async function getAtHeight(path, height) {
-  try {
-    const res = await fetch(EARTH_LCD_URL + path, {
-      headers: { "x-cosmos-block-height": String(height) },
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn(`LCD height read failed (${path} @${height}):`, err.message);
-    return null;
-  }
-}
-
-/**
  * Like get(), but resolves to `fallback` instead of throwing. Used for reads
  * where "no data yet" is a normal state (an address that has never voted, a
  * pool that does not exist) and the UI should render empty rather than error.
