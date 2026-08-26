@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./Sidebar.css";
 import logo from "../images/logo.png";
-import SettingsMenu from "./SettingsMenu";
 import keplr from "../images/keplr.png";
 import useIsMobile from "../hooks/useIsMobile";
 
@@ -69,6 +68,12 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <span className="link_name">Markets</span>
             </Link>
           </li>
+          <li className={location.pathname === "/liquidity-auction" ? "active" : ""}>
+            <Link to="/liquidity-auction" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-hourglass"></i>
+              <span className="link_name">Auction</span>
+            </Link>
+          </li>
           <li className={location.pathname === "/stake-erth" ? "active" : ""}>
             <Link to="/stake-erth" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-bank"></i>
@@ -123,7 +128,15 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
                   {address ? `${address.slice(0, 10)}...${address.slice(-4)}` : ""}
                 </div>
               </div>
-              <SettingsMenu onDisconnect={onDisconnect} showDisconnect />
+              <button
+                type="button"
+                className="logout-button"
+                onClick={onDisconnect}
+                aria-label="Disconnect wallet"
+                title="Disconnect wallet"
+              >
+                <i className="bx bx-log-out"></i>
+              </button>
             </div>
           ) : (
             <div

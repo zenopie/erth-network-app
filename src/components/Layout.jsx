@@ -1,5 +1,6 @@
 import React from "react";
 import Sidebar from "./Sidebar";
+import CurrencyToggle from "./CurrencyToggle";
 import { useWallet } from "../contexts/WalletContext";
 import { useLoading } from "../contexts/LoadingContext";
 import useIsMobile from "../hooks/useIsMobile";
@@ -34,6 +35,7 @@ const Layout = ({ children }) => {
         onDisconnect={disconnect}
       />
       <div className="home-section">
+        <CurrencyToggle />
         {isLoading && (
           <div id="loading-screen" className="loading">
             <OrbitLoader />

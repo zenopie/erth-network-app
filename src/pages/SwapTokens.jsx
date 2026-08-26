@@ -7,9 +7,10 @@ import { TOKENS, minimumReceived, symbolOf, toMacro, toMicro, tokenInfo } from "
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
-import { fetchCoingeckoPrice, formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import StatusModal from "../components/StatusModal";
+import Amount from "../components/Amount";
+import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 import styles from "./SwapTokens.module.css";
 
 /**
@@ -36,8 +37,10 @@ const SwapTokens = () => {
   const [pools, setPools] = useState([]);
 
   const erthPrice = useErthPrice();
-  const [fromUsd, setFromUsd] = useState(null);
-  const [toUsd, setToUsd] = useState(null);
+  const { currency } = useDisplayCurrency();
+  // The secondary figure under each input, in whatever unit is on display.
+  const [fromValue, setFromValue] = useState(null);
+  const [toValue, setToValue] = useState(null);
   const [priceImpact, setPriceImpact] = useState(null);
 
   // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool.
@@ -81,19 +84,31 @@ const SwapTokens = () => {
     [pools],
   );
 
-  const usdValue = useCallback(
-    async (denom, amount) => {
+  /**
+   * What an amount is worth, in the unit currently on display.
+   *
+   * Everything is priced through the pools, which is the only source that
+   * cannot disagree with the swap the page is about to execute. ERTH therefore
+   * needs nothing else and is always available; USD additionally needs a price
+   * for ERTH, which the chain cannot give until there is a pool against a
+   * dollar-denominated asset — so it can come back null, and the caller has to
+   * render nothing rather than a zero.
+   *
+   * This page used to compute the USD branch unconditionally and print
+   * `formatUSD(value ?? 0)`, which turned "no price exists" into a confident
+   * "$0.00" under every input, in ERTH mode included.
+   */
+  const displayValue = useCallback(
+    (denom, amount) => {
       if (!(parseFloat(amount) > 0)) return null;
-      const info = tokenInfo(denom);
-      if (info.coingeckoId) {
-        const cg = await fetchCoingeckoPrice(info.coingeckoId);
-        if (cg !== null) return parseFloat(amount) * cg;
-      }
-      if (!erthPrice) return null;
       const rate = spotRateInErth(denom);
-      return rate ? parseFloat(amount) * rate * erthPrice : null;
+      if (!rate) return null;
+
+      const inErth = parseFloat(amount) * rate;
+      if (currency === "ERTH") return inErth;
+      return erthPrice ? inErth * erthPrice : null;
     },
-    [erthPrice, spotRateInErth],
+    [currency, erthPrice, spotRateInErth],
   );
 
   /**
@@ -125,17 +140,15 @@ const SwapTokens = () => {
   );
 
   useEffect(() => {
-    (async () => {
-      if (parseFloat(fromAmount) > 0) {
-        setFromUsd(await usdValue(fromDenom, fromAmount));
-        setPriceImpact(calcPriceImpact(fromAmount));
-      } else {
-        setFromUsd(null);
-        setPriceImpact(null);
-      }
-      setToUsd(parseFloat(toAmount) > 0 ? await usdValue(toDenom, toAmount) : null);
-    })();
-  }, [fromAmount, toAmount, fromDenom, toDenom, usdValue, calcPriceImpact]);
+    if (parseFloat(fromAmount) > 0) {
+      setFromValue(displayValue(fromDenom, fromAmount));
+      setPriceImpact(calcPriceImpact(fromAmount));
+    } else {
+      setFromValue(null);
+      setPriceImpact(null);
+    }
+    setToValue(parseFloat(toAmount) > 0 ? displayValue(toDenom, toAmount) : null);
+  }, [fromAmount, toAmount, fromDenom, toDenom, displayValue, calcPriceImpact]);
 
   const handleFromAmountChange = async (val) => {
     setFromAmount(val);
@@ -228,7 +241,11 @@ const SwapTokens = () => {
                 value={fromAmount}
                 onChange={(e) => handleFromAmountChange(e.target.value)}
               />
-              <div className={styles.usdValue}>{formatUSD(fromUsd ?? 0)}</div>
+              {/* Nothing at all when the unit on display has no price, rather
+                  than a zero that reads as "this is worthless". */}
+              <div className={styles.quoteValue}>
+                {fromValue !== null && <Amount value={fromValue} mode="price" />}
+              </div>
             </div>
           </div>
         </div>
@@ -266,7 +283,9 @@ const SwapTokens = () => {
                 disabled
                 readOnly
               />
-              <div className={styles.usdValue}>{formatUSD(toUsd ?? 0)}</div>
+              <div className={styles.quoteValue}>
+                {toValue !== null && <Amount value={toValue} mode="price" />}
+              </div>
             </div>
           </div>
         </div>

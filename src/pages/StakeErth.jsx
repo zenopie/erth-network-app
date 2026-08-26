@@ -12,6 +12,8 @@ import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import styles from "./StakeErth.module.css";
 import StatusModal from "../components/StatusModal";
+import Amount from "../components/Amount";
+import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const DAYS_PER_YEAR = 365;
@@ -47,6 +49,11 @@ const StakeErth = () => {
   const [redelegateAmount, setRedelegateAmount] = useState("");
   const [unbondDays, setUnbondDays] = useState(21);
   const erthPrice = useErthPrice();
+  const { currency } = useDisplayCurrency();
+  // Every figure on this page is ERTH-denominated on chain, so ERTH mode needs
+  // no conversion at all and USD mode multiplies through. Same arrangement as
+  // the Markets page, which is why both go through <Amount> for the mark.
+  const rate = currency === "USD" ? erthPrice : 1;
 
   useEffect(() => {
     fetchStakingInfo();
@@ -201,8 +208,7 @@ const StakeErth = () => {
         <div className={styles.headerRight}>
           {stakingRewards > 0 && isConnected && (
             <button className={styles.claimAllBtn} onClick={handleClaimRewards}>
-              Claim {Number(stakingRewards).toLocaleString(undefined, { maximumFractionDigits: 1 })} ERTH
-              {erthPrice ? ` (${formatUSD(stakingRewards * erthPrice)})` : ""}
+              Claim <Amount value={stakingRewards * (rate ?? 0)} mode="plain" />
             </button>
           )}
         </div>
@@ -210,33 +216,38 @@ const StakeErth = () => {
 
       {/* Stats row */}
       <div className={styles.statsRow}>
+        {/* One figure per stat, in the unit on display — not an ERTH figure with
+            a USD one under it. The setting picks the unit; showing both would
+            make it a formatting toggle rather than a choice. A dash where the
+            chosen unit has no price, since the number is unknown, not zero. */}
         <div className={styles.stat}>
           <span className={styles.statLabel}>Your Staked</span>
           <span className={styles.statValue}>
-            {stakedBalance !== null && stakedBalance !== "Error"
-              ? "¤" + Math.floor(stakedBalance).toLocaleString()
-              : "—"}
-          </span>
-          <span className={styles.statSub}>
-            {stakedBalance !== null && stakedBalance !== "Error" && erthPrice
-              ? formatUSD(stakedBalance * erthPrice)
-              : ""}
+            {stakedBalance !== null && stakedBalance !== "Error" && rate ? (
+              <Amount value={stakedBalance * rate} mode="plain" />
+            ) : (
+              "—"
+            )}
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Total Staked</span>
           <span className={styles.statValue}>
-            {totalStakedBalance !== null ? "¤" + Math.floor(totalStakedBalance).toLocaleString() : "—"}
-          </span>
-          <span className={styles.statSub}>
-            {totalStakedBalance !== null && erthPrice ? formatUSD(totalStakedBalance * erthPrice) : ""}
+            {totalStakedBalance !== null && rate ? (
+              <Amount value={totalStakedBalance * rate} mode="plain" />
+            ) : (
+              "—"
+            )}
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Daily Rewards</span>
-          <span className={styles.statValue}>{dailyRewards > 0 ? `¤${dailyRewards.toFixed(2)}` : "—"}</span>
-          <span className={styles.statSub}>
-            {dailyRewards > 0 && erthPrice ? formatUSD(dailyRewards * erthPrice) : ""}
+          <span className={styles.statValue}>
+            {dailyRewards > 0 && rate ? (
+              <Amount value={dailyRewards * rate} mode="price" />
+            ) : (
+              "—"
+            )}
           </span>
         </div>
       </div>
@@ -314,7 +325,12 @@ const StakeErth = () => {
                     className={styles.input}
                   />
                   <span className={styles.inputUsd}>
-                    {stakeAmount && erthPrice ? formatUSD(parseFloat(stakeAmount) * erthPrice) : ""}
+                    {/* The input is ERTH and says so with the logo beside it, so
+                        this second line only earns its place when it converts to
+                        something else. */}
+                    {currency === "USD" && stakeAmount && erthPrice
+                      ? formatUSD(parseFloat(stakeAmount) * erthPrice)
+                      : ""}
                   </span>
                 </div>
               </div>
@@ -475,7 +491,9 @@ const StakeErth = () => {
                     className={styles.input}
                   />
                   <span className={styles.inputUsd}>
-                    {unstakeAmount && erthPrice ? formatUSD(parseFloat(unstakeAmount) * erthPrice) : ""}
+                    {currency === "USD" && unstakeAmount && erthPrice
+                      ? formatUSD(parseFloat(unstakeAmount) * erthPrice)
+                      : ""}
                   </span>
                 </div>
               </div>
