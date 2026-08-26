@@ -336,7 +336,11 @@ export function classifySearch(term) {
 const BURN_SOURCES = {
   gas_fees: {
     label: "Gas fees",
-    note: "Half of every block's gas is destroyed; the rest pays the validators who executed it.",
+    note:
+      "Half of every block's gas is destroyed. The rest is left in the fee collector for " +
+      "x/distribution to split across the whole bonded set by voting power — stakers earn it, " +
+      "validators take their commission — rather than paying the block's proposer, who would " +
+      "otherwise profit by filling their own blocks.",
   },
   swap_fee: {
     label: "Swap fees",
