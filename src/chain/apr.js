@@ -25,44 +25,27 @@ const EMISSION_UERTH_PER_SEC = 1_000_000;
 const SECONDS_PER_DAY = 86_400;
 const DAYS_PER_YEAR = 365;
 
-/** Mirrors types.VolumeWindowDays. */
-export const VOLUME_WINDOW_DAYS = 7;
-
-/** Today's day index, the same way the chain computes it. */
-export function today() {
-  return Math.floor(Date.now() / 1000 / SECONDS_PER_DAY);
-}
+/** Days in the rolling volume window. Mirrors types.VolumeDecayWindowDays. */
+export const VOLUME_WINDOW_DAYS = 14;
 
 /**
- * The chain's daily volume decay, applied forward to `today`.
+ * The pool's 14-day-weighted volume, in real uerth.
  *
- * This has to be recomputed client-side rather than trusting the stored figure:
- * the chain decays lazily, only when a swap or a liquidity change touches a
- * pool. A pool nobody has traded in three days still reports the volume it had
- * three days ago, and summing those raw would inflate the denominator and
- * understate every active pool's share.
+ * A read, not a calculation. This used to reproduce the chain's decay
+ * client-side, and the chain stopped decaying: it scales new volume by a
+ * chain-wide index instead, so the stored figure carries a multiplier that grows
+ * forever. Nothing here divided it out, and the fee APR inflated with it.
  *
- * BigInt, in the same order as the chain's integer arithmetic, so a pool's
- * decayed figure here matches what the chain computes when it next touches it.
+ * The chain de-scales it before returning it (PoolView.volume_erth), so there is
+ * nothing left to mirror. Reimplementing chain arithmetic in a client is what
+ * caused the drift; not having any to reimplement is the fix.
  */
-export function decayedVolume(pool, day = today()) {
-  let stored;
+export function volumeErth(pool) {
   try {
-    stored = BigInt(pool.volume ?? "0");
+    return BigInt(pool.volumeErth ?? "0");
   } catch {
     return 0n;
   }
-  const last = BigInt(pool.lastVolumeDay ?? 0);
-  if (last === 0n || BigInt(day) <= last) return stored;
-
-  const elapsed = BigInt(day) - last;
-  if (elapsed >= BigInt(VOLUME_WINDOW_DAYS)) return 0n;
-
-  const w = BigInt(VOLUME_WINDOW_DAYS);
-  const wLess = BigInt(VOLUME_WINDOW_DAYS - 1);
-  let v = stored;
-  for (let i = 0n; i < elapsed; i++) v = (v * wLess) / w;
-  return v;
 }
 
 /**
@@ -77,7 +60,7 @@ export function decayedVolume(pool, day = today()) {
  * `lpOptionShare` is the option's weight over the stream's total weight: 1.0
  * when voters have given it everything, 0 when they have given it nothing.
  */
-export function aprFor(pool, allPools, lpOptionShare, swapFeePercent, day = today()) {
+export function aprFor(pool, allPools, lpOptionShare, swapFeePercent) {
   const reserveErth = Number(pool.erthReserve ?? 0);
   if (!(reserveErth > 0)) return null;
 
@@ -86,15 +69,15 @@ export function aprFor(pool, allPools, lpOptionShare, swapFeePercent, day = toda
   // would just restate the same number.
   const tvl = reserveErth * 2;
 
-  const mine = decayedVolume(pool, day);
-  const total = allPools.reduce((acc, p) => acc + decayedVolume(p, day), 0n);
+  const mine = volumeErth(pool);
+  const total = allPools.reduce((acc, p) => acc + volumeErth(p), 0n);
 
   // --- fees ---
   //
-  // At a steady trading rate the decay settles the stored volume at roughly
-  // window * daily, so daily volume is the stored figure over the window. Right
-  // after a burst it overstates, and after a quiet spell it understates; there
-  // is no per-day history on chain to do better.
+  // At a steady trading rate the weighting settles at roughly window * daily, so
+  // daily volume is the reported figure over the window. Right after a burst it
+  // overstates, and after a quiet spell it understates; there is no per-day
+  // history on chain to do better.
   const dailyVolume = Number(mine) / VOLUME_WINDOW_DAYS;
 
   // Half the fee is burned, half stays with the providers.

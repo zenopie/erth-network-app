@@ -26,7 +26,17 @@ state before a wallet is connected; connecting only determines *who you are* for
   picker UI); unstaking draws largest-first across delegations; rewards are withdrawn from
   every validator you have delegated to. Unbonding is display-only and auto-releases.
 - **Liquidity Management** — add/remove liquidity on `x/dex`. LP rewards **auto-compound**
-  into each pool's reserves, so there is nothing to claim and no LP bonding queue.
+  into each pool's reserves, so there is nothing to claim. Withdrawals are escrowed for
+  `lp_unbonding_seconds` rather than paid out at once: the shares stay in the outstanding
+  supply and the pool keeps trading on the liquidity behind them, so the position keeps
+  earning fees and rewards for the whole wait and is priced at maturity. Pending withdrawals
+  are listed under the pool's Remove tab and pay out on their own — nothing is signed to
+  collect them. A pool whose protocol-owned liquidity is still being retired shows how much
+  of it is left and when the schedule ends.
+- **Liquidity Auction** (`/liquidity-auction`) — the one-shot genesis liquidity event. Half
+  the earmark is paid to bidders pro rata, half is paired with everything raised to open the
+  pool, so it opens at exactly the price the auction cleared at. The page shows the window's
+  state, what it is clearing at, and a bid or claim form; bids are additive and final.
 - **Caretaker Fund** — direct the democratic emission stream (one registered human, one vote).
 - **Deflation Fund** — direct the stake-weighted emission stream (your bonded stake is your weight).
 - **ANML Claim** — registration and the daily claim happen in the mobile app (passport ZK
@@ -49,7 +59,7 @@ All chain I/O lives in **`src/chain/`**. Nothing else builds transactions or par
 | `rest.js` | LCD GET helpers (`get` throws, `getOr` falls back). |
 | `tx.js` | Keplr connect, the cosmjs message registry, sign + broadcast. |
 | `bank.js` | Balances, supply, `MsgSend`. |
-| `dex.js` | Pools, swap quoting, swap/add/remove-liquidity messages. |
+| `dex.js` | Pools, swap quoting, swap/add/remove-liquidity messages, escrowed withdrawals, the liquidity auction and POL retirement schedules. |
 | `staking.js` | Delegations, rewards, unbonding, delegate/undelegate/withdraw messages. |
 | `personhood.js` | Registration status, ANML claim, registration counts by country / signer. |
 | `allocation.js` | Options, voter splits and allocation messages for both streams — every call takes a `STREAM_HUMAN` / `STREAM_CAPITAL` argument. |
@@ -111,6 +121,18 @@ connect. `VITE_EARTH_RPC` should be set for that to fully register the chain in 
 | `VITE_EARTH_CHAIN_ID` | Chain id. | `earth-1` |
 
 > **TODO before deploying:** point `VITE_EARTH_LCD`/`VITE_EARTH_RPC` at the real endpoints.
+
+### Checks
+
+These run the real `src/chain/` code against a live LCD, which is the only thing that
+catches a field the chain has renamed — a shape mismatch surfaces as a plausible zero
+rather than an error.
+
+```bash
+VITE_EARTH_LCD=https://lcd.erth.network npm run check:dex        # pools, APR inputs, auction, escrow, POL
+VITE_EARTH_LCD=http://127.0.0.1:1317     npm run check:staking   # needs a multi-validator testnet
+npm run check:explorer                                            # fixture-driven, no chain needed
+```
 
 ### Building for Production
 

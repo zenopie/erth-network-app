@@ -28,3 +28,25 @@ export const formatApr = (pct) => {
   if (pct < 0.01) return "<0.01%";
   return `${pct.toFixed(1)}%`;
 };
+
+/**
+ * A span of seconds in the largest unit that still reads as a round number —
+ * "7 days" rather than "604800 seconds". Used for chain periods (LP escrow, an
+ * auction window), which are configured in seconds but only ever read as a wait.
+ */
+export const formatDuration = (seconds) => {
+  const s = Number(seconds);
+  if (!Number.isFinite(s) || s <= 0) return "0s";
+  const units = [
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  for (const [name, size] of units) {
+    if (s >= size) {
+      const n = Math.round(s / size);
+      return `${n} ${name}${n === 1 ? "" : "s"}`;
+    }
+  }
+  return `${Math.round(s)} seconds`;
+};
