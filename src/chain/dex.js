@@ -196,7 +196,36 @@ export function msgSwap(creator, denomIn, amountIn, denomOut, minAmountOut) {
   };
 }
 
-export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amountB) {
+/**
+ * Shares a deposit is expected to mint, in the same units as `totalShares`.
+ *
+ * Mirrors the chain: shares are priced against the reserves as they stand when
+ * the message executes, and the deposit is taken in the pool ratio, so the
+ * lesser of the two sides is what gets minted —
+ * `min(erthIn * total / reserveErth, tokenIn * total / reserveToken)`.
+ *
+ * Every argument is in the same unit as every other, so this works in macro or
+ * base units as long as the caller does not mix them. Returns 0 for a pool with
+ * no shares outstanding, where the chain seeds with sqrt(erth * token) instead
+ * and there is no ratio to be sandwiched on.
+ */
+export function quoteAddLiquidity(erthIn, tokenIn, erthReserve, tokenReserve, totalShares) {
+  const e = parseFloat(erthIn);
+  const t = parseFloat(tokenIn);
+  if (![e, t, erthReserve, tokenReserve, totalShares].every(Number.isFinite)) return 0;
+  if (erthReserve <= 0 || tokenReserve <= 0 || totalShares <= 0) return 0;
+  return Math.min((e * totalShares) / erthReserve, (t * totalShares) / tokenReserve);
+}
+
+/**
+ * @param minShares base-unit floor on the shares minted, as a string. Sending
+ *   "" is no floor — which is what this did before the field existed, and what
+ *   left every deposit open to being sandwiched: a trade landing between
+ *   signing and execution moves the ratio the shares are priced at, and the
+ *   deposit takes whatever it lands on. `MsgSwap` has always had
+ *   `min_amount_out` for the same reason.
+ */
+export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amountB, minShares = "") {
   return {
     typeUrl: "/earth.dex.v1.MsgAddLiquidity",
     value: {
@@ -204,6 +233,7 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
       poolId: Number(poolId),
       amountA: { denom: denomA, amount: String(amountA) },
       amountB: { denom: denomB, amount: String(amountB) },
+      minShares: String(minShares),
     },
   };
 }

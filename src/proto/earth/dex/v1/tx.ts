@@ -43,7 +43,24 @@ export interface MsgAddLiquidity {
   creator: string;
   poolId: number;
   amountA: Coin | undefined;
-  amountB: Coin | undefined;
+  amountB:
+    | Coin
+    | undefined;
+  /**
+   * The fewest shares the depositor will accept, as a decimal integer.
+   *
+   * A deposit is priced at whatever ratio the pool holds when it executes, so
+   * without this it is sandwichable in the ordinary way: move the reserves
+   * ahead of it, let it price against the moved ratio, move them back. MsgSwap
+   * has always had min_amount_out for exactly this and add-liquidity had
+   * nothing.
+   *
+   * Empty means no minimum, which is what every client sent before this field
+   * existed and is why it can be added without breaking them. It is not a
+   * recommendation -- a client that leaves it empty is choosing the old
+   * behaviour.
+   */
+  minShares: string;
 }
 
 /** MsgAddLiquidityResponse defines the MsgAddLiquidityResponse message. */
@@ -469,7 +486,7 @@ export const MsgCreatePoolResponse: MessageFns<MsgCreatePoolResponse> = {
 };
 
 function createBaseMsgAddLiquidity(): MsgAddLiquidity {
-  return { creator: "", poolId: 0, amountA: undefined, amountB: undefined };
+  return { creator: "", poolId: 0, amountA: undefined, amountB: undefined, minShares: "" };
 }
 
 export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
@@ -485,6 +502,9 @@ export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
     }
     if (message.amountB !== undefined) {
       Coin.encode(message.amountB, writer.uint32(34).fork()).join();
+    }
+    if (message.minShares !== "") {
+      writer.uint32(42).string(message.minShares);
     }
     return writer;
   },
@@ -534,6 +554,14 @@ export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
             message.amountB = Coin.decode(reader, reader.uint32());
             continue;
           }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.minShares = reader.string();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -564,6 +592,11 @@ export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
         : isSet(object.amount_b)
         ? Coin.fromJSON(object.amount_b)
         : undefined,
+      minShares: isSet(object.minShares)
+        ? globalThis.String(object.minShares)
+        : isSet(object.min_shares)
+        ? globalThis.String(object.min_shares)
+        : "",
     };
   },
 
@@ -581,6 +614,9 @@ export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
     if (message.amountB !== undefined) {
       obj.amountB = Coin.toJSON(message.amountB);
     }
+    if (message.minShares !== "") {
+      obj.minShares = message.minShares;
+    }
     return obj;
   },
 
@@ -597,6 +633,7 @@ export const MsgAddLiquidity: MessageFns<MsgAddLiquidity> = {
     message.amountB = (object.amountB !== undefined && object.amountB !== null)
       ? Coin.fromPartial(object.amountB)
       : undefined;
+    message.minShares = object.minShares ?? "";
     return message;
   },
 };

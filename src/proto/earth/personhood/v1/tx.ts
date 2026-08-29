@@ -59,6 +59,12 @@ export interface MsgRegister {
 /** MsgRegisterResponse returns the registration reward paid to the registree. */
 export interface MsgRegisterResponse {
   reward: string;
+  /**
+   * switched is true when this proof moved an existing registration to a new
+   * wallet rather than creating one. A switch pays no reward and mints no ANML,
+   * so reward is zero when this is set — the person was already counted.
+   */
+  switched: boolean;
 }
 
 /** MsgClaimAnml defines the MsgClaimAnml message. */
@@ -68,6 +74,29 @@ export interface MsgClaimAnml {
 
 /** MsgClaimAnmlResponse defines the MsgClaimAnmlResponse message. */
 export interface MsgClaimAnmlResponse {
+}
+
+/**
+ * MsgUnregister retired the signer's own proof-of-personhood registration.
+ *
+ * REMOVED. Freeing the nullifier made the holder a stranger to Register, which
+ * pays the registration reward and mints 1 ANML for anyone whose nullifier is
+ * not already live — so unregister-then-register drew on the reward pool once
+ * per block. Registering again from another wallet still moves a live
+ * registration, and still pays nothing; leaving the registry outright now only
+ * happens on expiry or a Document Signer revocation.
+ *
+ * Retained, with its response, purely so the MsgUnregister already in the chain's
+ * history decodes. Nothing accepts one: the handler always returns
+ * ErrUnregisterRemoved.
+ */
+export interface MsgUnregister {
+  creator: string;
+}
+
+/** MsgUnregisterResponse returns the nullifier that was freed. */
+export interface MsgUnregisterResponse {
+  nullifier: Uint8Array;
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -378,13 +407,16 @@ export const MsgRegister: MessageFns<MsgRegister> = {
 };
 
 function createBaseMsgRegisterResponse(): MsgRegisterResponse {
-  return { reward: "" };
+  return { reward: "", switched: false };
 }
 
 export const MsgRegisterResponse: MessageFns<MsgRegisterResponse> = {
   encode(message: MsgRegisterResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.reward !== "") {
       writer.uint32(10).string(message.reward);
+    }
+    if (message.switched !== false) {
+      writer.uint32(16).bool(message.switched);
     }
     return writer;
   },
@@ -410,6 +442,14 @@ export const MsgRegisterResponse: MessageFns<MsgRegisterResponse> = {
             message.reward = reader.string();
             continue;
           }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.switched = reader.bool();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -423,13 +463,19 @@ export const MsgRegisterResponse: MessageFns<MsgRegisterResponse> = {
   },
 
   fromJSON(object: any): MsgRegisterResponse {
-    return { reward: isSet(object.reward) ? globalThis.String(object.reward) : "" };
+    return {
+      reward: isSet(object.reward) ? globalThis.String(object.reward) : "",
+      switched: isSet(object.switched) ? globalThis.Boolean(object.switched) : false,
+    };
   },
 
   toJSON(message: MsgRegisterResponse): unknown {
     const obj: any = {};
     if (message.reward !== "") {
       obj.reward = message.reward;
+    }
+    if (message.switched !== false) {
+      obj.switched = message.switched;
     }
     return obj;
   },
@@ -440,6 +486,7 @@ export const MsgRegisterResponse: MessageFns<MsgRegisterResponse> = {
   fromPartial<I extends Exact<DeepPartial<MsgRegisterResponse>, I>>(object: I): MsgRegisterResponse {
     const message = createBaseMsgRegisterResponse();
     message.reward = object.reward ?? "";
+    message.switched = object.switched ?? false;
     return message;
   },
 };
@@ -563,6 +610,140 @@ export const MsgClaimAnmlResponse: MessageFns<MsgClaimAnmlResponse> = {
   },
 };
 
+function createBaseMsgUnregister(): MsgUnregister {
+  return { creator: "" };
+}
+
+export const MsgUnregister: MessageFns<MsgUnregister> = {
+  encode(message: MsgUnregister, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.creator !== "") {
+      writer.uint32(10).string(message.creator);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgUnregister {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgUnregister();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.creator = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgUnregister {
+    return { creator: isSet(object.creator) ? globalThis.String(object.creator) : "" };
+  },
+
+  toJSON(message: MsgUnregister): unknown {
+    const obj: any = {};
+    if (message.creator !== "") {
+      obj.creator = message.creator;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgUnregister>, I>>(base?: I): MsgUnregister {
+    return MsgUnregister.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgUnregister>, I>>(object: I): MsgUnregister {
+    const message = createBaseMsgUnregister();
+    message.creator = object.creator ?? "";
+    return message;
+  },
+};
+
+function createBaseMsgUnregisterResponse(): MsgUnregisterResponse {
+  return { nullifier: new Uint8Array(0) };
+}
+
+export const MsgUnregisterResponse: MessageFns<MsgUnregisterResponse> = {
+  encode(message: MsgUnregisterResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.nullifier.length !== 0) {
+      writer.uint32(10).bytes(message.nullifier);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgUnregisterResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgUnregisterResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.nullifier = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgUnregisterResponse {
+    return { nullifier: isSet(object.nullifier) ? bytesFromBase64(object.nullifier) : new Uint8Array(0) };
+  },
+
+  toJSON(message: MsgUnregisterResponse): unknown {
+    const obj: any = {};
+    if (message.nullifier.length !== 0) {
+      obj.nullifier = base64FromBytes(message.nullifier);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgUnregisterResponse>, I>>(base?: I): MsgUnregisterResponse {
+    return MsgUnregisterResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgUnregisterResponse>, I>>(object: I): MsgUnregisterResponse {
+    const message = createBaseMsgUnregisterResponse();
+    message.nullifier = object.nullifier ?? new Uint8Array(0);
+    return message;
+  },
+};
+
 /** Msg defines the Msg service. */
 export interface Msg {
   /**
@@ -574,6 +755,11 @@ export interface Msg {
   Register(request: MsgRegister): Promise<MsgRegisterResponse>;
   /** ClaimAnml defines the ClaimAnml RPC. */
   ClaimAnml(request: MsgClaimAnml): Promise<MsgClaimAnmlResponse>;
+  /**
+   * Unregister is REMOVED and always fails. Kept registered so the historical
+   * MsgUnregister already on chain still decodes -- see msg_server_unregister.go.
+   */
+  Unregister(request: MsgUnregister): Promise<MsgUnregisterResponse>;
 }
 
 export const MsgServiceName = "earth.personhood.v1.Msg";
@@ -586,6 +772,7 @@ export class MsgClientImpl implements Msg {
     this.UpdateParams = this.UpdateParams.bind(this);
     this.Register = this.Register.bind(this);
     this.ClaimAnml = this.ClaimAnml.bind(this);
+    this.Unregister = this.Unregister.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -603,6 +790,12 @@ export class MsgClientImpl implements Msg {
     const data = MsgClaimAnml.encode(request).finish();
     const promise = this.rpc.request(this.service, "ClaimAnml", data);
     return promise.then((data) => MsgClaimAnmlResponse.decode(new BinaryReader(data)));
+  }
+
+  Unregister(request: MsgUnregister): Promise<MsgUnregisterResponse> {
+    const data = MsgUnregister.encode(request).finish();
+    const promise = this.rpc.request(this.service, "Unregister", data);
+    return promise.then((data) => MsgUnregisterResponse.decode(new BinaryReader(data)));
   }
 }
 

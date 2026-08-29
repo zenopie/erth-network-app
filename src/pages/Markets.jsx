@@ -17,6 +17,16 @@ import Amount from "../components/Amount";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
+// Slippage tolerance for a liquidity deposit, in percent.
+//
+// Matches the swap page's default. Not a control here: a deposit is entered as
+// two amounts in the pool's own ratio, so the only thing that moves between
+// signing and execution is a trade landing in between, and 1% is wide enough to
+// absorb ordinary block-to-block drift while still refusing a sandwich. If a
+// deposit starts failing with "would mint ... want >=", the pool moved further
+// than that and the amounts want re-entering rather than the floor loosening.
+const LP_SLIPPAGE_PERCENT = 1;
+
 // The deflation stream emits a flat 1 ERTH/sec, split across allocation options
 // by staker vote. Whatever share lands on the LP-rewards option is what funds
 // LP yield, distributed across pools by their share of trading volume.
@@ -248,6 +258,20 @@ const Markets = () => {
   const handleAddLiquidity = (row) => {
     if (!isConnected) return;
     execute(async () => {
+      // Price the deposit against the reserves the page is showing, then accept
+      // anything within LP_SLIPPAGE_PERCENT of it. Without a floor the deposit
+      // mints whatever ratio it lands on, and moving the ratio either side of
+      // it is the standard sandwich.
+      const expected = dex.quoteAddLiquidity(
+        erthAmount,
+        tokenBAmount,
+        row.erthReserve,
+        row.tokenReserve,
+        row.totalShares,
+      );
+      const minShares = expected > 0
+        ? toMicro((expected * (100 - LP_SLIPPAGE_PERCENT)) / 100, row.pool.lpDenom)
+        : 0;
       await broadcast([
         dex.msgAddLiquidity(
           address,
@@ -256,6 +280,7 @@ const Markets = () => {
           toMicro(erthAmount, UERTH),
           row.pool.tokenDenom,
           toMicro(tokenBAmount, row.pool.tokenDenom),
+          minShares,
         ),
       ]);
       setErthAmount("");

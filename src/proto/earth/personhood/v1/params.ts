@@ -45,6 +45,20 @@ export interface Params {
    */
   currentDateIndex: number;
   /**
+   * address_index is the public-input position of the account the proof was
+   * made for.
+   *
+   * A proof travels in the clear inside MsgRegister, so anyone who reads a
+   * block has the bytes. Binding the registrant's address into the circuit is
+   * what stops those bytes being replayed from another wallet: the verifier
+   * checks the proof against the public inputs it is handed, so a proof made
+   * for one account does not verify against another.
+   *
+   * Without it, re-registering could only ever be a refusal -- which is what it
+   * was, and which stranded anyone who lost the wallet they registered from.
+   */
+  addressIndex: number;
+  /**
    * current_date_max_skew_seconds bounds how far the proof's current_date may
    * differ from the block time.
    *
@@ -197,6 +211,7 @@ function createBaseParams(): Params {
     nullifierIndex: 0,
     dscKeyIndex: 0,
     currentDateIndex: 0,
+    addressIndex: 0,
     currentDateMaxSkewSeconds: 0,
     proofVerificationGas: 0,
     dscVerificationGas: 0,
@@ -227,6 +242,9 @@ export const Params: MessageFns<Params> = {
     }
     if (message.currentDateIndex !== 0) {
       writer.uint32(48).uint32(message.currentDateIndex);
+    }
+    if (message.addressIndex !== 0) {
+      writer.uint32(160).uint32(message.addressIndex);
     }
     if (message.currentDateMaxSkewSeconds !== 0) {
       writer.uint32(56).uint64(message.currentDateMaxSkewSeconds);
@@ -318,6 +336,14 @@ export const Params: MessageFns<Params> = {
             }
 
             message.currentDateIndex = reader.uint32();
+            continue;
+          }
+          case 20: {
+            if (tag !== 160) {
+              break;
+            }
+
+            message.addressIndex = reader.uint32();
             continue;
           }
           case 7: {
@@ -469,6 +495,11 @@ export const Params: MessageFns<Params> = {
         : isSet(object.current_date_index)
         ? globalThis.Number(object.current_date_index)
         : 0,
+      addressIndex: isSet(object.addressIndex)
+        ? globalThis.Number(object.addressIndex)
+        : isSet(object.address_index)
+        ? globalThis.Number(object.address_index)
+        : 0,
       currentDateMaxSkewSeconds: isSet(object.currentDateMaxSkewSeconds)
         ? globalThis.Number(object.currentDateMaxSkewSeconds)
         : isSet(object.current_date_max_skew_seconds)
@@ -550,6 +581,9 @@ export const Params: MessageFns<Params> = {
     if (message.currentDateIndex !== 0) {
       obj.currentDateIndex = Math.round(message.currentDateIndex);
     }
+    if (message.addressIndex !== 0) {
+      obj.addressIndex = Math.round(message.addressIndex);
+    }
     if (message.currentDateMaxSkewSeconds !== 0) {
       obj.currentDateMaxSkewSeconds = Math.round(message.currentDateMaxSkewSeconds);
     }
@@ -604,6 +638,7 @@ export const Params: MessageFns<Params> = {
     message.nullifierIndex = object.nullifierIndex ?? 0;
     message.dscKeyIndex = object.dscKeyIndex ?? 0;
     message.currentDateIndex = object.currentDateIndex ?? 0;
+    message.addressIndex = object.addressIndex ?? 0;
     message.currentDateMaxSkewSeconds = object.currentDateMaxSkewSeconds ?? 0;
     message.proofVerificationGas = object.proofVerificationGas ?? 0;
     message.dscVerificationGas = object.dscVerificationGas ?? 0;
