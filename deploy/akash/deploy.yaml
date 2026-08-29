@@ -17,7 +17,7 @@ services:
     # PINNED BY CI — .github/workflows/docker-build.yml rewrites this line with
     # the digest it just pushed. Editing it by hand will be overwritten on the
     # next release.
-    image: ghcr.io/zenopie/erth-network-app@sha256:a6f50125d7707e5c82d584dfc33533e1d97d593d2b95a545afe84b593ab91284
+    image: ghcr.io/zenopie/erth-network-app@sha256:7215b88c6766cd5f4dc3cb2276ef65f38d8aecacf61227b93c3893ea1e307973
     expose:
       - port: 80
         to:
