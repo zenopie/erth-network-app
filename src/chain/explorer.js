@@ -1,6 +1,6 @@
 import { fromBase64, toBech32 } from "@cosmjs/encoding";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { get, getOr, rpcOrNull } from "./rest";
+import { get, getOr, rpcOrNull, seg } from "./rest";
 import { ADDRESS_PREFIX } from "./config";
 
 /**
@@ -42,7 +42,7 @@ export async function latestBlock() {
 
 /** A block by height, or null if it does not exist. */
 export async function block(height) {
-  const data = await getOr(`/cosmos/base/tendermint/v1beta1/blocks/${height}`, null);
+  const data = await getOr(seg`/cosmos/base/tendermint/v1beta1/blocks/${height}`, null);
   return data ? toBlock(data) : null;
 }
 
@@ -148,7 +148,7 @@ export async function txsForAddress(address, limit = 20) {
 
 /** A single transaction by hash, or null if not found/not indexed. */
 export async function txByHash(hash) {
-  const data = await getOr(`/cosmos/tx/v1beta1/txs/${hash.toUpperCase()}`, null);
+  const data = await getOr(seg`/cosmos/tx/v1beta1/txs/${hash.toUpperCase()}`, null);
   return data?.tx_response ? toTx(data.tx_response, data.tx) : null;
 }
 
@@ -420,7 +420,12 @@ const attrs = (ev) =>
  * should render the block without these figures rather than as an error.
  */
 export async function blockFlows(height) {
-  const data = await rpcOrNull(`/block_results?height=${height}`);
+  // encodeURIComponent rather than the seg tag: this is a query-string value,
+  // and seg would escape the `?` and `=` that make it one. It still has to be
+  // encoded — `height` reaches here straight from useParams(), so it is
+  // whatever is in the URL bar, and unencoded it can append parameters of its
+  // own to the RPC call.
+  const data = await rpcOrNull(`/block_results?height=${encodeURIComponent(height)}`);
   if (!data?.result) return null;
 
   const minted = {};

@@ -1,4 +1,4 @@
-import { getOr } from "./rest";
+import { getOr, seg } from "./rest";
 
 /**
  * x/personhood — proof-of-personhood registration and the daily ANML claim.
@@ -11,7 +11,7 @@ import { getOr } from "./rest";
 /** Registration status for an address. */
 export async function registrationStatus(address) {
   const data = await getOr(
-    `/earth/personhood/v1/registration/${address}`,
+    seg`/earth/personhood/v1/registration/${address}`,
     null,
   );
   if (!data) return { registered: false, expired: false, lastAnmlClaim: 0 };
@@ -57,7 +57,7 @@ export async function registrationCountries() {
 /** How many humans registered with a given Document Signer (hex dsc_key). */
 export async function registrationsByDsc(dscKeyHex) {
   const data = await getOr(
-    `/earth/personhood/v1/registrations_by_dsc/${dscKeyHex.replace(/^0x/, "")}`,
+    seg`/earth/personhood/v1/registrations_by_dsc/${dscKeyHex.replace(/^0x/, "")}`,
     null,
   );
   return Number(data?.count ?? 0);

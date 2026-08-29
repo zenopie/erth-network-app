@@ -1,6 +1,30 @@
 import { EARTH_LCD_URL, EARTH_RPC_URL } from "./config";
 
 /**
+ * Tagged template for an LCD path, encoding every interpolated value.
+ *
+ *   get(seg`/cosmos/bank/v1beta1/balances/${address}`)
+ *
+ * Values reaching these paths are route parameters — an address, a tx hash, a
+ * pool id — and most of them come from the URL bar, where anyone can put
+ * anything. Interpolated raw, a `../` walks the request to a different endpoint
+ * and the page renders whatever came back.
+ *
+ * A tag rather than a rule about remembering encodeURIComponent at each call
+ * site: there are twenty of them, they all looked fine, and the next one added
+ * would have looked fine too.
+ *
+ * For paths carrying a query string, encode the values individually instead —
+ * this would escape the `?`, `=` and `&` that separate them.
+ */
+export function seg(strings, ...values) {
+  return strings.reduce(
+    (out, s, i) => out + s + (i < values.length ? encodeURIComponent(values[i]) : ""),
+    "",
+  );
+}
+
+/**
  * Minimal REST client for the earth LCD (cosmos gRPC-gateway).
  *
  * All chain reads go through here. `path` is relative to EARTH_LCD_URL, e.g.

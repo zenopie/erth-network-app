@@ -1,4 +1,4 @@
-import { getOr } from "./rest";
+import { getOr, seg } from "./rest";
 
 /**
  * x/allocation — both vote-directed emission streams, over one engine.
@@ -43,7 +43,7 @@ function streamPath(stream) {
  */
 export async function allocationOptions(stream) {
   const data = await getOr(
-    `/earth/allocation/v1/options/${streamPath(stream)}`,
+    seg`/earth/allocation/v1/options/${streamPath(stream)}`,
     { options: [] },
   );
   return (data.options ?? []).map(toOption);
@@ -55,7 +55,7 @@ export async function allocationOptions(stream) {
  */
 export async function streamTotals(stream) {
   const data = await getOr(
-    `/earth/allocation/v1/options/${streamPath(stream)}`,
+    seg`/earth/allocation/v1/options/${streamPath(stream)}`,
     null,
   );
   return {
@@ -71,7 +71,7 @@ export async function streamTotals(stream) {
  */
 export async function voterAllocations(stream, address) {
   const data = await getOr(
-    `/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
+    seg`/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
     null,
   );
   return (data?.voter?.percentages ?? []).map((w) => ({
@@ -87,7 +87,7 @@ export async function voterAllocations(stream, address) {
  */
 export async function voterWeight(stream, address) {
   const data = await getOr(
-    `/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
+    seg`/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
     null,
   );
   return data?.voter?.weight ?? "0";

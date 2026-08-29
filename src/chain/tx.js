@@ -5,7 +5,7 @@ import { defaultRegistryTypes } from "@cosmjs/stargate";
 import { TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
 
 import { EARTH_CHAIN_ID, EARTH_LCD_URL, UERTH, earthChainInfo } from "./config";
-import { get } from "./rest";
+import { get, seg } from "./rest";
 
 import {
   MsgSwap,
@@ -98,7 +98,7 @@ export async function connectKeplr() {
 /** Account number + sequence, or zeroes for an account the chain has never seen. */
 async function fetchAccount(address) {
   try {
-    const { account } = await get(`/cosmos/auth/v1beta1/accounts/${address}`);
+    const { account } = await get(seg`/cosmos/auth/v1beta1/accounts/${address}`);
     // Accounts may be wrapped (e.g. vesting accounts nest a BaseAccount).
     const base = account?.base_account ?? account;
     return {
@@ -183,7 +183,7 @@ async function waitForTx(hash, { attempts = 30, intervalMs = 1000 } = {}) {
   for (let i = 0; i < attempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
     try {
-      const { tx_response: tx } = await get(`/cosmos/tx/v1beta1/txs/${hash}`);
+      const { tx_response: tx } = await get(seg`/cosmos/tx/v1beta1/txs/${hash}`);
       if (!tx) continue;
       if (tx.code) {
         throw new Error(`Transaction failed (code ${tx.code}): ${tx.raw_log}`);

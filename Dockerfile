@@ -21,8 +21,11 @@ FROM nginx:alpine
 # Copy built app from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configuration. security-headers.conf is included by every location
+# block in nginx.conf — without it nginx fails to start rather than serving
+# unprotected, which is the right way round.
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY security-headers.conf /etc/nginx/security-headers.conf
 
 # Expose port 80
 EXPOSE 80
