@@ -1,4 +1,4 @@
-import { getOr } from "./rest";
+import { getOr, seg } from "./rest";
 import { UERTH } from "./config";
 
 /**
@@ -26,7 +26,7 @@ export async function bondedValidators() {
 
 /** A delegator's delegations: { validator, amount } in uerth. */
 export async function delegations(delegator) {
-  const data = await getOr(`/cosmos/staking/v1beta1/delegations/${delegator}`, {
+  const data = await getOr(seg`/cosmos/staking/v1beta1/delegations/${delegator}`, {
     delegation_responses: [],
   });
   return (data.delegation_responses ?? []).map((d) => ({
@@ -59,7 +59,7 @@ export async function totalBonded() {
  */
 export async function unbondingDelegations(delegator) {
   const data = await getOr(
-    `/cosmos/staking/v1beta1/delegators/${delegator}/unbonding_delegations`,
+    seg`/cosmos/staking/v1beta1/delegators/${delegator}/unbonding_delegations`,
     { unbonding_responses: [] },
   );
   return (data.unbonding_responses ?? []).flatMap((r) =>
@@ -82,7 +82,7 @@ export async function unbondingDelegations(delegator) {
  */
 export async function redelegations(delegator) {
   const data = await getOr(
-    `/cosmos/staking/v1beta1/delegators/${delegator}/redelegations`,
+    seg`/cosmos/staking/v1beta1/delegators/${delegator}/redelegations`,
     { redelegation_responses: [] },
   );
   return (data.redelegation_responses ?? []).flatMap((r) =>
@@ -98,7 +98,7 @@ export async function redelegations(delegator) {
 /** Pending uerth rewards, truncated from the chain's DecCoin representation. */
 export async function totalRewards(delegator) {
   const data = await getOr(
-    `/cosmos/distribution/v1beta1/delegators/${delegator}/rewards`,
+    seg`/cosmos/distribution/v1beta1/delegators/${delegator}/rewards`,
     { total: [] },
   );
   const erth = (data.total ?? []).find((c) => c.denom === UERTH);

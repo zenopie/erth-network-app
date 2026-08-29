@@ -1,4 +1,4 @@
-import { getOr } from "./rest";
+import { getOr, seg } from "./rest";
 import { UERTH, lpDenom } from "./config";
 
 /**
@@ -15,7 +15,7 @@ export async function pools() {
 
 /** A single pool by id, or null. */
 export async function pool(poolId) {
-  const data = await getOr(`/earth/dex/v1/pool/${poolId}`, null);
+  const data = await getOr(seg`/earth/dex/v1/pool/${poolId}`, null);
   return data?.pool ? toPool(data.pool) : null;
 }
 
@@ -65,7 +65,7 @@ export async function lpUnbondingSeconds() {
  * Nothing has to be signed to collect it; the chain sweeps it out on its own.
  */
 export async function lpUnbondings(address) {
-  const data = await getOr(`/earth/dex/v1/unbondings/${address}`, { unbondings: [] });
+  const data = await getOr(seg`/earth/dex/v1/unbondings/${address}`, { unbondings: [] });
   return (data.unbondings ?? []).map((u) => ({
     poolId: Number(u.pool_id ?? 0),
     shares: u.shares?.amount ?? "0",
@@ -117,7 +117,7 @@ export async function liquidityAuction() {
  * truncated share, which a client dividing on its own would get wrong.
  */
 export async function auctionBid(bidder) {
-  const data = await getOr(`/earth/dex/v1/liquidity_auction/bid/${bidder}`, null);
+  const data = await getOr(seg`/earth/dex/v1/liquidity_auction/bid/${bidder}`, null);
   return {
     amount: data?.bid?.amount ?? "0",
     claimed: Boolean(data?.bid?.claimed),

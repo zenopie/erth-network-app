@@ -1,8 +1,8 @@
-import { get, getOr } from "./rest";
+import { get, getOr, seg } from "./rest";
 
 /** All balances for an address as { denom: amount } in base units. */
 export async function balances(address) {
-  const data = await getOr(`/cosmos/bank/v1beta1/balances/${address}`, { balances: [] });
+  const data = await getOr(seg`/cosmos/bank/v1beta1/balances/${address}`, { balances: [] });
   return Object.fromEntries((data.balances ?? []).map((c) => [c.denom, c.amount]));
 }
 
