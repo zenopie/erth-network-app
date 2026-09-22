@@ -120,6 +120,8 @@ export function msgClaimAllocation(creator, stream, optionId) {
   };
 }
 
+// Caretaker only for an ordinary account: the chain requires the gov authority as
+// `submitter` on the groundworks stream, so a UI must not offer it there.
 export function msgAddAddressOption(submitter, stream, { description, recipient, claimer = "" }) {
   return {
     typeUrl: "/earth.allocation.v1.MsgAddAddressOption",
