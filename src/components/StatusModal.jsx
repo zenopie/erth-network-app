@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import styles from "./StatusModal.module.css";
 
-const StatusModal = ({ isOpen, onClose, animationState }) => {
+const StatusModal = ({ isOpen, onClose, animationState, error }) => {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Success closes itself. An error stays until dismissed, so its reason can
+  // be read.
   useEffect(() => {
-    if (animationState === "success" || animationState === "error") {
+    if (animationState === "success") {
       const timer = setTimeout(() => onCloseRef.current(), 1500);
       return () => clearTimeout(timer);
     }
@@ -35,6 +37,11 @@ const StatusModal = ({ isOpen, onClose, animationState }) => {
           {isSuccess && <div className={styles.successIcon} />}
           {isError && <div className={styles.errorIcon} />}
         </div>
+        {isError && error && (
+          <p className={styles.errorMessage} role="alert">
+            {error.length > 400 ? error.slice(0, 400) + "…" : error}
+          </p>
+        )}
       </div>
     </>
   );

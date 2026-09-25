@@ -144,3 +144,18 @@
 .error-icon::after {
   transform: translate(-50%, -50%) rotate(-45deg);
 }
+
+/* ---- Error reason, under the ring ---- */
+.error-message {
+  position: absolute;
+  top: 172px;
+  left: 50%;
+  width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  margin: 0;
+  color: #dc3545;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}

@@ -29,7 +29,7 @@ const calculateAPR = (totalStakedMicro) => {
 const StakeErth = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
   const [activeTab, setActiveTab] = useState("Stake");
   const [stakeAmount, setStakeAmount] = useState("");
@@ -194,7 +194,7 @@ const StakeErth = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
 
       {/* Header — flat, like Markets */}
       <div className={styles.header}>

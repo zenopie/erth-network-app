@@ -78,7 +78,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
 const AllocationFund = ({ title, stream }) => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
   const [activeTab, setActiveTab] = useState("Actual");
   const [dataActual, setDataActual] = useState([]);
@@ -349,7 +349,7 @@ const AllocationFund = ({ title, stream }) => {
         </div>
       )}
 
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
     </div>
   );
 };

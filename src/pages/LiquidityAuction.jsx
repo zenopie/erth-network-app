@@ -45,7 +45,7 @@ function timeLeft(endTimeSeconds) {
 const LiquidityAuction = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
   const [auction, setAuction] = useState(null);
   const [bid, setBid] = useState(null); // this wallet's { amount, claimed, claimable }
@@ -156,7 +156,7 @@ const LiquidityAuction = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
 
       <div className={styles.header}>
         <div>
