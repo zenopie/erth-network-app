@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./Markets.module.css";
 import * as dex from "../chain/dex";
 import * as allocation from "../chain/allocation";
-import { balances, supply } from "../chain/bank";
+import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
 import { symbolOf, toMacro, toMicro } from "../chain/tokens";
@@ -37,7 +37,7 @@ const Markets = () => {
   const { isModalOpen, animationState, execute, closeModal } = useTransaction();
 
   const [pools, setPools] = useState([]);
-  const [lpSupplies, setLpSupplies] = useState({}); // lpDenom -> total shares
+  const [lpSupplies, setLpSupplies] = useState({}); // lpDenom -> total shares, null if unread
   const [walletBalances, setWalletBalances] = useState({});
   const [lpRewardShare, setLpRewardShare] = useState(0); // 0..1 of the Groundworks stream
   const [swapFee, setSwapFee] = useState(0); // percent, e.g. 0.3
@@ -89,7 +89,7 @@ const Markets = () => {
           totalWeight > 0 && lpOption ? Number(lpOption.amountAllocated) / totalWeight : 0,
         );
 
-        const supplies = await Promise.all(ps.map((p) => supply(p.lpDenom)));
+        const supplies = await Promise.all(ps.map((p) => supplyOrNull(p.lpDenom)));
         if (cancelled) return;
         setLpSupplies(Object.fromEntries(ps.map((p, i) => [p.lpDenom, supplies[i]])));
       } catch (err) {
@@ -145,7 +145,10 @@ const Markets = () => {
         const price = tokenReserve > 0 ? (erthReserve / tokenReserve) * (rate ?? 0) : 0;
 
         const userShares = toMacro(walletBalances[p.lpDenom] ?? 0, p.lpDenom);
-        const totalShares = toMacro(lpSupplies[p.lpDenom] ?? 0, p.lpDenom);
+        // Null when the supply read failed. Kept apart from the macro figure,
+        // which reads a failure as zero — fine for display, not for a floor.
+        const totalSharesBase = lpSupplies[p.lpDenom] ?? null;
+        const totalShares = toMacro(totalSharesBase ?? 0, p.lpDenom);
         const ownership = totalShares > 0 ? (userShares / totalShares) * 100 : 0;
 
         // Shares of this pool the wallet has withdrawn and is waiting out. They
@@ -185,6 +188,7 @@ const Markets = () => {
           tokenReserve,
           userShares,
           totalShares,
+          totalSharesBase,
           ownership,
           userErth: (erthReserve * ownership) / 100,
           userTokenB: (tokenReserve * ownership) / 100,
@@ -262,25 +266,38 @@ const Markets = () => {
       // anything within LP_SLIPPAGE_PERCENT of it. Without a floor the deposit
       // mints whatever ratio it lands on, and moving the ratio either side of
       // it is the standard sandwich.
-      const expected = dex.quoteAddLiquidity(
-        erthAmount,
-        tokenBAmount,
-        row.erthReserve,
-        row.tokenReserve,
-        row.totalShares,
+      //
+      // All of it in base units on integers. A quote of zero means there was
+      // nothing to price against — most often the share supply failing to load —
+      // and it used to become a floor of zero, i.e. the unprotected deposit the
+      // floor exists to prevent. Refuse instead.
+      const erthMicro = toMicro(erthAmount, UERTH);
+      const tokenMicro = toMicro(tokenBAmount, row.pool.tokenDenom);
+      const expected = BigInt(
+        dex.quoteAddLiquidity(
+          erthMicro,
+          tokenMicro,
+          row.pool.erthReserve,
+          row.pool.tokenReserve,
+          row.totalSharesBase,
+        ),
       );
-      const minShares = expected > 0
-        ? toMicro((expected * (100 - LP_SLIPPAGE_PERCENT)) / 100, row.pool.lpDenom)
-        : 0;
+      const minShares = (expected * BigInt(100 - LP_SLIPPAGE_PERCENT)) / 100n;
+      if (minShares <= 0n) {
+        throw new Error(
+          "Couldn't read this pool's share supply, so the deposit can't be protected " +
+            "against price movement. Refresh and try again.",
+        );
+      }
       await broadcast([
         dex.msgAddLiquidity(
           address,
           row.pool.id,
           UERTH,
-          toMicro(erthAmount, UERTH),
+          erthMicro,
           row.pool.tokenDenom,
-          toMicro(tokenBAmount, row.pool.tokenDenom),
-          minShares,
+          tokenMicro,
+          minShares.toString(),
         ),
       ]);
       setErthAmount("");
@@ -568,6 +585,7 @@ const Markets = () => {
                           onClick={() => handleAddLiquidity(row)}
                           disabled={
                             !isConnected ||
+                            row.totalSharesBase === null ||
                             !(parseFloat(erthAmount) > 0 && parseFloat(tokenBAmount) > 0) ||
                             parseFloat(erthAmount) > erthBalance ||
                             parseFloat(tokenBAmount) > tokenBalance

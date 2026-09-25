@@ -13,11 +13,20 @@ export async function balance(address, denom) {
 
 /** Total supply of a denom in base units. Handles slashed denoms like dexlp/1. */
 export async function supply(denom) {
+  return (await supplyOrNull(denom)) ?? "0";
+}
+
+/**
+ * Like supply(), but null when the read fails rather than "0". For callers
+ * where a zero would be acted on — a deposit floor priced against it becomes no
+ * floor at all.
+ */
+export async function supplyOrNull(denom) {
   const data = await getOr(
     `/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(denom)}`,
     null,
   );
-  return data?.amount?.amount ?? "0";
+  return data?.amount?.amount ?? null;
 }
 
 export function msgSend(from, to, denom, amount) {

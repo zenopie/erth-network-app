@@ -197,24 +197,32 @@ export function msgSwap(creator, denomIn, amountIn, denomOut, minAmountOut) {
 }
 
 /**
- * Shares a deposit is expected to mint, in the same units as `totalShares`.
+ * Shares a deposit is expected to mint, in base units as an integer string.
  *
  * Mirrors the chain: shares are priced against the reserves as they stand when
  * the message executes, and the deposit is taken in the pool ratio, so the
  * lesser of the two sides is what gets minted —
- * `min(erthIn * total / reserveErth, tokenIn * total / reserveToken)`.
+ * `min(erthIn * total / reserveErth, tokenIn * total / reserveToken)`, floored.
  *
- * Every argument is in the same unit as every other, so this works in macro or
- * base units as long as the caller does not mix them. Returns 0 for a pool with
- * no shares outstanding, where the chain seeds with sqrt(erth * token) instead
- * and there is no ratio to be sandwiched on.
+ * Every argument is a base-unit integer (string, number or bigint), and the
+ * arithmetic is done on BigInt so nothing is lost to floating point. Returns
+ * "0" when there is nothing to price against — no shares outstanding, an empty
+ * reserve, or an argument that is not an integer — and a caller must read that
+ * as "no floor can be set", never as a floor of zero.
  */
 export function quoteAddLiquidity(erthIn, tokenIn, erthReserve, tokenReserve, totalShares) {
-  const e = parseFloat(erthIn);
-  const t = parseFloat(tokenIn);
-  if (![e, t, erthReserve, tokenReserve, totalShares].every(Number.isFinite)) return 0;
-  if (erthReserve <= 0 || tokenReserve <= 0 || totalShares <= 0) return 0;
-  return Math.min((e * totalShares) / erthReserve, (t * totalShares) / tokenReserve);
+  let e, t, rE, rT, total;
+  try {
+    [e, t, rE, rT, total] = [erthIn, tokenIn, erthReserve, tokenReserve, totalShares].map(
+      (v) => BigInt(String(v ?? "")),
+    );
+  } catch {
+    return "0";
+  }
+  if (e <= 0n || t <= 0n || rE <= 0n || rT <= 0n || total <= 0n) return "0";
+  const byErth = (e * total) / rE;
+  const byToken = (t * total) / rT;
+  return (byErth < byToken ? byErth : byToken).toString();
 }
 
 /**
