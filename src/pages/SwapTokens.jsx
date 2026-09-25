@@ -1,9 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import * as dex from "../chain/dex";
 import { balances } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { TOKENS, minimumReceived, symbolOf, toMacro, toMicro, tokenInfo } from "../chain/tokens";
+import {
+  TOKENS,
+  clampSlippage,
+  formatUnits,
+  minimumReceived,
+  symbolOf,
+  toMacro,
+  toMicro,
+  tokenInfo,
+} from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -24,12 +33,20 @@ import styles from "./SwapTokens.module.css";
 const SwapTokens = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
   const [fromDenom, setFromDenom] = useState(UANML);
   const [toDenom, setToDenom] = useState(UERTH);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
+  // The quote behind toAmount, in whole base units. The swap's floor is taken
+  // from this, not from the six-decimal display string.
+  const [quoteMicro, setQuoteMicro] = useState("0");
+  // Bumped by every edit that invalidates a quote in flight. A quote that
+  // comes back to a different number than it left with is dropped: quotes
+  // are async, and a slow one for an old amount used to land after a newer
+  // one and set the minimum output for a trade the user was no longer making.
+  const quoteSeq = useRef(0);
 
   const [walletBalances, setWalletBalances] = useState({});
   const [slippage, setSlippage] = useState(1);
@@ -117,7 +134,7 @@ const SwapTokens = () => {
    */
   const calcPriceImpact = useCallback(
     (amount) => {
-      const micro = toMicro(amount, fromDenom);
+      const micro = Number(toMicro(amount, fromDenom));
       if (!micro) return null;
 
       if (fromDenom === UERTH) {
@@ -150,25 +167,37 @@ const SwapTokens = () => {
     setToValue(parseFloat(toAmount) > 0 ? displayValue(toDenom, toAmount) : null);
   }, [fromAmount, toAmount, fromDenom, toDenom, displayValue, calcPriceImpact]);
 
-  const handleFromAmountChange = async (val) => {
-    setFromAmount(val);
-    if (!(parseFloat(val) > 0)) {
-      setToAmount("");
-      return;
-    }
-    const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
-    setToAmount(outMicro ? toMacro(outMicro, toDenom).toFixed(6) : "");
+  const clearAmounts = () => {
+    quoteSeq.current += 1;
+    setFromAmount("");
+    setToAmount("");
+    setQuoteMicro("0");
   };
 
+  const handleFromAmountChange = async (val) => {
+    const seq = ++quoteSeq.current;
+    setFromAmount(val);
+    setToAmount("");
+    setQuoteMicro("0");
+    if (!(parseFloat(val) > 0)) return;
+    const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
+    if (seq !== quoteSeq.current) return;
+    // quoteHop is floating point; floor it so the floor is never above the
+    // pool's integer payout.
+    const whole = outMicro > 0 ? BigInt(Math.floor(outMicro)).toString() : "0";
+    setQuoteMicro(whole);
+    setToAmount(whole !== "0" ? formatUnits(whole, toDenom) : "");
+  };
+
+  const minOut = minimumReceived(quoteMicro, slippage);
+
   const handleSwap = async () => {
-    if (!isConnected || !(parseFloat(fromAmount) > 0) || !toAmount) return;
+    if (!isConnected || !(parseFloat(fromAmount) > 0) || minOut === "0") return;
     execute(async () => {
-      const minOut = toMicro(minimumReceived(toAmount, slippage), toDenom);
       await broadcast([
         dex.msgSwap(address, fromDenom, toMicro(fromAmount, fromDenom), toDenom, minOut),
       ]);
-      setFromAmount("");
-      setToAmount("");
+      clearAmounts();
       fetchBalances();
     });
   };
@@ -177,28 +206,25 @@ const SwapTokens = () => {
     const selected = e.target.value;
     if (selected === toDenom) setToDenom(fromDenom);
     setFromDenom(selected);
-    setFromAmount("");
-    setToAmount("");
+    clearAmounts();
   };
 
   const handleToDenomChange = (e) => {
     const selected = e.target.value;
     if (selected === fromDenom) setFromDenom(toDenom);
     setToDenom(selected);
-    setFromAmount("");
-    setToAmount("");
+    clearAmounts();
   };
 
   const handleTogglePair = () => {
     setFromDenom(toDenom);
     setToDenom(fromDenom);
-    setFromAmount("");
-    setToAmount("");
+    clearAmounts();
   };
 
   return (
     <div className={styles.container}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
 
       <div className={styles.titleContainer}>
         <h2 className={styles.title}>Swap Tokens</h2>
@@ -213,7 +239,7 @@ const SwapTokens = () => {
               Balance: {isConnected ? fromBalance.toLocaleString() : "—"}
               <button
                 className={styles.maxButton}
-                onClick={() => handleFromAmountChange(String(fromBalance))}
+                onClick={() => handleFromAmountChange(formatUnits(walletBalances[fromDenom] ?? 0, fromDenom))}
               >
                 Max
               </button>
@@ -294,7 +320,7 @@ const SwapTokens = () => {
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!isConnected || !fromAmount || parseFloat(fromAmount) <= 0 || !toAmount}
+        disabled={!isConnected || !fromAmount || parseFloat(fromAmount) <= 0 || minOut === "0"}
       >
         {isConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
@@ -317,7 +343,7 @@ const SwapTokens = () => {
             <p>
               <span>Minimum received:</span>
               <span>
-                {minimumReceived(toAmount, slippage).toFixed(6)} {symbolOf(toDenom)}
+                {formatUnits(minOut, toDenom)} {symbolOf(toDenom)}
               </span>
             </p>
             {priceImpact !== null && (
@@ -345,6 +371,7 @@ const SwapTokens = () => {
               className={styles.slippageInput}
               value={slippage}
               onChange={(e) => setSlippage(e.target.value)}
+              onBlur={() => setSlippage(clampSlippage(slippage))}
               min="0.1"
               max="50"
               step="0.1"
