@@ -26,18 +26,24 @@ const ExplorerAccount = () => {
     setLoaded(false);
 
     (async () => {
-      const [b, d, r, t] = await Promise.all([
-        balances(address),
-        staking.delegations(address),
-        staking.totalRewards(address),
-        explorer.txsForAddress(address),
-      ]);
-      if (cancelled) return;
-      setCoins(b);
-      setDelegations(d);
-      setRewards(r);
-      setTxs(t);
-      setLoaded(true);
+      try {
+        const [b, d, r, t] = await Promise.all([
+          balances(address),
+          staking.delegations(address),
+          staking.totalRewards(address),
+          explorer.txsForAddress(address),
+        ]);
+        if (cancelled) return;
+        setCoins(b);
+        setDelegations(d);
+        setRewards(r);
+        setTxs(t);
+      } catch (err) {
+        // An address the LCD path builder refuses (a `..`, say) — show it as
+        // empty rather than hang on the loading state.
+        console.warn("Account read failed:", err.message);
+      }
+      if (!cancelled) setLoaded(true);
     })();
 
     return () => {

@@ -52,7 +52,7 @@ const ExplorerBlock = () => {
         explorer.txsAtHeight(height),
         explorer.proposerMonikers().catch(() => ({})),
         explorer.blockFlows(height).catch(() => null),
-      ]);
+      ]).catch(() => []);
       if (cancelled) return;
       if (!b) {
         setNotFound(true);

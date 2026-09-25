@@ -18,10 +18,21 @@ import { EARTH_LCD_URL, EARTH_RPC_URL } from "./config";
  * this would escape the `?`, `=` and `&` that separate them.
  */
 export function seg(strings, ...values) {
-  return strings.reduce(
-    (out, s, i) => out + s + (i < values.length ? encodeURIComponent(values[i]) : ""),
-    "",
-  );
+  return strings.reduce((out, s, i) => out + s + (i < values.length ? segment(values[i]) : ""), "");
+}
+
+/**
+ * One encoded path segment. encodeURIComponent leaves `.` alone, so a value of
+ * `..` survives it intact and still walks the request up a level — and `%2e%2e`
+ * would not help, since URL parsing treats that as `..` too. No route parameter
+ * here is legitimately a dot segment, so those are refused outright.
+ */
+function segment(value) {
+  const enc = encodeURIComponent(value);
+  if (enc === "" || /^(\.|%2e){1,2}$/i.test(enc)) {
+    throw new Error(`Invalid path segment: ${JSON.stringify(String(value))}`);
+  }
+  return enc;
 }
 
 /**
