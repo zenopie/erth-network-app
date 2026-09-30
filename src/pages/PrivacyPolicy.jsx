@@ -46,7 +46,7 @@ const PrivacyPolicy = () => {
         <ul>
           <li><strong>Blockchain:</strong> The app communicates with the Earth Network blockchain for transaction processing</li>
           <li><strong>Public Ledger:</strong> Earth is a transparent chain. Your address, balances, transactions and votes are readable by anyone — this is not private data, and an address that has been linked to you links everything it has ever done</li>
-          <li><strong>Backend:</strong> Limited communication with our servers for network status and, if you choose to watch an advert for transaction fees, to send you that grant</li>
+          <li><strong>Backend:</strong> Limited communication with our servers for network status and, if you ask for free gas for a transaction, to send you that grant. The request carries your wallet address and a device attestation — from Apple's App Attest on iPhone, or your Android phone's own secure hardware — proving it came from a genuine copy of the app. The attestation identifies the app install, not you, and is not stored</li>
           <li><strong>No Personal Data:</strong> No personal information is transmitted in these communications</li>
         </ul>
       </section>
