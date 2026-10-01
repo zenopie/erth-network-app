@@ -1,11 +1,17 @@
 // Runs the privacy-chain read layer (personhood, assembly, shielded,
 // shieldedstaking, gov) against stubbed LCD responses shaped like the chain's
-// grpc-gateway JSON. No chain and no test runner required.
+// grpc-gateway JSON, then the note layer's golden vectors (check-notes.mjs).
+// No chain and no test runner required.
 //
 // The failure this guards against is a field-name or encoding drift reading
 // as a plausible zero: bytes arrive base64 and are shown hex, uint64 arrives
 // as a string, and a CountryField is a 32-byte big-endian element whose last
 // two bytes are the ISO code.
+import { webcrypto } from "node:crypto";
+
+// Node 18 has no global WebCrypto in ES modules; the browser always does.
+globalThis.crypto ??= webcrypto;
+
 const b64 = (bytes) => Buffer.from(bytes).toString("base64");
 const field = (cc) => {
   const b = new Uint8Array(32);
@@ -108,5 +114,9 @@ check("proposals newest first", ps[0].id === 4 && ps[0].expedited && ps[0].messa
 check("deposit picks uerth", ps[1].totalDeposit === "5");
 const v = gov.msgVote("earth1abc", 4, gov.VOTE_YES);
 check("gov v1 vote carries a bigint id", v.value.proposalId === 4n && v.typeUrl === "/cosmos.gov.v1.MsgVote");
+
+// The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
+const { run: runNotes } = await import("./check-notes.mjs");
+await runNotes(check);
 
 process.exit(bad ? 1 : 0);

@@ -182,6 +182,63 @@ export async function quoteSwap(amountIn, denomIn, denomOut) {
   return quoteHop(erthOut, pOut.erthReserve, pOut.tokenReserve, fee);
 }
 
+// --- exact AMM maths (x/dex keeper/amm.go) ---
+//
+// quoteHop above is floating point, fine for a display and for a floor taken
+// with slippage. These reproduce the chain's integer arithmetic exactly, for
+// anything that must name the very amount the chain will pay.
+//
+// They price against the reserves the LCD shows. The chain first compounds
+// any pending LP rewards into the ERTH reserve (settlePoolRewards, at every
+// touch of the pool), which the pool query does not reflect, so an exact
+// quote is exact only for a pool with nothing pending.
+
+/** A cosmos LegacyDec string ("0.3", "0.300000000000000000") scaled by 1e18. */
+export function parseDec18(s) {
+  const m = /^(\d+)(?:\.(\d{0,18}))?$/.exec(String(s ?? "").trim());
+  if (!m) throw new RangeError(`not a decimal: ${s}`);
+  return BigInt(m[1]) * 10n ** 18n + BigInt((m[2] ?? "").padEnd(18, "0") || "0");
+}
+
+const toBig = (v) => {
+  const x = BigInt(String(v));
+  if (x < 0n) throw new RangeError("negative amount");
+  return x;
+};
+
+/**
+ * feeOf: LegacyDec(amount).Mul(fee).Quo(100).TruncateInt(). Mul is exact for
+ * an integer amount; Quo rounds half to even at 18 decimals; then truncate.
+ */
+export function exactFee(amount, swapFee) {
+  const f = typeof swapFee === "bigint" ? swapFee : parseDec18(swapFee);
+  const num = toBig(amount) * f;
+  let q = num / 100n;
+  const r = num % 100n;
+  if (2n * r > 100n || (2n * r === 100n && q % 2n === 1n)) q += 1n;
+  return q / 10n ** 18n;
+}
+
+/** splitFee: the burn takes the odd unit. */
+const burnOf = (fee) => (fee + 1n) / 2n;
+
+/** swapHubForToken: ERTH in, token out; the fee is taken from the input. */
+export function exactHubToToken(reserveErth, reserveToken, erthIn, swapFee) {
+  const [rE, rT, a] = [toBig(reserveErth), toBig(reserveToken), toBig(erthIn)];
+  const fee = exactFee(a, swapFee);
+  const eff = a - fee;
+  const out = rE + eff > 0n ? (rT * eff) / (rE + eff) : 0n;
+  return { out, fee, burn: burnOf(fee) };
+}
+
+/** swapTokenForHub: token in, ERTH out; the fee is taken from the output. */
+export function exactTokenToHub(reserveErth, reserveToken, tokenIn, swapFee) {
+  const [rE, rT, a] = [toBig(reserveErth), toBig(reserveToken), toBig(tokenIn)];
+  const gross = rT + a > 0n ? (rE * a) / (rT + a) : 0n;
+  const fee = exactFee(gross, swapFee);
+  return { out: gross - fee, fee, burn: burnOf(fee) };
+}
+
 // --- messages ---
 
 export function msgSwap(creator, denomIn, amountIn, denomOut, minAmountOut) {
@@ -248,8 +305,9 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
 
 /**
  * Transparent pools only. Withdrawing from the ANML pool pays the ANML leg as
- * a note, so the chain requires `pc` there (and refuses it elsewhere); that
- * needs a shielded address — TODO(dex-notes), see msgBuyAnml.
+ * a note, so the chain requires `pc` there (and refuses it elsewhere), and
+ * the note's value is only known at maturity — TODO(dex-notes), see
+ * msgBuyAnml for why the web cannot name a findable pc for it yet.
  */
 export function msgRemoveLiquidity(creator, poolId, shares) {
   return {
@@ -267,11 +325,20 @@ export function msgRemoveLiquidity(creator, poolId, shares) {
  * through ERTH) from `creator`, swapped for ANML that is minted as a note to
  * `pc`. ANML never sits in an account, so this is how an ERTH holder buys it.
  *
- * TODO(dex-notes): no page offers this yet. `pc` is the buyer's note
- * commitment H(TAG_PC, owner_pk, rho, rcm) and `ciphertext` the note
- * encrypted to them, both derived from a shielded address — and the erth1z…
- * address encoding is not defined on chain yet (see chain/shielded.js). Wire
- * a "Buy ANML" form on the ANML page once it is.
+ * TODO(dex-notes): no page offers this. It needs a note the recipient's
+ * wallet can find, and a web signer cannot make one with today's formats: the chain decides the note's value when
+ * the msg runs (the swap output; a withdrawal is priced at maturity), the
+ * canonical ciphertext's key is bound to cm and so to that exact value, and
+ * an empty-ciphertext note is only found by its owner if pc is one of their
+ * self-mint pcs, which needs nk. An exact min_amount_out does not rescue it:
+ * the chain compounds pending LP rewards into the ERTH reserve before pricing
+ * (the LCD's reserves omit them), so an exact quote fails whenever rewards are pending, and a
+ * favourable move in between pays more than was encrypted — a note nobody
+ * can find. Unblock with either (a) the app exporting a one-time self-mint pc
+ * (a "receive an unknown amount" code; its sync already matches self-mint pcs
+ * by public amount), sent here with an empty ciphertext, or (b) a chain
+ * change making the minted amount exact (an exact-out MsgBuyAnml refunding
+ * unused input). Withdrawals need (a).
  */
 export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext = new Uint8Array(0)) {
   return {

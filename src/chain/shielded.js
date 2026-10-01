@@ -1,5 +1,8 @@
 import { getOr } from "./rest";
 import { b64ToHex } from "./bytes";
+import { UERTH } from "./config";
+import { memoBytes, notePayment } from "./noteCipher";
+import { decodeShieldedAddress } from "./shieldedAddress";
 
 /**
  * x/shielded — the note pool.
@@ -70,22 +73,43 @@ export async function params() {
 /**
  * MsgShield: transparent coins from `sender` into a new note.
  *
- * The note commitment is H(TAG_CM, asset, value, pc) with
- * pc = H(TAG_PC, owner_pk, rho, rcm) — the recipient's owner key blinded by
- * fresh randomness — and `ciphertext` is the note encrypted to the
- * recipient's x25519 key so their wallet can find it.
- *
- * TODO(shielded-address): there is no UI for this yet because the chain does
- * not define the erth1z… shielded-address encoding (owner_pk, ek_pub) — the
- * plan names it but neither chain-privacy nor zk/privacy implements it. Once
- * it is specified, shielding to a pasted address needs: decode the address;
- * Poseidon2 (BN254, zk/poseidon2 parameters) for pc; x25519 + the note
- * encryption scheme for the ciphertext. Both must match the mobile wallet
- * byte for byte, so port them from there rather than reinventing them.
+ * pc = H(TAG_PC, owner_pk, rho, rcm) hides the recipient's owner key behind
+ * fresh randomness, and `ciphertext` is the note encrypted to the
+ * recipient's X25519 key so their wallet can find it (chain/noteCipher.js).
+ * Use shieldTo to build both from a shielded address.
  */
 export function msgShield(sender, denom, amount, pc, ciphertext = new Uint8Array(0)) {
   return {
     typeUrl: "/earth.shielded.v1.MsgShield",
     value: { sender, amount: { denom, amount: String(amount) }, pc, ciphertext },
   };
+}
+
+const U64_MAX = (1n << 64n) - 1n;
+
+/**
+ * What shieldTo checks before it draws any randomness: the address decodes,
+ * the amount is a positive u64 integer string, the memo fits. Cheap enough to
+ * run on every keystroke; throws a message fit to show.
+ */
+export function checkShield(address, amount, memo = "") {
+  decodeShieldedAddress(address);
+  const s = String(amount ?? "");
+  if (!/^\d+$/.test(s) || BigInt(s) <= 0n) throw new Error("Enter a positive amount.");
+  if (BigInt(s) > U64_MAX) throw new Error("Amount is too large for one note.");
+  memoBytes(memo);
+}
+
+/**
+ * Shields `amount` uerth (a base-unit integer string) from `sender` to the
+ * shielded `address` (erthz1…). The value is fixed at signing, so the note
+ * carries the canonical ciphertext and the recipient's wallet finds it on its
+ * next sync. Returns { msg, cm } (cm hex, the note's public commitment).
+ * Throws on a bad address or amount with a message fit to show.
+ */
+export function shieldTo(sender, address, amount, { memo = "", denom = UERTH } = {}) {
+  checkShield(address, amount, memo);
+  const s = String(amount);
+  const { pc, ciphertext, cm } = notePayment(address, denom, BigInt(s), { memo });
+  return { msg: msgShield(sender, denom, s, pc, ciphertext), cm };
 }

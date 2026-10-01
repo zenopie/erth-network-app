@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # Runs the privacy-chain read layer (src/chain/{personhood,assembly,shielded,
-# shieldedStaking,gov}.js) against stubbed LCD responses. No chain required.
+# shieldedStaking,gov}.js) against stubbed LCD responses, and the note layer
+# (Poseidon2, erthz addresses, note ciphertexts) against golden vectors.
+# No chain required.
 #
 #   npm run check:privacy
 set -euo pipefail
