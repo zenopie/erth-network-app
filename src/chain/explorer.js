@@ -336,7 +336,10 @@ export function classifySearch(term) {
 const BURN_SOURCES = {
   gas_fees: {
     label: "Gas fees",
-    note: "Half of every block's gas is destroyed; the rest goes to the fee collector.",
+    note:
+      "Half of every block's gas is destroyed; the rest goes to validators. Private " +
+      "transactions pay from a shielded note into the same fee collector, so their fees " +
+      "are halved and burned the same way.",
   },
   swap_fee: {
     label: "Swap fees",
@@ -353,6 +356,14 @@ const BURN_SOURCES = {
   allocation: {
     label: "Allocation",
     note: "Rewards an option earned but nobody claimed, plus the fee for opening one.",
+  },
+  wasm: {
+    label: "Contracts",
+    note: "Coins a CosmWasm contract destroyed out of its own balance.",
+  },
+  dex_residue: {
+    label: "Pool residue",
+    note: "What a liquidity pool still held when its last share was withdrawn.",
   },
 };
 

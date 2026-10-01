@@ -1,4 +1,4 @@
-import { get, getOr, seg } from "./rest";
+import { getOr, seg } from "./rest";
 
 /** All balances for an address as { denom: amount } in base units. */
 export async function balances(address) {
