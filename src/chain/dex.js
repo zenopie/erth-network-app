@@ -167,10 +167,42 @@ export function quoteHop(amountIn, reserveIn, reserveOut, feePercent) {
 }
 
 /**
- * Quotes a swap of `amountIn` of `denomIn` into `denomOut` (base units).
- * ERTH is the hub, so a token->token swap is two hops through ERTH.
+ * x/dex SimulateSwapExactIn: what swapping `amountIn` (base units) of
+ * `denomIn` for `denomOut` pays at the current state, computed by the chain's
+ * own swap (ERTH-hub routing, each pool's pending LP rewards settled into its
+ * reserve first) and discarded. Resolves to { out, fee, burn } as BigInts
+ * (fee in uerth over every hop, burn the half destroyed), or null when the
+ * node does not serve the query or refuses the swap: callers fall back to the
+ * local maths below, which cannot see pending rewards.
+ */
+export async function simulateSwapExactIn(amountIn, denomIn, denomOut) {
+  let amount;
+  try {
+    amount = toBig(amountIn);
+  } catch {
+    return null;
+  }
+  if (amount <= 0n) return null;
+  const q = new URLSearchParams({ offer_denom: denomIn, offer_amount: amount.toString(), ask_denom: denomOut });
+  const data = await getOr(`/earth/dex/v1/simulate_swap_exact_in?${q}`, null);
+  try {
+    const out = BigInt(data?.token_out?.amount ?? "0");
+    if (out <= 0n || data.token_out.denom !== denomOut) return null;
+    return { out, fee: BigInt(data.fee?.amount ?? "0"), burn: BigInt(data.erth_burned ?? "0") };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Quotes a swap of `amountIn` of `denomIn` into `denomOut` (base units): the
+ * chain's SimulateSwapExactIn when the node serves it, else constant-product
+ * maths over the pools' reserves. ERTH is the hub, so a token->token swap is
+ * two hops through ERTH.
  */
 export async function quoteSwap(amountIn, denomIn, denomOut) {
+  const sim = await simulateSwapExactIn(amountIn, denomIn, denomOut);
+  if (sim) return Number(sim.out);
   const fee = await swapFeePercent();
   const all = await pools();
 
@@ -372,12 +404,16 @@ export function buyAnmlTo(creator, address, erthIn, minOut, { memo = "" } = {}) 
 }
 
 /**
- * Exact ANML out for `erthIn` uerth against the ANML pool as the LCD shows it
- * (a BigInt; 0n when there is no pool). Pending LP rewards compound into the
- * ERTH reserve first on chain, which can only lower the real output, so take
- * the floor with a slippage tolerance (tokens.minimumReceived).
+ * Exact ANML out for `erthIn` uerth (a BigInt; 0n when there is no pool):
+ * the chain's SimulateSwapExactIn when the node serves it, else the integer
+ * AMM over the ANML pool as the LCD shows it. Pending LP rewards compound
+ * into the ERTH reserve first on chain, which only the simulation sees and
+ * which can only lower the real output; either way take the floor with a
+ * slippage tolerance (tokens.minimumReceived).
  */
 export async function quoteBuyAnml(erthIn) {
+  const sim = await simulateSwapExactIn(erthIn, UERTH, UANML);
+  if (sim) return sim.out;
   const [p, fee] = await Promise.all([poolForToken(UANML), swapFeeDec()]);
   if (!p || fee === null) return 0n;
   return exactHubToToken(p.erthReserve, p.tokenReserve, erthIn, fee).out;

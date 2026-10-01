@@ -53,7 +53,8 @@ const routes = {
 
 globalThis.fetch = async (url) => {
   const path = String(url).replace(/^.*?(\/(cosmos|earth)\/)/, "$1").split("?")[0];
-  const body = routes[path];
+  const route = routes[path];
+  const body = typeof route === "function" ? route(new URL(String(url), "http://lcd").searchParams) : route;
   if (!body) return { ok: false, status: 404, text: async () => "unstubbed " + path };
   return { ok: true, json: async () => body };
 };
@@ -114,6 +115,29 @@ check("proposals newest first", ps[0].id === 4 && ps[0].expedited && ps[0].messa
 check("deposit picks uerth", ps[1].totalDeposit === "5");
 const v = gov.msgVote("earth1abc", 4, gov.VOTE_YES);
 check("gov v1 vote carries a bigint id", v.value.proposalId === 4n && v.typeUrl === "/cosmos.gov.v1.MsgVote");
+
+// x/dex quotes: the chain's SimulateSwapExactIn when the node serves it,
+// else the local maths over the pool reserves.
+const dex = await import("../src/chain/dex.js");
+routes["/earth/dex/v1/pool"] = { pool: [{ pool_id: "1", reserve_erth: { denom: "uerth", amount: "1000000" }, reserve_token: { denom: "uanml", amount: "1000000" } }] };
+routes["/earth/dex/v1/params"] = { params: { swap_fee: "0.300000000000000000" } };
+const localAnml = dex.exactHubToToken("1000000", "1000000", "10000", "0.3").out;
+check("no simulation: buy-ANML quote is the local maths", (await dex.quoteBuyAnml("10000")) === localAnml, String(localAnml));
+const localSwap = await dex.quoteSwap("10000", "uerth", "uanml");
+check("no simulation: swap quote is the local maths", Math.abs(localSwap - Number(localAnml)) < 2, String(localSwap));
+let asked;
+routes["/earth/dex/v1/simulate_swap_exact_in"] = (q) => {
+  asked = Object.fromEntries(q);
+  return { token_out: { denom: q.get("ask_denom"), amount: "9950" }, fee: { denom: "uerth", amount: "30" }, erth_burned: "15" };
+};
+const sim = await dex.simulateSwapExactIn("10000", "uerth", "uanml");
+check("simulation parsed", sim.out === 9950n && sim.fee === 30n && sim.burn === 15n, JSON.stringify(asked));
+check("simulation query names offer and ask", asked.offer_denom === "uerth" && asked.offer_amount === "10000" && asked.ask_denom === "uanml");
+check("buy-ANML quote is the chain's", (await dex.quoteBuyAnml("10000")) === 9950n);
+check("swap quote is the chain's", (await dex.quoteSwap("10000", "uerth", "uanml")) === 9950);
+check("a non-positive amount is not asked", (await dex.simulateSwapExactIn("0", "uerth", "uanml")) === null);
+routes["/earth/dex/v1/simulate_swap_exact_in"] = () => ({ token_out: { denom: "uanml", amount: "0" }, fee: { denom: "uerth", amount: "0" } });
+check("a zero simulation falls back", (await dex.quoteBuyAnml("10000")) === localAnml);
 
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
 const { run: runNotes } = await import("./check-notes.mjs");
