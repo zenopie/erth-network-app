@@ -1,5 +1,6 @@
 import { getOr, seg } from "./rest";
-import { UERTH, lpDenom } from "./config";
+import { UANML, UERTH, lpDenom } from "./config";
+import { blindNotePayment } from "./noteCipher";
 
 /**
  * x/dex — a spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH (the hub)
@@ -44,6 +45,12 @@ function toPool(p) {
 export async function swapFeePercent() {
   const data = await getOr("/earth/dex/v1/params", null);
   return Number(data?.params?.swap_fee ?? 0);
+}
+
+/** The swap fee exactly as the chain holds it (a decimal string), or null. */
+export async function swapFeeDec() {
+  const data = await getOr("/earth/dex/v1/params", null);
+  return data?.params?.swap_fee ?? null;
 }
 
 /** How long withdrawn LP shares are escrowed before they pay out, in seconds. */
@@ -190,8 +197,8 @@ export async function quoteSwap(amountIn, denomIn, denomOut) {
 //
 // They price against the reserves the LCD shows. The chain first compounds
 // any pending LP rewards into the ERTH reserve (settlePoolRewards, at every
-// touch of the pool), which the pool query does not reflect, so an exact
-// quote is exact only for a pool with nothing pending.
+// touch of the pool), which the pool query does not reflect, so a quote is
+// exact only for a pool with nothing pending; floors take a slippage margin.
 
 /** A cosmos LegacyDec string ("0.3", "0.300000000000000000") scaled by 1e18. */
 export function parseDec18(s) {
@@ -304,41 +311,41 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
 }
 
 /**
- * Transparent pools only. Withdrawing from the ANML pool pays the ANML leg as
- * a note, so the chain requires `pc` there (and refuses it elsewhere), and
- * the note's value is only known at maturity — TODO(dex-notes), see
- * msgBuyAnml for why the web cannot name a findable pc for it yet.
+ * Starts a withdrawal of `shares` (base units) from `poolId`. For the ANML
+ * pool the chain pays the ANML leg as a note and requires `pc` (refusing it
+ * on any other pool); use removeLiquidityToShielded there.
  */
-export function msgRemoveLiquidity(creator, poolId, shares) {
+export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(0), ciphertext = new Uint8Array(0)) {
   return {
     typeUrl: "/earth.dex.v1.MsgRemoveLiquidity",
     value: {
       creator,
       poolId: Number(poolId),
       shares: { denom: lpDenom(poolId), amount: String(shares) },
+      pc,
+      ciphertext,
     },
   };
+}
+
+/**
+ * MsgRemoveLiquidity for the ANML pool: the ERTH leg is paid to `creator`,
+ * the ANML leg as a note to the shielded `address`. The payout is priced
+ * when the escrow matures, so the note carries the value-blind (v2)
+ * ciphertext; the owner's wallet completes it from the amount the chain
+ * publishes then. Note: a second withdrawal from the same pool in the same
+ * block must name the same pc, so it is refused — submit them apart.
+ */
+export function removeLiquidityToShielded(creator, poolId, shares, address, { memo = "" } = {}) {
+  const { pc, ciphertext } = blindNotePayment(address, { memo });
+  return msgRemoveLiquidity(creator, poolId, shares, pc, ciphertext);
 }
 
 /**
  * MsgBuyAnml: `amountIn` of `denomIn` (ERTH, or any token with a pool, routed
  * through ERTH) from `creator`, swapped for ANML that is minted as a note to
  * `pc`. ANML never sits in an account, so this is how an ERTH holder buys it.
- *
- * TODO(dex-notes): no page offers this. It needs a note the recipient's
- * wallet can find, and a web signer cannot make one with today's formats: the chain decides the note's value when
- * the msg runs (the swap output; a withdrawal is priced at maturity), the
- * canonical ciphertext's key is bound to cm and so to that exact value, and
- * an empty-ciphertext note is only found by its owner if pc is one of their
- * self-mint pcs, which needs nk. An exact min_amount_out does not rescue it:
- * the chain compounds pending LP rewards into the ERTH reserve before pricing
- * (the LCD's reserves omit them), so an exact quote fails whenever rewards are pending, and a
- * favourable move in between pays more than was encrypted — a note nobody
- * can find. Unblock with either (a) the app exporting a one-time self-mint pc
- * (a "receive an unknown amount" code; its sync already matches self-mint pcs
- * by public amount), sent here with an empty ciphertext, or (b) a chain
- * change making the minted amount exact (an exact-out MsgBuyAnml refunding
- * unused input). Withdrawals need (a).
+ * Use buyAnmlTo to pay a shielded address.
  */
 export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext = new Uint8Array(0)) {
   return {
@@ -351,6 +358,29 @@ export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphert
       ciphertext,
     },
   };
+}
+
+/**
+ * Buys ANML with `erthIn` uerth for the shielded `address`. The output is
+ * whatever the pool pays when the msg runs (at least `minOut`), so the note
+ * carries the value-blind (v2) ciphertext and the recipient's wallet takes
+ * the value from the chain's mint event.
+ */
+export function buyAnmlTo(creator, address, erthIn, minOut, { memo = "" } = {}) {
+  const { pc, ciphertext } = blindNotePayment(address, { memo });
+  return msgBuyAnml(creator, UERTH, erthIn, minOut, pc, ciphertext);
+}
+
+/**
+ * Exact ANML out for `erthIn` uerth against the ANML pool as the LCD shows it
+ * (a BigInt; 0n when there is no pool). Pending LP rewards compound into the
+ * ERTH reserve first on chain, which can only lower the real output, so take
+ * the floor with a slippage tolerance (tokens.minimumReceived).
+ */
+export async function quoteBuyAnml(erthIn) {
+  const [p, fee] = await Promise.all([poolForToken(UANML), swapFeeDec()]);
+  if (!p || fee === null) return 0n;
+  return exactHubToToken(p.erthReserve, p.tokenReserve, erthIn, fee).out;
 }
 
 /** Bids are additive and cannot be withdrawn — this adds to any earlier bid. */

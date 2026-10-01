@@ -7,8 +7,9 @@ import { assetId, cm as noteCm, fieldToBytes, pc as notePc, randomField, u64 } f
 import { decodeShieldedAddress } from "./shieldedAddress";
 
 /**
- * Note ciphertexts ("earth note v1"), sender side, as the chain's
- * zk/privacy/notecipher.go defines them:
+ * Note ciphertexts, sender side, as the chain's zk/privacy/notecipher.go
+ * defines them. v1 ("earth note v1") is for a note whose value is fixed when
+ * it is signed:
  *
  *   ct  = epk (32) || ChaCha20-Poly1305(key, nonce = 12 zero bytes, aad = none, pt)
  *   key = HKDF-SHA256(ikm = X25519(esk, ek_pub), salt = "earth.note.v1", info = epk || cm)
@@ -16,8 +17,20 @@ import { decodeShieldedAddress } from "./shieldedAddress";
  *
  * 217 bytes for every note. esk is fresh per note, so the fixed nonce never
  * repeats under one key. cm is in `info`, and cm commits to the value: a
- * ciphertext only opens for the exact note it was made for. The web app
- * never decrypts — it holds no shielded keys.
+ * ciphertext only opens for the exact note it was made for.
+ *
+ * v2 ("earth note v2", value-blind) is for a note whose asset and value the
+ * chain decides when the msg runs — a swap's output, an LP withdrawal priced
+ * at maturity:
+ *
+ *   ct  = epk (32) || ChaCha20-Poly1305(key, nonce = 12 zero bytes, aad = none, pt)
+ *   key = HKDF-SHA256(ikm = X25519(esk, ek_pub), salt = "earth.note.v2", info = epk)
+ *   pt  = 0x02 || rho (32) || rcm (32) || memo (64)
+ *
+ * 177 bytes. The recipient opens it, recomputes pc and cm from the asset and
+ * amount the chain publishes for that note, and accepts only a matching cm.
+ *
+ * The web app never decrypts — it holds no shielded keys.
  */
 
 export const NOTE_VERSION = 0x01;
@@ -25,7 +38,12 @@ export const NOTE_MEMO_BYTES = 64;
 export const NOTE_PLAINTEXT_BYTES = 1 + 32 + 8 + 32 + 32 + NOTE_MEMO_BYTES; // 169
 export const NOTE_CIPHERTEXT_BYTES = 32 + NOTE_PLAINTEXT_BYTES + 16; // 217
 
+export const BLIND_NOTE_VERSION = 0x02;
+export const BLIND_NOTE_PLAINTEXT_BYTES = 1 + 32 + 32 + NOTE_MEMO_BYTES; // 129
+export const BLIND_NOTE_CIPHERTEXT_BYTES = 32 + BLIND_NOTE_PLAINTEXT_BYTES + 16; // 177
+
 const NOTE_SALT = new TextEncoder().encode("earth.note.v1");
+const BLIND_NOTE_SALT = new TextEncoder().encode("earth.note.v2");
 
 /** A memo as its fixed 64 bytes: UTF-8, zero padded; longer is refused. */
 export function memoBytes(memo = "") {
@@ -66,6 +84,31 @@ export function noteKey(shared, epk, cmField) {
  * ek_pub (all-zero shared secret) is refused rather than encrypted to.
  */
 export function encryptNote(note, cmField, ekPub, esk) {
+  return seal(ekPub, esk, (shared, epk) => noteKey(shared, epk, cmField), notePlaintext(note));
+}
+
+/** HKDF-SHA256(shared, "earth.note.v2", epk), 32 bytes. */
+export function blindNoteKey(shared, epk) {
+  return hkdf(sha256, shared, BLIND_NOTE_SALT, epk, 32);
+}
+
+/** The 129-byte v2 plaintext of { rho, rcm, memo }. */
+export function blindNotePlaintext({ rho, rcm, memo }) {
+  const pt = new Uint8Array(BLIND_NOTE_PLAINTEXT_BYTES);
+  pt[0] = BLIND_NOTE_VERSION;
+  pt.set(fieldToBytes(rho), 1);
+  pt.set(fieldToBytes(rcm), 33);
+  pt.set(memoBytes(memo), 65);
+  return pt;
+}
+
+/** Encrypts a note's secrets (v2, value-blind) to `ekPub` under `esk`. */
+export function encryptBlindNote(note, ekPub, esk) {
+  return seal(ekPub, esk, blindNoteKey, blindNotePlaintext(note));
+}
+
+// epk || ChaCha20-Poly1305(keyOf(shared, epk), 0^12, pt).
+function seal(ekPub, esk, keyOf, pt) {
   if (!(esk instanceof Uint8Array) || esk.length !== 32) throw new RangeError("esk is not 32 bytes");
   const epk = x25519.getPublicKey(esk);
   let shared;
@@ -75,12 +118,22 @@ export function encryptNote(note, cmField, ekPub, esk) {
     throw new Error("The address's encryption key is invalid.");
   }
   if (shared.every((b) => b === 0)) throw new Error("The address's encryption key is invalid.");
-  const key = noteKey(shared, epk, cmField);
-  const sealed = chacha20poly1305(key, new Uint8Array(12)).encrypt(notePlaintext(note));
+  const sealed = chacha20poly1305(keyOf(shared, epk), new Uint8Array(12)).encrypt(pt);
   const ct = new Uint8Array(32 + sealed.length);
   ct.set(epk, 0);
   ct.set(sealed, 32);
   return ct;
+}
+
+function freshSecrets(rand) {
+  const rho = rand?.rho ?? randomField();
+  const rcm = rand?.rcm ?? randomField();
+  let esk = rand?.esk;
+  if (!esk) {
+    esk = new Uint8Array(32);
+    globalThis.crypto.getRandomValues(esk);
+  }
+  return { rho, rcm, esk };
 }
 
 /**
@@ -89,19 +142,12 @@ export function encryptNote(note, cmField, ekPub, esk) {
  * to show. rho, rcm and esk are fresh from crypto.getRandomValues; pass
  * `rand` only in tests.
  *
- * Only for a value fixed at signing time (MsgShield). A note whose value the
- * chain decides — a swap's output, a withdrawal priced at maturity — cannot
- * carry this ciphertext: cm, and so the key, depends on the value.
+ * Only for a value fixed at signing time (MsgShield); see blindNotePayment
+ * for a value the chain decides.
  */
 export function notePayment(address, denom, value, { memo = "", rand } = {}) {
   const { ownerPk, ekPub } = decodeShieldedAddress(address);
-  const rho = rand?.rho ?? randomField();
-  const rcm = rand?.rcm ?? randomField();
-  let esk = rand?.esk;
-  if (!esk) {
-    esk = new Uint8Array(32);
-    globalThis.crypto.getRandomValues(esk);
-  }
+  const { rho, rcm, esk } = freshSecrets(rand);
   const asset = assetId(denom);
   const pcField = notePc(ownerPk, rho, rcm);
   const cmField = noteCm(asset, value, pcField);
@@ -110,5 +156,20 @@ export function notePayment(address, denom, value, { memo = "", rand } = {}) {
     pc: fieldToBytes(pcField),
     ciphertext,
     cm: Array.from(fieldToBytes(cmField), (b) => b.toString(16).padStart(2, "0")).join(""),
+  };
+}
+
+/**
+ * { pc, ciphertext } (bytes) paying a note of a chain-decided asset and value
+ * (MsgBuyAnml's output, an ANML-pool withdrawal's ANML leg) to the shielded
+ * `address`, with the v2 value-blind ciphertext. The recipient's wallet
+ * completes cm from the amount the chain publishes for the note.
+ */
+export function blindNotePayment(address, { memo = "", rand } = {}) {
+  const { ownerPk, ekPub } = decodeShieldedAddress(address);
+  const { rho, rcm, esk } = freshSecrets(rand);
+  return {
+    pc: fieldToBytes(notePc(ownerPk, rho, rcm)),
+    ciphertext: encryptBlindNote({ rho, rcm, memo }, ekPub, esk),
   };
 }

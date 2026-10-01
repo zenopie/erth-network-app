@@ -155,6 +155,25 @@ export async function run(check) {
   check("low-order ek_pub refused", throws(() => nc.encryptNote(chainNote, chainCm, new Uint8Array(32), unhex(C.esk))));
   check("memo over 64 bytes refused", throws(() => nc.memoBytes("x".repeat(65))));
 
+  // v2, value-blind: the same esk, rho, rcm and memo as the v1 golden.
+  const blind = nc.encryptBlindNote({ rho: chainNote.rho, rcm: chainNote.rcm, memo: C.memo }, ekPub, unhex(C.esk));
+  check("chain golden v2 ciphertext (177 bytes, byte for byte)", hex(blind) === C.blind_ct && blind.length === 177);
+  const viaBlind = nc.blindNotePayment(C.address, { memo: C.memo, rand: { rho: chainNote.rho, rcm: chainNote.rcm, esk: unhex(C.esk) } });
+  check("blindNotePayment reproduces the v2 golden", hex(viaBlind.ciphertext) === C.blind_ct &&
+    hex(viaBlind.pc) === fhex(pv.pc(chainOwner.ownerPk, chainNote.rho, chainNote.rcm)));
+  const openBlind = (ct, key) => {
+    const epk = ct.slice(0, 32);
+    return chacha20poly1305(nc.blindNoteKey(x25519.getSharedSecret(key, epk), epk), new Uint8Array(12)).decrypt(ct.slice(32));
+  };
+  const bpt = openBlind(blind, ek);
+  const bpc = pv.pc(chainOwner.ownerPk, pv.fieldFromBytes(bpt.slice(1, 33)), pv.fieldFromBytes(bpt.slice(33, 65)));
+  check("v2 opens; with the published asset+value it recomputes cm, with another it does not",
+    bpt[0] === 2 && pv.cm(chainNote.assetId, chainNote.value, bpc) === chainCm &&
+    pv.cm(chainNote.assetId, chainNote.value + 1n, bpc) !== chainCm);
+  check("v2 refuses tamper and a v1 key", throws(() => { const t = blind.slice(); t[90] ^= 1; openBlind(t, ek); }) &&
+    throws(() => decrypt(Uint8Array.from([...blind, ...new Uint8Array(40)]), chainCm, ek)));
+  check("v2 low-order ek_pub refused", throws(() => nc.encryptBlindNote({ rho: 1n, rcm: 1n }, new Uint8Array(32), unhex(C.esk))));
+
   const rho7 = poseidon2([7n]);
   const rcm8 = poseidon2([8n]);
   const and = nc.notePayment(A.address, A.denom, A.value, { memo: A.memo, rand: { rho: rho7, rcm: rcm8, esk: unhex(A.esk) } });
@@ -185,6 +204,23 @@ export async function run(check) {
   check("shieldTo refuses a transparent recipient", throws(() => shielded.shieldTo("earth1sender", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1")));
   check("shieldTo refuses zero and non-integers", throws(() => shielded.shieldTo("earth1s", C.address, "0")) &&
     throws(() => shielded.shieldTo("earth1s", C.address, "1.5")));
+
+  // ---- MsgBuyAnml / ANML-pool MsgRemoveLiquidity --------------------------------
+  const buy = dex.buyAnmlTo("earth1buyer", C.address, "2000000", "990");
+  const buyBack = registry.decode({ typeUrl: buy.typeUrl, value: registry.encode(buy) });
+  check("buyAnmlTo: MsgBuyAnml uerth in, min_out, pc and a 177-byte v2 ciphertext",
+    buy.typeUrl === "/earth.dex.v1.MsgBuyAnml" && buyBack.tokenIn.denom === "uerth" && buyBack.tokenIn.amount === "2000000" &&
+    buyBack.minAmountOut === "990" && buyBack.pc.length === 32 && buyBack.ciphertext.length === 177);
+  const bopen = openBlind(buyBack.ciphertext, ek);
+  check("buyAnmlTo's note opens for the address and names its pc",
+    fhex(pv.pc(chainOwner.ownerPk, pv.fieldFromBytes(bopen.slice(1, 33)), pv.fieldFromBytes(bopen.slice(33, 65)))) === hex(buyBack.pc));
+  const rm = dex.removeLiquidityToShielded("earth1lp", 1, "5000", C.address);
+  const rmBack = registry.decode({ typeUrl: rm.typeUrl, value: registry.encode(rm) });
+  check("removeLiquidityToShielded: pool 1, dexlp/1 shares, pc + v2 ciphertext",
+    BigInt(rmBack.poolId) === 1n && rmBack.shares.denom === "dexlp/1" && rmBack.pc.length === 32 && rmBack.ciphertext.length === 177);
+  const plain = registry.decode({ typeUrl: "/earth.dex.v1.MsgRemoveLiquidity", value: registry.encode(dex.msgRemoveLiquidity("earth1lp", 2, "7")) });
+  check("transparent-pool withdrawal still carries no pc", plain.pc.length === 0 && plain.ciphertext.length === 0);
+  check("buyAnmlTo refuses a transparent recipient", throws(() => dex.buyAnmlTo("earth1b", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1", "0")));
 
   // ---- exact AMM maths (x/dex amm.go) --------------------------------------------
   // feeOf truncates amount * fee% ; burn takes the odd unit; out = rT*eff/(rE+eff).
