@@ -1,553 +1,465 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import * as staking from "../chain/staking";
+import * as shieldedStaking from "../chain/shieldedStaking";
 import * as explorer from "../chain/explorer";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { toMacro, toMicro } from "../chain/tokens";
+import { formatUnits, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
-import { formatUSD } from "../utils/apiUtils";
-import useErthPrice from "../hooks/useErthPrice";
-import styles from "./StakeErth.module.css";
+import styles from "./Explorer.module.css";
+import forms from "./Forms.module.css";
+import head from "./StakeErth.module.css";
 import StatusModal from "../components/StatusModal";
-import Amount from "../components/Amount";
-import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
+import MobileCta from "../components/MobileCta";
 
-const SECONDS_PER_DAY = 24 * 60 * 60;
-const DAYS_PER_YEAR = 365;
+const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
 // The chain emits a flat 1 ERTH/sec as the base staking reward, so a staker's
-// yearly return per staked ERTH is simply seconds-per-year / total staked.
+// yearly return per staked ERTH is seconds-per-year / total staked. Private
+// stakers receive it as a rising derth rate rather than as payouts.
 const calculateAPR = (totalStakedMicro) => {
-  const totalStakedMacro = toMacro(totalStakedMicro, UERTH);
-  if (!totalStakedMacro) return 0;
-  return (SECONDS_PER_DAY / totalStakedMacro) * DAYS_PER_YEAR;
+  const total = toMacro(totalStakedMicro ?? 0, UERTH);
+  return total ? SECONDS_PER_YEAR / total : 0;
 };
 
+const erth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;
+
+/** "in 5h 12m" until a unix time, or "now" once it has passed. */
+function until(unix) {
+  const s = Math.floor(unix - Date.now() / 1000);
+  if (s <= 0) return "now";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h ? `in ${h}h ${m}m` : `in ${m}m`;
+}
+
+/**
+ * Staking.
+ *
+ * x/shieldedstaking is the only delegator on this chain besides validators'
+ * own operators. Holders stake privately from the mobile app: they spend ERTH
+ * notes for derth/<validator> notes, the module delegates the batch at the end
+ * of each epoch, and rewards compound into each validator's rate instead of
+ * being paid out. This page shows that public side — the validators, each
+ * one's rate and derth supply, the epoch clock — and gives a validator's
+ * operator the transparent self-bond operations Keplr can still sign.
+ */
 const StakeErth = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
-  const [activeTab, setActiveTab] = useState("Stake");
-  const [stakeAmount, setStakeAmount] = useState("");
-  const [unstakeAmount, setUnstakeAmount] = useState("");
-  const [stakingRewards, setStakingRewards] = useState(null);
-  const [apr, setApr] = useState(0);
-  const [stakedBalance, setStakedBalance] = useState(null);
-  const [unstakedBalance, setUnstakedBalance] = useState(null);
-  const [totalStakedBalance, setTotalStakedBalance] = useState(null);
-  const [unbondingEntries, setUnbondingEntries] = useState([]);
-  const [validators, setValidators] = useState([]);
-  const [myDelegations, setMyDelegations] = useState([]);
-  const [stakeTo, setStakeTo] = useState("");
-  const [unstakeFrom, setUnstakeFrom] = useState("");
-  const [redelegateFrom, setRedelegateFrom] = useState("");
-  const [redelegateTo, setRedelegateTo] = useState("");
-  const [redelegateAmount, setRedelegateAmount] = useState("");
+  const [totalBonded, setTotalBonded] = useState(null);
   const [unbondDays, setUnbondDays] = useState(21);
-  const erthPrice = useErthPrice();
-  const { currency } = useDisplayCurrency();
-  // Every figure on this page is ERTH-denominated on chain, so ERTH mode needs
-  // no conversion at all and USD mode multiplies through. Same arrangement as
-  // the Markets page, which is why both go through <Amount> for the mark.
-  const rate = currency === "USD" ? erthPrice : 1;
+  const [epoch, setEpoch] = useState(null);
+  const [validators, setValidators] = useState(null);
+  const [books, setBooks] = useState({});
+  const [operator, setOperator] = useState(null);
+  const [liquid, setLiquid] = useState("0");
 
-  useEffect(() => {
-    fetchStakingInfo();
-  }, [address]);
-
-  // Reuses the explorer's validator view so the picker can show voting power,
-  // commission and uptime — the three things that actually matter when choosing.
-  useEffect(() => {
-    explorer
-      .validators()
-      .then((d) =>
-        setValidators(
-          (d.validators ?? [])
-            .filter((v) => v.bonded && !v.jailed)
-            // Smallest first: the default ordering nudges stake away from the
-            // top validator instead of toward it.
-            .sort((a, b) => a.votingPower - b.votingPower),
-        ),
-      )
-      .catch(console.error);
-  }, []);
-
-  const fetchStakingInfo = async () => {
+  const loadNetwork = useCallback(async () => {
+    showLoading();
     try {
-      showLoading();
-
-      // Network-wide figures are public and render without a wallet.
-      const [totalBonded, days] = await Promise.all([
+      const [bonded, days, ep, vals] = await Promise.all([
         staking.totalBonded(),
         staking.unbondingDays(),
+        shieldedStaking.epoch(),
+        explorer.validators().catch(() => null),
       ]);
-      setTotalStakedBalance(toMacro(totalBonded, UERTH));
-      setApr(calculateAPR(totalBonded));
+      setTotalBonded(bonded);
       setUnbondDays(days);
-
-      if (!address) {
-        setStakedBalance(null);
-        setUnstakedBalance(null);
-        setStakingRewards(null);
-        setUnbondingEntries([]);
-        return;
-      }
-
-      const [delegationList, rewards, liquid, unbonding] = await Promise.all([
-        staking.delegations(address),
-        staking.totalRewards(address),
-        balance(address, UERTH),
-        staking.unbondingDelegations(address),
-      ]);
-
-      const delegated = delegationList.reduce((sum, d) => sum + Number(d.amount), 0);
-      setStakedBalance(toMacro(delegated, UERTH));
-      setStakingRewards(toMacro(rewards, UERTH));
-      setUnstakedBalance(toMacro(liquid, UERTH));
-      setUnbondingEntries(unbonding);
-      setMyDelegations(delegationList);
-    } catch (error) {
-      console.error("Error loading staking info:", error);
-      setStakedBalance("Error");
-      setUnstakedBalance("Error");
+      setEpoch(ep);
+      const list = (vals?.validators ?? [])
+        .filter((v) => v.bonded || Number(v.tokens) > 0)
+        // Smallest first: nudge private stake away from the top validator.
+        .sort((a, b) => a.votingPower - b.votingPower);
+      setValidators(vals ? list : null);
+      setBooks(await shieldedStaking.validatorBooks(list.map((v) => v.operator)));
     } finally {
       hideLoading();
     }
-  };
+  }, [showLoading, hideLoading]);
 
-  const handleStake = async () => {
-    if (!isConnected || !(parseFloat(stakeAmount) > 0)) return;
+  const loadOperator = useCallback(async () => {
+    if (!address) {
+      setOperator(null);
+      setLiquid("0");
+      return;
+    }
+    const [op, bal] = await Promise.all([staking.operatorView(address), balance(address, UERTH)]);
+    setOperator(op);
+    setLiquid(bal);
+  }, [address]);
+
+  useEffect(() => {
+    loadNetwork();
+  }, [loadNetwork]);
+
+  useEffect(() => {
+    loadOperator().catch(console.error);
+  }, [loadOperator]);
+
+  const run = (build, opts) =>
     execute(async () => {
-      const msgs = await staking.msgsStake(address, toMicro(stakeAmount, UERTH), stakeTo);
-      await broadcast(msgs);
-      setStakeAmount("");
-      fetchStakingInfo();
+      await broadcast(await build(), opts);
+      await Promise.all([loadOperator(), loadNetwork()]);
     });
-  };
 
-  const handleUnstake = async () => {
-    if (!isConnected || !(parseFloat(unstakeAmount) > 0)) return;
-    execute(async () => {
-      const msgs = await staking.msgsUnstake(address, toMicro(unstakeAmount, UERTH), unstakeFrom);
-      await broadcast(msgs);
-      setUnstakeAmount("");
-      fetchStakingInfo();
-    });
-  };
-
-  const handleRedelegate = async () => {
-    if (!isConnected || !(parseFloat(redelegateAmount) > 0)) return;
-    execute(async () => {
-      const msgs = await staking.msgsRedelegate(
-        address,
-        toMicro(redelegateAmount, UERTH),
-        redelegateFrom,
-        redelegateTo,
-      );
-      await broadcast(msgs);
-      setRedelegateAmount("");
-      fetchStakingInfo();
-    });
-  };
-
-  const handleCancelUnbonding = async (entry) => {
-    if (!isConnected) return;
-    execute(async () => {
-      const msgs = await staking.msgsCancelUnbonding(address, entry);
-      await broadcast(msgs);
-      fetchStakingInfo();
-    });
-  };
-
-  const handleClaimRewards = async () => {
-    if (!isConnected) return;
-    execute(async () => {
-      const msgs = await staking.msgsClaimRewards(address);
-      // One withdraw message per validator, so scale the gas with the count.
-      await broadcast(msgs, { gas: 200_000 + msgs.length * 120_000 });
-      fetchStakingInfo();
-    });
-  };
-
-  const selectedValidator = validators.find((v) => v.operator === stakeTo) ?? null;
-  const monikerOf = (operator) =>
-    validators.find((v) => v.operator === operator)?.moniker || operator.slice(0, 20) + "…";
-  const redelegateSourceAmount = toMacro(
-    myDelegations.find((d) => d.validator === redelegateFrom)?.amount ?? 0,
-    UERTH,
+  const privatelyStaked = Object.values(books).reduce(
+    (s, b) => s + (b ? Number(b.backing) : 0),
+    0,
   );
-  const selectedDelegationAmount = toMacro(
-    myDelegations.find((d) => d.validator === unstakeFrom)?.amount ?? 0,
-    UERTH,
-  );
-
-  const yourShare =
-    totalStakedBalance > 0 && stakedBalance > 0 ? (stakedBalance / totalStakedBalance) * 100 : 0;
-  const dailyRewards =
-    stakedBalance > 0 && totalStakedBalance > 0
-      ? (SECONDS_PER_DAY * stakedBalance) / totalStakedBalance
-      : 0;
+  const apr = calculateAPR(totalBonded);
 
   return (
     <div className={styles.page}>
       <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
 
-      {/* Header — flat, like Markets */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.headerLogo} />
+      <div className={head.header}>
+        <div className={head.headerLeft}>
+          <img src="/images/coin/ERTH.png" alt="ERTH" className={head.headerLogo} />
           <div>
-            <span className={styles.headerLabel}>ERTH Staking</span>
-            <span className={styles.headerApr}>{(apr * 100).toFixed(1)}% APR</span>
+            <span className={head.headerLabel}>ERTH Staking</span>
+            <span className={head.headerApr}>{(apr * 100).toFixed(1)}% APR</span>
           </div>
         </div>
-        <div className={styles.headerRight}>
-          {stakingRewards > 0 && isConnected && (
-            <button className={styles.claimAllBtn} onClick={handleClaimRewards}>
-              Claim <Amount value={stakingRewards * (rate ?? 0)} mode="plain" />
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Stats row */}
       <div className={styles.statsRow}>
-        {/* One figure per stat, in the unit on display — not an ERTH figure with
-            a USD one under it. The setting picks the unit; showing both would
-            make it a formatting toggle rather than a choice. A dash where the
-            chosen unit has no price, since the number is unknown, not zero. */}
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Your Staked</span>
-          <span className={styles.statValue}>
-            {stakedBalance !== null && stakedBalance !== "Error" && rate ? (
-              <Amount value={stakedBalance * rate} mode="plain" />
-            ) : (
-              "—"
-            )}
-          </span>
+          <span className={styles.statLabel}>Total bonded</span>
+          <span className={styles.statValue}>{totalBonded !== null ? erth(totalBonded) : "—"}</span>
         </div>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Total Staked</span>
-          <span className={styles.statValue}>
-            {totalStakedBalance !== null && rate ? (
-              <Amount value={totalStakedBalance * rate} mode="plain" />
-            ) : (
-              "—"
-            )}
-          </span>
+          <span className={styles.statLabel}>Staked privately</span>
+          <span className={styles.statValue}>{validators ? erth(privatelyStaked) : "—"}</span>
         </div>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Daily Rewards</span>
+          <span className={styles.statLabel}>Epoch</span>
           <span className={styles.statValue}>
-            {dailyRewards > 0 && rate ? (
-              <Amount value={dailyRewards * rate} mode="price" />
-            ) : (
-              "—"
-            )}
+            {epoch ? `#${epoch.number}` : "—"}
+            {epoch && <span className={styles.muted} style={{ fontSize: 13 }}> ends {until(epoch.endTime)}</span>}
           </span>
         </div>
       </div>
 
-      {/* Action card */}
+      <MobileCta title="Stake privately in the Earth Wallet app">
+        Staking, unstaking, claiming and stake votes are private: your ERTH becomes
+        derth for the validator you choose, worth more ERTH each epoch as rewards compound.
+        Delegations settle at the end of each epoch; unstaking takes {unbondDays} days.
+      </MobileCta>
+
       <div className={styles.card}>
-        <div className={styles.tabs}>
-          {["Stake", "Redelegate", "Withdraw", "Unbonding"].map((t) => (
-            <button
-              key={t}
-              className={`${styles.tab} ${activeTab === t ? styles.active : ""}`}
-              onClick={() => setActiveTab(t)}
-            >
-              {t}
-            </button>
+        <h3 className={styles.cardTitle}>Validators</h3>
+        {validators === null ? (
+          <div className={styles.empty}>Could not load validators.</div>
+        ) : validators.length ? (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Validator</th>
+                <th>Power</th>
+                <th>Comm.</th>
+                <th>Uptime</th>
+                <th>Rate</th>
+                <th>Private stake</th>
+                <th>Next epoch</th>
+              </tr>
+            </thead>
+            <tbody>
+              {validators.map((v) => {
+                const b = books[v.operator];
+                const pendIn = Number(b?.pendingDelegation ?? 0);
+                const pendOut = Number(b?.pendingUndelegation ?? 0);
+                return (
+                  <tr key={v.operator}>
+                    <td>
+                      {v.moniker || <span className={styles.mono}>{v.operator.slice(0, 20)}…</span>}
+                      {v.jailed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Jailed</span>}
+                      {!v.bonded && !v.jailed && <span className={styles.badge}>Unbonded</span>}
+                      {v.votingPower >= 33 && (
+                        <div className={forms.warn} style={{ margin: 0 }}>
+                          Over a third of stake: can halt the chain alone
+                        </div>
+                      )}
+                    </td>
+                    <td>{v.votingPower.toFixed(1)}%</td>
+                    <td>{(v.commission * 100).toFixed(0)}%</td>
+                    <td>{v.uptime !== null ? `${v.uptime.toFixed(1)}%` : "—"}</td>
+                    <td title="ERTH per derth: live, and as of the last epoch end">
+                      {b ? b.rate.toFixed(6) : "—"}
+                      {b && <div className={styles.muted}>epoch {b.epochRate.toFixed(6)}</div>}
+                    </td>
+                    <td>
+                      {b ? erth(b.backing) : "—"}
+                      {b && (
+                        <div className={styles.muted}>
+                          {toMacro(b.supply, UERTH).toLocaleString()} derth
+                        </div>
+                      )}
+                    </td>
+                    <td className={styles.muted}>
+                      {pendIn || pendOut ? (
+                        <>
+                          {pendIn > 0 && <div>+{erth(pendIn)}</div>}
+                          {pendOut > 0 && <div>−{erth(pendOut)}</div>}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className={styles.empty}>No validators.</div>
+        )}
+        <p className={forms.note}>
+          Rate is ERTH per derth: what one derth of a validator redeems for. It rises as rewards
+          compound and falls if the validator is slashed. Next epoch is the private stake queued to
+          be delegated (+) or undelegated (−) when the epoch ends.
+        </p>
+      </div>
+
+      {isConnected && operator && (
+        <OperatorPanel
+          operator={operator}
+          liquid={liquid}
+          unbondDays={unbondDays}
+          address={address}
+          run={run}
+        />
+      )}
+      {isConnected && !operator && <CreateValidator address={address} liquid={liquid} run={run} />}
+    </div>
+  );
+};
+
+/**
+ * A validator operator's self-bond: the one transparent delegation the chain
+ * still accepts. Redelegation is refused even for operators (a self-bond moved
+ * elsewhere would stop being one), so it is not offered.
+ */
+const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
+  const [bondAmount, setBondAmount] = useState("");
+  const [unbondAmount, setUnbondAmount] = useState("");
+  const pending = Number(operator.rewards) + Number(operator.commissionEarned);
+
+  return (
+    <div className={styles.card}>
+      <h3 className={styles.cardTitle}>Your validator: {operator.moniker || operator.operator}</h3>
+      <div className={styles.kv}>
+        <div className={styles.kvLabel}>Self-bond</div>
+        <div className={styles.kvValue}>{erth(operator.selfBond)}</div>
+      </div>
+      <div className={styles.kv}>
+        <div className={styles.kvLabel}>Total stake</div>
+        <div className={styles.kvValue}>
+          {erth(operator.tokens)} {operator.jailed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Jailed</span>}
+        </div>
+      </div>
+      <div className={styles.kv}>
+        <div className={styles.kvLabel}>Rewards + commission</div>
+        <div className={styles.kvValue}>
+          {erth(operator.rewards)} + {erth(operator.commissionEarned)}{" "}
+          <button
+            className={forms.ghostButton}
+            disabled={!(pending > 0)}
+            onClick={() => run(() => staking.msgsWithdrawOperatorRewards(address))}
+          >
+            Withdraw
+          </button>
+        </div>
+      </div>
+
+      <div className={forms.section}>
+        <div className={forms.formRow}>
+          <div className={forms.field}>
+            <label className={forms.label}>
+              Bond more (balance {toMacro(liquid, UERTH).toLocaleString()} ERTH)
+            </label>
+            <input
+              className={forms.input}
+              type="number"
+              placeholder="0.0"
+              value={bondAmount}
+              onChange={(e) => setBondAmount(e.target.value)}
+            />
+          </div>
+          <button
+            className={forms.button}
+            style={{ alignSelf: "flex-end" }}
+            disabled={!(parseFloat(bondAmount) > 0) || BigInt(toMicro(bondAmount, UERTH)) > BigInt(liquid)}
+            onClick={() =>
+              run(() => [staking.msgSelfBond(address, toMicro(bondAmount, UERTH))]).then(() =>
+                setBondAmount(""),
+              )
+            }
+          >
+            Bond
+          </button>
+        </div>
+        <div className={forms.formRow}>
+          <div className={forms.field}>
+            <label className={forms.label}>
+              Unbond{" "}
+              <button
+                className={forms.ghostButton}
+                onClick={() => setUnbondAmount(formatUnits(operator.selfBond, UERTH))}
+              >
+                Max
+              </button>
+            </label>
+            <input
+              className={forms.input}
+              type="number"
+              placeholder="0.0"
+              value={unbondAmount}
+              onChange={(e) => setUnbondAmount(e.target.value)}
+            />
+          </div>
+          <button
+            className={forms.button}
+            style={{ alignSelf: "flex-end" }}
+            disabled={
+              !(parseFloat(unbondAmount) > 0) ||
+              BigInt(toMicro(unbondAmount, UERTH)) > BigInt(operator.selfBond)
+            }
+            onClick={() =>
+              run(() => [staking.msgSelfUnbond(address, toMicro(unbondAmount, UERTH))]).then(() =>
+                setUnbondAmount(""),
+              )
+            }
+          >
+            Unbond
+          </button>
+        </div>
+        <p className={forms.note}>
+          {unbondDays}-day unbonding. Unbonding below the validator&apos;s minimum self-delegation
+          jails it.
+        </p>
+      </div>
+
+      {operator.unbonding.length > 0 && (
+        <div className={forms.section}>
+          <h4 className={forms.sectionTitle}>Unbonding</h4>
+          {operator.unbonding.map((e) => (
+            <div key={e.creationHeight} className={styles.kv}>
+              <div className={styles.kvLabel}>{new Date(e.completionTime).toLocaleString()}</div>
+              <div className={styles.kvValue}>
+                {erth(e.balance)}{" "}
+                <button
+                  className={forms.ghostButton}
+                  title="Return this stake to your validator now"
+                  onClick={() => run(() => [staking.msgCancelSelfUnbonding(address, e)])}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+};
 
-        {/* Stake tab */}
-        {activeTab === "Stake" && (
-          <div className={styles.tabContent}>
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>Validator</label>
-                <span className={styles.balance}>{validators.length} active</span>
-              </div>
-              <select
-                className={styles.validatorSelect}
-                value={stakeTo}
-                onChange={(e) => setStakeTo(e.target.value)}
-              >
-                <option value="">Choose a validator…</option>
-                {validators.map((v) => (
-                  <option key={v.operator} value={v.operator}>
-                    {v.moniker || v.operator} — {v.votingPower.toFixed(1)}% power,{" "}
-                    {(v.commission * 100).toFixed(0)}% comm
-                    {v.uptime !== null ? `, ${v.uptime.toFixed(1)}% uptime` : ""}
-                  </option>
-                ))}
-              </select>
-              {selectedValidator && selectedValidator.votingPower >= 33 && (
-                <p className={styles.warn}>
-                  This validator already holds {selectedValidator.votingPower.toFixed(1)}% of stake.
-                  Above 33% a single validator can halt the chain — consider a smaller one.
-                </p>
-              )}
-              <p className={styles.note}>
-                Smallest validators are listed first. Spreading stake keeps the chain resilient.
-              </p>
-            </div>
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>ERTH</label>
-                <span className={styles.balance}>
-                  {unstakedBalance === null || unstakedBalance === "Error" ? (
-                    <span>Connect a wallet</span>
-                  ) : (
-                    <>
-                      Bal: {Number(unstakedBalance).toLocaleString()}{" "}
-                      <button className={styles.maxBtn} onClick={() => setStakeAmount(unstakedBalance)}>
-                        Max
-                      </button>
-                    </>
-                  )}
-                </span>
-              </div>
-              <div className={styles.inputWrapper}>
-                <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.inputLogo} />
-                <div className={styles.inputInner}>
-                  <input
-                    type="number"
-                    placeholder="0.0"
-                    value={stakeAmount}
-                    onChange={(e) => setStakeAmount(e.target.value)}
-                    className={styles.input}
-                  />
-                  <span className={styles.inputUsd}>
-                    {/* The input is ERTH and says so with the logo beside it, so
-                        this second line only earns its place when it converts to
-                        something else. */}
-                    {currency === "USD" && stakeAmount && erthPrice
-                      ? formatUSD(parseFloat(stakeAmount) * erthPrice)
-                      : ""}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleStake}
-              className={styles.actionBtn}
-              disabled={
-                !isConnected ||
-                !stakeTo ||
-                !stakeAmount ||
-                Number(stakeAmount) <= 0 ||
-                Number(stakeAmount) > Number(unstakedBalance)
-              }
-            >
-              {stakeTo ? "Stake" : "Choose a validator"}
-            </button>
-          </div>
-        )}
+/**
+ * MsgCreateValidator from the connected account. Being a validator is a public
+ * act, so it stays transparent and Keplr-signed; the node's consensus key comes
+ * from `earthd comet show-validator`.
+ */
+const CreateValidator = ({ address, liquid, run }) => {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    moniker: "",
+    website: "",
+    details: "",
+    consensusPubkey: "",
+    selfBond: "",
+    commissionRate: "0.05",
+    commissionMaxRate: "0.20",
+    commissionMaxChangeRate: "0.01",
+  });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-        {/* Redelegate tab — moves stake with no unbonding gap */}
-        {activeTab === "Redelegate" && (
-          <div className={styles.tabContent}>
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>From</label>
-                <span className={styles.balance}>{myDelegations.length} delegation(s)</span>
-              </div>
-              <select
-                className={styles.validatorSelect}
-                value={redelegateFrom}
-                onChange={(e) => setRedelegateFrom(e.target.value)}
-              >
-                <option value="">Choose a delegation…</option>
-                {myDelegations.map((d) => (
-                  <option key={d.validator} value={d.validator}>
-                    {monikerOf(d.validator)} — {toMacro(d.amount, UERTH).toLocaleString()} ERTH
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>To</label>
-              </div>
-              <select
-                className={styles.validatorSelect}
-                value={redelegateTo}
-                onChange={(e) => setRedelegateTo(e.target.value)}
-              >
-                <option value="">Choose a validator…</option>
-                {validators
-                  .filter((v) => v.operator !== redelegateFrom)
-                  .map((v) => (
-                    <option key={v.operator} value={v.operator}>
-                      {v.moniker || v.operator} — {v.votingPower.toFixed(1)}% power,{" "}
-                      {(v.commission * 100).toFixed(0)}% comm
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>ERTH</label>
-                <span className={styles.balance}>
-                  Available: {redelegateSourceAmount.toLocaleString()}{" "}
-                  <button
-                    className={styles.maxBtn}
-                    onClick={() => setRedelegateAmount(redelegateSourceAmount)}
-                  >
-                    Max
-                  </button>
-                </span>
-              </div>
-              <div className={styles.inputWrapper}>
-                <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.inputLogo} />
-                <div className={styles.inputInner}>
-                  <input
-                    type="number"
-                    placeholder="0.0"
-                    value={redelegateAmount}
-                    onChange={(e) => setRedelegateAmount(e.target.value)}
-                    className={styles.input}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleRedelegate}
-              className={styles.actionBtn}
-              disabled={
-                !isConnected ||
-                !redelegateFrom ||
-                !redelegateTo ||
-                !redelegateAmount ||
-                Number(redelegateAmount) <= 0 ||
-                Number(redelegateAmount) > redelegateSourceAmount
-              }
-            >
-              Redelegate
-            </button>
-            <p className={styles.note}>
-              Stake keeps earning — there is no {unbondDays}-day gap. It stays locked until it
-              matures though: it cannot be moved again, and it is still slashable for the source
-              validator&apos;s faults.
-            </p>
-          </div>
-        )}
-
-        {/* Withdraw tab */}
-        {activeTab === "Withdraw" && (
-          <div className={styles.tabContent}>
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>Unstake from</label>
-                <span className={styles.balance}>{myDelegations.length} delegation(s)</span>
-              </div>
-              <select
-                className={styles.validatorSelect}
-                value={unstakeFrom}
-                onChange={(e) => setUnstakeFrom(e.target.value)}
-              >
-                <option value="">Choose a delegation…</option>
-                {myDelegations.map((d) => (
-                  <option key={d.validator} value={d.validator}>
-                    {monikerOf(d.validator)} — {toMacro(d.amount, UERTH).toLocaleString()} ERTH
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.inputGroup}>
-              <div className={styles.inputHeader}>
-                <label>ERTH</label>
-                <span className={styles.balance}>
-                  {stakedBalance === null || stakedBalance === "Error" ? (
-                    <span>No staked ERTH</span>
-                  ) : (
-                    <>
-                      Staked here: {selectedDelegationAmount.toLocaleString()}{" "}
-                      <button className={styles.maxBtn} onClick={() => setUnstakeAmount(selectedDelegationAmount)}>
-                        Max
-                      </button>
-                    </>
-                  )}
-                </span>
-              </div>
-              <div className={styles.inputWrapper}>
-                <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.inputLogo} />
-                <div className={styles.inputInner}>
-                  <input
-                    type="number"
-                    placeholder="0.0"
-                    value={unstakeAmount}
-                    onChange={(e) => setUnstakeAmount(e.target.value)}
-                    className={styles.input}
-                  />
-                  <span className={styles.inputUsd}>
-                    {currency === "USD" && unstakeAmount && erthPrice
-                      ? formatUSD(parseFloat(unstakeAmount) * erthPrice)
-                      : ""}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleUnstake}
-              className={styles.actionBtn}
-              disabled={
-                !isConnected ||
-                !unstakeFrom ||
-                !unstakeAmount ||
-                Number(unstakeAmount) <= 0 ||
-                Number(unstakeAmount) > selectedDelegationAmount
-              }
-            >
-              {unstakeFrom ? "Withdraw" : "Choose a delegation"}
-            </button>
-            <p className={styles.note}>{unbondDays}-day unbonding period</p>
-          </div>
-        )}
-
-        {/* Unbonding tab — native staking releases these automatically, so this
-            is display-only: there is nothing to claim or cancel. */}
-        {activeTab === "Unbonding" && (
-          <div className={styles.tabContent}>
-            {unbondingEntries.length > 0 ? (
-              unbondingEntries.map((entry, i) => (
-                <div key={i} className={styles.unbondItem}>
-                  <div className={styles.unbondInfo}>
-                    <div className={styles.unbondAmountRow}>
-                      <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.unbondLogo} />
-                      <span className={styles.unbondValue}>
-                        {toMacro(entry.balance, UERTH).toLocaleString()} ERTH
-                      </span>
-                    </div>
-                    <span className={styles.unbondDate}>
-                      {new Date(entry.completionTime).toLocaleString()}
-                    </span>
-                  </div>
-                  <button
-                    className={styles.smallBtn}
-                    onClick={() => handleCancelUnbonding(entry)}
-                    title="Return this stake to the same validator immediately"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className={styles.note}>No unbonding entries</p>
-            )}
-          </div>
-        )}
+  return (
+    <div className={styles.card}>
+      <div className={forms.proposalHead} onClick={() => setOpen(!open)}>
+        <h3 className={styles.cardTitle} style={{ margin: 0 }}>Run a validator</h3>
+        <i className={`bx ${open ? "bx-chevron-up" : "bx-chevron-down"}`} aria-hidden="true"></i>
       </div>
+      <p className={forms.note}>
+        This account operates no validator, so Keplr cannot stake from it: the chain accepts
+        transparent delegations only from a validator&apos;s own operator. To stake as a holder,
+        use the mobile app.
+      </p>
+      {open && (
+        <div className={forms.section}>
+          <div className={forms.formRow}>
+            <div className={forms.field}>
+              <label className={forms.label}>Moniker</label>
+              <input className={forms.input} value={form.moniker} onChange={set("moniker")} />
+            </div>
+            <div className={forms.field}>
+              <label className={forms.label}>Website</label>
+              <input className={forms.input} value={form.website} onChange={set("website")} />
+            </div>
+          </div>
+          <div className={forms.formRow}>
+            <div className={forms.field}>
+              <label className={forms.label}>Consensus public key (base64 ed25519)</label>
+              <input
+                className={`${forms.input} ${styles.mono}`}
+                placeholder="earthd comet show-validator → key"
+                value={form.consensusPubkey}
+                onChange={set("consensusPubkey")}
+              />
+            </div>
+          </div>
+          <div className={forms.formRow}>
+            <div className={forms.field}>
+              <label className={forms.label}>
+                Self-bond (balance {toMacro(liquid, UERTH).toLocaleString()} ERTH)
+              </label>
+              <input className={forms.input} type="number" value={form.selfBond} onChange={set("selfBond")} />
+            </div>
+            <div className={forms.field}>
+              <label className={forms.label}>Commission / max / max daily change</label>
+              <div className={forms.formRow} style={{ margin: 0 }}>
+                <input className={forms.input} style={{ flex: 1, minWidth: 0 }} value={form.commissionRate} onChange={set("commissionRate")} />
+                <input className={forms.input} style={{ flex: 1, minWidth: 0 }} value={form.commissionMaxRate} onChange={set("commissionMaxRate")} />
+                <input className={forms.input} style={{ flex: 1, minWidth: 0 }} value={form.commissionMaxChangeRate} onChange={set("commissionMaxChangeRate")} />
+              </div>
+            </div>
+          </div>
+          <div className={forms.formRow}>
+            <div className={forms.field}>
+              <label className={forms.label}>Details</label>
+              <textarea className={forms.textarea} value={form.details} onChange={set("details")} />
+            </div>
+          </div>
+          <button
+            className={forms.button}
+            disabled={!form.moniker || !form.consensusPubkey || !(parseFloat(form.selfBond) > 0)}
+            onClick={() =>
+              run(() => [
+                staking.msgCreateValidator(address, {
+                  ...form,
+                  selfBond: toMicro(form.selfBond, UERTH),
+                }),
+              ])
+            }
+          >
+            Create validator
+          </button>
+        </div>
+      )}
     </div>
   );
 };

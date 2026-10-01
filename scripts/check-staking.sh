@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #
-# Verifies the staking validator picker against a running chain.
+# Verifies the operator-only staking builders, and (with a live LCD) the
+# validator list and private-staking rates.
 #
 #   VITE_EARTH_LCD=http://127.0.0.1:1317 npm run check:staking
 #
-# Needs a live LCD — bring one up with the chain repo's ./scripts/testnet-3val.sh
+# The live half needs an LCD — bring one up with the chain repo's ./scripts/testnet-3val.sh
 # so there is more than one validator to pick between.
 set -euo pipefail
 APP="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

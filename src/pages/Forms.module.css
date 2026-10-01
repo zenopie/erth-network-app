@@ -1,0 +1,159 @@
+/* Small form and tally pieces shared by the read-mostly pages (governance,
+   staking operator panel, referrers). Layout comes from Explorer.module.css. */
+
+.formRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: #4caf50;
+}
+
+.button {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.button:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.ghostButton {
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ghostButton:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.note {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.45;
+  margin: 6px 0 10px;
+}
+
+.warn {
+  font-size: 13px;
+  color: #b45309;
+  margin: 6px 0 10px;
+}
+
+/* A two- or four-way tally bar */
+
+.bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f3f4f6;
+  margin: 6px 0;
+}
+
+.barYes {
+  background: #16a34a;
+}
+
+.barNo {
+  background: #dc2626;
+}
+
+.barVeto {
+  background: #7f1d1d;
+}
+
+.barAbstain {
+  background: #9ca3af;
+}
+
+.tallyLegend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.proposalHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.proposalTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.section {
+  border-top: 1px solid #f3f4f6;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 6px;
+}

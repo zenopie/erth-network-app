@@ -1,43 +1,28 @@
+import { fromBase64, fromBech32, toBech32 } from "@cosmjs/encoding";
+import { PubKey as Ed25519PubKey } from "cosmjs-types/cosmos/crypto/ed25519/keys";
 import { getOr, seg } from "./rest";
-import { UERTH } from "./config";
+import { ADDRESS_PREFIX, UERTH } from "./config";
 
 /**
- * Native x/staking + x/distribution.
+ * Native x/staking + x/distribution, as far as a Keplr account can still use
+ * them.
  *
- * On Secret, staking went through a custom contract with its own unbonding
- * queue. Earth uses the stock cosmos modules: bonding to validators, an
- * automatic unbonding period, and rewards claimed per validator.
+ * On this chain the x/shielded module is the only delegator besides
+ * validators' own operators: the ante handler (and a staking hook behind it)
+ * refuses MsgDelegate, MsgUndelegate and MsgCancelUnbondingDelegation unless
+ * the delegator is the validator's own operator account, and refuses
+ * MsgBeginRedelegate outright. Everyone else stakes privately from the mobile
+ * app (see ./shieldedStaking.js for the public side of that).
+ *
+ * So the messages here are an operator's: create a validator, bond or unbond
+ * its own stake, cancel its own unbonding, and withdraw its rewards and
+ * commission.
  */
 
-/** Bonded validators, largest first. */
-export async function bondedValidators() {
-  const data = await getOr(
-    "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=200",
-    { validators: [] },
-  );
-  return (data.validators ?? [])
-    .map((v) => ({
-      operator: v.operator_address,
-      moniker: v.description?.moniker ?? "",
-      tokens: v.tokens ?? "0",
-    }))
-    .sort((a, b) => Number(b.tokens) - Number(a.tokens));
-}
-
-/** A delegator's delegations: { validator, amount } in uerth. */
-export async function delegations(delegator) {
-  const data = await getOr(seg`/cosmos/staking/v1beta1/delegations/${delegator}`, {
-    delegation_responses: [],
-  });
-  return (data.delegation_responses ?? []).map((d) => ({
-    validator: d.delegation.validator_address,
-    amount: d.balance.amount,
-  }));
-}
-
-/** Total uerth this delegator has bonded across all validators. */
-export async function totalDelegated(delegator) {
-  return (await delegations(delegator)).reduce((sum, d) => sum + Number(d.amount), 0);
+/** Total uerth bonded network-wide (drives the APR figure). */
+export async function totalBonded() {
+  const data = await getOr("/cosmos/staking/v1beta1/pool", null);
+  return data?.pool?.bonded_tokens ?? null;
 }
 
 /** Unbonding period in days, read from chain params (cosmos default is 21). */
@@ -47,52 +32,19 @@ export async function unbondingDays() {
   return Number.isFinite(seconds) ? Math.round(seconds / 86400) : 21;
 }
 
-/** Total uerth bonded network-wide (drives the APR figure). */
-export async function totalBonded() {
-  const data = await getOr("/cosmos/staking/v1beta1/pool", null);
-  return data?.pool?.bonded_tokens ?? "0";
-}
-
 /**
- * In-progress unbondings. Native staking releases these automatically at
- * completion_time, so this is display-only — there is nothing to claim.
+ * A delegator's delegations: { validator, amount } in uerth. For anyone but an
+ * operator this is empty by construction; it is kept for the explorer, where
+ * the shielded module account itself is the interesting delegator.
  */
-export async function unbondingDelegations(delegator) {
-  const data = await getOr(
-    seg`/cosmos/staking/v1beta1/delegators/${delegator}/unbonding_delegations`,
-    { unbonding_responses: [] },
-  );
-  return (data.unbonding_responses ?? []).flatMap((r) =>
-    (r.entries ?? []).map((e) => ({
-      validator: r.validator_address,
-      balance: e.balance,
-      completionTime: e.completion_time,
-      // The height the entry was created at. Cancelling identifies an entry by
-      // (validator, creation_height) — there is no entry id — so this must be
-      // carried through or the cancel cannot be addressed.
-      creationHeight: e.creation_height,
-    })),
-  );
-}
-
-/**
- * In-progress redelegations. Stake being moved between validators is still
- * bonded and earning, but it is locked: it cannot be redelegated again until it
- * matures, and it remains slashable for the source validator's faults.
- */
-export async function redelegations(delegator) {
-  const data = await getOr(
-    seg`/cosmos/staking/v1beta1/delegators/${delegator}/redelegations`,
-    { redelegation_responses: [] },
-  );
-  return (data.redelegation_responses ?? []).flatMap((r) =>
-    (r.entries ?? []).map((e) => ({
-      src: r.redelegation?.validator_src_address,
-      dst: r.redelegation?.validator_dst_address,
-      balance: e.balance,
-      completionTime: e.redelegation_entry?.completion_time,
-    })),
-  );
+export async function delegations(delegator) {
+  const data = await getOr(seg`/cosmos/staking/v1beta1/delegations/${delegator}`, {
+    delegation_responses: [],
+  });
+  return (data.delegation_responses ?? []).map((d) => ({
+    validator: d.delegation.validator_address,
+    amount: d.balance.amount,
+  }));
 }
 
 /** Pending uerth rewards, truncated from the chain's DecCoin representation. */
@@ -105,131 +57,174 @@ export async function totalRewards(delegator) {
   return erth ? erth.amount.split(".")[0] : "0";
 }
 
-// --- messages ---
+/** The operator address (earthvaloper…) that an account would own. */
+export function valoperOf(address) {
+  try {
+    // An explicit length limit: cosmjs's default (Infinity) is rejected by the
+    // @scure/base it is paired with here, which made every decode throw.
+    return toBech32(`${ADDRESS_PREFIX}valoper`, fromBech32(address, 90).data);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The connected account's validator, or null when it does not operate one.
+ *
+ * { operator, moniker, status, jailed, tokens, commission, selfBond,
+ *   unbonding: [{ balance, completionTime, creationHeight }], rewards,
+ *   commissionEarned } — amounts in uerth.
+ */
+export async function operatorView(address) {
+  const operator = valoperOf(address);
+  if (!operator) return null;
+  const v = await getOr(seg`/cosmos/staking/v1beta1/validators/${operator}`, null);
+  if (!v?.validator) return null;
+
+  const [del, unb, rew, com] = await Promise.all([
+    getOr(seg`/cosmos/staking/v1beta1/validators/${operator}/delegations/${address}`, null),
+    getOr(
+      seg`/cosmos/staking/v1beta1/validators/${operator}/delegations/${address}/unbonding_delegation`,
+      null,
+    ),
+    getOr(seg`/cosmos/distribution/v1beta1/delegators/${address}/rewards/${operator}`, null),
+    getOr(seg`/cosmos/distribution/v1beta1/validators/${operator}/commission`, null),
+  ]);
+
+  const erthOf = (coins) =>
+    ((coins ?? []).find((c) => c.denom === UERTH)?.amount ?? "0").split(".")[0];
+
+  return {
+    operator,
+    moniker: v.validator.description?.moniker ?? "",
+    status: v.validator.status ?? "",
+    jailed: Boolean(v.validator.jailed),
+    tokens: v.validator.tokens ?? "0",
+    commission: Number(v.validator.commission?.commission_rates?.rate ?? 0),
+    selfBond: del?.delegation_response?.balance?.amount ?? "0",
+    unbonding: (unb?.unbond?.entries ?? []).map((e) => ({
+      balance: e.balance,
+      completionTime: e.completion_time,
+      // Entries have no id: a cancel addresses one by (validator, height).
+      creationHeight: e.creation_height,
+    })),
+    rewards: erthOf(rew?.rewards),
+    commissionEarned: erthOf(com?.commission?.commission),
+  };
+}
+
+// --- messages (operator only) ---
 
 const coin = (amount) => ({ denom: UERTH, amount: String(amount) });
 
-export function msgDelegate(delegator, validator, amount) {
+function ownValidator(operatorAccount) {
+  const v = valoperOf(operatorAccount);
+  if (!v) throw new Error(`Not an ${ADDRESS_PREFIX}1… address: ${operatorAccount}`);
+  return v;
+}
+
+/** Bond more of an operator's own ERTH to its validator. */
+export function msgSelfBond(operatorAccount, amount) {
   return {
     typeUrl: "/cosmos.staking.v1beta1.MsgDelegate",
-    value: { delegatorAddress: delegator, validatorAddress: validator, amount: coin(amount) },
-  };
-}
-
-export function msgUndelegate(delegator, validator, amount) {
-  return {
-    typeUrl: "/cosmos.staking.v1beta1.MsgUndelegate",
-    value: { delegatorAddress: delegator, validatorAddress: validator, amount: coin(amount) },
-  };
-}
-
-export function msgBeginRedelegate(delegator, srcValidator, dstValidator, amount) {
-  return {
-    typeUrl: "/cosmos.staking.v1beta1.MsgBeginRedelegate",
     value: {
-      delegatorAddress: delegator,
-      validatorSrcAddress: srcValidator,
-      validatorDstAddress: dstValidator,
+      delegatorAddress: operatorAccount,
+      validatorAddress: ownValidator(operatorAccount),
       amount: coin(amount),
     },
   };
 }
 
-export function msgCancelUnbonding(delegator, validator, amount, creationHeight) {
+/** Start unbonding some of an operator's own stake. */
+export function msgSelfUnbond(operatorAccount, amount) {
+  return {
+    typeUrl: "/cosmos.staking.v1beta1.MsgUndelegate",
+    value: {
+      delegatorAddress: operatorAccount,
+      validatorAddress: ownValidator(operatorAccount),
+      amount: coin(amount),
+    },
+  };
+}
+
+/** Return an operator's in-progress unbonding entry to its validator. */
+export function msgCancelSelfUnbonding(operatorAccount, entry) {
   return {
     typeUrl: "/cosmos.staking.v1beta1.MsgCancelUnbondingDelegation",
     value: {
-      delegatorAddress: delegator,
-      validatorAddress: validator,
-      amount: coin(amount),
+      delegatorAddress: operatorAccount,
+      validatorAddress: ownValidator(operatorAccount),
+      amount: coin(entry.balance),
       // int64 on the wire; the LCD returns it as a string.
-      creationHeight: String(creationHeight),
+      creationHeight: BigInt(entry.creationHeight),
     },
   };
 }
 
-export function msgWithdrawReward(delegator, validator) {
+/** Withdraw the operator's self-bond rewards and its validator's commission. */
+export function msgsWithdrawOperatorRewards(operatorAccount) {
+  const validatorAddress = ownValidator(operatorAccount);
+  return [
+    {
+      typeUrl: "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward",
+      value: { delegatorAddress: operatorAccount, validatorAddress },
+    },
+    {
+      typeUrl: "/cosmos.distribution.v1beta1.MsgWithdrawValidatorCommission",
+      value: { validatorAddress },
+    },
+  ];
+}
+
+/** "0.1" -> LegacyDec atomics ("100000000000000000"), which the proto carries. */
+export function decAtomics(s) {
+  const m = /^(\d*)(?:\.(\d*))?$/.exec(String(s ?? "").trim());
+  if (!m || (m[1] === "" && !m[2])) throw new Error(`Not a decimal: ${s}`);
+  const frac = (m[2] ?? "").slice(0, 18).padEnd(18, "0");
+  return BigInt((m[1] || "0") + frac).toString();
+}
+
+/**
+ * Create a validator operated by the signing account. `consensusPubkey` is
+ * the node's ed25519 key in base64 — the `key` field of
+ * `earthd comet show-validator`.
+ */
+export function msgCreateValidator(operatorAccount, {
+  moniker,
+  website = "",
+  details = "",
+  consensusPubkey,
+  selfBond,
+  commissionRate,
+  commissionMaxRate,
+  commissionMaxChangeRate,
+  minSelfDelegation = "1",
+}) {
+  let key;
+  try {
+    key = fromBase64(String(consensusPubkey ?? "").trim());
+  } catch {
+    throw new Error("The consensus key must be base64.");
+  }
+  if (key.length !== 32) throw new Error("The consensus key must be a 32-byte ed25519 key.");
   return {
-    typeUrl: "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward",
-    value: { delegatorAddress: delegator, validatorAddress: validator },
+    typeUrl: "/cosmos.staking.v1beta1.MsgCreateValidator",
+    value: {
+      description: { moniker, identity: "", website, securityContact: "", details },
+      commission: {
+        rate: decAtomics(commissionRate),
+        maxRate: decAtomics(commissionMaxRate),
+        maxChangeRate: decAtomics(commissionMaxChangeRate),
+      },
+      minSelfDelegation: String(minSelfDelegation),
+      // Deprecated since SDK 0.50: the validator address is the signer.
+      delegatorAddress: "",
+      validatorAddress: ownValidator(operatorAccount),
+      pubkey: {
+        typeUrl: "/cosmos.crypto.ed25519.PubKey",
+        value: Ed25519PubKey.encode({ key }).finish(),
+      },
+      value: coin(selfBond),
+    },
   };
-}
-
-/**
- * Delegate to a specific validator.
- *
- * The validator is a required argument on purpose. This previously auto-selected
- * the largest bonded validator, which meant every stake made the biggest
- * validator bigger — a chain where one validator holds over 1/3 of stake can be
- * halted by that validator alone, and over 2/3 it can rewrite blocks. Pushing
- * that decision to the user is the whole point.
- */
-export async function msgsStake(delegator, amount, validatorOperator) {
-  if (!validatorOperator) throw new Error("Choose a validator to stake with.");
-  return [msgDelegate(delegator, validatorOperator, amount)];
-}
-
-/**
- * Undelegate `amount` uerth from a specific validator.
- *
- * Also explicit: silently draining whichever delegation happened to be largest
- * changes which validators the user backs without telling them, and each
- * undelegation starts its own 21-day unbonding clock.
- */
-export async function msgsUnstake(delegator, amount, validatorOperator) {
-  if (!validatorOperator) throw new Error("Choose which delegation to unstake from.");
-  const mine = await delegations(delegator);
-  const d = mine.find((x) => x.validator === validatorOperator);
-  if (!d) throw new Error("You have no delegation with that validator.");
-  if (Number(amount) > Number(d.amount)) {
-    throw new Error("Amount exceeds your stake with that validator.");
-  }
-  return [msgUndelegate(delegator, validatorOperator, amount)];
-}
-
-/** Withdraw rewards from every validator this address has delegated to. */
-export async function msgsClaimRewards(delegator) {
-  const mine = await delegations(delegator);
-  if (!mine.length) throw new Error("You have no delegations.");
-  return mine.map((d) => msgWithdrawReward(delegator, d.validator));
-}
-
-/**
- * Move stake from one validator to another without unbonding.
- *
- * Redelegation keeps the stake bonded and earning — no 21-day gap — which is why
- * it is the right tool for leaving a validator you have lost confidence in.
- * The chain enforces two limits worth surfacing in the UI: stake that is already
- * redelegating cannot be redelegated again until it matures (no hopping), and
- * there is a cap on concurrent redelegation entries between any validator pair.
- */
-export async function msgsRedelegate(delegator, amount, srcValidator, dstValidator) {
-  if (!srcValidator) throw new Error("Choose the validator to move stake from.");
-  if (!dstValidator) throw new Error("Choose the validator to move stake to.");
-  if (srcValidator === dstValidator) {
-    throw new Error("Source and destination validators must differ.");
-  }
-  const mine = await delegations(delegator);
-  const d = mine.find((x) => x.validator === srcValidator);
-  if (!d) throw new Error("You have no delegation with that validator.");
-  if (Number(amount) > Number(d.amount)) {
-    throw new Error("Amount exceeds your stake with that validator.");
-  }
-  return [msgBeginRedelegate(delegator, srcValidator, dstValidator, amount)];
-}
-
-/**
- * Cancel an in-progress unbonding, returning the stake to the same validator.
- *
- * The entry is addressed by (validator, creationHeight) because unbonding
- * entries have no id. Partial cancels are allowed: pass less than the entry's
- * balance and the remainder keeps unbonding on its original schedule.
- */
-export async function msgsCancelUnbonding(delegator, entry, amount) {
-  if (!entry) throw new Error("Choose an unbonding entry to cancel.");
-  const amt = amount ?? entry.balance;
-  if (Number(amt) > Number(entry.balance)) {
-    throw new Error("Amount exceeds that unbonding entry.");
-  }
-  return [msgCancelUnbonding(delegator, entry.validator, amt, entry.creationHeight)];
 }
