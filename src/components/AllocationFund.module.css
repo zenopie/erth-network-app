@@ -181,3 +181,17 @@
     max-width: 300px;
   }
 }
+
+.allocation-fund-empty {
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+.allocation-fund-note {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}

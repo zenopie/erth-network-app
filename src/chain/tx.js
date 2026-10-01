@@ -18,7 +18,6 @@ import {
 import {
   MsgSetAllocations,
   MsgClaimAllocation,
-  MsgAddAddressOption,
 } from "../proto/earth/allocation/v1/tx";
 import { MsgShield } from "../proto/earth/shielded/v1/tx";
 
@@ -48,7 +47,6 @@ export const registry = new Registry([
   // the message rather than a separate module.
   ["/earth.allocation.v1.MsgSetAllocations", MsgSetAllocations],
   ["/earth.allocation.v1.MsgClaimAllocation", MsgClaimAllocation],
-  ["/earth.allocation.v1.MsgAddAddressOption", MsgAddAddressOption],
   // Transparent ERTH -> a shielded note. Signed like any bank send; the note's
   // owner is hidden behind `pc`. See chain/shielded.js for why there is no UI
   // for it yet.

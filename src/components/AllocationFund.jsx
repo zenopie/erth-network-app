@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend } from "recharts";
 import styles from "./AllocationFund.module.css";
-import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { broadcast } from "../chain/tx";
 import * as allocation from "../chain/allocation";
@@ -71,92 +70,70 @@ const getChartDataWithUnallocated = (allocations = []) => {
 };
 
 /**
- * Shared UI for both allocation streams. `stream` selects which one — the
- * chain runs them over one engine with the same option shape, so the only
- * difference here is the value threaded into every read and message.
+ * The allocation pie for one stream, plus — on Groundworks, for a connected
+ * account — the transparent split editor.
+ *
+ * Caretaker splits are anonymous membership proofs made in the mobile app, so
+ * that stream is read-only here. Groundworks is mostly weighted by private
+ * positions (also made in the app), but a validator's own self-bond is still
+ * transparent stake and its operator can direct it with MsgSetAllocations.
+ * `options` comes from the page so the pie and the page's table agree.
  */
-const AllocationFund = ({ title, stream }) => {
+const AllocationFund = ({ title, stream, options, onChanged }) => {
   const { address, isConnected } = useWallet();
-  const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
+  const editable = stream === allocation.STREAM_GROUNDWORKS && isConnected;
+
   const [activeTab, setActiveTab] = useState("Actual");
-  const [dataActual, setDataActual] = useState([]);
-  const [allocationOptions, setAllocationOptions] = useState([]);
   const [selectedAllocations, setSelectedAllocations] = useState([]);
+  const [voterWeight, setVoterWeight] = useState("0");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [totalPercentage, setTotalPercentage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (activeTab === "Actual") {
-      fetchDataActual();
-    } else if (activeTab === "Preferred" && isConnected) {
-      fetchUserInfo();
-    }
-  }, [isConnected, activeTab, stream]);
-
-  useEffect(() => {
-    // Calculate total percentage whenever selectedAllocations changes
-    const total = selectedAllocations.reduce((acc, alloc) => acc + (parseInt(alloc.value) || 0), 0);
-    setTotalPercentage(total);
-  }, [selectedAllocations]);
-
   const labelFor = (option) => `#${option.id} ${option.description || "Unknown"}`;
+  const live = (options ?? []).filter((o) => !o.removed);
+  const allocationOptions = live.map((o) => ({ id: o.id, name: labelFor(o) }));
+  const dataActual = live
+    .map((o) => ({ id: o.id, name: labelFor(o), value: Number(o.amountAllocated) }))
+    .filter((alloc) => alloc.value > 0);
 
-  const fetchDataActual = async () => {
-    try {
-      showLoading();
-      const options = await allocation.allocationOptions(stream);
+  const totalPercentage = selectedAllocations.reduce(
+    (acc, alloc) => acc + (parseInt(alloc.value) || 0),
+    0,
+  );
 
-      setAllocationOptions(options.map((o) => ({ id: o.id, name: labelFor(o) })));
-      setDataActual(
-        options
-          .map((o) => ({ id: o.id, name: labelFor(o), value: Number(o.amountAllocated) }))
-          .filter((alloc) => alloc.value > 0),
-      );
-    } catch (error) {
-      console.error(`Error fetching actual data for ${title}:`, error);
-    } finally {
-      hideLoading();
-    }
-  };
+  useEffect(() => {
+    if (!editable) setActiveTab("Actual");
+  }, [editable]);
 
-  const fetchUserInfo = async () => {
-    if (!address) return;
-    try {
-      showLoading();
-      const weights = await allocation.voterAllocations(stream, address);
-
-      const transformedData = weights.map((w) => {
-        const nameMatch = allocationOptions.find((item) => String(item.id) === String(w.optionId));
-        return {
-          id: w.optionId,
-          name: nameMatch ? nameMatch.name : `#${w.optionId}`,
-          value: w.percent,
-        };
-      });
-
-      setSelectedAllocations(transformedData);
-    } catch (error) {
-      console.error(`Error fetching user info for ${title}:`, error);
-    } finally {
-      hideLoading();
-    }
-  };
-
-  const openTab = (tabName) => {
-    setActiveTab(tabName);
-  };
+  useEffect(() => {
+    if (activeTab !== "Split" || !editable || !address) return;
+    let cancelled = false;
+    allocation
+      .groundworksVoter(address)
+      .then(({ splits, weight }) => {
+        if (cancelled) return;
+        setVoterWeight(weight);
+        setSelectedAllocations(
+          splits.map((w) => {
+            const o = live.find((item) => item.id === w.optionId);
+            return { id: w.optionId, name: o ? labelFor(o) : `#${w.optionId}`, value: w.percent };
+          }),
+        );
+      })
+      .catch((err) => console.error(`Error fetching split for ${title}:`, err));
+    return () => {
+      cancelled = true;
+    };
+    // `live` is derived from `options`; depending on it directly would refetch
+    // on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, editable, address, options]);
 
   const addAllocation = (option) => {
-    // Check if the option is already selected
     if (!option) return;
-
-    // Check if this allocation is already in the selectedAllocations array
-    // Using strict comparison with the ID to ensure no duplicates
     const isDuplicate = selectedAllocations.some((alloc) => String(alloc.id) === String(option.id));
-
     if (!isDuplicate) {
       setSelectedAllocations([...selectedAllocations, { ...option, value: 0 }]);
     }
@@ -168,88 +145,91 @@ const AllocationFund = ({ title, stream }) => {
   };
 
   const handlePercentageChange = (id, value) => {
-    // Update the allocation percentage
-    const updatedAllocations = selectedAllocations.map((alloc) =>
-      alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc
+    setSelectedAllocations(
+      selectedAllocations.map((alloc) =>
+        alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc,
+      ),
     );
-
-    // Update the state with the new allocations
-    setSelectedAllocations(updatedAllocations);
   };
 
   const handleSetAllocation = async () => {
     if (totalPercentage !== 100) {
-      // Show modal with error via execute that throws immediately
-      await execute(async () => { throw new Error("Total allocation must equal 100%"); });
+      await execute(async () => {
+        throw new Error("Total allocation must equal 100%");
+      });
       return;
     }
-
     setIsSubmitting(true);
-
     await execute(async () => {
       const weights = selectedAllocations.map((alloc) => ({
         optionId: Number(alloc.id),
         percent: Number(alloc.value),
       }));
-
       await broadcast([allocation.msgSetAllocations(address, stream, weights)]);
-
-      // Refresh the preferred tab data
-      fetchUserInfo();
+      onChanged?.();
     });
-
     setIsSubmitting(false);
   };
 
   return (
     <div className={styles.allocationFundBox}>
       <h2>{title}</h2>
-      <div className={styles.allocationFundTab}>
-        <button className={activeTab === "Actual" ? styles.active : ""} onClick={() => openTab("Actual")}>
-          Actual Allocation
-        </button>
-        <button
-          className={activeTab === "Preferred" ? styles.active : ""}
-          onClick={() => openTab("Preferred")}
-        >
-          Preferred Allocation
-        </button>
-      </div>
+      {editable && (
+        <div className={styles.allocationFundTab}>
+          <button className={activeTab === "Actual" ? styles.active : ""} onClick={() => setActiveTab("Actual")}>
+            Actual Allocation
+          </button>
+          <button className={activeTab === "Split" ? styles.active : ""} onClick={() => setActiveTab("Split")}>
+            Validator Split
+          </button>
+        </div>
+      )}
 
       {activeTab === "Actual" && (
         <div className={styles.allocationFundChartBox}>
           <div className={styles.allocationFundCanvasContainer}>
-            <PieChart width={350} height={350}>
-              <Pie
-                data={dataActual}
-                cx="50%"
-                cy="50%"
-                outerRadius={120}
-                fill="#8884d8"
-                paddingAngle={0}
-                cornerRadius={2}
-                startAngle={90}
-                endAngle={450}
-                dataKey="value"
-                isAnimationActive={false}
-              >
-                {dataActual.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Legend
-                content={(props) => renderCustomLegend(props, dataActual)}
-                layout="horizontal"
-                align="center"
-                verticalAlign="bottom"
-              />
-            </PieChart>
+            {dataActual.length ? (
+              <PieChart width={350} height={350}>
+                <Pie
+                  data={dataActual}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={120}
+                  fill="#8884d8"
+                  paddingAngle={0}
+                  cornerRadius={2}
+                  startAngle={90}
+                  endAngle={450}
+                  dataKey="value"
+                  isAnimationActive={false}
+                >
+                  {dataActual.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend
+                  content={(props) => renderCustomLegend(props, dataActual)}
+                  layout="horizontal"
+                  align="center"
+                  verticalAlign="bottom"
+                />
+              </PieChart>
+            ) : (
+              <p className={styles.allocationFundEmpty}>
+                {options === null ? "Could not load this stream." : "No weight is allocated yet."}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {activeTab === "Preferred" && (
+      {activeTab === "Split" && editable && (
         <div className={styles.allocationFundChartBox}>
+          <p className={styles.allocationFundNote}>
+            Only transparent bonded stake counts here, which on this chain is a validator&apos;s own
+            self-bond. Your weight: {(Number(voterWeight) / 1e6).toLocaleString()} ERTH.
+            Private stakers direct Groundworks with positions in the mobile app.
+          </p>
           <div className={styles.allocationFundCanvasContainer}>
             <div style={{ position: "relative", width: 350, height: 350 }}>
               <PieChart width={350} height={350}>
@@ -267,13 +247,13 @@ const AllocationFund = ({ title, stream }) => {
                   dataKey="value"
                   isAnimationActive={false}
                 >
-                  {getChartDataWithUnallocated(selectedAllocations).map((entry, index) => {
-                    if (entry.name === "Unallocated") {
-                      return <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />;
-                    } else {
-                      return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                    }
-                  })}
+                  {getChartDataWithUnallocated(selectedAllocations).map((entry, index) =>
+                    entry.name === "Unallocated" ? (
+                      <Cell key={`cell-${index}`} fill={UNALLOCATED_COLOR} />
+                    ) : (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ),
+                  )}
                 </Pie>
               </PieChart>
               <div
@@ -315,14 +295,10 @@ const AllocationFund = ({ title, stream }) => {
             {showDropdown && (
               <select
                 onChange={(e) => {
-                  if (e.target.value) {
-                    const selectedOption = allocationOptions.find(
-                      (option) => String(option.id) === String(e.target.value)
-                    );
-                    if (selectedOption) {
-                      addAllocation(selectedOption);
-                    }
-                  }
+                  const selectedOption = allocationOptions.find(
+                    (option) => String(option.id) === String(e.target.value),
+                  );
+                  if (selectedOption) addAllocation(selectedOption);
                 }}
               >
                 <option value="">Select an option</option>
@@ -341,7 +317,7 @@ const AllocationFund = ({ title, stream }) => {
             <button
               onClick={handleSetAllocation}
               className={styles.allocationFundClaimButton}
-              disabled={isSubmitting || totalPercentage !== 100}
+              disabled={isSubmitting || totalPercentage !== 100 || voterWeight === "0"}
             >
               {isSubmitting ? "Submitting..." : "Set Allocation"}
             </button>

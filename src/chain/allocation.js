@@ -4,13 +4,17 @@ import { getOr, seg } from "./rest";
  * x/allocation — both vote-directed emission streams, over one engine.
  *
  * Every read and message names a stream. The two streams share the option
- * mechanics and share no state: option ids, totals and epochs are per stream, so
- * the human stream's option #1 (registration rewards) and the capital stream's
- * option #1 (LP rewards) are different options.
+ * mechanics and share no state: option ids, totals and epochs are per stream.
  *
- *   HUMAN   — the Public Benefit Fund. One human, one vote; requires a live
- *             proof-of-personhood registration (see ./personhood.js).
- *   GROUNDWORKS — the Groundworks Fund. Weighted by bonded stake.
+ *   CARETAKER   — one human, one vote. Splits are cast anonymously from the
+ *                 mobile app (x/personhood MsgSetCaretaker, a membership
+ *                 proof) and filed under a nullifier, not an address, so
+ *                 there is no per-voter read here; each split lapses after
+ *                 R days unless the app refreshes it.
+ *   GROUNDWORKS — weighted by stake. Most of that weight is Groundworks
+ *                 positions (locked private derth, see ./shieldedStaking.js);
+ *                 the rest is validators' own self-bond, which an operator can
+ *                 still direct transparently with MsgSetAllocations.
  */
 
 /**
@@ -37,60 +41,53 @@ function streamPath(stream) {
 }
 
 /**
- * A stream's allocation options. `kind` is INTEGRATED (resolved every block by a
- * protocol handler, e.g. volume-weighted LP rewards) or ADDRESS (accrues ERTH
- * claimable to a fixed recipient).
+ * A stream's options plus its aggregates: { options, totalWeight, epoch }, or
+ * null when the read fails. `kind` is INTEGRATED (resolved every block by a
+ * protocol handler, e.g. LP rewards) or ADDRESS (accrues ERTH claimable to a
+ * fixed recipient). Options are paged on chain (adding an ADDRESS option is
+ * permissionless), so every page is walked.
  */
+export async function streamView(stream) {
+  const options = [];
+  let totalWeight = "0";
+  let epoch = 0;
+  let key = "";
+  for (let page = 0; page < 20; page++) {
+    const q = `?pagination.limit=100${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
+    const data = await getOr(seg`/earth/allocation/v1/options/${streamPath(stream)}` + q, null);
+    if (!data) return page === 0 ? null : { options, totalWeight, epoch };
+    options.push(...(data.options ?? []).map(toOption));
+    totalWeight = data.total_weight ?? totalWeight;
+    epoch = Number(data.epoch ?? epoch);
+    key = data.pagination?.next_key ?? "";
+    if (!key) break;
+  }
+  return { options, totalWeight, epoch };
+}
+
+/** Just the options of a stream ([] when unreadable). */
 export async function allocationOptions(stream) {
-  const data = await getOr(
-    seg`/earth/allocation/v1/options/${streamPath(stream)}`,
-    { options: [] },
-  );
-  return (data.options ?? []).map(toOption);
+  return (await streamView(stream))?.options ?? [];
 }
 
 /**
- * A stream's totals: the reward index, the voting weight currently allocating,
- * and the epoch. A governance reset bumps the epoch of one stream only.
+ * An address's Groundworks split as [{ optionId, percent }] and the weight it
+ * carries (its bonded stake — on this chain, a validator's self-bond). The
+ * LCD 404s for an address that has never voted. Caretaker splits are keyed by
+ * nullifier and cannot be read this way.
  */
-export async function streamTotals(stream) {
+export async function groundworksVoter(address) {
   const data = await getOr(
-    seg`/earth/allocation/v1/options/${streamPath(stream)}`,
+    seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`,
     null,
   );
   return {
-    rewardIndex: data?.reward_index ?? "0",
-    totalWeight: data?.total_weight ?? "0",
-    epoch: Number(data?.epoch ?? 0),
+    splits: (data?.voter?.percentages ?? []).map((w) => ({
+      optionId: Number(w.option_id),
+      percent: Number(w.percent),
+    })),
+    weight: data?.voter?.weight ?? "0",
   };
-}
-
-/**
- * A voter's split in one stream as [{ optionId, percent }]. The LCD nests this
- * under `voter`, and 404s for an address that has never voted in that stream.
- */
-export async function voterAllocations(stream, address) {
-  const data = await getOr(
-    seg`/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
-    null,
-  );
-  return (data?.voter?.percentages ?? []).map((w) => ({
-    optionId: Number(w.option_id),
-    percent: Number(w.percent),
-  }));
-}
-
-/**
- * The weight backing a voter in one stream. For CAPITAL that is their bonded
- * stake in uerth; for HUMAN it is the flat per-human weight every registration
- * carries.
- */
-export async function voterWeight(stream, address) {
-  const data = await getOr(
-    seg`/earth/allocation/v1/voter/${streamPath(stream)}/${address}`,
-    null,
-  );
-  return data?.voter?.weight ?? "0";
 }
 
 // --- messages ---
@@ -99,7 +96,11 @@ export async function voterWeight(stream, address) {
  * ts-proto emits `number` for uint64, not bigint — passing BigInt breaks
  * encoding. Everything numeric here goes through Number().
  */
+// Groundworks only: the chain refuses a caretaker split from an address.
 export function msgSetAllocations(creator, stream, weights) {
+  if (Number(stream) !== STREAM_GROUNDWORKS) {
+    throw new Error("Caretaker splits are cast privately from the mobile app.");
+  }
   return {
     typeUrl: "/earth.allocation.v1.MsgSetAllocations",
     value: {
@@ -120,15 +121,6 @@ export function msgClaimAllocation(creator, stream, optionId) {
   };
 }
 
-// Caretaker only for an ordinary account: the chain requires the gov authority as
-// `submitter` on the groundworks stream, so a UI must not offer it there.
-export function msgAddAddressOption(submitter, stream, { description, recipient, claimer = "" }) {
-  return {
-    typeUrl: "/earth.allocation.v1.MsgAddAddressOption",
-    value: { submitter, stream: Number(stream), description, recipient, claimer },
-  };
-}
-
 function toOption(o) {
   return {
     id: Number(o.id),
@@ -136,6 +128,9 @@ function toOption(o) {
     description: o.description ?? "",
     kind: o.kind ?? "",
     recipient: o.recipient ?? "",
+    handler: o.handler ?? "",
+    claimer: o.claimer ?? "",
+    removed: Boolean(o.removed),
     amountAllocated: o.amount_allocated ?? "0",
     accumulated: o.accumulated ?? "0",
   };
