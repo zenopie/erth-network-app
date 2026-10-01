@@ -49,8 +49,7 @@ export const registry = new Registry([
   ["/earth.allocation.v1.MsgSetAllocations", MsgSetAllocations],
   ["/earth.allocation.v1.MsgClaimAllocation", MsgClaimAllocation],
   // Transparent ERTH -> a shielded note. Signed like any bank send; the note's
-  // owner is hidden behind `pc`. See chain/shielded.js for why there is no UI
-  // for it yet.
+  // owner is hidden behind `pc` (chain/shielded.js shieldTo, the Shield page).
   ["/earth.shielded.v1.MsgShield", MsgShield],
   // Transparent coins in, an ANML note out: the one ANML action a Keplr
   // account signs. MsgNoteSwap and MsgAddLiquidityShielded are unsigned

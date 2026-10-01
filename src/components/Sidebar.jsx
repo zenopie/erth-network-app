@@ -80,6 +80,12 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <span className="link_name">ANML</span>
             </Link>
           </li>
+          <li className={location.pathname === "/shield" ? "active" : ""}>
+            <Link to="/shield" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-lock-alt"></i>
+              <span className="link_name">Shield ERTH</span>
+            </Link>
+          </li>
           <li className={location.pathname === "/stake-erth" ? "active" : ""}>
             <Link to="/stake-erth" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-bank"></i>
