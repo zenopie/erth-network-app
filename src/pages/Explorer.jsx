@@ -71,6 +71,10 @@ const Explorer = () => {
       <Link className={styles.backLink} to="/explorer/burns">
         Burns →
       </Link>
+      &nbsp;&nbsp;
+      <Link className={styles.backLink} to="/explorer/shielded">
+        Shielded pool →
+      </Link>
 
       {error && (
         <div className={styles.card}>

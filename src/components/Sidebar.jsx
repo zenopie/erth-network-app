@@ -74,6 +74,12 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <span className="link_name">Auction</span>
             </Link>
           </li>
+          <li className={location.pathname === "/anml" ? "active" : ""}>
+            <Link to="/anml" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bxs-user-badge"></i>
+              <span className="link_name">ANML</span>
+            </Link>
+          </li>
           <li className={location.pathname === "/stake-erth" ? "active" : ""}>
             <Link to="/stake-erth" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-bank"></i>
@@ -98,6 +104,11 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <i className="bx bx-chevron-right arrow"></i>
             </div>
             <ul className="submenu-list">
+              <li className={location.pathname === "/governance" ? "active" : ""}>
+                <Link to="/governance" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Proposals
+                </Link>
+              </li>
               <li className={location.pathname === "/caretaker-fund" ? "active" : ""}>
                 <Link to="/caretaker-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   Caretaker Fund
@@ -106,6 +117,11 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <li className={location.pathname === "/groundworks-fund" ? "active" : ""}>
                 <Link to="/groundworks-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   Groundworks Fund
+                </Link>
+              </li>
+              <li className={location.pathname === "/referrers" ? "active" : ""}>
+                <Link to="/referrers" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Referrers
                 </Link>
               </li>
             </ul>

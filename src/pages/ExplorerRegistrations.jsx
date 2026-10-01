@@ -4,9 +4,10 @@ import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import styles from "./Explorer.module.css";
+import forms from "./Forms.module.css";
 import * as personhood from "../chain/personhood";
 import { useLoading } from "../contexts/LoadingContext";
-import { SearchBar } from "../components/ExplorerBits";
+import { Row, SearchBar, short } from "../components/ExplorerBits";
 
 countries.registerLocale(enLocale);
 
@@ -35,10 +36,19 @@ const shadeFor = (count, max) => {
   return `hsl(122, 45%, ${light}%)`;
 };
 
-/** Registrations: how many humans have registered, and where their passports are from. */
+const unixDate = (s) => (s ? new Date(s * 1000).toLocaleString() : "—");
+
+/**
+ * Registrations: how many humans have registered, and where their passports
+ * are from. A registration names no account — it is a passport nullifier and
+ * an identity-tree leaf — so the only lookups are by that nullifier or by the
+ * Document Signer that issued the passport.
+ */
 const ExplorerRegistrations = () => {
   const { hideLoading } = useLoading();
   const [rows, setRows] = useState([]);
+  const [tree, setTree] = useState(null);
+  const [live, setLive] = useState(null);
   const [error, setError] = useState("");
   const [searchError, setSearchError] = useState("");
   const [hover, setHover] = useState(null);
@@ -55,6 +65,8 @@ const ExplorerRegistrations = () => {
       .registrationCountries()
       .then((r) => !cancelled && setRows(r))
       .catch((err) => !cancelled && setError(err.message));
+    personhood.identityTree().then((t) => !cancelled && setTree(t));
+    personhood.registrationCount().then((c) => !cancelled && setLive(c));
     return () => {
       cancelled = true;
     };
@@ -105,7 +117,11 @@ const ExplorerRegistrations = () => {
       <div className={styles.statsRow}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Registered humans</span>
-          <span className={styles.statValue}>{total.toLocaleString()}</span>
+          <span className={styles.statValue}>{(live ?? total).toLocaleString()}</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statLabel}>Identity tree leaves</span>
+          <span className={styles.statValue}>{tree ? tree.size.toLocaleString() : "—"}</span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Countries</span>
@@ -168,6 +184,8 @@ const ExplorerRegistrations = () => {
         </div>
       </div>
 
+      <Lookups />
+
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Breakdown</h3>
         {rows.length ? (
@@ -203,6 +221,92 @@ const ExplorerRegistrations = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Look a registration up by its passport nullifier, or count a Document
+ * Signer's registrations. Both keys are public: the nullifier is the
+ * registration's dedup key, and nothing a holder does after registering is
+ * keyed by it.
+ */
+const Lookups = () => {
+  const [nf, setNf] = useState("");
+  const [reg, setReg] = useState(null);
+  const [dsc, setDsc] = useState("");
+  const [dscCount, setDscCount] = useState(null);
+  const [err, setErr] = useState("");
+
+  const findReg = async (e) => {
+    e.preventDefault();
+    setErr("");
+    setReg(null);
+    const r = await personhood.registrationByNullifier(nf);
+    if (!r) setErr("Could not look that up. A nullifier is hex.");
+    else setReg(r);
+  };
+
+  const countDsc = async (e) => {
+    e.preventDefault();
+    setErr("");
+    setDscCount(null);
+    const c = await personhood.registrationsByDsc(dsc);
+    if (c === null) setErr("Could not look that up. A signer key is hex.");
+    else setDscCount({ key: dsc.trim(), count: c });
+  };
+
+  return (
+    <div className={styles.card}>
+      <h3 className={styles.cardTitle}>Look up</h3>
+      <form className={forms.formRow} onSubmit={findReg}>
+        <input
+          className={`${forms.input} ${forms.field} ${styles.mono}`}
+          placeholder="Passport nullifier (hex)"
+          value={nf}
+          onChange={(e) => setNf(e.target.value)}
+        />
+        <button className={forms.button} type="submit">
+          Find registration
+        </button>
+      </form>
+      <form className={forms.formRow} onSubmit={countDsc}>
+        <input
+          className={`${forms.input} ${forms.field} ${styles.mono}`}
+          placeholder="Document Signer key (hex)"
+          value={dsc}
+          onChange={(e) => setDsc(e.target.value)}
+        />
+        <button className={forms.button} type="submit">
+          Count registrations
+        </button>
+      </form>
+      {err && <div className={styles.searchError}>{err}</div>}
+      {reg && !reg.registered && !reg.expired && (
+        <div className={styles.empty}>No registration with that nullifier.</div>
+      )}
+      {reg && (reg.registered || reg.expired) && (
+        <div>
+          <Row label="Status">
+            <span className={`${styles.badge} ${reg.expired ? styles.badgeFailed : styles.badgeSuccess}`}>
+              {reg.expired ? "Expired" : "Live"}
+            </span>
+          </Row>
+          <Row label="Country">{reg.country ? `${nameOf(reg.country)} (${reg.country})` : "Unknown"}</Row>
+          <Row label="Registered">{unixDate(reg.registeredAt)}</Row>
+          <Row label="Leaf activated">{unixDate(reg.activatedAt)}</Row>
+          <Row label="Leaf index">{reg.leafIndex.toLocaleString()}</Row>
+          <Row label="Document Signer">
+            <span className={styles.mono}>{short(reg.dscKey, 16, 8)}</span>
+          </Row>
+        </div>
+      )}
+      {dscCount && (
+        <Row label="Signer registrations">
+          {dscCount.count.toLocaleString()}{" "}
+          <span className={`${styles.muted} ${styles.mono}`}>{short(dscCount.key, 12, 6)}</span>
+        </Row>
+      )}
     </div>
   );
 };

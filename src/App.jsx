@@ -18,6 +18,10 @@ import ExplorerAccount from './pages/ExplorerAccount';
 import ExplorerValidators from './pages/ExplorerValidators';
 import ExplorerBurns from './pages/ExplorerBurns';
 import ExplorerRegistrations from './pages/ExplorerRegistrations';
+import ExplorerShielded from './pages/ExplorerShielded';
+import Governance from './pages/Governance';
+import Anml from './pages/Anml';
+import Referrers from './pages/Referrers';
 import './App.css';
 
 function App() {
@@ -32,7 +36,10 @@ function App() {
               {/* Both former front doors. Anyone holding an old link lands on
                   the thing the app is actually for. */}
               <Route path="/about" element={<Navigate to="/swap-tokens" replace />} />
-              <Route path="/anml-claim" element={<Navigate to="/swap-tokens" replace />} />
+              <Route path="/anml-claim" element={<Navigate to="/anml" replace />} />
+              <Route path="/anml" element={<Layout><Anml /></Layout>} />
+              <Route path="/governance" element={<Layout><Governance /></Layout>} />
+              <Route path="/referrers" element={<Layout><Referrers /></Layout>} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
               <Route path="/liquidity-auction" element={<Layout><LiquidityAuction /></Layout>} />
@@ -47,6 +54,7 @@ function App() {
               <Route path="/explorer/registrations" element={<Layout><ExplorerRegistrations /></Layout>} />
               <Route path="/explorer/validators" element={<Layout><ExplorerValidators /></Layout>} />
               <Route path="/explorer/burns" element={<Layout><ExplorerBurns /></Layout>} />
+              <Route path="/explorer/shielded" element={<Layout><ExplorerShielded /></Layout>} />
               <Route path="/explorer/block/:height" element={<Layout><ExplorerBlock /></Layout>} />
               <Route path="/explorer/tx/:hash" element={<Layout><ExplorerTx /></Layout>} />
               <Route path="/explorer/account/:address" element={<Layout><ExplorerAccount /></Layout>} />
