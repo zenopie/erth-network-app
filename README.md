@@ -5,49 +5,50 @@ token swapping, staking, liquidity management and governance over the two alloca
 
 ## Overview
 
-Earth is a transparent Cosmos SDK chain with native bank denoms (`uerth`, `uanml`, spoke
-tokens, and `dexlp/{poolId}` LP shares), native `x/staking`, and three custom modules:
+Earth is a Cosmos SDK chain with a public layer and a private one.
 
-| Module | Role |
+- **Public:** transparent ERTH, validators and their self-bond, dex pool reserves and LP
+  shares, allocations (both funds' splits), emission payouts, governance proposals, IBC.
+- **Private:** shielded ERTH, all ANML (it exists only as notes), private staking, and
+  everything a registered human does — registration, the daily ANML claim, caretaker
+  splits, assembly votes, referrer bindings. These are zero-knowledge proofs over notes and
+  an identity tree that only the wallet holds.
+
+The web app has no prover. It signs the transparent actions with Keplr and shows the
+public aggregates of the private layer — supplies, validator rates, positions, tallies —
+never a balance or "my registration", which the chain deliberately cannot answer. Every
+private action points to the Earth Wallet mobile app.
+
+| Module | What the web app does with it |
 | --- | --- |
-| `x/dex` | Spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH with one spoke token. |
-| `x/allocation` | Both vote-directed emission streams over one engine: the stake-weighted `capital` stream (the **Deflation Fund**) and the one-human-one-vote `human` stream (the **Caretaker Fund**). Ids, totals and epochs are per stream. |
-| `x/personhood` | Proof-of-personhood registration and the daily ANML claim. It gates who may vote in the `human` stream; the votes themselves live in `x/allocation`. |
-
-Because the chain is transparent, there are no contracts, SNIP-20 tokens, viewing keys or
-query permits: every balance is public and read straight off the LCD. Pages render chain
-state before a wallet is connected; connecting only determines *who you are* for signing.
+| `x/dex` | Transparent swaps and LP for every pool except ANML/ERTH, the liquidity auction. ANML trades note-to-note on the phone. |
+| `x/allocation` | Both funds' options and weights; payouts of ADDRESS options; a validator's transparent Groundworks split. |
+| `x/personhood` | Registration counts (by country, by signer, by nullifier), identity tree, caretaker voter count, referrer lookup. |
+| `x/assembly` | Human tallies on proposals, ballot exclusions, removal ballots. |
+| `x/shielded` | Note tree and per-asset turnstiles. |
+| `x/shieldedstaking` | Epoch, each validator's derth rate / supply / backing, Groundworks positions, proposal snapshots. |
+| `x/staking`, `x/gov` | Validators; operator self-bond and create-validator; proposals, deposits, a validator's stake vote. |
 
 ## Features
 
-- **Token Swapping** — single `MsgSwap` against `x/dex`; ERTH is the hub, so token→token
-  routes through it on-chain.
-- **Staking** — native `x/staking`. Staking delegates to the largest bonded validator (no
-  picker UI); unstaking draws largest-first across delegations; rewards are withdrawn from
-  every validator you have delegated to. Unbonding is display-only and auto-releases.
-- **Liquidity Management** — add/remove liquidity on `x/dex`. LP rewards **auto-compound**
-  into each pool's reserves, so there is nothing to claim. Withdrawals are escrowed for
-  `lp_unbonding_seconds` rather than paid out at once: the shares stay in the outstanding
-  supply and the pool keeps trading on the liquidity behind them, so the position keeps
-  earning fees and rewards for the whole wait and is priced at maturity. Pending withdrawals
-  are listed under the pool's Remove tab and pay out on their own — nothing is signed to
-  collect them. A pool whose protocol-owned liquidity is still being retired shows how much
-  of it is left and when the schedule ends.
-- **Liquidity Auction** (`/liquidity-auction`) — the one-shot genesis liquidity event. Half
-  the earmark is paid to bidders pro rata, half is paired with everything raised to open the
-  pool, so it opens at exactly the price the auction cleared at. The page shows the window's
-  state, what it is clearing at, and a bid or claim form; bids are additive and final.
-- **Caretaker Fund** — direct the democratic emission stream (one registered human, one vote).
-- **Deflation Fund** — direct the stake-weighted emission stream (your bonded stake is your weight).
-- **ANML Claim** — registration and the daily claim happen in the mobile app (passport ZK
-  proofs are generated on-device); this page links to it.
-- **Explorer** — blocks, transactions, accounts and validators, read straight from the LCD.
-  Search accepts a block height, a 64-character tx hash, or an `earth1…` address:
-  `/explorer`, `/explorer/validators`, `/explorer/registrations`, `/explorer/block/:height`,
-  `/explorer/tx/:hash`, `/explorer/account/:address`. The registrations view maps proof-of-
-  personhood signups by the passport's issuing country, which the chain derives from the
-  Document Signer certificate at registration time. Validator uptime is measured over the slashing window
-  (`signed_blocks_window`) — the window that actually decides jailing — rather than all time.
+- **Swap Tokens** — single `MsgSwap` against `x/dex`; ERTH is the hub. ANML is not offered.
+- **Markets** — pools, APR, add/remove liquidity (escrowed withdrawals, POL schedules).
+  The ANML/ERTH pool is mobile-only: its ANML leg is a note.
+- **ANML** (`/anml`) — supply, how much is shielded, pool price, buyback burn.
+- **Staking** — validators with private-staking rates, epoch clock, pool totals. Only a
+  validator's operator can delegate transparently, so a connected operator gets self-bond
+  bond/unbond/cancel and reward + commission withdrawal; other accounts get a
+  create-validator form. Holders stake privately from the app.
+- **Governance** (`/governance`) — proposals with the stake tally (self-bond + private
+  derth), the human tally and its bar, the human ballot's excluded country / signer, and
+  the stake snapshot. Keplr can deposit, submit a text proposal and cast an operator's vote.
+- **Caretaker Fund** — read-only: options, weights, splits counting vs registered humans.
+- **Groundworks Fund** — options, weights, every position, open removal ballots; an
+  operator's transparent split.
+- **Referrers** (`/referrers`) — is an address a live referrer, and until when.
+- **Explorer** — blocks, transactions, accounts, validators, burns, registrations (map,
+  lookup by passport nullifier, count by Document Signer, identity tree) and the shielded
+  pool (`/explorer/shielded`: note count, roots, turnstiles per asset).
 
 ## Architecture
 
@@ -55,23 +56,34 @@ All chain I/O lives in **`src/chain/`**. Nothing else builds transactions or par
 
 | File | Responsibility |
 | --- | --- |
-| `config.js` | LCD URL, chain id, denoms, Keplr chain registration. |
+| `config.js` | LCD URL, chain id, denoms, Keplr chain registration, mobile app link. |
 | `rest.js` | LCD GET helpers (`get` throws, `getOr` falls back). |
-| `tx.js` | Keplr connect, the cosmjs message registry, sign + broadcast. |
-| `bank.js` | Balances, supply, `MsgSend`. |
-| `dex.js` | Pools, swap quoting, swap/add/remove-liquidity messages, escrowed withdrawals, the liquidity auction and POL retirement schedules. |
-| `staking.js` | Delegations, rewards, unbonding, delegate/undelegate/withdraw messages. |
-| `personhood.js` | Registration status, ANML claim, registration counts by country / signer. |
-| `allocation.js` | Options, voter splits and allocation messages for both streams — every call takes a `STREAM_HUMAN` / `STREAM_CAPITAL` argument. |
-| `explorer.js` | Blocks, transaction search, validator monikers, search-term routing. |
+| `tx.js` | Keplr connect, the cosmjs message registry (signed msgs only), sign + broadcast. |
+| `bank.js` | Balances, supply. |
+| `dex.js` | Pools, swap quoting, swap/LP messages, escrowed withdrawals, auction, POL schedules, `MsgBuyAnml`. |
+| `staking.js` | Pool totals and the operator-only self-bond / create-validator messages. |
+| `shieldedStaking.js` | Epoch, per-validator rates, positions, proposal snapshots. |
+| `shielded.js` | Note tree, assets, turnstiles; `MsgShield`. |
+| `personhood.js` | Registration counts and lookups, identity tree, caretaker voters, referrers. |
+| `assembly.js` | Human tallies, ballot inputs, removal ballots. |
+| `gov.js` | Proposals, stake tally, vote/deposit/proposal messages. |
+| `allocation.js` | Options and totals for both streams (`STREAM_CARETAKER` / `STREAM_GROUNDWORKS`). |
+| `explorer.js` | Blocks, transaction search, validators, burns, search-term routing. |
+| `bytes.js` | base64/hex and `CountryField` decoding. |
 | `tokens.js` | Denom metadata and micro/macro unit conversion. |
 
 Transactions are signed with Keplr using **direct (protobuf) signing** and broadcast through
 the **LCD** rather than a Tendermint RPC endpoint, so the app only needs one host.
 
 `src/proto/` holds JS encoders generated from the chain's `.proto` files — regenerate with
-`./scripts/gen-proto.sh` whenever the chain's messages change (requires
-[`buf`](https://buf.build); no `protoc` needed).
+`./scripts/gen-proto.sh [chain-dir]` whenever the chain's messages change (requires
+[`buf`](https://buf.build); no `protoc` needed). `CHAIN_REF=HEAD` generates from the
+chain's last commit instead of its working tree.
+
+**Not wired yet (`TODO(dex-notes)` / `TODO(shielded-address)`):** shielding to an `erth1z…`
+address (`MsgShield`), buying ANML (`MsgBuyAnml`) and withdrawing from the ANML pool all
+need the recipient's note commitment, which needs the shielded-address encoding; the chain
+does not define it yet.
 
 ## Getting Started
 
@@ -119,6 +131,7 @@ connect. `VITE_EARTH_RPC` should be set for that to fully register the chain in 
 | `VITE_EARTH_LCD` | Production LCD endpoint. | `https://lcd.erth.network` |
 | `VITE_EARTH_RPC` | Tendermint RPC, used for Keplr chain registration. | *(empty)* |
 | `VITE_EARTH_CHAIN_ID` | Chain id. | `earth-1` |
+| `VITE_MOBILE_APP_URL` | Where "Get the app" links point. | `https://erth.network` |
 
 > **TODO before deploying:** point `VITE_EARTH_LCD`/`VITE_EARTH_RPC` at the real endpoints.
 
@@ -131,7 +144,9 @@ rather than an error.
 ```bash
 VITE_EARTH_LCD=https://lcd.erth.network npm run check:dex        # pools, APR inputs, auction, escrow, POL
 VITE_EARTH_LCD=http://127.0.0.1:1317     npm run check:staking   # needs a multi-validator testnet
+npm run check:staking                                             # without an LCD: operator msg builders only
 npm run check:explorer                                            # fixture-driven, no chain needed
+npm run check:privacy                                             # fixture-driven: personhood/assembly/shielded/staking/gov reads
 ```
 
 ### Building for Production
