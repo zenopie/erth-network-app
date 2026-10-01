@@ -127,11 +127,11 @@ const Anml = () => {
         </p>
       </div>
 
-      {/* TODO(dex-notes): MsgBuyAnml (dex.msgBuyAnml, registered in tx.js) —
-          transparent ERTH from a Keplr account in, an ANML note out — is the
-          one ANML action the web can sign. It needs the buyer's note
-          commitment (pc), which needs the shielded-address encoding (see
-          chain/shielded.js). Add a "Buy ANML" card here once that exists. */}
+      {/* TODO(dex-notes): MsgBuyAnml (dex.msgBuyAnml, registered in tx.js) is
+          the one ANML purchase a Keplr account could sign, but its note's
+          value is set by the swap when it runs, so the web cannot encrypt a
+          findable note for it (see msgBuyAnml in chain/dex.js). Shielding
+          ERTH (/shield) works because its value is fixed at signing. */}
     </div>
   );
 };

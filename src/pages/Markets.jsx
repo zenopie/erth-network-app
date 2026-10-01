@@ -506,9 +506,10 @@ const Markets = () => {
                        notes, unsigned, proven on the phone). Removing is a
                        signed MsgRemoveLiquidity, but the chain requires a
                        `pc` for the ANML note it pays out.
-                       TODO(dex-notes): once the shielded-address encoding
-                       exists, a Keplr account holding pool-1 LP shares could
-                       withdraw here by supplying its shielded address. */
+                       TODO(dex-notes): the ANML leg is priced at maturity,
+                       so a pc for it must be one the owner's wallet finds
+                       without a ciphertext (a self-mint pc exported by the
+                       app); see msgBuyAnml in chain/dex.js. */
                     <div className={styles.poolExpandActions}>
                       <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
                         ANML is always private, so adding to or withdrawing from this pool
