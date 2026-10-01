@@ -2,32 +2,43 @@
 // versions:
 //   protoc-gen-ts_proto  v2.12.4
 //   protoc               unknown
-// source: earth/allocation/v1/params.proto
+// source: earth/shieldedstaking/v1/params.proto
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 
-export const protobufPackage = "earth.allocation.v1";
+export const protobufPackage = "earth.shieldedstaking.v1";
 
-/** Params defines the parameters for the module. */
+/** Params defines the parameters of private staking. */
 export interface Params {
   /**
-   * address_option_fee is the ERTH (uerth) burned to add an ADDRESS allocation
-   * option to the caretaker stream, where adding one is permissionless; this fee
-   * deters spam. Groundworks entry is governance-gated and pays no fee — a
-   * proposal deposit is its brake.
+   * epoch_seconds is the length of an epoch. Delegations and undelegations
+   * queued during an epoch are executed, and rewards compounded, at its end.
    */
-  addressOptionFee: number;
+  epochSeconds: number;
+  /**
+   * min_position is the smallest derth a Groundworks position may lock. Every
+   * position is re-weighed at every epoch end, so this bounds that work.
+   */
+  minPosition: string;
+  /** max_positions caps how many positions exist at once, for the same reason. */
+  maxPositions: number;
 }
 
 function createBaseParams(): Params {
-  return { addressOptionFee: 0 };
+  return { epochSeconds: 0, minPosition: "", maxPositions: 0 };
 }
 
 export const Params: MessageFns<Params> = {
   encode(message: Params, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.addressOptionFee !== 0) {
-      writer.uint32(8).uint64(message.addressOptionFee);
+    if (message.epochSeconds !== 0) {
+      writer.uint32(8).uint64(message.epochSeconds);
+    }
+    if (message.minPosition !== "") {
+      writer.uint32(18).string(message.minPosition);
+    }
+    if (message.maxPositions !== 0) {
+      writer.uint32(24).uint64(message.maxPositions);
     }
     return writer;
   },
@@ -50,7 +61,23 @@ export const Params: MessageFns<Params> = {
               break;
             }
 
-            message.addressOptionFee = longToNumber(reader.uint64());
+            message.epochSeconds = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.minPosition = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.maxPositions = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -67,18 +94,34 @@ export const Params: MessageFns<Params> = {
 
   fromJSON(object: any): Params {
     return {
-      addressOptionFee: isSet(object.addressOptionFee)
-        ? globalThis.Number(object.addressOptionFee)
-        : isSet(object.address_option_fee)
-        ? globalThis.Number(object.address_option_fee)
+      epochSeconds: isSet(object.epochSeconds)
+        ? globalThis.Number(object.epochSeconds)
+        : isSet(object.epoch_seconds)
+        ? globalThis.Number(object.epoch_seconds)
+        : 0,
+      minPosition: isSet(object.minPosition)
+        ? globalThis.String(object.minPosition)
+        : isSet(object.min_position)
+        ? globalThis.String(object.min_position)
+        : "",
+      maxPositions: isSet(object.maxPositions)
+        ? globalThis.Number(object.maxPositions)
+        : isSet(object.max_positions)
+        ? globalThis.Number(object.max_positions)
         : 0,
     };
   },
 
   toJSON(message: Params): unknown {
     const obj: any = {};
-    if (message.addressOptionFee !== 0) {
-      obj.addressOptionFee = Math.round(message.addressOptionFee);
+    if (message.epochSeconds !== 0) {
+      obj.epochSeconds = Math.round(message.epochSeconds);
+    }
+    if (message.minPosition !== "") {
+      obj.minPosition = message.minPosition;
+    }
+    if (message.maxPositions !== 0) {
+      obj.maxPositions = Math.round(message.maxPositions);
     }
     return obj;
   },
@@ -88,7 +131,9 @@ export const Params: MessageFns<Params> = {
   },
   fromPartial<I extends Exact<DeepPartial<Params>, I>>(object: I): Params {
     const message = createBaseParams();
-    message.addressOptionFee = object.addressOptionFee ?? 0;
+    message.epochSeconds = object.epochSeconds ?? 0;
+    message.minPosition = object.minPosition ?? "";
+    message.maxPositions = object.maxPositions ?? 0;
     return message;
   },
 };

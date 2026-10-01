@@ -20,12 +20,19 @@ import {
   MsgClaimAllocation,
   MsgAddAddressOption,
 } from "../proto/earth/allocation/v1/tx";
-import { MsgClaimAnml } from "../proto/earth/personhood/v1/tx";
+import { MsgShield } from "../proto/earth/shielded/v1/tx";
 
 /**
  * Message registry: the stock cosmos types (bank, staking, distribution, gov)
  * plus earth's own module messages, generated from the chain's protos by
  * ./scripts/gen-proto.sh.
+ *
+ * Only messages a Keplr account signs belong here. The private messages
+ * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindReferrer,
+ * x/assembly votes, x/shielded MsgTransfer, everything in x/shieldedstaking)
+ * carry no signer at all: they are authorised by a zero-knowledge proof and
+ * built by the mobile app, which is the only client that proves. The web app
+ * never constructs them.
  */
 export const registry = new Registry([
   ...defaultRegistryTypes,
@@ -42,7 +49,14 @@ export const registry = new Registry([
   ["/earth.allocation.v1.MsgSetAllocations", MsgSetAllocations],
   ["/earth.allocation.v1.MsgClaimAllocation", MsgClaimAllocation],
   ["/earth.allocation.v1.MsgAddAddressOption", MsgAddAddressOption],
-  ["/earth.personhood.v1.MsgClaimAnml", MsgClaimAnml],
+  // Transparent ERTH -> a shielded note. Signed like any bank send; the note's
+  // owner is hidden behind `pc`. See chain/shielded.js for why there is no UI
+  // for it yet.
+  ["/earth.shielded.v1.MsgShield", MsgShield],
+  // TODO(dex-notes, Phase 5): register /earth.dex.v1.MsgBuyAnml once the
+  // chain's x/dex note paths land and the protos are regenerated. It is a
+  // signed transparent-ERTH -> ANML-note purchase, so it belongs here; the
+  // note-to-note MsgNoteSwap is unsigned and does not.
 ]);
 
 // Generous default; the heaviest of these messages (a multi-hop swap) simulated

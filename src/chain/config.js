@@ -1,9 +1,11 @@
 // Earth chain connection settings.
 //
-// Earth is a sovereign Cosmos SDK chain: native bank denoms, native x/staking,
-// and the custom x/dex, x/allocation and x/personhood modules. There are no
-// contracts, no SNIP-20 tokens, no viewing keys and no query permits — every
-// balance is public and read straight off the LCD.
+// Earth is a sovereign Cosmos SDK chain with a public layer and a private one.
+// Transparent ERTH, validators and their self-bond, pool reserves, LP shares
+// and allocations are public and read straight off the LCD. Shielded ERTH, all
+// ANML, private staking and everything a registered human does are notes and
+// zero-knowledge proofs, which only the mobile app can make: the web app shows
+// their public aggregates (supplies, rates, tallies) and never a balance.
 
 const isDev = import.meta.env.DEV;
 
@@ -33,7 +35,9 @@ export const EARTH_RPC_URL = isDev
 
 export const ADDRESS_PREFIX = "earth";
 
-// ERTH is the staking/hub coin; ANML is the proof-of-personhood coin.
+// ERTH is the staking/hub coin; ANML is the proof-of-personhood coin. ANML
+// exists only shielded (a bank send restriction keeps it out of accounts), so
+// no Keplr account ever holds it and it is not offered to Keplr below.
 export const UERTH = "uerth";
 export const UANML = "uanml";
 
@@ -42,6 +46,14 @@ export const lpDenom = (poolId) => `dexlp/${poolId}`;
 
 // Gas price paid in ERTH. Earth has no separate fee token.
 export const GAS_PRICE = `0.025${UERTH}`;
+
+/**
+ * Where the private actions live. Registration, ANML claims, caretaker splits,
+ * assembly votes, private staking and stake votes, Groundworks positions and
+ * private sends/swaps all need an on-device proof. Override per deployment
+ * with VITE_MOBILE_APP_URL.
+ */
+export const MOBILE_APP_URL = import.meta.env.VITE_MOBILE_APP_URL ?? "https://erth.network";
 
 /**
  * Keplr chain registration. Earth is not in Keplr's built-in registry, so the
@@ -63,7 +75,6 @@ export const earthChainInfo = {
   },
   currencies: [
     { coinDenom: "ERTH", coinMinimalDenom: UERTH, coinDecimals: 6 },
-    { coinDenom: "ANML", coinMinimalDenom: UANML, coinDecimals: 6 },
   ],
   feeCurrencies: [
     {
