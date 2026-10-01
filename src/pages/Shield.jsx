@@ -180,12 +180,11 @@ const Shield = () => {
       </div>
 
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>Buying ANML and leaving the ANML pool</h3>
+        <h3 className={styles.cardTitle}>Also paid to a shielded address</h3>
         <p className={forms.note}>
-          These pay out a note whose amount the chain decides when the transaction runs (a swap
-          price, a withdrawal priced when it matures), and a note&apos;s encryption is bound to its
-          exact amount. A note sent from here to someone else&apos;s address could therefore not be
-          found by their app, so both stay in the Earth Wallet app for now.
+          <Link className={styles.link} to="/anml">Buy ANML</Link> with ERTH, and withdraw from the
+          ANML pool on <Link className={styles.link} to="/markets">Markets</Link>: the ANML arrives as
+          a note at an <code>erthz1…</code> address the same way.
         </p>
       </div>
     </div>

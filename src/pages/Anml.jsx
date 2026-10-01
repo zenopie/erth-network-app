@@ -11,6 +11,7 @@ import { UANML, UERTH } from "../chain/config";
 import { toMacro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import MobileCta from "../components/MobileCta";
+import BuyAnml from "../components/BuyAnml";
 import Amount from "../components/Amount";
 import useErthPrice from "../hooks/useErthPrice";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
@@ -24,8 +25,9 @@ const fmt = (micro, denom) => toMacro(micro ?? 0, denom).toLocaleString(undefine
  * Every registered human can claim 1 ANML a day. ANML exists only as shielded
  * notes — a bank send restriction keeps it out of every account but the
  * personhood, shielded, dex and burn modules — so there is no balance to show
- * and no transparent swap: claiming, sending, buying and selling it all happen
- * in the mobile app. What is public is its supply, how much of it sits in the
+ * and no transparent swap: claiming, sending and selling it happen in the
+ * mobile app. Keplr can buy it (MsgBuyAnml), paying ERTH for a note minted to
+ * a shielded address. What is public is its supply, how much of it sits in the
  * pool, its price on the ERTH pool, and how much the buyback has burned.
  */
 const Anml = () => {
@@ -127,11 +129,7 @@ const Anml = () => {
         </p>
       </div>
 
-      {/* TODO(dex-notes): MsgBuyAnml (dex.msgBuyAnml, registered in tx.js) is
-          the one ANML purchase a Keplr account could sign, but its note's
-          value is set by the swap when it runs, so the web cannot encrypt a
-          findable note for it (see msgBuyAnml in chain/dex.js). Shielding
-          ERTH (/shield) works because its value is fixed at signing. */}
+      <BuyAnml />
     </div>
   );
 };

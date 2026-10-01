@@ -15,6 +15,8 @@ import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice, formatApr, formatDuration } from "../utils/formatUtils";
 import Amount from "../components/Amount";
 import MobileCta from "../components/MobileCta";
+import ShieldedAddressInput from "../components/ShieldedAddressInput";
+import { decodeShieldedAddress } from "../chain/shieldedAddress";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
@@ -54,6 +56,8 @@ const Markets = () => {
   const [erthAmount, setErthAmount] = useState("");
   const [tokenBAmount, setTokenBAmount] = useState("");
   const [removeAmount, setRemoveAmount] = useState("");
+  // ANML pool: the shielded address its ANML leg is paid to.
+  const [anmlRecipient, setAnmlRecipient] = useState("");
   const { currency } = useDisplayCurrency();
   // In ERTH mode every value is already ERTH-denominated, so the rate is 1 and
   // nothing depends on the price feed. USD mode multiplies by the fetched price
@@ -318,6 +322,33 @@ const Markets = () => {
     });
   };
 
+  // The ANML pool pays its ANML leg as a note to a shielded address, priced
+  // when the escrow matures (value-blind ciphertext), and the ERTH leg to
+  // this account.
+  const handleRemoveAnmlLiquidity = (row) => {
+    if (!isConnected) return;
+    execute(async () => {
+      await broadcast([
+        dex.removeLiquidityToShielded(
+          address,
+          row.pool.id,
+          toMicro(removeAmount, row.pool.lpDenom),
+          anmlRecipient,
+        ),
+      ]);
+      setRemoveAmount("");
+      refreshParent();
+    });
+  };
+
+  let anmlRecipientOk = false;
+  try {
+    decodeShieldedAddress(anmlRecipient);
+    anmlRecipientOk = true;
+  } catch {
+    /* shown by the input */
+  }
+
   const erthBalance = toMacro(walletBalances[UERTH] ?? 0, UERTH);
 
   return (
@@ -499,23 +530,88 @@ const Markets = () => {
                   </div>
 
                   {row.pool.tokenDenom === UANML ? (
-                    /* ANML exists only as notes, so its leg of a deposit is a
-                       transfer proof and a withdrawal pays it out as a note:
-                       neither can be signed from Keplr.
-                       Adding is MsgAddLiquidityShielded (both legs from
-                       notes, unsigned, proven on the phone). Removing is a
-                       signed MsgRemoveLiquidity, but the chain requires a
-                       `pc` for the ANML note it pays out.
-                       TODO(dex-notes): the ANML leg is priced at maturity,
-                       so a pc for it must be one the owner's wallet finds
-                       without a ciphertext (a self-mint pc exported by the
-                       app); see msgBuyAnml in chain/dex.js. */
+                    /* ANML exists only as notes. Adding is
+                       MsgAddLiquidityShielded (both legs from notes, proven
+                       on the phone). Withdrawing is a signed
+                       MsgRemoveLiquidity whose ANML leg is minted as a note
+                       to a shielded address (pc + value-blind ciphertext),
+                       so a Keplr account holding these LP shares can leave
+                       here. */
                     <div className={styles.poolExpandActions}>
                       <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
-                        ANML is always private, so adding to or withdrawing from this pool
-                        is done from your shielded balance on your phone. LP shares
-                        themselves are public.
+                        ANML is always private, so adding to this pool is done from your
+                        shielded balance on your phone. LP shares themselves are public.
                       </MobileCta>
+                      {row.userShares > 0 && (
+                        <div className={styles.lpContent}>
+                          <p className={styles.lpNote}>
+                            Withdraw: the ERTH comes back to this account; the ANML is paid as a
+                            private note to a shielded address from the Earth Wallet app
+                            (Receive → <code>erthz1…</code>). ANML cannot be held in Keplr.
+                          </p>
+                          <ShieldedAddressInput value={anmlRecipient} onChange={setAnmlRecipient} />
+                          <div className={styles.lpInputGroup}>
+                            <div className={styles.lpInputHeader}>
+                              <label>Shares</label>
+                              <span className={styles.lpBalance}>
+                                Bal: {row.userShares.toLocaleString()}{" "}
+                                <button
+                                  className={styles.lpMaxBtn}
+                                  onClick={() => setRemoveAmount(String(row.userShares))}
+                                >
+                                  Max
+                                </button>
+                              </span>
+                            </div>
+                            <div className={styles.lpInputWrapper}>
+                              <div className={styles.lpInputInner} style={{ paddingLeft: 16 }}>
+                                <input
+                                  type="number"
+                                  placeholder="0.0"
+                                  value={removeAmount}
+                                  onChange={(e) => setRemoveAmount(e.target.value)}
+                                  className={styles.lpInput}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            className={styles.lpActionBtn}
+                            onClick={() => handleRemoveAnmlLiquidity(row)}
+                            disabled={
+                              !isConnected ||
+                              !anmlRecipientOk ||
+                              !parseFloat(removeAmount) ||
+                              parseFloat(removeAmount) > row.userShares
+                            }
+                          >
+                            Remove Liquidity
+                          </button>
+                          <p className={styles.lpNote}>
+                            {unbondSeconds > 0
+                              ? `Escrowed for ${formatDuration(unbondSeconds)} — the position keeps earning until it matures, then pays out on its own: ERTH here, ANML to the note.`
+                              : "Paid out immediately: ERTH here, ANML to the note."}{" "}
+                            One ANML-pool withdrawal per block.
+                          </p>
+                          {row.pending.length > 0 && (
+                            <div className={styles.lpUnbondList}>
+                              <span className={styles.lpUnbondLabel}>
+                                Pending withdrawals ({row.pendingShares.toLocaleString()} shares)
+                              </span>
+                              {row.pending.map((u, i) => (
+                                <div key={i} className={styles.lpUnbondItem}>
+                                  <span>{toMacro(u.shares, row.pool.lpDenom).toLocaleString()} shares</span>
+                                  <span className={styles.lpUnbondLabel}>
+                                    {u.completionTime * 1000 <= Date.now()
+                                      ? "Maturing now"
+                                      : new Date(u.completionTime * 1000).toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                   <div className={styles.poolExpandActions}>

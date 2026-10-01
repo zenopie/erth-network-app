@@ -21,7 +21,7 @@ private action points to the Earth Wallet mobile app.
 
 | Module | What the web app does with it |
 | --- | --- |
-| `x/dex` | Transparent swaps and LP for every pool except ANML/ERTH, the liquidity auction. ANML trades note-to-note on the phone. |
+| `x/dex` | Transparent swaps and LP, the liquidity auction; ERTH → ANML (`MsgBuyAnml`) and ANML-pool withdrawals paid as notes to a shielded address. Selling ANML and adding to its pool are proofs on the phone. |
 | `x/allocation` | Both funds' options and weights; payouts of ADDRESS options; a validator's transparent Groundworks split. |
 | `x/personhood` | Registration counts (by country, by signer, by nullifier), identity tree, caretaker voter count, referrer lookup. |
 | `x/assembly` | Human tallies on proposals, ballot exclusions, removal ballots. |
@@ -31,13 +31,15 @@ private action points to the Earth Wallet mobile app.
 
 ## Features
 
-- **Swap Tokens** — single `MsgSwap` against `x/dex`; ERTH is the hub. ANML is not offered.
+- **Swap Tokens** — single `MsgSwap` against `x/dex`; ERTH is the hub. ANML is bought on the ANML page.
 - **Markets** — pools, APR, add/remove liquidity (escrowed withdrawals, POL schedules).
-  The ANML/ERTH pool is mobile-only: its ANML leg is a note.
+  Adding to the ANML/ERTH pool is mobile-only (its ANML leg is a note); a Keplr LP holder can
+  withdraw, with the ANML leg paid as a note to an `erthz1…` address.
 - **Shield ERTH** (`/shield`) — `MsgShield` from Keplr to a pasted or scanned `erthz1…`
   shielded address (from the Earth Wallet app's Receive screen); the note is encrypted to
   it so the app finds it on its next sync. The amount is public, the recipient is not.
-- **ANML** (`/anml`) — supply, how much is shielded, pool price, buyback burn.
+- **ANML** (`/anml`) — Buy ANML with ERTH (`MsgBuyAnml`, the note to an `erthz1…` address,
+  minimum out from the chain's exact AMM maths less a slippage tolerance); supply, how much is shielded, pool price, buyback burn.
 - **Staking** — validators with private-staking rates, epoch clock, pool totals. Only a
   validator's operator can delegate transparently, so a connected operator gets self-bond
   bond/unbond/cancel and reward + commission withdrawal; other accounts get a
@@ -63,13 +65,13 @@ All chain I/O lives in **`src/chain/`**. Nothing else builds transactions or par
 | `rest.js` | LCD GET helpers (`get` throws, `getOr` falls back). |
 | `tx.js` | Keplr connect, the cosmjs message registry (signed msgs only), sign + broadcast. |
 | `bank.js` | Balances, supply. |
-| `dex.js` | Pools, swap quoting (and the chain's exact integer AMM maths), swap/LP messages, escrowed withdrawals, auction, POL schedules, `MsgBuyAnml`. |
+| `dex.js` | Pools, swap quoting (and the chain's exact integer AMM maths), swap/LP messages, escrowed withdrawals, auction, POL schedules, `buyAnmlTo` / `removeLiquidityToShielded`. |
 | `staking.js` | Pool totals and the operator-only self-bond / create-validator messages. |
 | `shieldedStaking.js` | Epoch, per-validator rates, positions, proposal snapshots. |
 | `shielded.js` | Note tree, assets, turnstiles; `MsgShield` / `shieldTo` (shield to an `erthz1…` address). |
 | `poseidon2.js`, `privacy.js` | Poseidon2 (BN254, the chain's `zk/poseidon2`), asset ids, `pc`, `cm` (`zk/privacy`). |
 | `shieldedAddress.js` | The `erthz1…` shielded address (bech32m, 116 chars): decode / validate / encode. |
-| `noteCipher.js` | Note ciphertext encryption to a shielded address (sender side only); `notePayment`. |
+| `noteCipher.js` | Note ciphertext encryption to a shielded address, v1 (fixed value) and v2 (value-blind), sender side only. |
 | `personhood.js` | Registration counts and lookups, identity tree, caretaker voters, referrers. |
 | `assembly.js` | Human tallies, ballot inputs, removal ballots. |
 | `gov.js` | Proposals, stake tally, vote/deposit/proposal messages. |
@@ -90,11 +92,10 @@ The note formats (`erthz1…` address, note ciphertext, Poseidon2 derivations) a
 chain's (`zk/privacy`) and must match it and the Earth Wallet app byte for byte;
 `npm run check:privacy` pins them with golden vectors from both.
 
-**Not wired yet (`TODO(dex-notes)`):** buying ANML (`MsgBuyAnml`) and withdrawing from the
-ANML pool. Both mint a note whose value the chain decides when it runs, while a note
-ciphertext is bound to the exact value, so the web cannot make one the recipient's wallet
-will find. They need the app to export a one-time self-mint `pc` (or, for buying, an
-exact-amount `MsgBuyAnml` on chain); see `msgBuyAnml` in `src/chain/dex.js`.
+Notes of a fixed value (`MsgShield`) carry the v1 ciphertext (217 bytes, bound to the
+note's cm). Notes whose value the chain decides (`MsgBuyAnml`'s output, the ANML pool's
+withdrawal payout) carry the value-blind v2 ciphertext (177 bytes: rho, rcm, memo); the
+recipient's wallet completes cm from the amount the chain publishes for that note.
 
 ## Getting Started
 
