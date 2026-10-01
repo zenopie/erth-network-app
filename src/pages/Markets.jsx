@@ -4,7 +4,7 @@ import * as dex from "../chain/dex";
 import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
-import { UERTH } from "../chain/config";
+import { UANML, UERTH } from "../chain/config";
 import { symbolOf, toMacro, toMicro } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
@@ -14,6 +14,7 @@ import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
 import { formatPrice, formatApr, formatDuration } from "../utils/formatUtils";
 import Amount from "../components/Amount";
+import MobileCta from "../components/MobileCta";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
@@ -497,6 +498,23 @@ const Markets = () => {
                     )}
                   </div>
 
+                  {row.pool.tokenDenom === UANML ? (
+                    /* ANML exists only as notes, so its leg of a deposit is a
+                       transfer proof and a withdrawal pays it out as a note:
+                       neither can be signed from Keplr.
+                       TODO(dex-notes, Phase 5): when x/dex's shielded LP paths
+                       land, a Keplr account could still supply the ERTH leg
+                       transparently — but the ANML leg and the withdrawal's
+                       note commitment stay on the phone, so this pool stays
+                       mobile-only unless the web gains a prover. */
+                    <div className={styles.poolExpandActions}>
+                      <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
+                        ANML is always private, so adding to or withdrawing from this pool
+                        is done from your shielded balance on your phone. LP shares
+                        themselves are public.
+                      </MobileCta>
+                    </div>
+                  ) : (
                   <div className={styles.poolExpandActions}>
                     <div className={styles.lpTabs}>
                       {["Add", "Remove"].map((t) => (
@@ -667,6 +685,7 @@ const Markets = () => {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
             )}

@@ -18,6 +18,7 @@ import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import useErthPrice from "../hooks/useErthPrice";
 import StatusModal from "../components/StatusModal";
+import MobileCta from "../components/MobileCta";
 import Amount from "../components/Amount";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 import styles from "./SwapTokens.module.css";
@@ -29,14 +30,23 @@ import styles from "./SwapTokens.module.css";
  * the Secret build had to wrap SCRT into sSCRT and route swaps through SNIP-20
  * send-hooks, whereas on earth a swap is a single MsgSwap over bank denoms.
  * ERTH is also the AMM hub, so a token->token swap routes through it on-chain.
+ *
+ * ANML is not offered. It exists only as shielded notes, so no Keplr account
+ * holds any and the chain refuses ANML on MsgSwap's user leg; buying and
+ * selling it are note swaps proven on the phone.
+ *
+ * TODO(dex-notes, Phase 5): once x/dex's MsgBuyAnml lands, ERTH -> ANML can be
+ * offered here as a signed tx (transparent ERTH in, ANML note out). It needs
+ * the buyer's note commitment, so it is blocked on the shielded-address
+ * encoding as well (see chain/shielded.js).
  */
 const SwapTokens = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
   const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
 
-  const [fromDenom, setFromDenom] = useState(UANML);
-  const [toDenom, setToDenom] = useState(UERTH);
+  const [fromDenom, setFromDenom] = useState(UERTH);
+  const [toDenom, setToDenom] = useState("");
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   // The quote behind toAmount, in whole base units. The swap's floor is taken
@@ -60,8 +70,9 @@ const SwapTokens = () => {
   const [toValue, setToValue] = useState(null);
   const [priceImpact, setPriceImpact] = useState(null);
 
-  // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool.
-  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom)];
+  // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool,
+  // except ANML, which only trades note-to-note.
+  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom).filter((d) => d !== UANML)];
 
   const fromBalance = toMacro(walletBalances[fromDenom] ?? 0, fromDenom);
   const toBalance = toMacro(walletBalances[toDenom] ?? 0, toDenom);
@@ -71,7 +82,11 @@ const SwapTokens = () => {
     (async () => {
       showLoading();
       try {
-        setPools(await dex.pools());
+        const ps = await dex.pools();
+        setPools(ps);
+        // Default the output to the first transparent spoke, if there is one.
+        const first = ps.find((p) => p.tokenDenom !== UANML);
+        setToDenom((cur) => cur || (first?.tokenDenom ?? ""));
       } finally {
         hideLoading();
       }
@@ -230,6 +245,11 @@ const SwapTokens = () => {
         <h2 className={styles.title}>Swap Tokens</h2>
       </div>
 
+      <MobileCta title="Trading ANML or swapping privately?">
+        ANML is always private, so it trades from your shielded balance in the Earth Wallet app.
+        Swaps here are transparent, from your Keplr account.
+      </MobileCta>
+
       <div className={styles.swapSection}>
         {/* FROM */}
         <div className={styles.inputGroup}>
@@ -294,6 +314,7 @@ const SwapTokens = () => {
               className={styles.inputLogo}
             />
             <select className={styles.tokenSelect} value={toDenom} onChange={handleToDenomChange}>
+              {!toDenom && <option value="">—</option>}
               {denomOptions.map((d) => (
                 <option key={d} value={d}>
                   {symbolOf(d)}
@@ -320,7 +341,7 @@ const SwapTokens = () => {
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!isConnected || !fromAmount || parseFloat(fromAmount) <= 0 || minOut === "0"}
+        disabled={!isConnected || !toDenom || !fromAmount || parseFloat(fromAmount) <= 0 || minOut === "0"}
       >
         {isConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
