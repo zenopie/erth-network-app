@@ -35,10 +35,10 @@ import styles from "./SwapTokens.module.css";
  * holds any and the chain refuses ANML on MsgSwap's user leg; buying and
  * selling it are note swaps proven on the phone.
  *
- * TODO(dex-notes, Phase 5): once x/dex's MsgBuyAnml lands, ERTH -> ANML can be
- * offered here as a signed tx (transparent ERTH in, ANML note out). It needs
- * the buyer's note commitment, so it is blocked on the shielded-address
- * encoding as well (see chain/shielded.js).
+ * TODO(dex-notes): ERTH -> ANML can be offered here as MsgBuyAnml
+ * (dex.msgBuyAnml: transparent coins in, ANML note out). It needs the buyer's
+ * note commitment, so it waits on the shielded-address encoding (see
+ * chain/shielded.js).
  */
 const SwapTokens = () => {
   const { address, isConnected } = useWallet();

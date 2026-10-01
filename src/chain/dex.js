@@ -246,6 +246,11 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
   };
 }
 
+/**
+ * Transparent pools only. Withdrawing from the ANML pool pays the ANML leg as
+ * a note, so the chain requires `pc` there (and refuses it elsewhere); that
+ * needs a shielded address — TODO(dex-notes), see msgBuyAnml.
+ */
 export function msgRemoveLiquidity(creator, poolId, shares) {
   return {
     typeUrl: "/earth.dex.v1.MsgRemoveLiquidity",
@@ -253,6 +258,30 @@ export function msgRemoveLiquidity(creator, poolId, shares) {
       creator,
       poolId: Number(poolId),
       shares: { denom: lpDenom(poolId), amount: String(shares) },
+    },
+  };
+}
+
+/**
+ * MsgBuyAnml: `amountIn` of `denomIn` (ERTH, or any token with a pool, routed
+ * through ERTH) from `creator`, swapped for ANML that is minted as a note to
+ * `pc`. ANML never sits in an account, so this is how an ERTH holder buys it.
+ *
+ * TODO(dex-notes): no page offers this yet. `pc` is the buyer's note
+ * commitment H(TAG_PC, owner_pk, rho, rcm) and `ciphertext` the note
+ * encrypted to them, both derived from a shielded address — and the erth1z…
+ * address encoding is not defined on chain yet (see chain/shielded.js). Wire
+ * a "Buy ANML" form on the ANML page once it is.
+ */
+export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext = new Uint8Array(0)) {
+  return {
+    typeUrl: "/earth.dex.v1.MsgBuyAnml",
+    value: {
+      creator,
+      tokenIn: { denom: denomIn, amount: String(amountIn) },
+      minAmountOut: String(minAmountOut),
+      pc,
+      ciphertext,
     },
   };
 }

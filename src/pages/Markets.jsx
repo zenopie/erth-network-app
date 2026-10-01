@@ -502,11 +502,13 @@ const Markets = () => {
                     /* ANML exists only as notes, so its leg of a deposit is a
                        transfer proof and a withdrawal pays it out as a note:
                        neither can be signed from Keplr.
-                       TODO(dex-notes, Phase 5): when x/dex's shielded LP paths
-                       land, a Keplr account could still supply the ERTH leg
-                       transparently — but the ANML leg and the withdrawal's
-                       note commitment stay on the phone, so this pool stays
-                       mobile-only unless the web gains a prover. */
+                       Adding is MsgAddLiquidityShielded (both legs from
+                       notes, unsigned, proven on the phone). Removing is a
+                       signed MsgRemoveLiquidity, but the chain requires a
+                       `pc` for the ANML note it pays out.
+                       TODO(dex-notes): once the shielded-address encoding
+                       exists, a Keplr account holding pool-1 LP shares could
+                       withdraw here by supplying its shielded address. */
                     <div className={styles.poolExpandActions}>
                       <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
                         ANML is always private, so adding to or withdrawing from this pool

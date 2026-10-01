@@ -37,10 +37,23 @@ export interface LpUnbonding {
    * this entry out.
    */
   completionTime: number;
+  /**
+   * pc receives the token leg as a shielded note, for a pool whose token is
+   * shielded-only (ANML); empty otherwise. See MsgRemoveLiquidity.
+   */
+  pc: Uint8Array;
+  ciphertext: Uint8Array;
 }
 
 function createBaseLpUnbonding(): LpUnbonding {
-  return { address: "", poolId: 0, shares: undefined, completionTime: 0 };
+  return {
+    address: "",
+    poolId: 0,
+    shares: undefined,
+    completionTime: 0,
+    pc: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+  };
 }
 
 export const LpUnbonding: MessageFns<LpUnbonding> = {
@@ -56,6 +69,12 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     }
     if (message.completionTime !== 0) {
       writer.uint32(32).int64(message.completionTime);
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(42).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(50).bytes(message.ciphertext);
     }
     return writer;
   },
@@ -105,6 +124,22 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
             message.completionTime = longToNumber(reader.int64());
             continue;
           }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -131,6 +166,8 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
         : isSet(object.completion_time)
         ? globalThis.Number(object.completion_time)
         : 0,
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
     };
   },
 
@@ -148,6 +185,12 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     if (message.completionTime !== 0) {
       obj.completionTime = Math.round(message.completionTime);
     }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
     return obj;
   },
 
@@ -162,9 +205,36 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
       ? Coin.fromPartial(object.shares)
       : undefined;
     message.completionTime = object.completionTime ?? 0;
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     return message;
   },
 };
+
+function bytesFromBase64(b64: string): Uint8Array {
+  if ((globalThis as any).Buffer) {
+    return Uint8Array.from((globalThis as any).Buffer.from(b64, "base64"));
+  } else {
+    const bin = globalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
+  }
+}
+
+function base64FromBytes(arr: Uint8Array): string {
+  if ((globalThis as any).Buffer) {
+    return (globalThis as any).Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(globalThis.String.fromCharCode(byte));
+    });
+    return globalThis.btoa(bin.join(""));
+  }
+}
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 

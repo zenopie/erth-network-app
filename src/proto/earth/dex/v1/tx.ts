@@ -7,6 +7,7 @@
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { Coin } from "../../../cosmos/base/v1beta1/coin";
+import { Transfer } from "../../shielded/v1/shielded";
 import { Params } from "./params";
 
 export const protobufPackage = "earth.dex.v1";
@@ -73,7 +74,17 @@ export interface MsgRemoveLiquidity {
   creator: string;
   poolId: number;
   /** shares is the amount of LP shares to burn. */
-  shares: Coin | undefined;
+  shares:
+    | Coin
+    | undefined;
+  /**
+   * pc receives the token leg as a shielded note, for a pool whose token is
+   * shielded-only (ANML): required there, refused anywhere else. The ERTH leg
+   * is paid to creator as usual. 32 bytes, zk/privacy.PC.
+   */
+  pc: Uint8Array;
+  /** ciphertext is the token note encrypted to its owner (optional). */
+  ciphertext: Uint8Array;
 }
 
 /**
@@ -158,6 +169,99 @@ export interface MsgClaimLiquidityAuction {
 /** MsgClaimLiquidityAuctionResponse is the response type. */
 export interface MsgClaimLiquidityAuctionResponse {
   amount: Coin | undefined;
+}
+
+/**
+ * MsgNoteSwap spends transfer.value_out of transfer.denom_out (the asset in,
+ * public) into the dex, swaps it for denom_out through the ERTH hub (one or
+ * two hops, any pools), and mints the output to pc as a note. It has NO
+ * signer: authorization is the transfer proof, replay protection its
+ * nullifiers (see x/shielded/ante).
+ *
+ * The swap runs in the private ante, atomically with the spend: if the
+ * output would fall below min_amount_out the whole tx fails and nothing is
+ * spent. Only the amounts and the pools are visible.
+ *
+ * fee_from_output > 0 pays the tx fee out of the output instead of from a fee
+ * note: denom_out must be uerth, transfer.fee 0 and min_amount_out >
+ * fee_from_output; pc receives the output less the fee.
+ *
+ * signal = SpendSignal("/earth.dex.v1.MsgNoteSwap", chain_id, ciphertexts,
+ * Bytes(denom_out), min_amount_out, pc, Bytes(ciphertext), fee_from_output).
+ */
+export interface MsgNoteSwap {
+  transfer: Transfer | undefined;
+  denomOut: string;
+  /** min_amount_out is the least output (before fee_from_output) accepted. */
+  minAmountOut: number;
+  pc: Uint8Array;
+  ciphertext: Uint8Array;
+  feeFromOutput: number;
+}
+
+/**
+ * MsgNoteSwapResponse returns the swap's output (before any fee from output)
+ * and the minted note's position.
+ */
+export interface MsgNoteSwapResponse {
+  tokenOut: Coin | undefined;
+  position: number;
+}
+
+/**
+ * MsgBuyAnml swaps token_in from creator (ERTH, or any token with a pool,
+ * through ERTH) for ANML and mints the ANML to pc as a note.
+ */
+export interface MsgBuyAnml {
+  creator: string;
+  tokenIn:
+    | Coin
+    | undefined;
+  /** min_amount_out is the least uanml accepted, a decimal integer. */
+  minAmountOut: string;
+  pc: Uint8Array;
+  ciphertext: Uint8Array;
+}
+
+/** MsgBuyAnmlResponse returns the ANML bought and the note's position. */
+export interface MsgBuyAnmlResponse {
+  tokenOut: Coin | undefined;
+  position: number;
+}
+
+/**
+ * MsgAddLiquidityShielded deposits into pool_id from two transfers: transfer
+ * releases value_out of the pool's token (ANML), erth_transfer value_out of
+ * ERTH. Either may pay the fee (the tx fee is their sum). The deposit is
+ * taken in the pool ratio, as MsgAddLiquidity's is; whatever of each leg the
+ * ratio does not take is minted back to refund_pc as a note. The LP shares
+ * go to provider, a transparent address: liquidity provision is public.
+ *
+ * The deposit runs in the private ante, atomically with both spends: below
+ * min_shares the whole tx fails and nothing is spent.
+ *
+ * Both proofs bind signal = MultiSpendSignal(
+ * "/earth.dex.v1.MsgAddLiquidityShielded", chain_id, [transfer.ciphertexts,
+ * erth_transfer.ciphertexts], [transfer.nullifiers,
+ * erth_transfer.nullifiers], pool_id, Bytes(provider address bytes),
+ * Bytes(min_shares), refund_pc, Bytes(refund_ciphertext)).
+ */
+export interface MsgAddLiquidityShielded {
+  transfer: Transfer | undefined;
+  erthTransfer: Transfer | undefined;
+  poolId: number;
+  provider: string;
+  /** min_shares is the fewest shares accepted, a decimal integer ("" = none). */
+  minShares: string;
+  refundPc: Uint8Array;
+  refundCiphertext: Uint8Array;
+}
+
+/** MsgAddLiquidityShieldedResponse returns the shares minted and the refunds. */
+export interface MsgAddLiquidityShieldedResponse {
+  shares: Coin | undefined;
+  refundErth: Coin | undefined;
+  refundToken: Coin | undefined;
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -708,7 +812,7 @@ export const MsgAddLiquidityResponse: MessageFns<MsgAddLiquidityResponse> = {
 };
 
 function createBaseMsgRemoveLiquidity(): MsgRemoveLiquidity {
-  return { creator: "", poolId: 0, shares: undefined };
+  return { creator: "", poolId: 0, shares: undefined, pc: new Uint8Array(0), ciphertext: new Uint8Array(0) };
 }
 
 export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
@@ -721,6 +825,12 @@ export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
     }
     if (message.shares !== undefined) {
       Coin.encode(message.shares, writer.uint32(26).fork()).join();
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(34).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(42).bytes(message.ciphertext);
     }
     return writer;
   },
@@ -762,6 +872,22 @@ export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
             message.shares = Coin.decode(reader, reader.uint32());
             continue;
           }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -783,6 +909,8 @@ export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
         ? globalThis.Number(object.pool_id)
         : 0,
       shares: isSet(object.shares) ? Coin.fromJSON(object.shares) : undefined,
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
     };
   },
 
@@ -797,6 +925,12 @@ export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
     if (message.shares !== undefined) {
       obj.shares = Coin.toJSON(message.shares);
     }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
     return obj;
   },
 
@@ -810,6 +944,8 @@ export const MsgRemoveLiquidity: MessageFns<MsgRemoveLiquidity> = {
     message.shares = (object.shares !== undefined && object.shares !== null)
       ? Coin.fromPartial(object.shares)
       : undefined;
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1583,6 +1719,815 @@ export const MsgClaimLiquidityAuctionResponse: MessageFns<MsgClaimLiquidityAucti
   },
 };
 
+function createBaseMsgNoteSwap(): MsgNoteSwap {
+  return {
+    transfer: undefined,
+    denomOut: "",
+    minAmountOut: 0,
+    pc: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+    feeFromOutput: 0,
+  };
+}
+
+export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
+  encode(message: MsgNoteSwap, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.transfer !== undefined) {
+      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    }
+    if (message.denomOut !== "") {
+      writer.uint32(18).string(message.denomOut);
+    }
+    if (message.minAmountOut !== 0) {
+      writer.uint32(24).uint64(message.minAmountOut);
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(34).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(42).bytes(message.ciphertext);
+    }
+    if (message.feeFromOutput !== 0) {
+      writer.uint32(48).uint64(message.feeFromOutput);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgNoteSwap {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgNoteSwap();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.transfer = Transfer.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.denomOut = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.minAmountOut = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.feeFromOutput = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgNoteSwap {
+    return {
+      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      denomOut: isSet(object.denomOut)
+        ? globalThis.String(object.denomOut)
+        : isSet(object.denom_out)
+        ? globalThis.String(object.denom_out)
+        : "",
+      minAmountOut: isSet(object.minAmountOut)
+        ? globalThis.Number(object.minAmountOut)
+        : isSet(object.min_amount_out)
+        ? globalThis.Number(object.min_amount_out)
+        : 0,
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      feeFromOutput: isSet(object.feeFromOutput)
+        ? globalThis.Number(object.feeFromOutput)
+        : isSet(object.fee_from_output)
+        ? globalThis.Number(object.fee_from_output)
+        : 0,
+    };
+  },
+
+  toJSON(message: MsgNoteSwap): unknown {
+    const obj: any = {};
+    if (message.transfer !== undefined) {
+      obj.transfer = Transfer.toJSON(message.transfer);
+    }
+    if (message.denomOut !== "") {
+      obj.denomOut = message.denomOut;
+    }
+    if (message.minAmountOut !== 0) {
+      obj.minAmountOut = Math.round(message.minAmountOut);
+    }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
+    if (message.feeFromOutput !== 0) {
+      obj.feeFromOutput = Math.round(message.feeFromOutput);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgNoteSwap>, I>>(base?: I): MsgNoteSwap {
+    return MsgNoteSwap.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgNoteSwap>, I>>(object: I): MsgNoteSwap {
+    const message = createBaseMsgNoteSwap();
+    message.transfer = (object.transfer !== undefined && object.transfer !== null)
+      ? Transfer.fromPartial(object.transfer)
+      : undefined;
+    message.denomOut = object.denomOut ?? "";
+    message.minAmountOut = object.minAmountOut ?? 0;
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.feeFromOutput = object.feeFromOutput ?? 0;
+    return message;
+  },
+};
+
+function createBaseMsgNoteSwapResponse(): MsgNoteSwapResponse {
+  return { tokenOut: undefined, position: 0 };
+}
+
+export const MsgNoteSwapResponse: MessageFns<MsgNoteSwapResponse> = {
+  encode(message: MsgNoteSwapResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tokenOut !== undefined) {
+      Coin.encode(message.tokenOut, writer.uint32(10).fork()).join();
+    }
+    if (message.position !== 0) {
+      writer.uint32(16).uint64(message.position);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgNoteSwapResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgNoteSwapResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.tokenOut = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.position = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgNoteSwapResponse {
+    return {
+      tokenOut: isSet(object.tokenOut)
+        ? Coin.fromJSON(object.tokenOut)
+        : isSet(object.token_out)
+        ? Coin.fromJSON(object.token_out)
+        : undefined,
+      position: isSet(object.position) ? globalThis.Number(object.position) : 0,
+    };
+  },
+
+  toJSON(message: MsgNoteSwapResponse): unknown {
+    const obj: any = {};
+    if (message.tokenOut !== undefined) {
+      obj.tokenOut = Coin.toJSON(message.tokenOut);
+    }
+    if (message.position !== 0) {
+      obj.position = Math.round(message.position);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgNoteSwapResponse>, I>>(base?: I): MsgNoteSwapResponse {
+    return MsgNoteSwapResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgNoteSwapResponse>, I>>(object: I): MsgNoteSwapResponse {
+    const message = createBaseMsgNoteSwapResponse();
+    message.tokenOut = (object.tokenOut !== undefined && object.tokenOut !== null)
+      ? Coin.fromPartial(object.tokenOut)
+      : undefined;
+    message.position = object.position ?? 0;
+    return message;
+  },
+};
+
+function createBaseMsgBuyAnml(): MsgBuyAnml {
+  return { creator: "", tokenIn: undefined, minAmountOut: "", pc: new Uint8Array(0), ciphertext: new Uint8Array(0) };
+}
+
+export const MsgBuyAnml: MessageFns<MsgBuyAnml> = {
+  encode(message: MsgBuyAnml, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.creator !== "") {
+      writer.uint32(10).string(message.creator);
+    }
+    if (message.tokenIn !== undefined) {
+      Coin.encode(message.tokenIn, writer.uint32(18).fork()).join();
+    }
+    if (message.minAmountOut !== "") {
+      writer.uint32(26).string(message.minAmountOut);
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(34).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(42).bytes(message.ciphertext);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgBuyAnml {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgBuyAnml();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.creator = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.tokenIn = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.minAmountOut = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgBuyAnml {
+    return {
+      creator: isSet(object.creator) ? globalThis.String(object.creator) : "",
+      tokenIn: isSet(object.tokenIn)
+        ? Coin.fromJSON(object.tokenIn)
+        : isSet(object.token_in)
+        ? Coin.fromJSON(object.token_in)
+        : undefined,
+      minAmountOut: isSet(object.minAmountOut)
+        ? globalThis.String(object.minAmountOut)
+        : isSet(object.min_amount_out)
+        ? globalThis.String(object.min_amount_out)
+        : "",
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: MsgBuyAnml): unknown {
+    const obj: any = {};
+    if (message.creator !== "") {
+      obj.creator = message.creator;
+    }
+    if (message.tokenIn !== undefined) {
+      obj.tokenIn = Coin.toJSON(message.tokenIn);
+    }
+    if (message.minAmountOut !== "") {
+      obj.minAmountOut = message.minAmountOut;
+    }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgBuyAnml>, I>>(base?: I): MsgBuyAnml {
+    return MsgBuyAnml.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgBuyAnml>, I>>(object: I): MsgBuyAnml {
+    const message = createBaseMsgBuyAnml();
+    message.creator = object.creator ?? "";
+    message.tokenIn = (object.tokenIn !== undefined && object.tokenIn !== null)
+      ? Coin.fromPartial(object.tokenIn)
+      : undefined;
+    message.minAmountOut = object.minAmountOut ?? "";
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseMsgBuyAnmlResponse(): MsgBuyAnmlResponse {
+  return { tokenOut: undefined, position: 0 };
+}
+
+export const MsgBuyAnmlResponse: MessageFns<MsgBuyAnmlResponse> = {
+  encode(message: MsgBuyAnmlResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tokenOut !== undefined) {
+      Coin.encode(message.tokenOut, writer.uint32(10).fork()).join();
+    }
+    if (message.position !== 0) {
+      writer.uint32(16).uint64(message.position);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgBuyAnmlResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgBuyAnmlResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.tokenOut = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.position = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgBuyAnmlResponse {
+    return {
+      tokenOut: isSet(object.tokenOut)
+        ? Coin.fromJSON(object.tokenOut)
+        : isSet(object.token_out)
+        ? Coin.fromJSON(object.token_out)
+        : undefined,
+      position: isSet(object.position) ? globalThis.Number(object.position) : 0,
+    };
+  },
+
+  toJSON(message: MsgBuyAnmlResponse): unknown {
+    const obj: any = {};
+    if (message.tokenOut !== undefined) {
+      obj.tokenOut = Coin.toJSON(message.tokenOut);
+    }
+    if (message.position !== 0) {
+      obj.position = Math.round(message.position);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgBuyAnmlResponse>, I>>(base?: I): MsgBuyAnmlResponse {
+    return MsgBuyAnmlResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgBuyAnmlResponse>, I>>(object: I): MsgBuyAnmlResponse {
+    const message = createBaseMsgBuyAnmlResponse();
+    message.tokenOut = (object.tokenOut !== undefined && object.tokenOut !== null)
+      ? Coin.fromPartial(object.tokenOut)
+      : undefined;
+    message.position = object.position ?? 0;
+    return message;
+  },
+};
+
+function createBaseMsgAddLiquidityShielded(): MsgAddLiquidityShielded {
+  return {
+    transfer: undefined,
+    erthTransfer: undefined,
+    poolId: 0,
+    provider: "",
+    minShares: "",
+    refundPc: new Uint8Array(0),
+    refundCiphertext: new Uint8Array(0),
+  };
+}
+
+export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
+  encode(message: MsgAddLiquidityShielded, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.transfer !== undefined) {
+      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    }
+    if (message.erthTransfer !== undefined) {
+      Transfer.encode(message.erthTransfer, writer.uint32(18).fork()).join();
+    }
+    if (message.poolId !== 0) {
+      writer.uint32(24).uint64(message.poolId);
+    }
+    if (message.provider !== "") {
+      writer.uint32(34).string(message.provider);
+    }
+    if (message.minShares !== "") {
+      writer.uint32(42).string(message.minShares);
+    }
+    if (message.refundPc.length !== 0) {
+      writer.uint32(50).bytes(message.refundPc);
+    }
+    if (message.refundCiphertext.length !== 0) {
+      writer.uint32(58).bytes(message.refundCiphertext);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgAddLiquidityShielded {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgAddLiquidityShielded();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.transfer = Transfer.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.erthTransfer = Transfer.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.poolId = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.provider = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.minShares = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.refundPc = reader.bytes();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.refundCiphertext = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgAddLiquidityShielded {
+    return {
+      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      erthTransfer: isSet(object.erthTransfer)
+        ? Transfer.fromJSON(object.erthTransfer)
+        : isSet(object.erth_transfer)
+        ? Transfer.fromJSON(object.erth_transfer)
+        : undefined,
+      poolId: isSet(object.poolId)
+        ? globalThis.Number(object.poolId)
+        : isSet(object.pool_id)
+        ? globalThis.Number(object.pool_id)
+        : 0,
+      provider: isSet(object.provider) ? globalThis.String(object.provider) : "",
+      minShares: isSet(object.minShares)
+        ? globalThis.String(object.minShares)
+        : isSet(object.min_shares)
+        ? globalThis.String(object.min_shares)
+        : "",
+      refundPc: isSet(object.refundPc)
+        ? bytesFromBase64(object.refundPc)
+        : isSet(object.refund_pc)
+        ? bytesFromBase64(object.refund_pc)
+        : new Uint8Array(0),
+      refundCiphertext: isSet(object.refundCiphertext)
+        ? bytesFromBase64(object.refundCiphertext)
+        : isSet(object.refund_ciphertext)
+        ? bytesFromBase64(object.refund_ciphertext)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: MsgAddLiquidityShielded): unknown {
+    const obj: any = {};
+    if (message.transfer !== undefined) {
+      obj.transfer = Transfer.toJSON(message.transfer);
+    }
+    if (message.erthTransfer !== undefined) {
+      obj.erthTransfer = Transfer.toJSON(message.erthTransfer);
+    }
+    if (message.poolId !== 0) {
+      obj.poolId = Math.round(message.poolId);
+    }
+    if (message.provider !== "") {
+      obj.provider = message.provider;
+    }
+    if (message.minShares !== "") {
+      obj.minShares = message.minShares;
+    }
+    if (message.refundPc.length !== 0) {
+      obj.refundPc = base64FromBytes(message.refundPc);
+    }
+    if (message.refundCiphertext.length !== 0) {
+      obj.refundCiphertext = base64FromBytes(message.refundCiphertext);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgAddLiquidityShielded>, I>>(base?: I): MsgAddLiquidityShielded {
+    return MsgAddLiquidityShielded.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgAddLiquidityShielded>, I>>(object: I): MsgAddLiquidityShielded {
+    const message = createBaseMsgAddLiquidityShielded();
+    message.transfer = (object.transfer !== undefined && object.transfer !== null)
+      ? Transfer.fromPartial(object.transfer)
+      : undefined;
+    message.erthTransfer = (object.erthTransfer !== undefined && object.erthTransfer !== null)
+      ? Transfer.fromPartial(object.erthTransfer)
+      : undefined;
+    message.poolId = object.poolId ?? 0;
+    message.provider = object.provider ?? "";
+    message.minShares = object.minShares ?? "";
+    message.refundPc = object.refundPc ?? new Uint8Array(0);
+    message.refundCiphertext = object.refundCiphertext ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseMsgAddLiquidityShieldedResponse(): MsgAddLiquidityShieldedResponse {
+  return { shares: undefined, refundErth: undefined, refundToken: undefined };
+}
+
+export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShieldedResponse> = {
+  encode(message: MsgAddLiquidityShieldedResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.shares !== undefined) {
+      Coin.encode(message.shares, writer.uint32(10).fork()).join();
+    }
+    if (message.refundErth !== undefined) {
+      Coin.encode(message.refundErth, writer.uint32(18).fork()).join();
+    }
+    if (message.refundToken !== undefined) {
+      Coin.encode(message.refundToken, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgAddLiquidityShieldedResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgAddLiquidityShieldedResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.shares = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.refundErth = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.refundToken = Coin.decode(reader, reader.uint32());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgAddLiquidityShieldedResponse {
+    return {
+      shares: isSet(object.shares) ? Coin.fromJSON(object.shares) : undefined,
+      refundErth: isSet(object.refundErth)
+        ? Coin.fromJSON(object.refundErth)
+        : isSet(object.refund_erth)
+        ? Coin.fromJSON(object.refund_erth)
+        : undefined,
+      refundToken: isSet(object.refundToken)
+        ? Coin.fromJSON(object.refundToken)
+        : isSet(object.refund_token)
+        ? Coin.fromJSON(object.refund_token)
+        : undefined,
+    };
+  },
+
+  toJSON(message: MsgAddLiquidityShieldedResponse): unknown {
+    const obj: any = {};
+    if (message.shares !== undefined) {
+      obj.shares = Coin.toJSON(message.shares);
+    }
+    if (message.refundErth !== undefined) {
+      obj.refundErth = Coin.toJSON(message.refundErth);
+    }
+    if (message.refundToken !== undefined) {
+      obj.refundToken = Coin.toJSON(message.refundToken);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgAddLiquidityShieldedResponse>, I>>(base?: I): MsgAddLiquidityShieldedResponse {
+    return MsgAddLiquidityShieldedResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgAddLiquidityShieldedResponse>, I>>(
+    object: I,
+  ): MsgAddLiquidityShieldedResponse {
+    const message = createBaseMsgAddLiquidityShieldedResponse();
+    message.shares = (object.shares !== undefined && object.shares !== null)
+      ? Coin.fromPartial(object.shares)
+      : undefined;
+    message.refundErth = (object.refundErth !== undefined && object.refundErth !== null)
+      ? Coin.fromPartial(object.refundErth)
+      : undefined;
+    message.refundToken = (object.refundToken !== undefined && object.refundToken !== null)
+      ? Coin.fromPartial(object.refundToken)
+      : undefined;
+    return message;
+  },
+};
+
 /** Msg defines the Msg service. */
 export interface Msg {
   /**
@@ -1618,6 +2563,23 @@ export interface Msg {
   BidLiquidityAuction(request: MsgBidLiquidityAuction): Promise<MsgBidLiquidityAuctionResponse>;
   /** ClaimLiquidityAuction pays out a bidder's pro-rata ERTH after settlement. */
   ClaimLiquidityAuction(request: MsgClaimLiquidityAuction): Promise<MsgClaimLiquidityAuctionResponse>;
+  /**
+   * NoteSwap swaps a shielded note's value through any pool and mints the
+   * output as a note. Unsigned private msg; see MsgNoteSwap.
+   */
+  NoteSwap(request: MsgNoteSwap): Promise<MsgNoteSwapResponse>;
+  /**
+   * BuyAnml swaps a transparent account's coins for ANML, minted as a note:
+   * the way into ANML for an ERTH holder (ANML never sits in an account).
+   */
+  BuyAnml(request: MsgBuyAnml): Promise<MsgBuyAnmlResponse>;
+  /**
+   * AddLiquidityShielded deposits both legs from shielded notes (the pool
+   * token by one transfer, ERTH by a second) and mints LP shares to a
+   * transparent provider. Unsigned private msg; the only way to add to the
+   * ANML/ERTH pool.
+   */
+  AddLiquidityShielded(request: MsgAddLiquidityShielded): Promise<MsgAddLiquidityShieldedResponse>;
 }
 
 export const MsgServiceName = "earth.dex.v1.Msg";
@@ -1635,6 +2597,9 @@ export class MsgClientImpl implements Msg {
     this.StartLiquidityAuction = this.StartLiquidityAuction.bind(this);
     this.BidLiquidityAuction = this.BidLiquidityAuction.bind(this);
     this.ClaimLiquidityAuction = this.ClaimLiquidityAuction.bind(this);
+    this.NoteSwap = this.NoteSwap.bind(this);
+    this.BuyAnml = this.BuyAnml.bind(this);
+    this.AddLiquidityShielded = this.AddLiquidityShielded.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -1683,10 +2648,53 @@ export class MsgClientImpl implements Msg {
     const promise = this.rpc.request(this.service, "ClaimLiquidityAuction", data);
     return promise.then((data) => MsgClaimLiquidityAuctionResponse.decode(new BinaryReader(data)));
   }
+
+  NoteSwap(request: MsgNoteSwap): Promise<MsgNoteSwapResponse> {
+    const data = MsgNoteSwap.encode(request).finish();
+    const promise = this.rpc.request(this.service, "NoteSwap", data);
+    return promise.then((data) => MsgNoteSwapResponse.decode(new BinaryReader(data)));
+  }
+
+  BuyAnml(request: MsgBuyAnml): Promise<MsgBuyAnmlResponse> {
+    const data = MsgBuyAnml.encode(request).finish();
+    const promise = this.rpc.request(this.service, "BuyAnml", data);
+    return promise.then((data) => MsgBuyAnmlResponse.decode(new BinaryReader(data)));
+  }
+
+  AddLiquidityShielded(request: MsgAddLiquidityShielded): Promise<MsgAddLiquidityShieldedResponse> {
+    const data = MsgAddLiquidityShielded.encode(request).finish();
+    const promise = this.rpc.request(this.service, "AddLiquidityShielded", data);
+    return promise.then((data) => MsgAddLiquidityShieldedResponse.decode(new BinaryReader(data)));
+  }
 }
 
 interface Rpc {
   request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
+}
+
+function bytesFromBase64(b64: string): Uint8Array {
+  if ((globalThis as any).Buffer) {
+    return Uint8Array.from((globalThis as any).Buffer.from(b64, "base64"));
+  } else {
+    const bin = globalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
+  }
+}
+
+function base64FromBytes(arr: Uint8Array): string {
+  if ((globalThis as any).Buffer) {
+    return (globalThis as any).Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(globalThis.String.fromCharCode(byte));
+    });
+    return globalThis.btoa(bin.join(""));
+  }
 }
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;

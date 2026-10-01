@@ -127,11 +127,11 @@ const Anml = () => {
         </p>
       </div>
 
-      {/* TODO(dex-notes, Phase 5): MsgBuyAnml — transparent ERTH from a Keplr
-          account in, an ANML note out — is the one ANML action the web can
-          sign. It needs the recipient's note commitment (pc), which in turn
-          needs the shielded-address encoding (see chain/shielded.js). Add a
-          "Buy ANML" card here once both exist. */}
+      {/* TODO(dex-notes): MsgBuyAnml (dex.msgBuyAnml, registered in tx.js) —
+          transparent ERTH from a Keplr account in, an ANML note out — is the
+          one ANML action the web can sign. It needs the buyer's note
+          commitment (pc), which needs the shielded-address encoding (see
+          chain/shielded.js). Add a "Buy ANML" card here once that exists. */}
     </div>
   );
 };

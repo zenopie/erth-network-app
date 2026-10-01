@@ -14,6 +14,7 @@ import {
   MsgCreatePool,
   MsgBidLiquidityAuction,
   MsgClaimLiquidityAuction,
+  MsgBuyAnml,
 } from "../proto/earth/dex/v1/tx";
 import {
   MsgSetAllocations,
@@ -51,10 +52,10 @@ export const registry = new Registry([
   // owner is hidden behind `pc`. See chain/shielded.js for why there is no UI
   // for it yet.
   ["/earth.shielded.v1.MsgShield", MsgShield],
-  // TODO(dex-notes, Phase 5): register /earth.dex.v1.MsgBuyAnml once the
-  // chain's x/dex note paths land and the protos are regenerated. It is a
-  // signed transparent-ERTH -> ANML-note purchase, so it belongs here; the
-  // note-to-note MsgNoteSwap is unsigned and does not.
+  // Transparent coins in, an ANML note out: the one ANML action a Keplr
+  // account signs. MsgNoteSwap and MsgAddLiquidityShielded are unsigned
+  // private msgs (proofs, built on the phone) and do not belong here.
+  ["/earth.dex.v1.MsgBuyAnml", MsgBuyAnml],
 ]);
 
 // Generous default; the heaviest of these messages (a multi-hop swap) simulated
