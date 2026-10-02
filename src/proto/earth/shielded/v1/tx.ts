@@ -8,7 +8,7 @@
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { Coin } from "../../../cosmos/base/v1beta1/coin";
 import { Params } from "./params";
-import { Transfer } from "./shielded";
+import { Bundle } from "./shielded";
 
 export const protobufPackage = "earth.shielded.v1";
 
@@ -68,35 +68,42 @@ export interface MsgShieldResponse {
 }
 
 /**
- * MsgTransfer spends shielded notes. It has NO signer: its signers are
- * defined as empty (x/tx CustomGetSigner), it travels in a tx with no
- * signatures, and its fee is paid from the pool by the transfer's fee slot.
- * Authorization is the proof; replay protection is the nullifiers.
+ * MsgSend spends shielded notes through one bundle. It has NO signer: its
+ * signers are defined as empty (x/tx CustomGetSigner), it travels in a tx
+ * with no signatures, and its fee is paid from the pool out of the bundle's
+ * uerth balance. Authorization is the proofs and the binding signature;
+ * replay protection is the nullifiers.
  *
- * signal = zk/privacy.TransferSignal(chain_id, receiver address bytes,
- * transfer.ciphertexts, fee_from_output), so neither the receiver, a
- * ciphertext nor the fee can be changed by whoever relays the tx.
+ * Release map: the bundle's uerth balance pays fee to fee_collector; every
+ * other unit of every balance (the uerth rest included) goes to receiver.
+ * With no receiver the balances must be exactly the fee.
+ *
+ * sighash = zk/orchard.Sighash("/earth.shielded.v1.MsgSend", chain_id,
+ * [bundle], Bytes(receiver address bytes), fee), so neither the receiver,
+ * the fee, a ciphertext nor any balance can be changed by whoever relays it.
  */
-export interface MsgTransfer {
-  transfer:
-    | Transfer
+export interface MsgSend {
+  bundle:
+    | Bundle
     | undefined;
   /**
-   * receiver gets transfer.value_out of transfer.denom_out (less
-   * fee_from_output). Required when value_out > 0, empty otherwise.
+   * receiver gets every balance less the fee. Required exactly when the
+   * balances exceed the fee.
    */
   receiver: string;
   /**
-   * fee_from_output pays the tx fee out of an unshield of uerth instead of
-   * from a fee note: transfer.fee must be 0, denom_out uerth and value_out >
-   * fee_from_output. The receiver gets value_out - fee_from_output. 0 means
-   * the fee is transfer.fee, as usual.
+   * fee is the uerth the bundle pays to fee_collector; the tx's declared fee
+   * must equal it. An unshield of uerth pays it out of what it releases (a
+   * fee from output), with no separate fee note.
    */
-  feeFromOutput: number;
+  fee: number;
 }
 
-/** MsgTransferResponse returns the positions of the three new notes. */
-export interface MsgTransferResponse {
+/**
+ * MsgSendResponse returns the positions of the bundle's new notes, in
+ * action order.
+ */
+export interface MsgSendResponse {
   positions: number[];
 }
 
@@ -601,25 +608,25 @@ export const MsgShieldResponse: MessageFns<MsgShieldResponse> = {
   },
 };
 
-function createBaseMsgTransfer(): MsgTransfer {
-  return { transfer: undefined, receiver: "", feeFromOutput: 0 };
+function createBaseMsgSend(): MsgSend {
+  return { bundle: undefined, receiver: "", fee: 0 };
 }
 
-export const MsgTransfer: MessageFns<MsgTransfer> = {
-  encode(message: MsgTransfer, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+export const MsgSend: MessageFns<MsgSend> = {
+  encode(message: MsgSend, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.receiver !== "") {
       writer.uint32(18).string(message.receiver);
     }
-    if (message.feeFromOutput !== 0) {
-      writer.uint32(24).uint64(message.feeFromOutput);
+    if (message.fee !== 0) {
+      writer.uint32(24).uint64(message.fee);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgTransfer {
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgSend {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
     if (previousRecursionDepth >= 100) {
@@ -628,7 +635,7 @@ export const MsgTransfer: MessageFns<MsgTransfer> = {
     (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
     try {
       const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgTransfer();
+      const message = createBaseMsgSend();
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
@@ -637,7 +644,7 @@ export const MsgTransfer: MessageFns<MsgTransfer> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -653,7 +660,7 @@ export const MsgTransfer: MessageFns<MsgTransfer> = {
               break;
             }
 
-            message.feeFromOutput = longToNumber(reader.uint64());
+            message.fee = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -668,52 +675,48 @@ export const MsgTransfer: MessageFns<MsgTransfer> = {
     }
   },
 
-  fromJSON(object: any): MsgTransfer {
+  fromJSON(object: any): MsgSend {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       receiver: isSet(object.receiver) ? globalThis.String(object.receiver) : "",
-      feeFromOutput: isSet(object.feeFromOutput)
-        ? globalThis.Number(object.feeFromOutput)
-        : isSet(object.fee_from_output)
-        ? globalThis.Number(object.fee_from_output)
-        : 0,
+      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
     };
   },
 
-  toJSON(message: MsgTransfer): unknown {
+  toJSON(message: MsgSend): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.receiver !== "") {
       obj.receiver = message.receiver;
     }
-    if (message.feeFromOutput !== 0) {
-      obj.feeFromOutput = Math.round(message.feeFromOutput);
+    if (message.fee !== 0) {
+      obj.fee = Math.round(message.fee);
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgTransfer>, I>>(base?: I): MsgTransfer {
-    return MsgTransfer.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<MsgSend>, I>>(base?: I): MsgSend {
+    return MsgSend.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<MsgTransfer>, I>>(object: I): MsgTransfer {
-    const message = createBaseMsgTransfer();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+  fromPartial<I extends Exact<DeepPartial<MsgSend>, I>>(object: I): MsgSend {
+    const message = createBaseMsgSend();
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.receiver = object.receiver ?? "";
-    message.feeFromOutput = object.feeFromOutput ?? 0;
+    message.fee = object.fee ?? 0;
     return message;
   },
 };
 
-function createBaseMsgTransferResponse(): MsgTransferResponse {
+function createBaseMsgSendResponse(): MsgSendResponse {
   return { positions: [] };
 }
 
-export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
-  encode(message: MsgTransferResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+export const MsgSendResponse: MessageFns<MsgSendResponse> = {
+  encode(message: MsgSendResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     writer.uint32(10).fork();
     for (const v of message.positions) {
       writer.uint64(v);
@@ -722,7 +725,7 @@ export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgTransferResponse {
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgSendResponse {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
     if (previousRecursionDepth >= 100) {
@@ -731,7 +734,7 @@ export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
     (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
     try {
       const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgTransferResponse();
+      const message = createBaseMsgSendResponse();
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
@@ -765,7 +768,7 @@ export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
     }
   },
 
-  fromJSON(object: any): MsgTransferResponse {
+  fromJSON(object: any): MsgSendResponse {
     return {
       positions: globalThis.Array.isArray(object?.positions)
         ? object.positions.map((e: any) => globalThis.Number(e))
@@ -773,7 +776,7 @@ export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
     };
   },
 
-  toJSON(message: MsgTransferResponse): unknown {
+  toJSON(message: MsgSendResponse): unknown {
     const obj: any = {};
     if (message.positions?.length) {
       obj.positions = message.positions.map((e) => Math.round(e));
@@ -781,11 +784,11 @@ export const MsgTransferResponse: MessageFns<MsgTransferResponse> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<MsgTransferResponse>, I>>(base?: I): MsgTransferResponse {
-    return MsgTransferResponse.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<MsgSendResponse>, I>>(base?: I): MsgSendResponse {
+    return MsgSendResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<MsgTransferResponse>, I>>(object: I): MsgTransferResponse {
-    const message = createBaseMsgTransferResponse();
+  fromPartial<I extends Exact<DeepPartial<MsgSendResponse>, I>>(object: I): MsgSendResponse {
+    const message = createBaseMsgSendResponse();
     message.positions = object.positions?.map((e) => e) || [];
     return message;
   },
@@ -800,10 +803,10 @@ export interface Msg {
   /** Shield moves the signer's coins into the pool as one note. */
   Shield(request: MsgShield): Promise<MsgShieldResponse>;
   /**
-   * Transfer spends notes: a private send, and optionally an unshield of
-   * value_out to a transparent receiver. Unsigned; see MsgTransfer.
+   * Send spends notes through a bundle: a private send, and optionally an
+   * unshield to a transparent receiver. Unsigned; see MsgSend.
    */
-  Transfer(request: MsgTransfer): Promise<MsgTransferResponse>;
+  Send(request: MsgSend): Promise<MsgSendResponse>;
 }
 
 export const MsgServiceName = "earth.shielded.v1.Msg";
@@ -816,7 +819,7 @@ export class MsgClientImpl implements Msg {
     this.UpdateParams = this.UpdateParams.bind(this);
     this.RegisterAsset = this.RegisterAsset.bind(this);
     this.Shield = this.Shield.bind(this);
-    this.Transfer = this.Transfer.bind(this);
+    this.Send = this.Send.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -836,10 +839,10 @@ export class MsgClientImpl implements Msg {
     return promise.then((data) => MsgShieldResponse.decode(new BinaryReader(data)));
   }
 
-  Transfer(request: MsgTransfer): Promise<MsgTransferResponse> {
-    const data = MsgTransfer.encode(request).finish();
-    const promise = this.rpc.request(this.service, "Transfer", data);
-    return promise.then((data) => MsgTransferResponse.decode(new BinaryReader(data)));
+  Send(request: MsgSend): Promise<MsgSendResponse> {
+    const data = MsgSend.encode(request).finish();
+    const promise = this.rpc.request(this.service, "Send", data);
+    return promise.then((data) => MsgSendResponse.decode(new BinaryReader(data)));
   }
 }
 

@@ -23,10 +23,16 @@ export interface Params {
   minPosition: string;
   /** max_positions caps how many positions exist at once, for the same reason. */
   maxPositions: number;
+  /**
+   * stake_root_window_seconds is how long a superseded stake-tree root stays
+   * an anchor (the latest never expires; a vote's snapshot root is accepted
+   * for its proposal).
+   */
+  stakeRootWindowSeconds: number;
 }
 
 function createBaseParams(): Params {
-  return { epochSeconds: 0, minPosition: "", maxPositions: 0 };
+  return { epochSeconds: 0, minPosition: "", maxPositions: 0, stakeRootWindowSeconds: 0 };
 }
 
 export const Params: MessageFns<Params> = {
@@ -39,6 +45,9 @@ export const Params: MessageFns<Params> = {
     }
     if (message.maxPositions !== 0) {
       writer.uint32(24).uint64(message.maxPositions);
+    }
+    if (message.stakeRootWindowSeconds !== 0) {
+      writer.uint32(32).uint64(message.stakeRootWindowSeconds);
     }
     return writer;
   },
@@ -80,6 +89,14 @@ export const Params: MessageFns<Params> = {
             message.maxPositions = longToNumber(reader.uint64());
             continue;
           }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.stakeRootWindowSeconds = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -109,6 +126,11 @@ export const Params: MessageFns<Params> = {
         : isSet(object.max_positions)
         ? globalThis.Number(object.max_positions)
         : 0,
+      stakeRootWindowSeconds: isSet(object.stakeRootWindowSeconds)
+        ? globalThis.Number(object.stakeRootWindowSeconds)
+        : isSet(object.stake_root_window_seconds)
+        ? globalThis.Number(object.stake_root_window_seconds)
+        : 0,
     };
   },
 
@@ -123,6 +145,9 @@ export const Params: MessageFns<Params> = {
     if (message.maxPositions !== 0) {
       obj.maxPositions = Math.round(message.maxPositions);
     }
+    if (message.stakeRootWindowSeconds !== 0) {
+      obj.stakeRootWindowSeconds = Math.round(message.stakeRootWindowSeconds);
+    }
     return obj;
   },
 
@@ -134,6 +159,7 @@ export const Params: MessageFns<Params> = {
     message.epochSeconds = object.epochSeconds ?? 0;
     message.minPosition = object.minPosition ?? "";
     message.maxPositions = object.maxPositions ?? 0;
+    message.stakeRootWindowSeconds = object.stakeRootWindowSeconds ?? 0;
     return message;
   },
 };

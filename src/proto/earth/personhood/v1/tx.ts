@@ -7,7 +7,7 @@
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { AllocationWeight } from "../../allocation/v1/allocation";
-import { Transfer } from "../../shielded/v1/shielded";
+import { Bundle } from "../../shielded/v1/shielded";
 import { Params } from "./params";
 import { Membership } from "./registration";
 
@@ -46,14 +46,15 @@ export interface MsgUpdateParamsResponse {
  * registration is a switch: the old leaf is zeroed and the new one appended,
  * and nothing is paid (affiliate is then not checked).
  *
- * signal fields: idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
+ * sighash fields: idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
  * Bytes(ciphertext_erth), affiliate (as in the binding),
- * Bytes(signature_algorithm), then every public signal in order. The passport proof binds the identity and pcs through its
- * address input; this binds the rest to the fee proof.
+ * Bytes(signature_algorithm), then every public signal in order. The passport
+ * proof binds the identity and pcs through its address input; the sighash
+ * binds the rest to the fee bundle.
  */
 export interface MsgRegister {
   fee:
-    | Transfer
+    | Bundle
     | undefined;
   /** proof is the Barretenberg UltraHonk proof bytes (bb v5.0.0). */
   proof: Uint8Array;
@@ -96,10 +97,10 @@ export interface MsgRegisterResponse {
  * excluded_country 0
  * and max_activation the start of the previous UTC day. day must be today.
  *
- * signal fields: day, pc, Bytes(ciphertext).
+ * sighash fields: day, pc, Bytes(ciphertext).
  */
 export interface MsgClaimAnml {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   day: number;
   pc: Uint8Array;
@@ -124,10 +125,10 @@ export interface MsgClaimAnmlResponse {
  * made before its block is known. The split counts until now +
  * caretaker_vote_seconds; the wallet refreshes it before then.
  *
- * signal fields: for each entry, option_id then percent.
+ * sighash fields: for each entry, option_id then percent.
  */
 export interface MsgSetCaretaker {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   percentages: AllocationWeight[];
   /** max_activation is the membership proof's max_activation (unix seconds). */
@@ -156,10 +157,10 @@ export interface MsgSetCaretakerResponse {
  * refreshes it. Rebinding under the same nullifier moves it to the new
  * address. An address bound under another live nullifier is refused.
  *
- * signal fields: Bytes(address bytes).
+ * sighash fields: Bytes(address bytes).
  */
 export interface MsgBindReferrer {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   address: string;
   /** max_activation is the membership proof's max_activation (unix seconds). */
@@ -332,7 +333,7 @@ function createBaseMsgRegister(): MsgRegister {
 export const MsgRegister: MessageFns<MsgRegister> = {
   encode(message: MsgRegister, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.proof.length !== 0) {
       writer.uint32(18).bytes(message.proof);
@@ -385,7 +386,7 @@ export const MsgRegister: MessageFns<MsgRegister> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -482,7 +483,7 @@ export const MsgRegister: MessageFns<MsgRegister> = {
 
   fromJSON(object: any): MsgRegister {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
       publicSignals: globalThis.Array.isArray(object?.publicSignals)
         ? object.publicSignals.map((e: any) => globalThis.String(e))
@@ -527,7 +528,7 @@ export const MsgRegister: MessageFns<MsgRegister> = {
   toJSON(message: MsgRegister): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.proof.length !== 0) {
       obj.proof = base64FromBytes(message.proof);
@@ -567,7 +568,7 @@ export const MsgRegister: MessageFns<MsgRegister> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgRegister>, I>>(object: I): MsgRegister {
     const message = createBaseMsgRegister();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.proof = object.proof ?? new Uint8Array(0);
     message.publicSignals = object.publicSignals?.map((e) => e) || [];
     message.signatureAlgorithm = object.signatureAlgorithm ?? "";
@@ -694,7 +695,7 @@ function createBaseMsgClaimAnml(): MsgClaimAnml {
 export const MsgClaimAnml: MessageFns<MsgClaimAnml> = {
   encode(message: MsgClaimAnml, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -729,7 +730,7 @@ export const MsgClaimAnml: MessageFns<MsgClaimAnml> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -778,7 +779,7 @@ export const MsgClaimAnml: MessageFns<MsgClaimAnml> = {
 
   fromJSON(object: any): MsgClaimAnml {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       day: isSet(object.day) ? globalThis.Number(object.day) : 0,
       pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
@@ -789,7 +790,7 @@ export const MsgClaimAnml: MessageFns<MsgClaimAnml> = {
   toJSON(message: MsgClaimAnml): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -811,7 +812,7 @@ export const MsgClaimAnml: MessageFns<MsgClaimAnml> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgClaimAnml>, I>>(object: I): MsgClaimAnml {
     const message = createBaseMsgClaimAnml();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -896,7 +897,7 @@ function createBaseMsgSetCaretaker(): MsgSetCaretaker {
 export const MsgSetCaretaker: MessageFns<MsgSetCaretaker> = {
   encode(message: MsgSetCaretaker, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -928,7 +929,7 @@ export const MsgSetCaretaker: MessageFns<MsgSetCaretaker> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -969,7 +970,7 @@ export const MsgSetCaretaker: MessageFns<MsgSetCaretaker> = {
 
   fromJSON(object: any): MsgSetCaretaker {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       percentages: globalThis.Array.isArray(object?.percentages)
         ? object.percentages.map((e: any) => AllocationWeight.fromJSON(e))
@@ -985,7 +986,7 @@ export const MsgSetCaretaker: MessageFns<MsgSetCaretaker> = {
   toJSON(message: MsgSetCaretaker): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -1004,7 +1005,7 @@ export const MsgSetCaretaker: MessageFns<MsgSetCaretaker> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgSetCaretaker>, I>>(object: I): MsgSetCaretaker {
     const message = createBaseMsgSetCaretaker();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -1094,7 +1095,7 @@ function createBaseMsgBindReferrer(): MsgBindReferrer {
 export const MsgBindReferrer: MessageFns<MsgBindReferrer> = {
   encode(message: MsgBindReferrer, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -1126,7 +1127,7 @@ export const MsgBindReferrer: MessageFns<MsgBindReferrer> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1167,7 +1168,7 @@ export const MsgBindReferrer: MessageFns<MsgBindReferrer> = {
 
   fromJSON(object: any): MsgBindReferrer {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       address: isSet(object.address) ? globalThis.String(object.address) : "",
       maxActivation: isSet(object.maxActivation)
@@ -1181,7 +1182,7 @@ export const MsgBindReferrer: MessageFns<MsgBindReferrer> = {
   toJSON(message: MsgBindReferrer): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -1200,7 +1201,7 @@ export const MsgBindReferrer: MessageFns<MsgBindReferrer> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgBindReferrer>, I>>(object: I): MsgBindReferrer {
     const message = createBaseMsgBindReferrer();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -1289,10 +1290,11 @@ export const MsgBindReferrerResponse: MessageFns<MsgBindReferrerResponse> = {
  * Register, ClaimAnml, SetCaretaker and BindReferrer are private msgs:
  * unsigned, carried
  * alone in a tx, their fee paid from the shielded pool by the earth.shielded
- * Transfer each embeds (see x/shielded PrivateMsg). Their signal is
- * zk/privacy.ActionSignal(type URL, chain id, fee ciphertexts, fee
- * nullifiers, fields...), which the fee proof and the msg's own proof both
- * bind. The fields are listed on each msg.
+ * Bundle each embeds as `fee` (see x/shielded PrivateMsg), whose only balance
+ * is the uerth fee. Their sighash is zk/orchard.Sighash(type URL, chain id, 1,
+ * digest(fee), fields...), which every action proof and the binding signature
+ * bind, and which a membership proof binds as its signal. The fields are
+ * listed on each msg.
  */
 export interface Msg {
   /**

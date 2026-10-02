@@ -7,7 +7,7 @@
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { Coin } from "../../../cosmos/base/v1beta1/coin";
-import { Transfer } from "../../shielded/v1/shielded";
+import { Bundle } from "../../shielded/v1/shielded";
 import { Params } from "./params";
 
 export const protobufPackage = "earth.dex.v1";
@@ -172,31 +172,37 @@ export interface MsgClaimLiquidityAuctionResponse {
 }
 
 /**
- * MsgNoteSwap spends transfer.value_out of transfer.denom_out (the asset in,
- * public) into the dex, swaps it for denom_out through the ERTH hub (one or
- * two hops, any pools), and mints the output to pc as a note. It has NO
- * signer: authorization is the transfer proof, replay protection its
- * nullifiers (see x/shielded/ante).
+ * MsgNoteSwap releases bundle's balance of one asset (the asset in, public)
+ * into the dex, swaps it for denom_out through the ERTH hub (one or two hops,
+ * any pools), and mints the output to pc as a note. It has NO signer:
+ * authorization is the bundle (action proofs and binding signature over the
+ * sighash), replay protection its nullifiers (see x/shielded/ante).
+ *
+ * bundle's balances: the asset in, plus the uerth fee (for an ERTH swap the
+ * uerth balance is amount in + fee). The release map, after fee, must hold
+ * exactly one positive denom: the asset in.
  *
  * The swap runs in the private ante, atomically with the spend: if the
  * output would fall below min_amount_out the whole tx fails and nothing is
  * spent. Only the amounts and the pools are visible.
  *
- * fee_from_output > 0 pays the tx fee out of the output instead of from a fee
- * note: denom_out must be uerth, transfer.fee 0 and min_amount_out >
+ * fee_from_output > 0 pays the tx fee out of the output instead of from the
+ * bundle: denom_out must be uerth, fee 0 and min_amount_out >
  * fee_from_output; pc receives the output less the fee.
  *
- * signal = SpendSignal("/earth.dex.v1.MsgNoteSwap", chain_id, ciphertexts,
- * Bytes(denom_out), min_amount_out, pc, Bytes(ciphertext), fee_from_output).
+ * sighash fields: Bytes(denom_out), min_amount_out, pc, Bytes(ciphertext),
+ * fee_from_output, fee.
  */
 export interface MsgNoteSwap {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   denomOut: string;
   /** min_amount_out is the least output (before fee_from_output) accepted. */
   minAmountOut: number;
   pc: Uint8Array;
   ciphertext: Uint8Array;
   feeFromOutput: number;
+  /** fee is paid from bundle's uerth balance (0 with fee_from_output). */
+  fee: number;
 }
 
 /**
@@ -230,38 +236,79 @@ export interface MsgBuyAnmlResponse {
 }
 
 /**
- * MsgAddLiquidityShielded deposits into pool_id from two transfers: transfer
- * releases value_out of the pool's token (ANML), erth_transfer value_out of
- * ERTH. Either may pay the fee (the tx fee is their sum). The deposit is
- * taken in the pool ratio, as MsgAddLiquidity's is; whatever of each leg the
- * ratio does not take is minted back to refund_pc as a note. The LP shares
- * go to provider, a transparent address: liquidity provision is public.
+ * MsgAddLiquidityShielded deposits into pool_id from one bundle whose
+ * balances are the pool's token (ANML) and uerth: the token balance is the
+ * token leg, the uerth balance less fee the ERTH leg. The deposit is taken in
+ * the pool ratio, as MsgAddLiquidity's is; whatever of each leg the ratio
+ * does not take is minted back to refund_pc as a note.
  *
- * The deposit runs in the private ante, atomically with both spends: below
+ * LP shares are private: the shares (dexlp/<pool_id>, a shielded-pool asset)
+ * are minted as a note to share_pc. No account appears in the msg, its
+ * events or state. The note leaves the pool only through
+ * MsgRemoveLiquidityShielded (an unshield of dexlp/* is refused).
+ *
+ * The deposit runs in the private ante, atomically with the spend: below
  * min_shares the whole tx fails and nothing is spent.
  *
- * Both proofs bind signal = MultiSpendSignal(
- * "/earth.dex.v1.MsgAddLiquidityShielded", chain_id, [transfer.ciphertexts,
- * erth_transfer.ciphertexts], [transfer.nullifiers,
- * erth_transfer.nullifiers], pool_id, Bytes(provider address bytes),
- * Bytes(min_shares), refund_pc, Bytes(refund_ciphertext)).
+ * sighash fields: pool_id, Bytes(min_shares), share_pc,
+ * Bytes(share_ciphertext), refund_pc, Bytes(refund_ciphertext), fee.
  */
 export interface MsgAddLiquidityShielded {
-  transfer: Transfer | undefined;
-  erthTransfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   poolId: number;
-  provider: string;
   /** min_shares is the fewest shares accepted, a decimal integer ("" = none). */
   minShares: string;
   refundPc: Uint8Array;
   refundCiphertext: Uint8Array;
+  /** fee is paid from bundle's uerth balance; the rest of it is the ERTH leg. */
+  fee: number;
+  /** share_pc receives the LP shares as a note. */
+  sharePc: Uint8Array;
+  shareCiphertext: Uint8Array;
 }
 
 /** MsgAddLiquidityShieldedResponse returns the shares minted and the refunds. */
 export interface MsgAddLiquidityShieldedResponse {
   shares: Coin | undefined;
   refundErth: Coin | undefined;
-  refundToken: Coin | undefined;
+  refundToken:
+    | Coin
+    | undefined;
+  /** share_position is the share note's position in the note tree. */
+  sharePosition: number;
+}
+
+/**
+ * MsgRemoveLiquidityShielded begins a private withdrawal from pool_id. bundle
+ * releases dexlp/<pool_id> (the shares, from notes) and the uerth fee; the
+ * release map after the fee must hold exactly the shares of this pool.
+ *
+ * The shares are escrowed on the dex module for lp_unbonding_seconds, as
+ * MsgRemoveLiquidity's are (they keep earning; the payout is priced at
+ * maturity), in an LpUnbonding with no account: at maturity the sweep mints
+ * the ERTH leg to erth_pc and the token leg to token_pc, both as notes.
+ *
+ * Runs in the private ante, atomically with the spend.
+ *
+ * sighash fields: pool_id, erth_pc, Bytes(erth_ciphertext), token_pc,
+ * Bytes(token_ciphertext), fee.
+ */
+export interface MsgRemoveLiquidityShielded {
+  bundle: Bundle | undefined;
+  poolId: number;
+  fee: number;
+  erthPc: Uint8Array;
+  erthCiphertext: Uint8Array;
+  tokenPc: Uint8Array;
+  tokenCiphertext: Uint8Array;
+}
+
+/**
+ * MsgRemoveLiquidityShieldedResponse returns when the withdrawal pays out
+ * (unix seconds).
+ */
+export interface MsgRemoveLiquidityShieldedResponse {
+  completionTime: number;
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -1721,19 +1768,20 @@ export const MsgClaimLiquidityAuctionResponse: MessageFns<MsgClaimLiquidityAucti
 
 function createBaseMsgNoteSwap(): MsgNoteSwap {
   return {
-    transfer: undefined,
+    bundle: undefined,
     denomOut: "",
     minAmountOut: 0,
     pc: new Uint8Array(0),
     ciphertext: new Uint8Array(0),
     feeFromOutput: 0,
+    fee: 0,
   };
 }
 
 export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
   encode(message: MsgNoteSwap, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.denomOut !== "") {
       writer.uint32(18).string(message.denomOut);
@@ -1749,6 +1797,9 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
     }
     if (message.feeFromOutput !== 0) {
       writer.uint32(48).uint64(message.feeFromOutput);
+    }
+    if (message.fee !== 0) {
+      writer.uint32(56).uint64(message.fee);
     }
     return writer;
   },
@@ -1771,7 +1822,7 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1814,6 +1865,14 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
             message.feeFromOutput = longToNumber(reader.uint64());
             continue;
           }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.fee = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1828,7 +1887,7 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
 
   fromJSON(object: any): MsgNoteSwap {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       denomOut: isSet(object.denomOut)
         ? globalThis.String(object.denomOut)
         : isSet(object.denom_out)
@@ -1846,13 +1905,14 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
         : isSet(object.fee_from_output)
         ? globalThis.Number(object.fee_from_output)
         : 0,
+      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
     };
   },
 
   toJSON(message: MsgNoteSwap): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.denomOut !== "") {
       obj.denomOut = message.denomOut;
@@ -1869,6 +1929,9 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
     if (message.feeFromOutput !== 0) {
       obj.feeFromOutput = Math.round(message.feeFromOutput);
     }
+    if (message.fee !== 0) {
+      obj.fee = Math.round(message.fee);
+    }
     return obj;
   },
 
@@ -1877,14 +1940,15 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgNoteSwap>, I>>(object: I): MsgNoteSwap {
     const message = createBaseMsgNoteSwap();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.denomOut = object.denomOut ?? "";
     message.minAmountOut = object.minAmountOut ?? 0;
     message.pc = object.pc ?? new Uint8Array(0);
     message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     message.feeFromOutput = object.feeFromOutput ?? 0;
+    message.fee = object.fee ?? 0;
     return message;
   },
 };
@@ -2216,29 +2280,24 @@ export const MsgBuyAnmlResponse: MessageFns<MsgBuyAnmlResponse> = {
 
 function createBaseMsgAddLiquidityShielded(): MsgAddLiquidityShielded {
   return {
-    transfer: undefined,
-    erthTransfer: undefined,
+    bundle: undefined,
     poolId: 0,
-    provider: "",
     minShares: "",
     refundPc: new Uint8Array(0),
     refundCiphertext: new Uint8Array(0),
+    fee: 0,
+    sharePc: new Uint8Array(0),
+    shareCiphertext: new Uint8Array(0),
   };
 }
 
 export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
   encode(message: MsgAddLiquidityShielded, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
-    }
-    if (message.erthTransfer !== undefined) {
-      Transfer.encode(message.erthTransfer, writer.uint32(18).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.poolId !== 0) {
       writer.uint32(24).uint64(message.poolId);
-    }
-    if (message.provider !== "") {
-      writer.uint32(34).string(message.provider);
     }
     if (message.minShares !== "") {
       writer.uint32(42).string(message.minShares);
@@ -2248,6 +2307,15 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
     }
     if (message.refundCiphertext.length !== 0) {
       writer.uint32(58).bytes(message.refundCiphertext);
+    }
+    if (message.fee !== 0) {
+      writer.uint32(64).uint64(message.fee);
+    }
+    if (message.sharePc.length !== 0) {
+      writer.uint32(74).bytes(message.sharePc);
+    }
+    if (message.shareCiphertext.length !== 0) {
+      writer.uint32(82).bytes(message.shareCiphertext);
     }
     return writer;
   },
@@ -2270,15 +2338,7 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
-            continue;
-          }
-          case 2: {
-            if (tag !== 18) {
-              break;
-            }
-
-            message.erthTransfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 3: {
@@ -2287,14 +2347,6 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
             }
 
             message.poolId = longToNumber(reader.uint64());
-            continue;
-          }
-          case 4: {
-            if (tag !== 34) {
-              break;
-            }
-
-            message.provider = reader.string();
             continue;
           }
           case 5: {
@@ -2321,6 +2373,30 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
             message.refundCiphertext = reader.bytes();
             continue;
           }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.fee = longToNumber(reader.uint64());
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.sharePc = reader.bytes();
+            continue;
+          }
+          case 10: {
+            if (tag !== 82) {
+              break;
+            }
+
+            message.shareCiphertext = reader.bytes();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -2335,18 +2411,12 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
 
   fromJSON(object: any): MsgAddLiquidityShielded {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
-      erthTransfer: isSet(object.erthTransfer)
-        ? Transfer.fromJSON(object.erthTransfer)
-        : isSet(object.erth_transfer)
-        ? Transfer.fromJSON(object.erth_transfer)
-        : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       poolId: isSet(object.poolId)
         ? globalThis.Number(object.poolId)
         : isSet(object.pool_id)
         ? globalThis.Number(object.pool_id)
         : 0,
-      provider: isSet(object.provider) ? globalThis.String(object.provider) : "",
       minShares: isSet(object.minShares)
         ? globalThis.String(object.minShares)
         : isSet(object.min_shares)
@@ -2362,22 +2432,27 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
         : isSet(object.refund_ciphertext)
         ? bytesFromBase64(object.refund_ciphertext)
         : new Uint8Array(0),
+      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
+      sharePc: isSet(object.sharePc)
+        ? bytesFromBase64(object.sharePc)
+        : isSet(object.share_pc)
+        ? bytesFromBase64(object.share_pc)
+        : new Uint8Array(0),
+      shareCiphertext: isSet(object.shareCiphertext)
+        ? bytesFromBase64(object.shareCiphertext)
+        : isSet(object.share_ciphertext)
+        ? bytesFromBase64(object.share_ciphertext)
+        : new Uint8Array(0),
     };
   },
 
   toJSON(message: MsgAddLiquidityShielded): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
-    }
-    if (message.erthTransfer !== undefined) {
-      obj.erthTransfer = Transfer.toJSON(message.erthTransfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.poolId !== 0) {
       obj.poolId = Math.round(message.poolId);
-    }
-    if (message.provider !== "") {
-      obj.provider = message.provider;
     }
     if (message.minShares !== "") {
       obj.minShares = message.minShares;
@@ -2388,6 +2463,15 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
     if (message.refundCiphertext.length !== 0) {
       obj.refundCiphertext = base64FromBytes(message.refundCiphertext);
     }
+    if (message.fee !== 0) {
+      obj.fee = Math.round(message.fee);
+    }
+    if (message.sharePc.length !== 0) {
+      obj.sharePc = base64FromBytes(message.sharePc);
+    }
+    if (message.shareCiphertext.length !== 0) {
+      obj.shareCiphertext = base64FromBytes(message.shareCiphertext);
+    }
     return obj;
   },
 
@@ -2396,23 +2480,22 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgAddLiquidityShielded>, I>>(object: I): MsgAddLiquidityShielded {
     const message = createBaseMsgAddLiquidityShielded();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
-      : undefined;
-    message.erthTransfer = (object.erthTransfer !== undefined && object.erthTransfer !== null)
-      ? Transfer.fromPartial(object.erthTransfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.poolId = object.poolId ?? 0;
-    message.provider = object.provider ?? "";
     message.minShares = object.minShares ?? "";
     message.refundPc = object.refundPc ?? new Uint8Array(0);
     message.refundCiphertext = object.refundCiphertext ?? new Uint8Array(0);
+    message.fee = object.fee ?? 0;
+    message.sharePc = object.sharePc ?? new Uint8Array(0);
+    message.shareCiphertext = object.shareCiphertext ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseMsgAddLiquidityShieldedResponse(): MsgAddLiquidityShieldedResponse {
-  return { shares: undefined, refundErth: undefined, refundToken: undefined };
+  return { shares: undefined, refundErth: undefined, refundToken: undefined, sharePosition: 0 };
 }
 
 export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShieldedResponse> = {
@@ -2425,6 +2508,9 @@ export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShielded
     }
     if (message.refundToken !== undefined) {
       Coin.encode(message.refundToken, writer.uint32(26).fork()).join();
+    }
+    if (message.sharePosition !== 0) {
+      writer.uint32(32).uint64(message.sharePosition);
     }
     return writer;
   },
@@ -2466,6 +2552,14 @@ export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShielded
             message.refundToken = Coin.decode(reader, reader.uint32());
             continue;
           }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.sharePosition = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -2491,6 +2585,11 @@ export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShielded
         : isSet(object.refund_token)
         ? Coin.fromJSON(object.refund_token)
         : undefined,
+      sharePosition: isSet(object.sharePosition)
+        ? globalThis.Number(object.sharePosition)
+        : isSet(object.share_position)
+        ? globalThis.Number(object.share_position)
+        : 0,
     };
   },
 
@@ -2504,6 +2603,9 @@ export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShielded
     }
     if (message.refundToken !== undefined) {
       obj.refundToken = Coin.toJSON(message.refundToken);
+    }
+    if (message.sharePosition !== 0) {
+      obj.sharePosition = Math.round(message.sharePosition);
     }
     return obj;
   },
@@ -2524,6 +2626,279 @@ export const MsgAddLiquidityShieldedResponse: MessageFns<MsgAddLiquidityShielded
     message.refundToken = (object.refundToken !== undefined && object.refundToken !== null)
       ? Coin.fromPartial(object.refundToken)
       : undefined;
+    message.sharePosition = object.sharePosition ?? 0;
+    return message;
+  },
+};
+
+function createBaseMsgRemoveLiquidityShielded(): MsgRemoveLiquidityShielded {
+  return {
+    bundle: undefined,
+    poolId: 0,
+    fee: 0,
+    erthPc: new Uint8Array(0),
+    erthCiphertext: new Uint8Array(0),
+    tokenPc: new Uint8Array(0),
+    tokenCiphertext: new Uint8Array(0),
+  };
+}
+
+export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> = {
+  encode(message: MsgRemoveLiquidityShielded, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
+    }
+    if (message.poolId !== 0) {
+      writer.uint32(16).uint64(message.poolId);
+    }
+    if (message.fee !== 0) {
+      writer.uint32(24).uint64(message.fee);
+    }
+    if (message.erthPc.length !== 0) {
+      writer.uint32(34).bytes(message.erthPc);
+    }
+    if (message.erthCiphertext.length !== 0) {
+      writer.uint32(42).bytes(message.erthCiphertext);
+    }
+    if (message.tokenPc.length !== 0) {
+      writer.uint32(50).bytes(message.tokenPc);
+    }
+    if (message.tokenCiphertext.length !== 0) {
+      writer.uint32(58).bytes(message.tokenCiphertext);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRemoveLiquidityShielded {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRemoveLiquidityShielded();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.bundle = Bundle.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.poolId = longToNumber(reader.uint64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.fee = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.erthPc = reader.bytes();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.erthCiphertext = reader.bytes();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.tokenPc = reader.bytes();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.tokenCiphertext = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRemoveLiquidityShielded {
+    return {
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
+      poolId: isSet(object.poolId)
+        ? globalThis.Number(object.poolId)
+        : isSet(object.pool_id)
+        ? globalThis.Number(object.pool_id)
+        : 0,
+      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
+      erthPc: isSet(object.erthPc)
+        ? bytesFromBase64(object.erthPc)
+        : isSet(object.erth_pc)
+        ? bytesFromBase64(object.erth_pc)
+        : new Uint8Array(0),
+      erthCiphertext: isSet(object.erthCiphertext)
+        ? bytesFromBase64(object.erthCiphertext)
+        : isSet(object.erth_ciphertext)
+        ? bytesFromBase64(object.erth_ciphertext)
+        : new Uint8Array(0),
+      tokenPc: isSet(object.tokenPc)
+        ? bytesFromBase64(object.tokenPc)
+        : isSet(object.token_pc)
+        ? bytesFromBase64(object.token_pc)
+        : new Uint8Array(0),
+      tokenCiphertext: isSet(object.tokenCiphertext)
+        ? bytesFromBase64(object.tokenCiphertext)
+        : isSet(object.token_ciphertext)
+        ? bytesFromBase64(object.token_ciphertext)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: MsgRemoveLiquidityShielded): unknown {
+    const obj: any = {};
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
+    }
+    if (message.poolId !== 0) {
+      obj.poolId = Math.round(message.poolId);
+    }
+    if (message.fee !== 0) {
+      obj.fee = Math.round(message.fee);
+    }
+    if (message.erthPc.length !== 0) {
+      obj.erthPc = base64FromBytes(message.erthPc);
+    }
+    if (message.erthCiphertext.length !== 0) {
+      obj.erthCiphertext = base64FromBytes(message.erthCiphertext);
+    }
+    if (message.tokenPc.length !== 0) {
+      obj.tokenPc = base64FromBytes(message.tokenPc);
+    }
+    if (message.tokenCiphertext.length !== 0) {
+      obj.tokenCiphertext = base64FromBytes(message.tokenCiphertext);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRemoveLiquidityShielded>, I>>(base?: I): MsgRemoveLiquidityShielded {
+    return MsgRemoveLiquidityShielded.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRemoveLiquidityShielded>, I>>(object: I): MsgRemoveLiquidityShielded {
+    const message = createBaseMsgRemoveLiquidityShielded();
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
+      : undefined;
+    message.poolId = object.poolId ?? 0;
+    message.fee = object.fee ?? 0;
+    message.erthPc = object.erthPc ?? new Uint8Array(0);
+    message.erthCiphertext = object.erthCiphertext ?? new Uint8Array(0);
+    message.tokenPc = object.tokenPc ?? new Uint8Array(0);
+    message.tokenCiphertext = object.tokenCiphertext ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseMsgRemoveLiquidityShieldedResponse(): MsgRemoveLiquidityShieldedResponse {
+  return { completionTime: 0 };
+}
+
+export const MsgRemoveLiquidityShieldedResponse: MessageFns<MsgRemoveLiquidityShieldedResponse> = {
+  encode(message: MsgRemoveLiquidityShieldedResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.completionTime !== 0) {
+      writer.uint32(8).int64(message.completionTime);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRemoveLiquidityShieldedResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRemoveLiquidityShieldedResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.completionTime = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRemoveLiquidityShieldedResponse {
+    return {
+      completionTime: isSet(object.completionTime)
+        ? globalThis.Number(object.completionTime)
+        : isSet(object.completion_time)
+        ? globalThis.Number(object.completion_time)
+        : 0,
+    };
+  },
+
+  toJSON(message: MsgRemoveLiquidityShieldedResponse): unknown {
+    const obj: any = {};
+    if (message.completionTime !== 0) {
+      obj.completionTime = Math.round(message.completionTime);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRemoveLiquidityShieldedResponse>, I>>(
+    base?: I,
+  ): MsgRemoveLiquidityShieldedResponse {
+    return MsgRemoveLiquidityShieldedResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRemoveLiquidityShieldedResponse>, I>>(
+    object: I,
+  ): MsgRemoveLiquidityShieldedResponse {
+    const message = createBaseMsgRemoveLiquidityShieldedResponse();
+    message.completionTime = object.completionTime ?? 0;
     return message;
   },
 };
@@ -2574,12 +2949,16 @@ export interface Msg {
    */
   BuyAnml(request: MsgBuyAnml): Promise<MsgBuyAnmlResponse>;
   /**
-   * AddLiquidityShielded deposits both legs from shielded notes (the pool
-   * token by one transfer, ERTH by a second) and mints LP shares to a
-   * transparent provider. Unsigned private msg; the only way to add to the
-   * ANML/ERTH pool.
+   * AddLiquidityShielded deposits both legs from shielded notes (one bundle
+   * releasing the pool token and ERTH) and mints the LP shares as a note.
+   * Unsigned private msg; the only way to add to the ANML/ERTH pool.
    */
   AddLiquidityShielded(request: MsgAddLiquidityShielded): Promise<MsgAddLiquidityShieldedResponse>;
+  /**
+   * RemoveLiquidityShielded withdraws LP shares held as notes: both legs are
+   * minted as notes when the unbonding matures. Unsigned private msg.
+   */
+  RemoveLiquidityShielded(request: MsgRemoveLiquidityShielded): Promise<MsgRemoveLiquidityShieldedResponse>;
 }
 
 export const MsgServiceName = "earth.dex.v1.Msg";
@@ -2600,6 +2979,7 @@ export class MsgClientImpl implements Msg {
     this.NoteSwap = this.NoteSwap.bind(this);
     this.BuyAnml = this.BuyAnml.bind(this);
     this.AddLiquidityShielded = this.AddLiquidityShielded.bind(this);
+    this.RemoveLiquidityShielded = this.RemoveLiquidityShielded.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -2665,6 +3045,12 @@ export class MsgClientImpl implements Msg {
     const data = MsgAddLiquidityShielded.encode(request).finish();
     const promise = this.rpc.request(this.service, "AddLiquidityShielded", data);
     return promise.then((data) => MsgAddLiquidityShieldedResponse.decode(new BinaryReader(data)));
+  }
+
+  RemoveLiquidityShielded(request: MsgRemoveLiquidityShielded): Promise<MsgRemoveLiquidityShieldedResponse> {
+    const data = MsgRemoveLiquidityShielded.encode(request).finish();
+    const promise = this.rpc.request(this.service, "RemoveLiquidityShielded", data);
+    return promise.then((data) => MsgRemoveLiquidityShieldedResponse.decode(new BinaryReader(data)));
   }
 }
 

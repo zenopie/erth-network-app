@@ -12,7 +12,7 @@ export const protobufPackage = "earth.shielded.v1";
 /** Params defines the parameters of the shielded pool. */
 export interface Params {
   /**
-   * verifying_keys maps a circuit name ("transfer", "membership") to its
+   * verifying_keys maps a circuit name ("action", "membership") to its
    * Barretenberg UltraHonk (bb v5.0.0) verifying key. A private msg whose
    * circuit has no key is refused.
    */
@@ -24,16 +24,16 @@ export interface Params {
    */
   minFee: string;
   /**
-   * proof_verification_gas is charged per private msg before its proof is
-   * verified, whatever the outcome, and also in simulate mode.
+   * proof_verification_gas is charged per action (one action proof), before
+   * it is verified, whatever the outcome, and also in simulate mode.
    */
   proofVerificationGas: number;
   /**
-   * note_gas is charged per output commitment a private msg appends (and per
-   * nullifier it spends). Private msgs execute their pool writes on an
-   * infinite gas meter after paying this fixed price up front, so a private
-   * tx's gas is a function of its size and shape alone and cannot run out
-   * halfway through.
+   * note_gas is charged per nullifier spent and per commitment appended (two
+   * per action), and per note a private action mints. Private msgs execute
+   * their pool writes on an infinite gas meter after paying this fixed price
+   * up front, so a private tx's gas is a function of its shape alone and
+   * cannot run out halfway through.
    */
   noteGas: number;
   /**
@@ -42,10 +42,21 @@ export interface Params {
    */
   rootWindowSeconds: number;
   /**
-   * max_private_txs_per_block caps how many private txs one block executes.
-   * Each carries a proof whose verification is the dominant block cost.
+   * max_private_actions_per_block caps how many actions (proofs) the private
+   * txs of one block carry in total. Proof verification is the dominant
+   * block cost.
    */
-  maxPrivateTxsPerBlock: number;
+  maxPrivateActionsPerBlock: number;
+  /**
+   * max_actions_per_bundle caps one bundle: 2 (the padding minimum) to 32
+   * (zk/orchard.MaxActions, part of the balance's soundness bound).
+   */
+  maxActionsPerBundle: number;
+  /**
+   * bundle_gas is charged per bundle on top of its actions: the sighash,
+   * the binding key and the binding signature.
+   */
+  bundleGas: number;
 }
 
 export interface Params_VerifyingKeysEntry {
@@ -60,7 +71,9 @@ function createBaseParams(): Params {
     proofVerificationGas: 0,
     noteGas: 0,
     rootWindowSeconds: 0,
-    maxPrivateTxsPerBlock: 0,
+    maxPrivateActionsPerBlock: 0,
+    maxActionsPerBundle: 0,
+    bundleGas: 0,
   };
 }
 
@@ -81,8 +94,14 @@ export const Params: MessageFns<Params> = {
     if (message.rootWindowSeconds !== 0) {
       writer.uint32(40).uint64(message.rootWindowSeconds);
     }
-    if (message.maxPrivateTxsPerBlock !== 0) {
-      writer.uint32(48).uint32(message.maxPrivateTxsPerBlock);
+    if (message.maxPrivateActionsPerBlock !== 0) {
+      writer.uint32(48).uint32(message.maxPrivateActionsPerBlock);
+    }
+    if (message.maxActionsPerBundle !== 0) {
+      writer.uint32(56).uint32(message.maxActionsPerBundle);
+    }
+    if (message.bundleGas !== 0) {
+      writer.uint32(64).uint64(message.bundleGas);
     }
     return writer;
   },
@@ -148,7 +167,23 @@ export const Params: MessageFns<Params> = {
               break;
             }
 
-            message.maxPrivateTxsPerBlock = reader.uint32();
+            message.maxPrivateActionsPerBlock = reader.uint32();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.maxActionsPerBundle = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.bundleGas = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -212,10 +247,20 @@ export const Params: MessageFns<Params> = {
         : isSet(object.root_window_seconds)
         ? globalThis.Number(object.root_window_seconds)
         : 0,
-      maxPrivateTxsPerBlock: isSet(object.maxPrivateTxsPerBlock)
-        ? globalThis.Number(object.maxPrivateTxsPerBlock)
-        : isSet(object.max_private_txs_per_block)
-        ? globalThis.Number(object.max_private_txs_per_block)
+      maxPrivateActionsPerBlock: isSet(object.maxPrivateActionsPerBlock)
+        ? globalThis.Number(object.maxPrivateActionsPerBlock)
+        : isSet(object.max_private_actions_per_block)
+        ? globalThis.Number(object.max_private_actions_per_block)
+        : 0,
+      maxActionsPerBundle: isSet(object.maxActionsPerBundle)
+        ? globalThis.Number(object.maxActionsPerBundle)
+        : isSet(object.max_actions_per_bundle)
+        ? globalThis.Number(object.max_actions_per_bundle)
+        : 0,
+      bundleGas: isSet(object.bundleGas)
+        ? globalThis.Number(object.bundleGas)
+        : isSet(object.bundle_gas)
+        ? globalThis.Number(object.bundle_gas)
         : 0,
     };
   },
@@ -243,8 +288,14 @@ export const Params: MessageFns<Params> = {
     if (message.rootWindowSeconds !== 0) {
       obj.rootWindowSeconds = Math.round(message.rootWindowSeconds);
     }
-    if (message.maxPrivateTxsPerBlock !== 0) {
-      obj.maxPrivateTxsPerBlock = Math.round(message.maxPrivateTxsPerBlock);
+    if (message.maxPrivateActionsPerBlock !== 0) {
+      obj.maxPrivateActionsPerBlock = Math.round(message.maxPrivateActionsPerBlock);
+    }
+    if (message.maxActionsPerBundle !== 0) {
+      obj.maxActionsPerBundle = Math.round(message.maxActionsPerBundle);
+    }
+    if (message.bundleGas !== 0) {
+      obj.bundleGas = Math.round(message.bundleGas);
     }
     return obj;
   },
@@ -267,7 +318,9 @@ export const Params: MessageFns<Params> = {
     message.proofVerificationGas = object.proofVerificationGas ?? 0;
     message.noteGas = object.noteGas ?? 0;
     message.rootWindowSeconds = object.rootWindowSeconds ?? 0;
-    message.maxPrivateTxsPerBlock = object.maxPrivateTxsPerBlock ?? 0;
+    message.maxPrivateActionsPerBlock = object.maxPrivateActionsPerBlock ?? 0;
+    message.maxActionsPerBundle = object.maxActionsPerBundle ?? 0;
+    message.bundleGas = object.bundleGas ?? 0;
     return message;
   },
 };

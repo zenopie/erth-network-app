@@ -89,17 +89,19 @@ export interface ValidatorState {
    * Groundworks positions. Conversions use the live rate.
    */
   epochRate: string;
+  /**
+   * derth_supply is S_v: the derth/<validator> outstanding, in stake notes
+   * and positions. derth is never a coin.
+   */
+  derthSupply: string;
 }
 
-/** UnbondRecord backs the unbond/<validator>/<epoch> notes. */
+/** UnbondRecord backs the unbond/<validator>/<epoch> stake notes (claims). */
 export interface UnbondRecord {
   validator: string;
   epoch: number;
   status: UnbondStatus;
-  /**
-   * requested is the total value of the notes minted (= the denom's minted
-   * supply).
-   */
+  /** requested is the total value of the claim notes minted. */
   requested: string;
   /**
    * target is what to undelegate: requested, less the share of any slash
@@ -125,34 +127,41 @@ export interface UnbondRecord {
 
 /**
  * Position is a Groundworks position: derth locked in the module, its owner
- * a one-time secp256k1 key.
+ * known only by owner_tag, which its stake proofs must reproduce.
  */
 export interface Position {
   id: number;
   validator: string;
   derth: string;
   splits: AllocationWeight[];
-  /**
-   * pubkey is the compressed secp256k1 key (33 bytes) that signs updates,
-   * unlocks and votes.
-   */
-  pubkey: Uint8Array;
-  /** nonce is bumped by every signed action, so a signature is good once. */
-  nonce: number;
   createdHeight: number;
   /**
    * weight is what the position currently carries in the Groundworks stream
    * (derth x epoch rate).
    */
   weight: string;
+  /** owner_tag is H(TAG_OTAG, owner_pk, salt), 32 bytes (circuits/stake). */
+  ownerTag: Uint8Array;
+}
+
+/**
+ * StakeRoot is a stake-tree root recorded at the end of a block that changed
+ * the tree.
+ */
+export interface StakeRoot {
+  root: Uint8Array;
+  height: number;
+  /** time of that block, unix seconds; the window runs from here. */
+  time: number;
+  treeSize: number;
 }
 
 /** ProposalSnapshot is taken when an x/gov proposal enters voting. */
 export interface ProposalSnapshot {
   proposalId: number;
   /**
-   * root is the note-tree anchor at that moment; stake votes are proven
-   * against it. tree_size is its leaf count.
+   * root is the stake tree's latest root at that moment; stake votes are
+   * proven against it. tree_size is its leaf count.
    */
   root: Uint8Array;
   treeSize: number;
@@ -170,13 +179,13 @@ export interface ValidatorSnapshot {
 }
 
 /**
- * StakeVote is one private stake vote: a spent note's (keyed by its
- * transfer's first nullifier) or a position's.
+ * StakeVote is one private stake vote: spent stake notes' (keyed by the
+ * stake proof's first nullifier) or a position's.
  */
 export interface StakeVote {
   proposalId: number;
   /**
-   * key is 0x00 || the transfer's first nullifier (32 bytes) of a note vote,
+   * key is 0x00 || the stake proof's first nullifier (32 bytes) of a note vote,
    * or 0x01 || the position id (8 bytes big-endian) of a position vote.
    */
   key: Uint8Array;
@@ -308,7 +317,7 @@ export const Epoch: MessageFns<Epoch> = {
 };
 
 function createBaseValidatorState(): ValidatorState {
-  return { validator: "", pendingDelegation: "", pendingUndelegation: "", epochRate: "" };
+  return { validator: "", pendingDelegation: "", pendingUndelegation: "", epochRate: "", derthSupply: "" };
 }
 
 export const ValidatorState: MessageFns<ValidatorState> = {
@@ -324,6 +333,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     }
     if (message.epochRate !== "") {
       writer.uint32(34).string(message.epochRate);
+    }
+    if (message.derthSupply !== "") {
+      writer.uint32(42).string(message.derthSupply);
     }
     return writer;
   },
@@ -373,6 +385,14 @@ export const ValidatorState: MessageFns<ValidatorState> = {
             message.epochRate = reader.string();
             continue;
           }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.derthSupply = reader.string();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -403,6 +423,11 @@ export const ValidatorState: MessageFns<ValidatorState> = {
         : isSet(object.epoch_rate)
         ? globalThis.String(object.epoch_rate)
         : "",
+      derthSupply: isSet(object.derthSupply)
+        ? globalThis.String(object.derthSupply)
+        : isSet(object.derth_supply)
+        ? globalThis.String(object.derth_supply)
+        : "",
     };
   },
 
@@ -420,6 +445,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     if (message.epochRate !== "") {
       obj.epochRate = message.epochRate;
     }
+    if (message.derthSupply !== "") {
+      obj.derthSupply = message.derthSupply;
+    }
     return obj;
   },
 
@@ -432,6 +460,7 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     message.pendingDelegation = object.pendingDelegation ?? "";
     message.pendingUndelegation = object.pendingUndelegation ?? "";
     message.epochRate = object.epochRate ?? "";
+    message.derthSupply = object.derthSupply ?? "";
     return message;
   },
 };
@@ -686,16 +715,7 @@ export const UnbondRecord: MessageFns<UnbondRecord> = {
 };
 
 function createBasePosition(): Position {
-  return {
-    id: 0,
-    validator: "",
-    derth: "",
-    splits: [],
-    pubkey: new Uint8Array(0),
-    nonce: 0,
-    createdHeight: 0,
-    weight: "",
-  };
+  return { id: 0, validator: "", derth: "", splits: [], createdHeight: 0, weight: "", ownerTag: new Uint8Array(0) };
 }
 
 export const Position: MessageFns<Position> = {
@@ -712,17 +732,14 @@ export const Position: MessageFns<Position> = {
     for (const v of message.splits) {
       AllocationWeight.encode(v!, writer.uint32(34).fork()).join();
     }
-    if (message.pubkey.length !== 0) {
-      writer.uint32(42).bytes(message.pubkey);
-    }
-    if (message.nonce !== 0) {
-      writer.uint32(48).uint64(message.nonce);
-    }
     if (message.createdHeight !== 0) {
       writer.uint32(56).int64(message.createdHeight);
     }
     if (message.weight !== "") {
       writer.uint32(66).string(message.weight);
+    }
+    if (message.ownerTag.length !== 0) {
+      writer.uint32(74).bytes(message.ownerTag);
     }
     return writer;
   },
@@ -772,22 +789,6 @@ export const Position: MessageFns<Position> = {
             message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
             continue;
           }
-          case 5: {
-            if (tag !== 42) {
-              break;
-            }
-
-            message.pubkey = reader.bytes();
-            continue;
-          }
-          case 6: {
-            if (tag !== 48) {
-              break;
-            }
-
-            message.nonce = longToNumber(reader.uint64());
-            continue;
-          }
           case 7: {
             if (tag !== 56) {
               break;
@@ -802,6 +803,14 @@ export const Position: MessageFns<Position> = {
             }
 
             message.weight = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.ownerTag = reader.bytes();
             continue;
           }
         }
@@ -824,14 +833,17 @@ export const Position: MessageFns<Position> = {
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      pubkey: isSet(object.pubkey) ? bytesFromBase64(object.pubkey) : new Uint8Array(0),
-      nonce: isSet(object.nonce) ? globalThis.Number(object.nonce) : 0,
       createdHeight: isSet(object.createdHeight)
         ? globalThis.Number(object.createdHeight)
         : isSet(object.created_height)
         ? globalThis.Number(object.created_height)
         : 0,
       weight: isSet(object.weight) ? globalThis.String(object.weight) : "",
+      ownerTag: isSet(object.ownerTag)
+        ? bytesFromBase64(object.ownerTag)
+        : isSet(object.owner_tag)
+        ? bytesFromBase64(object.owner_tag)
+        : new Uint8Array(0),
     };
   },
 
@@ -849,17 +861,14 @@ export const Position: MessageFns<Position> = {
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
     }
-    if (message.pubkey.length !== 0) {
-      obj.pubkey = base64FromBytes(message.pubkey);
-    }
-    if (message.nonce !== 0) {
-      obj.nonce = Math.round(message.nonce);
-    }
     if (message.createdHeight !== 0) {
       obj.createdHeight = Math.round(message.createdHeight);
     }
     if (message.weight !== "") {
       obj.weight = message.weight;
+    }
+    if (message.ownerTag.length !== 0) {
+      obj.ownerTag = base64FromBytes(message.ownerTag);
     }
     return obj;
   },
@@ -873,10 +882,130 @@ export const Position: MessageFns<Position> = {
     message.validator = object.validator ?? "";
     message.derth = object.derth ?? "";
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.pubkey = object.pubkey ?? new Uint8Array(0);
-    message.nonce = object.nonce ?? 0;
     message.createdHeight = object.createdHeight ?? 0;
     message.weight = object.weight ?? "";
+    message.ownerTag = object.ownerTag ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseStakeRoot(): StakeRoot {
+  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0 };
+}
+
+export const StakeRoot: MessageFns<StakeRoot> = {
+  encode(message: StakeRoot, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.root.length !== 0) {
+      writer.uint32(10).bytes(message.root);
+    }
+    if (message.height !== 0) {
+      writer.uint32(16).int64(message.height);
+    }
+    if (message.time !== 0) {
+      writer.uint32(24).int64(message.time);
+    }
+    if (message.treeSize !== 0) {
+      writer.uint32(32).uint64(message.treeSize);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StakeRoot {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseStakeRoot();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.root = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.height = longToNumber(reader.int64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.time = longToNumber(reader.int64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.treeSize = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): StakeRoot {
+    return {
+      root: isSet(object.root) ? bytesFromBase64(object.root) : new Uint8Array(0),
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      time: isSet(object.time) ? globalThis.Number(object.time) : 0,
+      treeSize: isSet(object.treeSize)
+        ? globalThis.Number(object.treeSize)
+        : isSet(object.tree_size)
+        ? globalThis.Number(object.tree_size)
+        : 0,
+    };
+  },
+
+  toJSON(message: StakeRoot): unknown {
+    const obj: any = {};
+    if (message.root.length !== 0) {
+      obj.root = base64FromBytes(message.root);
+    }
+    if (message.height !== 0) {
+      obj.height = Math.round(message.height);
+    }
+    if (message.time !== 0) {
+      obj.time = Math.round(message.time);
+    }
+    if (message.treeSize !== 0) {
+      obj.treeSize = Math.round(message.treeSize);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StakeRoot>, I>>(base?: I): StakeRoot {
+    return StakeRoot.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StakeRoot>, I>>(object: I): StakeRoot {
+    const message = createBaseStakeRoot();
+    message.root = object.root ?? new Uint8Array(0);
+    message.height = object.height ?? 0;
+    message.time = object.time ?? 0;
+    message.treeSize = object.treeSize ?? 0;
     return message;
   },
 };

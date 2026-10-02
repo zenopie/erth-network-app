@@ -23,9 +23,16 @@ export const protobufPackage = "earth.dex.v1";
  * pool. The price of leaving is time value alone — the capital is locked and at
  * risk for the unbonding period. The payout is therefore priced at maturity
  * rather than when unbonding began.
+ *
+ * A private withdrawal (MsgRemoveLiquidityShielded) has no address: it is
+ * keyed by withdrawal_id and pays both legs as notes, ERTH to erth_pc and the
+ * token to pc.
  */
 export interface LpUnbonding {
-  /** address is the provider the matured liquidity is swept to. */
+  /**
+   * address is the provider the matured liquidity is swept to; empty for a
+   * private withdrawal.
+   */
   address: string;
   poolId: number;
   /** shares is the escrowed LP share coin awaiting maturity. */
@@ -39,10 +46,20 @@ export interface LpUnbonding {
   completionTime: number;
   /**
    * pc receives the token leg as a shielded note, for a pool whose token is
-   * shielded-only (ANML); empty otherwise. See MsgRemoveLiquidity.
+   * shielded-only (ANML) and for every private withdrawal; empty otherwise.
+   * See MsgRemoveLiquidity, MsgRemoveLiquidityShielded.
    */
   pc: Uint8Array;
   ciphertext: Uint8Array;
+  /** erth_pc receives the ERTH leg as a note: private withdrawals only. */
+  erthPc: Uint8Array;
+  erthCiphertext: Uint8Array;
+  /**
+   * withdrawal_id keys a private withdrawal in place of an address:
+   * 0x00 || the first nullifier its bundle spent (33 bytes). Empty for an
+   * account's withdrawal.
+   */
+  withdrawalId: Uint8Array;
 }
 
 function createBaseLpUnbonding(): LpUnbonding {
@@ -53,6 +70,9 @@ function createBaseLpUnbonding(): LpUnbonding {
     completionTime: 0,
     pc: new Uint8Array(0),
     ciphertext: new Uint8Array(0),
+    erthPc: new Uint8Array(0),
+    erthCiphertext: new Uint8Array(0),
+    withdrawalId: new Uint8Array(0),
   };
 }
 
@@ -75,6 +95,15 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     }
     if (message.ciphertext.length !== 0) {
       writer.uint32(50).bytes(message.ciphertext);
+    }
+    if (message.erthPc.length !== 0) {
+      writer.uint32(58).bytes(message.erthPc);
+    }
+    if (message.erthCiphertext.length !== 0) {
+      writer.uint32(66).bytes(message.erthCiphertext);
+    }
+    if (message.withdrawalId.length !== 0) {
+      writer.uint32(74).bytes(message.withdrawalId);
     }
     return writer;
   },
@@ -140,6 +169,30 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
             message.ciphertext = reader.bytes();
             continue;
           }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.erthPc = reader.bytes();
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.erthCiphertext = reader.bytes();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.withdrawalId = reader.bytes();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -168,6 +221,21 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
         : 0,
       pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
       ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      erthPc: isSet(object.erthPc)
+        ? bytesFromBase64(object.erthPc)
+        : isSet(object.erth_pc)
+        ? bytesFromBase64(object.erth_pc)
+        : new Uint8Array(0),
+      erthCiphertext: isSet(object.erthCiphertext)
+        ? bytesFromBase64(object.erthCiphertext)
+        : isSet(object.erth_ciphertext)
+        ? bytesFromBase64(object.erth_ciphertext)
+        : new Uint8Array(0),
+      withdrawalId: isSet(object.withdrawalId)
+        ? bytesFromBase64(object.withdrawalId)
+        : isSet(object.withdrawal_id)
+        ? bytesFromBase64(object.withdrawal_id)
+        : new Uint8Array(0),
     };
   },
 
@@ -191,6 +259,15 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     if (message.ciphertext.length !== 0) {
       obj.ciphertext = base64FromBytes(message.ciphertext);
     }
+    if (message.erthPc.length !== 0) {
+      obj.erthPc = base64FromBytes(message.erthPc);
+    }
+    if (message.erthCiphertext.length !== 0) {
+      obj.erthCiphertext = base64FromBytes(message.erthCiphertext);
+    }
+    if (message.withdrawalId.length !== 0) {
+      obj.withdrawalId = base64FromBytes(message.withdrawalId);
+    }
     return obj;
   },
 
@@ -207,6 +284,9 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     message.completionTime = object.completionTime ?? 0;
     message.pc = object.pc ?? new Uint8Array(0);
     message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.erthPc = object.erthPc ?? new Uint8Array(0);
+    message.erthCiphertext = object.erthCiphertext ?? new Uint8Array(0);
+    message.withdrawalId = object.withdrawalId ?? new Uint8Array(0);
     return message;
   },
 };

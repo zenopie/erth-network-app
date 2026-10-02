@@ -7,7 +7,7 @@
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { Membership } from "../../personhood/v1/registration";
-import { Transfer } from "../../shielded/v1/shielded";
+import { Bundle } from "../../shielded/v1/shielded";
 import { VoteOption, voteOptionFromJSON, voteOptionToJSON } from "./assembly";
 
 export const protobufPackage = "earth.assembly.v1";
@@ -26,10 +26,10 @@ export const protobufPackage = "earth.assembly.v1";
  * person who switched identity after the round opened cannot vote in it
  * again. Query BallotInputs for the round's values.
  *
- * signal fields: proposal_id, option.
+ * sighash fields: proposal_id, option.
  */
 export interface MsgVoteProposal {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   proposalId: number;
   option: VoteOption;
@@ -51,10 +51,10 @@ export interface MsgVoteProposalResponse {
  * today's UTC day), excluded_dsc and excluded_country 0 and max_activation the start of today
  * (UTC) minus the identity root window. Its nullifier is not recorded.
  *
- * signal fields: option_id.
+ * sighash fields: option_id.
  */
 export interface MsgProposeRemoval {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   optionId: number;
 }
@@ -72,10 +72,10 @@ export interface MsgProposeRemovalResponse {
  * excluded_dsc and excluded_country 0 and max_activation the ballot's opening time minus the
  * identity root window.
  *
- * signal fields: option_id, option.
+ * sighash fields: option_id, option.
  */
 export interface MsgVoteRemoval {
-  fee: Transfer | undefined;
+  fee: Bundle | undefined;
   membership: Membership | undefined;
   optionId: number;
   option: VoteOption;
@@ -92,7 +92,7 @@ function createBaseMsgVoteProposal(): MsgVoteProposal {
 export const MsgVoteProposal: MessageFns<MsgVoteProposal> = {
   encode(message: MsgVoteProposal, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -124,7 +124,7 @@ export const MsgVoteProposal: MessageFns<MsgVoteProposal> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -165,7 +165,7 @@ export const MsgVoteProposal: MessageFns<MsgVoteProposal> = {
 
   fromJSON(object: any): MsgVoteProposal {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       proposalId: isSet(object.proposalId)
         ? globalThis.Number(object.proposalId)
@@ -179,7 +179,7 @@ export const MsgVoteProposal: MessageFns<MsgVoteProposal> = {
   toJSON(message: MsgVoteProposal): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -198,7 +198,7 @@ export const MsgVoteProposal: MessageFns<MsgVoteProposal> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgVoteProposal>, I>>(object: I): MsgVoteProposal {
     const message = createBaseMsgVoteProposal();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -267,7 +267,7 @@ function createBaseMsgProposeRemoval(): MsgProposeRemoval {
 export const MsgProposeRemoval: MessageFns<MsgProposeRemoval> = {
   encode(message: MsgProposeRemoval, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -296,7 +296,7 @@ export const MsgProposeRemoval: MessageFns<MsgProposeRemoval> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -329,7 +329,7 @@ export const MsgProposeRemoval: MessageFns<MsgProposeRemoval> = {
 
   fromJSON(object: any): MsgProposeRemoval {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       optionId: isSet(object.optionId)
         ? globalThis.Number(object.optionId)
@@ -342,7 +342,7 @@ export const MsgProposeRemoval: MessageFns<MsgProposeRemoval> = {
   toJSON(message: MsgProposeRemoval): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -358,7 +358,7 @@ export const MsgProposeRemoval: MessageFns<MsgProposeRemoval> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgProposeRemoval>, I>>(object: I): MsgProposeRemoval {
     const message = createBaseMsgProposeRemoval();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -467,7 +467,7 @@ function createBaseMsgVoteRemoval(): MsgVoteRemoval {
 export const MsgVoteRemoval: MessageFns<MsgVoteRemoval> = {
   encode(message: MsgVoteRemoval, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.fee !== undefined) {
-      Transfer.encode(message.fee, writer.uint32(10).fork()).join();
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
     }
     if (message.membership !== undefined) {
       Membership.encode(message.membership, writer.uint32(18).fork()).join();
@@ -499,7 +499,7 @@ export const MsgVoteRemoval: MessageFns<MsgVoteRemoval> = {
               break;
             }
 
-            message.fee = Transfer.decode(reader, reader.uint32());
+            message.fee = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -540,7 +540,7 @@ export const MsgVoteRemoval: MessageFns<MsgVoteRemoval> = {
 
   fromJSON(object: any): MsgVoteRemoval {
     return {
-      fee: isSet(object.fee) ? Transfer.fromJSON(object.fee) : undefined,
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
       membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
       optionId: isSet(object.optionId)
         ? globalThis.Number(object.optionId)
@@ -554,7 +554,7 @@ export const MsgVoteRemoval: MessageFns<MsgVoteRemoval> = {
   toJSON(message: MsgVoteRemoval): unknown {
     const obj: any = {};
     if (message.fee !== undefined) {
-      obj.fee = Transfer.toJSON(message.fee);
+      obj.fee = Bundle.toJSON(message.fee);
     }
     if (message.membership !== undefined) {
       obj.membership = Membership.toJSON(message.membership);
@@ -573,7 +573,7 @@ export const MsgVoteRemoval: MessageFns<MsgVoteRemoval> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgVoteRemoval>, I>>(object: I): MsgVoteRemoval {
     const message = createBaseMsgVoteRemoval();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Transfer.fromPartial(object.fee) : undefined;
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
     message.membership = (object.membership !== undefined && object.membership !== null)
       ? Membership.fromPartial(object.membership)
       : undefined;
@@ -639,16 +639,17 @@ export const MsgVoteRemovalResponse: MessageFns<MsgVoteRemovalResponse> = {
  * Msg is the assembly: the chamber where weight is a person rather than a coin.
  *
  * Every message here is a private msg (unsigned, alone in its tx, its fee paid
- * from the shielded pool by the earth.shielded Transfer it embeds) carrying a
+ * from the shielded pool by the earth.shielded Bundle it embeds) carrying a
  * membership proof against x/personhood's identity tree. Who voted is never
  * known; that the same person voted twice in one ballot is, because they
  * present the same nullifier, and the later vote replaces the earlier. There is
  * no UpdateParams: the assembly exists to check stake-weighted governance, so
  * nothing about it is a governance parameter.
  *
- * Each msg's signal is zk/privacy.ActionSignal(type URL, chain id, fee
- * ciphertexts, fee nullifiers, fields...), bound by both proofs; the fields
- * are listed on each msg.
+ * fee is a fee bundle: its only balance is the uerth fee. Each msg's sighash
+ * is zk/orchard.Sighash(type URL, chain id, 1, digest(fee), fields...), which
+ * every action proof and the binding signature bind and which the membership
+ * proof binds as its signal; the fields are listed on each msg.
  */
 export interface Msg {
   /**
