@@ -5,8 +5,11 @@ import { b64ToHex } from "./bytes";
  * x/shieldedstaking — private staking.
  *
  * The shielded module is the only delegator besides validators' own self-bond.
- * A private staker holds `derth/<valoper>` notes, worth `rate_v` ERTH each;
- * rewards are compounded into the module's delegation at every epoch end, so
+ * A private staker holds `derth/<valoper>` stake notes, worth `rate_v` ERTH
+ * each. derth is not a coin and not a shielded-pool asset: stake notes live in
+ * the module's own owner-locked stake tree (non-transferable), and the supply
+ * is a book entry (ValidatorState.derth_supply), so it is read from the
+ * Validator query, never from x/bank. Rewards are compounded into the module's delegation at every epoch end, so
  * the rate rises instead of anyone being paid. Delegations, undelegations and
  * claims are batched at epoch end and made from the phone. Everything here is
  * per validator or per position, never per owner.
@@ -50,7 +53,9 @@ export async function validator(valoper) {
     validator: s.validator ?? valoper,
     rate: Number(data.rate ?? 0),
     epochRate: Number(s.epoch_rate ?? 0),
-    supply: data.supply ?? "0",
+    // derth outstanding (stake notes + positions). `supply` is the query's
+    // figure; state.derth_supply is the same book entry.
+    supply: data.supply ?? s.derth_supply ?? "0",
     backing: data.backing ?? "0",
     pendingDelegation: s.pending_delegation ?? "0",
     pendingUndelegation: s.pending_undelegation ?? "0",
@@ -65,8 +70,10 @@ export async function validatorBooks(valopers) {
 
 /**
  * Every Groundworks position. A position is derth locked in the module and
- * split across Groundworks options; its owner is a one-time key, so the split
- * and weight are public and the person behind it is not.
+ * split across Groundworks options. Its owner is known only by `owner_tag`
+ * (H(owner_pk, salt), proven by the stake circuit), so the split and weight
+ * are public and the person behind it is not. The tag is per position and
+ * links nothing.
  */
 export async function positions() {
   const out = [];
@@ -88,6 +95,7 @@ export async function positions() {
           percent: Number(w.percent),
         })),
         createdHeight: Number(p.created_height ?? 0),
+        ownerTag: b64ToHex(p.owner_tag),
       });
     }
     key = data.pagination?.next_key ?? "";
@@ -98,7 +106,7 @@ export async function positions() {
 
 /**
  * A proposal's stake-vote snapshot, taken when it entered voting: the note
- * root stake votes prove against and each validator's derth supply and rate
+ * stake-tree root stake votes prove against and each validator's derth supply and rate
  * at that moment. Null before voting starts.
  */
 export async function snapshot(proposalId) {
@@ -116,4 +124,14 @@ export async function snapshot(proposalId) {
       rate: Number(v.rate ?? 0),
     })),
   };
+}
+
+/**
+ * The stake note tree (derth and unbond claims): leaf count and latest root
+ * (hex, "" before the first note). Null when the read fails.
+ */
+export async function stakeTree() {
+  const data = await getOr("/earth/shieldedstaking/v1/stake_tree", null);
+  if (!data) return null;
+  return { size: Number(data.size ?? 0), root: b64ToHex(data.root) };
 }

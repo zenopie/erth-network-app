@@ -41,10 +41,15 @@ const routes = {
   "/earth/shielded/v1/assets": { assets: [{ denom: "uerth", asset_id: b64([1]) }, { denom: "uanml", asset_id: b64([2]) }] },
   "/earth/shieldedstaking/v1/epoch": { epoch: { number: "8", start_time: "100", end_time: "86500" } },
   "/earth/shieldedstaking/v1/validators/earthvaloper1v": {
-    state: { validator: "earthvaloper1v", pending_delegation: "5", pending_undelegation: "0", epoch_rate: "1.010000000000000000" },
+    state: { validator: "earthvaloper1v", pending_delegation: "5", pending_undelegation: "0", epoch_rate: "1.010000000000000000", derth_supply: "1000" },
     rate: "1.020000000000000000", supply: "1000", backing: "1020",
   },
-  "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }] }], pagination: { next_key: null } },
+  // derth is no coin: a node that leaves out the top-level supply still has the book entry.
+  "/earth/shieldedstaking/v1/validators/earthvaloper1w": {
+    state: { validator: "earthvaloper1w", derth_supply: "77", epoch_rate: "1" }, rate: "1", backing: "77",
+  },
+  "/earth/shieldedstaking/v1/stake_tree": { size: "12", root: b64([0xab, 0xcd]) },
+  "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }], owner_tag: b64([0x0a, 0x0b]) }], pagination: { next_key: null } },
   "/cosmos/gov/v1/proposals": { proposals: [
     { id: "3", title: "Old", status: "PROPOSAL_STATUS_PASSED", messages: [], total_deposit: [{ denom: "uerth", amount: "5" }], final_tally_result: { yes_count: "1" } },
     { id: "4", title: "New", status: "PROPOSAL_STATUS_VOTING_PERIOD", expedited: true, messages: [{ "@type": "/earth.pki.v1.MsgRevokeDsc" }], total_deposit: [] },
@@ -105,9 +110,11 @@ const ep = await ss.epoch();
 check("epoch", ep.number === 8 && ep.endTime === 86500);
 const book = await ss.validator("earthvaloper1v");
 check("validator book", book.rate === 1.02 && book.epochRate === 1.01 && book.backing === "1020");
+check("derth supply from the staking book", book.supply === "1000" && (await ss.validator("earthvaloper1w")).supply === "77");
+check("stake tree", (await ss.stakeTree()).size === 12 && (await ss.stakeTree()).root === "abcd");
 check("a failed book read is null", (await ss.validator("earthvaloper1x")) === null);
 const pos = await ss.positions();
-check("positions", pos.length === 1 && pos[0].splits[0].optionId === 3);
+check("positions", pos.length === 1 && pos[0].splits[0].optionId === 3 && pos[0].ownerTag === "0a0b");
 check("no snapshot before voting", (await ss.snapshot(3)) === null);
 
 const ps = await gov.proposals();
