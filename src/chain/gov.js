@@ -5,8 +5,8 @@ import { UERTH } from "./config";
  * x/gov — the stake chamber.
  *
  * Stake voting weight is validators' transparent self-bond plus private
- * derth, voted from the phone by spending a note against the proposal's
- * snapshot. The chain's custom tally combines both, and the gov tally query
+ * derth, voted from the phone with a stake-note proof against the proposal's
+ * snapshot of the stake tree. The chain's custom tally combines both, and the gov tally query
  * runs the same function, so /tally here is the real stake result. Each
  * validator's own vote also carries its un-voted derth (the SDK's inheritance
  * rule), which is why a validator's transparent vote still matters.

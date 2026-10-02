@@ -531,8 +531,11 @@ const Markets = () => {
 
                   {row.pool.tokenDenom === UANML ? (
                     /* ANML exists only as notes. Adding is
-                       MsgAddLiquidityShielded (both legs from notes, proven
-                       on the phone). Withdrawing is a signed
+                       MsgAddLiquidityShielded (one bundle, both legs from
+                       notes, proven on the phone), which mints the shares as
+                       a private note: they never show here and are withdrawn
+                       in the app (MsgRemoveLiquidityShielded). Withdrawing
+                       transparent shares (e.g. auction-era) is a signed
                        MsgRemoveLiquidity whose ANML leg is minted as a note
                        to a shielded address (pc + value-blind ciphertext),
                        so a Keplr account holding these LP shares can leave
@@ -540,7 +543,8 @@ const Markets = () => {
                     <div className={styles.poolExpandActions}>
                       <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
                         ANML is always private, so adding to this pool is done from your
-                        shielded balance on your phone. LP shares themselves are public.
+                        shielded balance on your phone. Those LP shares are private notes too: they are
+                        shown and withdrawn only in the app.
                       </MobileCta>
                       {row.userShares > 0 && (
                         <div className={styles.lpContent}>

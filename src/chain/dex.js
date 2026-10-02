@@ -5,7 +5,13 @@ import { blindNotePayment } from "./noteCipher";
 /**
  * x/dex — a spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH (the hub)
  * with one spoke token, so any token can be routed to any other through ERTH.
- * LP shares are the ordinary bank denom `dexlp/{poolId}`.
+ * LP shares are the bank denom `dexlp/{poolId}`. A transparent deposit
+ * (MsgAddLiquidity) pays them to the signer's account; a shielded deposit
+ * (MsgAddLiquidityShielded, phone only) mints them as a private note, so no
+ * holder of those is visible and they leave only through
+ * MsgRemoveLiquidityShielded. Pool-level figures (reserves, total shares =
+ * bank supply) stay public; per-holder shares here are this account's
+ * transparent balance only.
  */
 
 /** All pools: { id, erthReserve, tokenDenom, tokenReserve, volumeErth }. */
@@ -62,6 +68,8 @@ export async function lpUnbondingSeconds() {
 /**
  * Withdrawals this address has waiting, as [{ poolId, shares, completionTime }]
  * with `shares` in base units and `completionTime` in unix seconds.
+ * Transparent ones only: a private withdrawal is keyed by a nullifier, not an
+ * address, and never shows here.
  *
  * Between submitting a withdrawal and it landing there is nothing in the balance
  * to show for it — the shares have left and the assets have not arrived — so

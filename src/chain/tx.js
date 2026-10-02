@@ -29,10 +29,12 @@ import { MsgShield } from "../proto/earth/shielded/v1/tx";
  *
  * Only messages a Keplr account signs belong here. The private messages
  * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindReferrer,
- * x/assembly votes, x/shielded MsgTransfer, everything in x/shieldedstaking)
- * carry no signer at all: they are authorised by a zero-knowledge proof and
- * built by the mobile app, which is the only client that proves. The web app
- * never constructs them.
+ * x/assembly votes, x/shielded MsgSend, x/dex MsgNoteSwap /
+ * MsgAddLiquidityShielded / MsgRemoveLiquidityShielded, everything in
+ * x/shieldedstaking) carry no signer at all: they are authorised by Orchard
+ * bundles (per-action proofs + a binding signature over the sighash) or
+ * stake-circuit proofs, built by the mobile app, which is the only client
+ * that proves. The web app never constructs them.
  */
 export const registry = new Registry([
   ...defaultRegistryTypes,

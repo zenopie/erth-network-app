@@ -220,6 +220,26 @@ export async function run(check) {
     BigInt(rmBack.poolId) === 1n && rmBack.shares.denom === "dexlp/1" && rmBack.pc.length === 32 && rmBack.ciphertext.length === 177);
   const plain = registry.decode({ typeUrl: "/earth.dex.v1.MsgRemoveLiquidity", value: registry.encode(dex.msgRemoveLiquidity("earth1lp", 2, "7")) });
   check("transparent-pool withdrawal still carries no pc", plain.pc.length === 0 && plain.ciphertext.length === 0);
+  // Wire-level field numbers against chain privacy/orchard's tx.proto (a round
+  // trip through the generated code alone cannot catch a renumbering).
+  const tags = (buf) => {
+    const out = [];
+    let i = 0;
+    const varint = () => { let x = 0n, sh = 0n, c; do { c = buf[i++]; x |= BigInt(c & 0x7f) << sh; sh += 7n; } while (c & 0x80); return x; };
+    while (i < buf.length) {
+      const k = varint(); const f = Number(k >> 3n), w = Number(k & 7n);
+      out.push(f);
+      if (w === 0) varint(); else if (w === 2) { const n = Number(varint()); i += n; } else if (w === 1) i += 8; else if (w === 5) i += 4; else throw new Error("wire type " + w);
+    }
+    return out.join(",");
+  };
+  check("MsgShield wire fields sender=1 amount=2 pc=3 ciphertext=4", tags(registry.encode(sp.msg)) === "1,2,3,4", tags(registry.encode(sp.msg)));
+  check("MsgBuyAnml wire fields creator=1 token_in=2 min_amount_out=3 pc=4 ciphertext=5", tags(registry.encode(buy)) === "1,2,3,4,5", tags(registry.encode(buy)));
+  check("MsgRemoveLiquidity wire fields creator=1 pool_id=2 shares=3 pc=4 ciphertext=5", tags(registry.encode(rm)) === "1,2,3,4,5", tags(registry.encode(rm)));
+  // Bundle-carrying private msgs are built on the phone only; none is registered.
+  check("no bundle msg is registered for Keplr signing",
+    ["/earth.shielded.v1.MsgSend", "/earth.shielded.v1.MsgTransfer", "/earth.dex.v1.MsgNoteSwap",
+     "/earth.dex.v1.MsgAddLiquidityShielded", "/earth.dex.v1.MsgRemoveLiquidityShielded"].every((t) => !registry.lookupType(t)));
   check("buyAnmlTo refuses a transparent recipient", throws(() => dex.buyAnmlTo("earth1b", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1", "0")));
 
   // ---- exact AMM maths (x/dex amm.go) --------------------------------------------

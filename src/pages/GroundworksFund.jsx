@@ -24,8 +24,9 @@ const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
  * The Groundworks Fund: x/allocation's stake-weighted stream.
  *
  * Its weight is almost all Groundworks positions — private derth locked in
- * x/shieldedstaking and split across options by a one-time key, so each
- * position's split and weight are public and its owner is not. The rest is
+ * x/shieldedstaking and split across options. Its owner is known only by an
+ * owner tag its stake proofs reproduce, so each position's split and weight
+ * are public and its owner is not. The rest is
  * validators' transparent self-bond, which an operator can still direct here
  * with Keplr. The assembly (one human, one vote) can strike an option; its
  * open removal ballots are listed at the bottom.

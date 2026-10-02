@@ -35,8 +35,8 @@ const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
  * Governance: x/gov proposals and both of the chambers that decide them.
  *
  * A proposal passes only if the stake chamber (x/gov's tally: validators'
- * self-bond plus private derth, voted by spending a note against the
- * proposal's snapshot) AND the human chamber (x/assembly: two thirds of the
+ * self-bond plus private derth, voted with a stake-note proof against the
+ * proposal's snapshot stake root) AND the human chamber (x/assembly: two thirds of the
  * human votes cast, three quarters when expedited, no quorum) approve it.
  * Human votes and private stake votes are proofs made on the phone; what a
  * Keplr account can still do is deposit, submit a text proposal, and — for a
