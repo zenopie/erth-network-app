@@ -81,7 +81,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
  * transparent stake and its operator can direct it with MsgSetAllocations.
  * `options` comes from the page so the pie and the page's table agree.
  */
-const AllocationFund = ({ title, stream, options, onChanged }) => {
+const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged }) => {
   const { address, isConnected } = useWallet();
   const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
@@ -90,6 +90,9 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
   const [activeTab, setActiveTab] = useState("Actual");
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [voterWeight, setVoterWeight] = useState("0");
+  // { epoch } of a split filed before the stream's current epoch: shown, but
+  // it no longer counts until set again.
+  const [staleSplit, setStaleSplit] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -116,10 +119,11 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
     if (activeTab !== "Split" || !editable || !address) return;
     let cancelled = false;
     allocation
-      .groundworksVoter(address)
-      .then(({ splits, weight }) => {
+      .groundworksVoter(address, { streamEpoch })
+      .then(({ splits, weight, stale, epoch }) => {
         if (cancelled) return;
         setVoterWeight(weight);
+        setStaleSplit(stale ? { epoch } : null);
         setSelectedAllocations(
           splits.map((w) => {
             const o = live.find((item) => item.id === w.optionId);
@@ -134,7 +138,7 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
     // `live` is derived from `options`; depending on it directly would refetch
     // on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, editable, address, options]);
+  }, [activeTab, editable, address, options, streamEpoch]);
 
   const addAllocation = (option) => {
     if (!option) return;
@@ -235,6 +239,12 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
             self-bond. Your weight: {formatMacro(voterWeight, UERTH)} ERTH.
             Private stakers direct Groundworks with positions in the mobile app.
           </p>
+          {staleSplit && (
+            <p className={styles.allocationFundNote} role="status">
+              Stale split: this was set in epoch {staleSplit.epoch}, and the stream is now in epoch{" "}
+              {streamEpoch}. It no longer counts until you set it again.
+            </p>
+          )}
           <div className={styles.allocationFundCanvasContainer}>
             <div style={{ position: "relative", width: 350, height: 350 }}>
               <PieChart width={350} height={350}>

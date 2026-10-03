@@ -137,6 +137,30 @@ check("validator voter: absolute weight per option, weight their sum",
   vv.optionWeights.map((w) => `${w.optionId}:${w.weight}`).join() === "3:202,4:101", JSON.stringify(vv));
 const none = await alloc.validatorVoter(toBech32("earthvaloper", new Uint8Array(20).fill(6)));
 check("a validator with no live positions reads as zero weight", none.weight === "0" && none.optionWeights.length === 0);
+// A validator that has never set a split: the voter query 404s, and the weight
+// it would vote with is its self-bond, not zero (else it could never vote).
+{
+  const acct = toBech32("earth", new Uint8Array(20).fill(8));
+  const ownVal = toBech32("earthvaloper", new Uint8Array(20).fill(8));
+  routes[`/cosmos/staking/v1beta1/validators/${ownVal}/delegations/${acct}`] = {
+    delegation_response: { balance: { denom: "uerth", amount: "5000000" } },
+  };
+  const gv = await alloc.groundworksVoter(acct, { streamEpoch: 3 });
+  check("no voter yet: weight from self-bond, not zero", !gv.exists && !gv.stale && gv.weight === "5000000" && gv.splits.length === 0,
+    JSON.stringify(gv));
+  routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`] = {
+    voter: { percentages: [{ option_id: "3", percent: "100" }], weight: "0", epoch: "2" },
+  };
+  const st = await alloc.groundworksVoter(acct, { streamEpoch: 3 });
+  check("voter epoch < stream epoch: stale split kept, weight from self-bond",
+    st.exists && st.stale && st.epoch === 2 && st.splits[0].optionId === 3 && st.weight === "5000000", JSON.stringify(st));
+  routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`].voter.weight = "4000000";
+  routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`].voter.epoch = "3";
+  const cur = await alloc.groundworksVoter(acct, { streamEpoch: 3 });
+  check("current voter: its own weight", cur.exists && !cur.stale && cur.weight === "4000000");
+  const nobody = await alloc.groundworksVoter(toBech32("earth", new Uint8Array(20).fill(9)));
+  check("no voter and no validator: zero", nobody.weight === "0" && !nobody.exists);
+}
 check("no snapshot before voting", (await ss.snapshot(3)) === null);
 
 const ps = await gov.proposals();

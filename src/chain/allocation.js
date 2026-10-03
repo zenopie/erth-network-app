@@ -1,5 +1,6 @@
 import { fromBech32, toBech32 } from "@cosmjs/encoding";
-import { getOr, seg } from "./rest";
+import { get, getOr, seg } from "./rest";
+import { valoperOf } from "./staking";
 import { ADDRESS_PREFIX } from "./config";
 
 /**
@@ -94,16 +95,42 @@ function toVoter(v) {
 
 /**
  * An address's Groundworks split as [{ optionId, percent }] and the weight it
- * carries (its bonded stake — on this chain, a validator's self-bond). The
- * LCD 404s for an address that has never voted. Caretaker splits are keyed by
- * nullifier and cannot be read this way.
+ * carries (its bonded stake — on this chain, a validator's self-bond).
+ * Caretaker splits are keyed by nullifier and cannot be read this way.
+ *
+ * { splits, weight, epoch, exists, stale }:
+ *   exists — the chain has a voter record. The LCD 404s for an address that
+ *            has never voted; that is not zero weight, it is a validator yet to
+ *            set its first split, so the weight it would vote with is read
+ *            from its self-bond.
+ *   stale  — the record was filed before the stream's current epoch
+ *            (`streamEpoch`, from streamView): its split no longer counts
+ *            until set again, so it is shown as stale and the weight is again
+ *            the self-bond it would be re-cast with.
+ * Any other read failure throws rather than passing for "no weight".
  */
-export async function groundworksVoter(address) {
-  const data = await getOr(
-    seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`,
-    null,
-  );
-  return toVoter(data?.voter);
+export async function groundworksVoter(address, { streamEpoch = 0 } = {}) {
+  let voter = null;
+  try {
+    const data = await get(seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`);
+    voter = data?.voter ?? null;
+  } catch (err) {
+    if (!/LCD 404/.test(err?.message ?? "")) throw err;
+  }
+  const v = toVoter(voter);
+  const exists = voter !== null;
+  const stale = exists && Number(streamEpoch) > 0 && v.epoch < Number(streamEpoch);
+  if (exists && !stale) return { ...v, exists, stale };
+  return { ...v, weight: await selfBond(address), exists, stale };
+}
+
+/** The account's bond to its own validator (uerth string), "0" when it runs none. */
+async function selfBond(address) {
+  const valoper = valoperOf(address);
+  if (!valoper) return "0";
+  const d = await getOr(seg`/cosmos/staking/v1beta1/validators/${valoper}/delegations/${address}`, null);
+  const amt = String(d?.delegation_response?.balance?.amount ?? "0").split(".")[0];
+  return /^\d+$/.test(amt) ? amt : "0";
 }
 
 /** x/shieldedstaking's voter key prefix (types.ValidatorVoterPrefix). */

@@ -135,6 +135,7 @@ const GroundworksFund = () => {
           title="Groundworks Fund"
           stream={allocation.STREAM_GROUNDWORKS}
           options={options}
+          streamEpoch={streamEpoch}
           onChanged={load}
         />
       </div>
