@@ -17,6 +17,21 @@ Source of truth: chain-orch privacy/orchard (ORCHARD_DESIGN.md §12-13).
   The web app never built bundle msgs (MsgSend/NoteSwap/AddLiquidityShielded/
   RemoveLiquidityShielded/staking): nothing to disable.
 
+## Final chain formats (chain-orch fced976, 2026-10-02)
+- Protos regenerated @ fced976 (dex bundle msgs: fee fields gone, new
+  denom_in/amount_in, erth_amount; allocation Voter.option_weights;
+  Position.split_epoch; max_positions gone, min_delegation added).
+  MsgShield/MsgBuyAnml/MsgRemoveLiquidity unchanged on the wire.
+- MsgShield now carries the 177-byte v2 blind ciphertext (was v1 217);
+  msgShield/msgBuyAnml/ANML-pool msgRemoveLiquidity refuse any other length.
+- chain/address.js canonicalAddress: explorer search, account page and
+  referrer lookup use the canonical lowercase bech32.
+- Groundworks: allocation.validatorVoter(s) (key "gwpos/"||val bytes as
+  earth bech32); GroundworksFund "By validator" table + "From positions"
+  from voters; position weight = query's live derth x epoch rate, lapsed
+  flag via split_epoch; StakeErth Groundworks column.
+- No /gas/transparent (or other gas endpoint) references in the app.
+
 ## Checks
 - check:explorer, check:staking, check:privacy pass; npm run build passes.
 - check:dex: 4 live-LCD checks fail (lcd.erth.network Cloudflare 530; same
