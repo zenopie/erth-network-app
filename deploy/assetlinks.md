@@ -1,36 +1,19 @@
-# assetlinks.json
+# App link files
 
-Digital Asset Links. It is what lets `https://erth.network/ref/<address>` open
-the Android app directly instead of Android showing a "which app?" chooser.
-Referral links land on that path — see `wallet/utils/Referral.kt` in
-earth-network-mobile.
+`erth.network/ref/<handle>` opens Earth Wallet directly when it is installed;
+otherwise `src/pages/Referral.jsx` shows the handle to type in at registration.
 
-## This file is INCOMPLETE until the Play fingerprint is added
+- `public/.well-known/assetlinks.json` — Android App Links for `network.erth.wallet`.
+  Two fingerprints: the upload key (`earth-wallet-upload.keystore`, so locally
+  signed release APKs verify) and the Play app signing key (Play Console ->
+  Setup -> App integrity), which is what store installs are signed with.
+- `public/.well-known/apple-app-site-association` — iOS universal links for
+  `XD8VH8WKVX.network.erth.EarthWallet`, paths `/ref/*`. The App ID needs the
+  Associated Domains capability, and the app's entitlement `applinks:erth.network`.
 
-The one fingerprint here is the **upload** key
-(`earth-wallet-upload.keystore`). Under Play App Signing, that is not the key
-users' apps are signed with — Google re-signs with its own, and Android
-verifies against *that*. So installs from the Play Store will NOT auto-verify
-on this file alone.
+Both must be served as `application/json` (no redirect) — `nginx.conf` has a
+`location /.well-known/` block ahead of the SPA fallback for that.
 
-Add the app signing certificate's SHA-256 from:
-
-    Play Console -> your app -> Test and release -> Setup -> App integrity
-    -> App signing key certificate -> SHA-256 certificate fingerprint
-
-Both belong in the array. Keeping the upload one alongside it means a locally
-signed release APK verifies too, which is what makes the link testable without
-going through the store.
-
-## Checking it
-
-    curl https://erth.network/.well-known/assetlinks.json
-
-Must return this JSON as `application/json`. If it returns the app's HTML, the
-SPA fallback swallowed it — nginx.conf has a `location /.well-known/` block to
-prevent exactly that.
-
-Android's own check, once installed:
-
+    curl -i https://erth.network/.well-known/assetlinks.json
+    curl -i https://erth.network/.well-known/apple-app-site-association
     adb shell pm verify-app-links --re-verify network.erth.wallet
-    adb shell pm get-app-links network.erth.wallet

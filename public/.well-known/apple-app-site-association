@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["XD8VH8WKVX.network.erth.EarthWallet"],
+        "components": [
+          { "/": "/ref/*", "comment": "Referral links: erth.network/ref/<handle>" }
+        ]
+      }
+    ]
+  }
+}

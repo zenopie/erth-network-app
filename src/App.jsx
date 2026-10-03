@@ -23,6 +23,7 @@ import Governance from './pages/Governance';
 import Anml from './pages/Anml';
 import Shield from './pages/Shield';
 import Handles from './pages/Handles';
+import Referral from './pages/Referral';
 import './App.css';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
               <Route path="/anml" element={<Layout><Anml /></Layout>} />
               <Route path="/shield" element={<Layout><Shield /></Layout>} />
               <Route path="/handles" element={<Layout><Handles /></Layout>} />
+              <Route path="/ref/:handle" element={<Layout><Referral /></Layout>} />
               <Route path="/governance" element={<Layout><Governance /></Layout>} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
