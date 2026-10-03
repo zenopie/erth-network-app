@@ -147,6 +147,41 @@ export async function readStreamDirectory(fetchStreamPage) {
   throw new Error("the indexer's handle directory kept changing while it was read");
 }
 
+/** Whether `a` decodes as a shielded address; the reason when not. */
+export function addressProblem(a) {
+  try {
+    decodeShieldedAddress(a);
+    return "";
+  } catch (err) {
+    return `not a payable shielded address (${err.message})`;
+  }
+}
+
+const same = (a, b) =>
+  a.handle === b.handle && a.address === b.address && a.status === b.status && a.expiresAt === b.expiresAt && a.renewalUntil === b.renewalUntil;
+
+/**
+ * `served` (the backend's copy, or the chain's) checked entry by entry
+ * against `chain` (the chain's own whole directory): a Map in handle order of
+ * { ...entry, verified, problem }. An entry the chain does not hold the same
+ * way is unverified; a handle the chain holds and the copy omits is added
+ * from the chain. An address that does not decode is never verified.
+ */
+export function verifyAgainst(served, chain) {
+  const out = new Map();
+  for (const e of served.values()) {
+    const c = chain.get(e.handle);
+    let problem = !c ? "the chain has no such handle" : !same(e, c) ? "the chain names something else" : addressProblem(e.address);
+    out.set(e.handle, { ...e, verified: !problem, problem });
+  }
+  for (const c of chain.values()) {
+    if (out.has(c.handle)) continue;
+    const problem = addressProblem(c.address);
+    out.set(c.handle, { ...c, verified: !problem, problem });
+  }
+  return new Map([...out.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+}
+
 /**
  * A cached directory over two fetchers (either may be omitted: no backend
  * means the chain's pages alone). `now` is unix seconds.
@@ -212,7 +247,34 @@ export function createHandleDirectory({ fetchChainPage, fetchStreamPage = null, 
     return { ok: true, entry: e, address };
   }
 
-  return { all, chainDirectory, invalidate, resolveForPayment, lookup: async (h, maxAge) => (await all(maxAge)).get(h) ?? null };
+  /**
+   * The directory for display: every entry of all() checked against the
+   * chain's own whole directory, plus any handle the chain has and the copy
+   * left out. Each entry carries `verified` (the chain holds the same
+   * address, status and times, and the address decodes as a shielded address)
+   * and, when not, `problem`. Only a verified entry's address may be shown as
+   * the handle's, copied or paid: the backend alone can name anything.
+   */
+  async function verifiedAll(maxAge = maxAgeSeconds) {
+    const served = await all(maxAge);
+    const chain = await chainDirectory(maxAge);
+    return verifyAgainst(served, chain);
+  }
+
+  /** One handle from verifiedAll(), or null. */
+  async function verifiedLookup(h, maxAge) {
+    return (await verifiedAll(maxAge)).get(h) ?? null;
+  }
+
+  return {
+    all,
+    chainDirectory,
+    invalidate,
+    resolveForPayment,
+    verifiedAll,
+    verifiedLookup,
+    lookup: async (h, maxAge) => (await all(maxAge)).get(h) ?? null,
+  };
 }
 
 // --- the app's fetchers ----------------------------------------------------

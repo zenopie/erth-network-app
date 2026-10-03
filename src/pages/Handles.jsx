@@ -27,10 +27,27 @@ const Handles = () => {
 
   useEffect(() => {
     hideLoading();
+    let live = true;
+    // First paint from the served copy, every row pending; then every row
+    // checked against the chain's own whole directory. Until a row is
+    // verified its address is not offered for copying or paying.
     handleDirectory
       .all()
-      .then((m) => setDir([...m.values()]))
-      .catch((e) => setError(`Couldn't read the handle directory: ${e.message}`));
+      .then((m) => {
+        if (live) setDir((d) => d ?? [...m.values()].map((e) => ({ ...e, verified: null, problem: "" })));
+      })
+      .catch(() => {});
+    handleDirectory
+      .verifiedAll()
+      .then((m) => {
+        if (live) setDir([...m.values()]);
+      })
+      .catch((e) => {
+        if (live) setError(`Couldn't check the handle directory against the chain: ${e.message}`);
+      });
+    return () => {
+      live = false;
+    };
   }, [hideLoading]);
 
   const now = Math.floor(Date.now() / 1000);
@@ -78,6 +95,9 @@ const Handles = () => {
         </div>
         {error && <div className={styles.searchError}>{error}</div>}
         {!dir && !error && <div className={styles.muted}>Loading the whole directory…</div>}
+        {dir && !error && dir.some((e) => e.verified === null) && (
+          <div className={styles.muted}>Checking every address against the chain&apos;s own directory…</div>
+        )}
         {dir && rows.length === 0 && <div className={styles.empty}>No handle matches.</div>}
         {rows.length > 0 && (
           <table className={styles.table}>
@@ -94,6 +114,7 @@ const Handles = () => {
             <tbody>
               {rows.slice(0, SHOWN).map((e) => {
                 const st = statusAt(e, now);
+                const ok = e.verified === true;
                 return (
                   <tr key={e.handle}>
                     <td className={styles.mono}>@{e.handle}</td>
@@ -105,13 +126,19 @@ const Handles = () => {
                     <td>{date(e.expiresAt)}</td>
                     <td>{date(e.renewalUntil)}</td>
                     <td>
-                      <span className={styles.mono} title={e.address}>{truncateAddress(e.address)}</span>{" "}
-                      <button type="button" className={forms.ghostButton} onClick={() => copy(e.address)}>
-                        {copied === e.address ? "Copied" : "Copy"}
+                      <span className={styles.mono} title={ok ? e.address : undefined}>{truncateAddress(e.address)}</span>{" "}
+                      {e.verified === null && <span className={styles.muted}>checking…</span>}
+                      {e.verified === false && (
+                        <span className={styles.badge} title={e.problem}>
+                          Unverified: {e.problem}
+                        </span>
+                      )}{" "}
+                      <button type="button" className={forms.ghostButton} disabled={!ok} onClick={() => ok && copy(e.address)}>
+                        {copied === e.address && ok ? "Copied" : "Copy"}
                       </button>
                     </td>
                     <td>
-                      {st === LIVE && (
+                      {st === LIVE && ok && (
                         <Link className={styles.link} to={`/shield?to=${encodeURIComponent(`@${e.handle}`)}`}>
                           Pay
                         </Link>

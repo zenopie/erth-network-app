@@ -14,7 +14,7 @@ import useTransaction from "../hooks/useTransaction";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
 import ShieldedAddressInput from "../components/ShieldedAddressInput";
-import { handleDirectory, looksLikeHandle, parseHandle, truncateAddress } from "../chain/handles";
+import { addressProblem, handleDirectory, looksLikeHandle, parseHandle, truncateAddress } from "../chain/handles";
 
 // broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
 const FEE_HEADROOM = 10_000n;
@@ -70,7 +70,9 @@ const Shield = () => {
         const now = Math.floor(Date.now() / 1000);
         if (!e) setHandleInfo({ ok: false, text: `@${parseHandle(recipient)} is not claimed by anyone.` });
         else if (e.status !== "live" || now >= e.expiresAt) setHandleInfo({ ok: false, text: `@${e.handle} has lapsed and names no address now.` });
-        else setHandleInfo({ ok: true, text: `@${e.handle} · ${truncateAddress(e.address)}` });
+        else if (addressProblem(e.address)) setHandleInfo({ ok: false, text: `@${e.handle} names an address that cannot be paid.` });
+        // Only the directory's word until Review checks it against the chain's own.
+        else setHandleInfo({ ok: true, text: `@${e.handle} · ${truncateAddress(e.address)} (unverified until Review)` });
       } catch (err) {
         if (live) setHandleInfo({ ok: false, text: `Couldn't read the handle directory: ${err.message}` });
       }

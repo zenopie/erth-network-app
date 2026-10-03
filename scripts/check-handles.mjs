@@ -140,6 +140,51 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
   check("forged backend entry is not paid", !r.ok && /changed on chain/.test(r.reason), r.reason);
 }
 
+// Audit 5 M1 (scratchpad a5poc): the Handles page and the Shield preview
+// showed and copied the backend's address with no chain check. The display
+// path now goes through verifiedAll(): a forged row is marked, never verified.
+{
+  const w = world([mk("alice", alice, now + 86400), mk("bob", alice, now + 86400), mk("zed", alice, now + 86400)]);
+  const forged = V.android_cipher.address;
+  // The stream forges alice, drops zed, and adds a handle the chain lacks.
+  const stream = async (from) => {
+    const rows = [
+      { ...w.state.entries[0], address: forged },
+      w.state.entries[1],
+      mk("carol", forged, now + 86400),
+      mk("dave", "erthz1notanaddress", now + 86400),
+    ];
+    return { handles: rows, height: 5, size: rows.length, fromIndex: from, lastPage: true };
+  };
+  w.state.entries.push(mk("dave", "erthz1notanaddress", now + 86400));
+  w.state.entries.sort((a, b) => (a.handle < b.handle ? -1 : 1));
+  const dir = h.createHandleDirectory({ fetchChainPage: w.chainPage, fetchStreamPage: stream, now: () => now });
+  const v = await dir.verifiedAll();
+  const a = v.get("alice");
+  check("M1: a forged backend address is never verified (Copy and Pay disabled)", a && a.verified === false && /something else/.test(a.problem), a?.problem);
+  check("M1: a matching entry is verified", v.get("bob")?.verified === true && v.get("bob").address === alice);
+  check("M1: a handle the chain lacks is unverified", v.get("carol")?.verified === false && /no such handle/.test(v.get("carol").problem));
+  check("M1: a handle the copy omits comes from the chain, verified", v.get("zed")?.verified === true && v.get("zed").address === alice);
+  check("M1: an address that does not decode is never verified, chain or not", v.get("dave")?.verified === false && /not a payable/.test(v.get("dave").problem), v.get("dave")?.problem);
+  check("M1: verifiedLookup agrees", (await dir.verifiedLookup("alice")).verified === false && (await dir.verifiedLookup("bob")).verified === true);
+  check("M1: rows in handle order", [...v.keys()].join() === "alice,bob,carol,dave,zed", [...v.keys()].join());
+  check("M1: addressProblem", h.addressProblem(alice) === "" && h.addressProblem("erthz1x") !== "" && h.addressProblem(forged) === "");
+  const r = await dir.resolveForPayment("@alice");
+  check("M1: the payment path still refuses it", !r.ok && /changed on chain/.test(r.reason), r.reason);
+}
+
+// The pages use it: the table's Copy and Pay only for a verified row, the
+// Shield preview labelled until Review. (Source checks; run from the app root.)
+{
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/pages/Handles.jsx", "utf8");
+  const shield = readFileSync("src/pages/Shield.jsx", "utf8");
+  check("M1: Handles page reads verifiedAll and gates Copy and Pay on it",
+    page.includes("handleDirectory\n      .verifiedAll()") && page.includes("disabled={!ok}") && page.includes("st === LIVE && ok &&") &&
+      page.includes("const ok = e.verified === true;"));
+  check("M1: Shield preview is labelled unverified and decoded", shield.includes("(unverified until Review)") && shield.includes("addressProblem(e.address)"));
+}
+
 // Lapsed, renewal, unknown: not payable.
 {
   const w = world([mk("old", alice, now - 10), mk("ren", alice, now - 10, "renewal"), mk("live", alice, now + 10)]);
