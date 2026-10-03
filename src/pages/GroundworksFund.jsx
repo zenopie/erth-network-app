@@ -95,7 +95,7 @@ const GroundworksFund = () => {
     (positions ?? []).reduce((acc, p) => {
       const a = (acc[p.validator] ??= { count: 0, derth: 0n });
       a.count += 1;
-      a.derth += BigInt(p.derth);
+      a.derth += toBigInt(p.derth);
       return acc;
     }, {}),
   ).map(([validator, a]) => ({ validator, ...a, voter: voters?.[validator] ?? null }))

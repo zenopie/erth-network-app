@@ -7,7 +7,7 @@ import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
-import { SLIPPAGE_DEFAULT, clampSlippage, formatUnits, minimumReceived, toMicro } from "../chain/tokens";
+import { SLIPPAGE_DEFAULT, clampSlippage, formatUnits, minimumReceived, toBigInt, toMicro } from "../chain/tokens";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import StatusModal from "./StatusModal";
@@ -70,7 +70,7 @@ const BuyAnml = () => {
       decodeShieldedAddress(recipient);
       if (micro === "0") problem = "Enter an amount of ERTH.";
       else if (!quote || minOut === "0") problem = "No ANML pool price for this amount.";
-      else if (bal !== null && BigInt(micro) + FEE_HEADROOM > BigInt(bal)) {
+      else if (bal !== null && BigInt(micro) + FEE_HEADROOM > toBigInt(bal)) {
         problem = "Not enough ERTH for this amount plus the fee.";
       }
     } catch (e) {
@@ -80,7 +80,7 @@ const BuyAnml = () => {
 
   const max = () => {
     if (bal === null) return;
-    const m = BigInt(bal) - FEE_HEADROOM;
+    const m = toBigInt(bal) - FEE_HEADROOM;
     setAmount(m > 0n ? formatUnits(m.toString(), UERTH) : "0");
   };
 

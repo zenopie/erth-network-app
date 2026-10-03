@@ -1,4 +1,4 @@
-import { fromBase64, toBech32 } from "@cosmjs/encoding";
+import { fromBase64, fromBech32, toBech32 } from "@cosmjs/encoding";
 import { canonicalAddress } from "./address";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { get, getOr, rpcOrNull, seg } from "./rest";
@@ -43,7 +43,9 @@ export async function latestBlock() {
 
 /** A block by height, or null if it does not exist. */
 export async function block(height) {
-  const data = await getOr(seg`/cosmos/base/tendermint/v1beta1/blocks/${height}`, null);
+  const h = routeHeight(height);
+  if (!h) return null;
+  const data = await getOr(seg`/cosmos/base/tendermint/v1beta1/blocks/${h}`, null);
   return data ? toBlock(data) : null;
 }
 
@@ -129,8 +131,42 @@ async function searchTxs(query, limit = 20) {
 /** Chain-wide recent transactions. */
 export const recentTxs = (limit = 20) => searchTxs("tx.height>0", limit);
 
+// Route parameters (the URL bar) reach CometBFT query strings below. Each is
+// checked against its exact shape first: quoted into a query raw, `x' OR
+// tx.height>0 AND message.sender='y` rewrites the search, and the page shows
+// some other account's transactions under this one's address.
+const MAX_INT64 = (1n << 63n) - 1n;
+
+/** A block height from a route: a decimal int64 >= 1, else null. */
+export function routeHeight(v) {
+  const s = String(v ?? "");
+  if (!/^[1-9]\d{0,18}$/.test(s) || BigInt(s) > MAX_INT64) return null;
+  return s;
+}
+
+/** A bech32 address from a route, lowercased; null if it is not one. */
+export function routeAddress(v) {
+  const s = String(v ?? "").trim();
+  try {
+    const { prefix, data } = fromBech32(s, 90);
+    const canon = toBech32(prefix, data, 90);
+    return /^[a-z0-9]+$/.test(canon) ? canon : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A tx hash from a route (64 hex), upper-cased; null if it is not one. */
+export function routeTxHash(v) {
+  const s = String(v ?? "").trim();
+  return /^[0-9a-fA-F]{64}$/.test(s) ? s.toUpperCase() : null;
+}
+
 /** Transactions included in a single block. */
-export const txsAtHeight = (height, limit = 50) => searchTxs(`tx.height=${height}`, limit);
+export const txsAtHeight = (height, limit = 50) => {
+  const h = routeHeight(height);
+  return h ? searchTxs(`tx.height=${h}`, limit) : Promise.resolve([]);
+};
 
 /**
  * Transactions involving an address — both those it signed and those that paid
@@ -138,6 +174,8 @@ export const txsAtHeight = (height, limit = 50) => searchTxs(`tx.height=${height
  * those are indexed under the sender, so both are queried and merged.
  */
 export async function txsForAddress(address, limit = 20) {
+  address = routeAddress(address);
+  if (!address) return [];
   const [sent, received] = await Promise.all([
     searchTxs(`message.sender='${address}'`, limit),
     searchTxs(`transfer.recipient='${address}'`, limit),
@@ -149,7 +187,9 @@ export async function txsForAddress(address, limit = 20) {
 
 /** A single transaction by hash, or null if not found/not indexed. */
 export async function txByHash(hash) {
-  const data = await getOr(seg`/cosmos/tx/v1beta1/txs/${hash.toUpperCase()}`, null);
+  const h = routeTxHash(hash);
+  if (!h) return null;
+  const data = await getOr(seg`/cosmos/tx/v1beta1/txs/${h}`, null);
   return data?.tx_response ? toTx(data.tx_response, data.tx) : null;
 }
 
@@ -438,7 +478,9 @@ export async function blockFlows(height) {
   // encoded — `height` reaches here straight from useParams(), so it is
   // whatever is in the URL bar, and unencoded it can append parameters of its
   // own to the RPC call.
-  const data = await rpcOrNull(`/block_results?height=${encodeURIComponent(height)}`);
+  const h = routeHeight(height);
+  if (!h) return null;
+  const data = await rpcOrNull(`/block_results?height=${encodeURIComponent(h)}`);
   if (!data?.result) return null;
 
   const minted = {};

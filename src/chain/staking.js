@@ -149,6 +149,10 @@ export function msgSelfUnbond(operatorAccount, amount) {
 
 /** Return an operator's in-progress unbonding entry to its validator. */
 export function msgCancelSelfUnbonding(operatorAccount, entry) {
+  const h = String(entry?.creationHeight ?? "");
+  if (!/^\d+$/.test(h) || BigInt(h) > (1n << 63n) - 1n) {
+    throw new Error(`Unreadable unbonding entry height: ${JSON.stringify(h)}`);
+  }
   return {
     typeUrl: "/cosmos.staking.v1beta1.MsgCancelUnbondingDelegation",
     value: {
@@ -156,7 +160,7 @@ export function msgCancelSelfUnbonding(operatorAccount, entry) {
       validatorAddress: ownValidator(operatorAccount),
       amount: coin(entry.balance),
       // int64 on the wire; the LCD returns it as a string.
-      creationHeight: BigInt(entry.creationHeight),
+      creationHeight: BigInt(h),
     },
   };
 }

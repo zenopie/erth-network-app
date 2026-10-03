@@ -219,6 +219,46 @@ const tk = await import("../src/chain/tokens.js");
     tk.formatMacro("1", "uerth") === "0");
 }
 
+// Explorer route params reach CometBFT query strings: only their exact shape passes.
+{
+  const ex = await import("../src/chain/explorer.js");
+  const asked = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    asked.push(decodeURIComponent(String(url)));
+    return { ok: true, json: async () => ({ tx_responses: [], txs: [] }) };
+  };
+  const acct = toBech32("earth", new Uint8Array(20).fill(8));
+  const inj = `${acct}' OR tx.height>0 AND message.sender='x`;
+  check("txsForAddress refuses a quote-injected address without querying",
+    (await ex.txsForAddress(inj)).length === 0 && asked.length === 0, asked.join(" | "));
+  await ex.txsForAddress(acct.toUpperCase());
+  check("txsForAddress quotes only the canonical address",
+    asked.length === 2 && asked.every((u) => u.includes(`='${acct}'`)), asked.join(" | "));
+  asked.length = 0;
+  check("txsAtHeight refuses junk, signs and > int64",
+    (await ex.txsAtHeight("5 OR tx.height>0")).length === 0 && (await ex.txsAtHeight("-1")).length === 0 &&
+    (await ex.txsAtHeight("9223372036854775808")).length === 0 && asked.length === 0);
+  await ex.txsAtHeight("9223372036854775807");
+  check("txsAtHeight accepts int64 max", asked.length === 1 && asked[0].includes("tx.height=9223372036854775807"));
+  asked.length = 0;
+  check("txByHash refuses a non-hash without querying",
+    (await ex.txByHash("../../bank/v1beta1/supply")) === null && (await ex.txByHash("ab")) === null && asked.length === 0);
+  check("block refuses a non-height", (await ex.block("1/../../x")) === null && asked.length === 0);
+  globalThis.fetch = realFetch;
+}
+
+// LCD strings that are not integers do not throw out of the page math.
+{
+  const tk2 = await import("../src/chain/tokens.js");
+  check("toBigInt guards LCD junk", tk2.toBigInt("12.5") === 0n && tk2.toBigInt("1e9") === 0n && tk2.toBigInt(null) === 0n);
+  const st = await import("../src/chain/staking.js");
+  let threw = "";
+  try { st.msgCancelSelfUnbonding(toBech32("earth", new Uint8Array(20).fill(8)), { balance: "1", creationHeight: "12x" }); }
+  catch (e) { threw = e.message; }
+  check("cancel-unbonding refuses a junk creation height with a readable error", /Unreadable/.test(threw), threw);
+}
+
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
 const { run: runNotes } = await import("./check-notes.mjs");
 await runNotes(check);

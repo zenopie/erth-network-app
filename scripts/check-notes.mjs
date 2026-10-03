@@ -216,6 +216,10 @@ export async function run(check) {
   check("shieldTo refuses a transparent recipient", throws(() => shielded.shieldTo("earth1sender", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1")));
   check("shieldTo refuses zero and non-integers", throws(() => shielded.shieldTo("earth1s", C.address, "0")) &&
     throws(() => shielded.shieldTo("earth1s", C.address, "1.5")));
+  check("checkShield refuses amounts >= 2^63, accepts 2^63 - 1",
+    throws(() => shielded.checkShield(C.address, (1n << 63n).toString())) &&
+    throws(() => shielded.checkShield(C.address, ((1n << 64n) - 1n).toString())) &&
+    !throws(() => shielded.checkShield(C.address, ((1n << 63n) - 1n).toString())));
 
   // ---- MsgBuyAnml / ANML-pool MsgRemoveLiquidity --------------------------------
   const buy = dex.buyAnmlTo("earth1buyer", C.address, "2000000", "990");

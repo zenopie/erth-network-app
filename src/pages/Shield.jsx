@@ -6,7 +6,7 @@ import { balance } from "../chain/bank";
 import { checkShield, shieldTo } from "../chain/shielded";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { formatUnits, toMicro } from "../chain/tokens";
+import { formatUnits, toBigInt, toMicro } from "../chain/tokens";
 import { memoBytes } from "../chain/noteCipher";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -72,14 +72,14 @@ const Shield = () => {
     } catch (e) {
       problem = recipient.trim() ? e.message : "Enter the recipient's shielded address.";
     }
-    if (!problem && bal !== null && BigInt(micro) + FEE_HEADROOM > BigInt(bal)) {
+    if (!problem && bal !== null && BigInt(micro) + FEE_HEADROOM > toBigInt(bal)) {
       problem = "Not enough ERTH for this amount plus the fee.";
     }
   }
 
   const max = () => {
     if (bal === null) return;
-    const m = BigInt(bal) - FEE_HEADROOM;
+    const m = toBigInt(bal) - FEE_HEADROOM;
     setAmount(m > 0n ? formatUnits(m.toString(), UERTH) : "0");
   };
 

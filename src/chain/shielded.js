@@ -88,18 +88,21 @@ export function msgShield(sender, denom, amount, pc, ciphertext) {
   };
 }
 
-const U64_MAX = (1n << 64n) - 1n;
+// One note's value stays below 2^63: the chain's shielded path refuses
+// anything at or above it, so a u64 above that would pass here and only fail
+// after the user had signed.
+const AMOUNT_LIMIT = 1n << 63n;
 
 /**
  * What shieldTo checks before it draws any randomness: the address decodes,
- * the amount is a positive u64 integer string, the memo fits. Cheap enough to
+ * the amount is a positive integer string below 2^63, the memo fits. Cheap enough to
  * run on every keystroke; throws a message fit to show.
  */
 export function checkShield(address, amount, memo = "") {
   decodeShieldedAddress(address);
   const s = String(amount ?? "");
   if (!/^\d+$/.test(s) || BigInt(s) <= 0n) throw new Error("Enter a positive amount.");
-  if (BigInt(s) > U64_MAX) throw new Error("Amount is too large for one note.");
+  if (BigInt(s) >= AMOUNT_LIMIT) throw new Error("Amount is too large for one note.");
   memoBytes(memo);
 }
 

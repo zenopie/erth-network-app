@@ -311,7 +311,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
-            disabled={!(parseFloat(bondAmount) > 0) || BigInt(toMicro(bondAmount, UERTH)) > BigInt(liquid)}
+            disabled={!(parseFloat(bondAmount) > 0) || BigInt(toMicro(bondAmount, UERTH)) > toBigInt(liquid)}
             onClick={() =>
               run(() => [staking.msgSelfBond(address, toMicro(bondAmount, UERTH))]).then(() =>
                 setBondAmount(""),
@@ -345,7 +345,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             style={{ alignSelf: "flex-end" }}
             disabled={
               !(parseFloat(unbondAmount) > 0) ||
-              BigInt(toMicro(unbondAmount, UERTH)) > BigInt(operator.selfBond)
+              BigInt(toMicro(unbondAmount, UERTH)) > toBigInt(operator.selfBond)
             }
             onClick={() =>
               run(() => [staking.msgSelfUnbond(address, toMicro(unbondAmount, UERTH))]).then(() =>
