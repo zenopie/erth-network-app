@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
-import { balance } from "../chain/bank";
+import { balance, sendEnabled } from "../chain/bank";
 import { checkShield, shieldTo } from "../chain/shielded";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
@@ -181,6 +181,10 @@ const Shield = () => {
         // since the review is never paid.
         const r = await handleDirectory.resolveForPayment(recipient);
         if (!r.ok || r.entry.address !== to) throw new Error(r.ok ? `@${review.handle} changed since the review. Review it again.` : r.reason);
+      }
+      // The chain refuses to shield a send-disabled denom (chain 203d3b2).
+      if ((await sendEnabled(UERTH)) === false) {
+        throw new Error("Transfers of ERTH are switched off on the chain right now, so it cannot be shielded. Nothing was sent.");
       }
       // Fresh rho, rcm and ephemeral key for every attempt: a retry never
       // reuses the note secrets of one that may already have landed.

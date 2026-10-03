@@ -366,8 +366,13 @@ export async function broadcast(messages, opts = {}) {
  * Chain errors that deserve a sentence of their own. A code means nothing
  * without its codespace (x/dex and x/personhood both register 1120).
  */
+// [codespace, code, sentence, raw_log pattern (optional: only that error of a shared code)]
 const KNOWN_ERRORS = [
   ["dex", 1120, "That amount is past the pool's cap (2^120 units). Use a smaller amount."],
+  ["dex", 1101, "This withdrawal's note-paid leg is worth more than one withdrawal can pay as notes " +
+    "(16 notes of 2^64 - 1 units). Withdraw in smaller parts.", /pays as notes/],
+  ["bank", 5, "Transfers of this token are switched off on the chain, so it cannot be shielded (or sent) now.",
+    /send transactions are disabled|is not allowed to be sent|send.*disabled/i],
 ];
 
 /** The modal's text for a refused or failed tx: a known error's sentence first, then the chain's log. */
@@ -375,7 +380,7 @@ export function explainTxError(kind, txResponse) {
   const code = Number(txResponse?.code ?? 0);
   const space = String(txResponse?.codespace ?? "");
   const log = String(txResponse?.raw_log ?? "");
-  const known = KNOWN_ERRORS.find(([cs, c]) => c === code && cs === space);
+  const known = KNOWN_ERRORS.find(([cs, c, , re]) => c === code && cs === space && (!re || re.test(log)));
   const base = `Transaction ${kind} (code ${code}${space ? `, ${space}` : ""}): ${log}`;
   return known ? `${known[2]}\n\n${base}` : base;
 }

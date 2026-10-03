@@ -320,11 +320,15 @@ const Markets = () => {
   const handleRemoveAnmlLiquidity = (row) => {
     if (!isConnected) return;
     execute(async () => {
+      const shares = toMicro(removeAmount, row.pool.lpDenom);
+      const total = await supplyOrNull(row.pool.lpDenom);
+      const problem = total == null ? null : dex.withdrawalNoteLegProblem(shares, row.pool.tokenReserve, total);
+      if (problem) throw new Error(problem);
       await broadcast([
         dex.removeLiquidityToShielded(
           address,
           row.pool.id,
-          toMicro(removeAmount, row.pool.lpDenom),
+          shares,
           anmlRecipient,
         ),
       ]);

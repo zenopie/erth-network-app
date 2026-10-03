@@ -29,6 +29,21 @@ export async function supplyOrNull(denom) {
   return data?.amount?.amount ?? null;
 }
 
+/**
+ * Whether the bank lets `denom` move (x/bank SendEnabled): its own entry, else
+ * the params' default_send_enabled. null when the node could not say. The
+ * chain refuses MsgShield of a send-disabled denom (chain 203d3b2, audit 5
+ * L-SH2): inside the pool it would move privately around the switch.
+ */
+export async function sendEnabled(denom) {
+  const q = await getOr(`/cosmos/bank/v1beta1/send_enabled?denoms=${encodeURIComponent(denom)}`, null);
+  const own = (q?.send_enabled ?? []).find((e) => e?.denom === denom);
+  if (own) return own.enabled === true;
+  const p = await getOr("/cosmos/bank/v1beta1/params", null);
+  const d = p?.params?.default_send_enabled;
+  return typeof d === "boolean" ? d : null;
+}
+
 export function msgSend(from, to, denom, amount) {
   return {
     typeUrl: "/cosmos.bank.v1beta1.MsgSend",

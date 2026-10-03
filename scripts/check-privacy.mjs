@@ -260,6 +260,55 @@ const tk = await import("../src/chain/tokens.js");
   check("cancel-unbonding refuses a junk creation height with a readable error", /Unreadable/.test(threw), threw);
 }
 
+// ---- chain 203d3b2 (audit 5): lease bounds, round 1, send-disabled shield, note-leg cap
+{
+  const lb = { block_time: "1800000000", activation_margin_seconds: "86400", handle_lease_seconds: "31536000",
+    handle_claim_bound: String(1800000000 - 31536000 - 86400), caretaker_lease_seconds: "63072000",
+    caretaker_cast_bound: String(1800000000 - 63072000 - 86400), caretaker_lease_hold_until: "1810000000" };
+  routes["/earth/personhood/v1/lease_bounds"] = lb;
+  const b = await personhood.leaseBounds();
+  check("LeaseBounds read", b && b.handleLeaseSeconds === 31536000 && b.caretakerLeaseSeconds === 63072000 &&
+    b.handleClaimBound === 1800000000 - 31536000 - 86400 && b.caretakerLeaseHoldUntil === 1810000000, JSON.stringify(b));
+  check("switch wait from LeaseBounds (the held longer caretaker lease, not Params)",
+    personhood.switchWaitDays(b, "handle") === 366 && personhood.switchWaitDays(b, "caretaker") === 731 && personhood.switchWaitDays(null, "handle") === null);
+  routes["/earth/personhood/v1/lease_bounds"] = { ...lb, handle_claim_bound: "5" };
+  check("inconsistent LeaseBounds refused", (await personhood.leaseBounds()) === null);
+  routes["/earth/personhood/v1/lease_bounds"] = { ...lb, handle_lease_seconds: "-1" };
+  check("malformed LeaseBounds refused", (await personhood.leaseBounds()) === null);
+  delete routes["/earth/personhood/v1/lease_bounds"];
+  check("no LeaseBounds served: null", (await personhood.leaseBounds()) === null);
+
+  const prev = routes["/earth/assembly/v1/ballot_inputs"];
+  routes["/earth/assembly/v1/ballot_inputs"] = { ...prev, round: "1" };
+  check("a demoted expedited proposal reads round 1", (await assembly.ballotInputs({ proposalId: 4 })).round === 1);
+  routes["/earth/assembly/v1/ballot_inputs"] = prev;
+
+  const bank = await import("../src/chain/bank.js");
+  routes["/cosmos/bank/v1beta1/send_enabled"] = (q) => ({ send_enabled: q.get("denoms") === "uerth" ? [{ denom: "uerth", enabled: false }] : [] });
+  routes["/cosmos/bank/v1beta1/params"] = { params: { default_send_enabled: true } };
+  check("send_enabled: own entry", (await bank.sendEnabled("uerth")) === false);
+  check("send_enabled: default for a denom with no entry", (await bank.sendEnabled("uanml")) === true);
+  delete routes["/cosmos/bank/v1beta1/params"];
+  check("send_enabled: unknown is null", (await bank.sendEnabled("uanml")) === null);
+
+  const txm = await import("../src/chain/tx.js");
+  const sd = txm.explainTxError("failed", { code: 5, codespace: "bank", raw_log: "uerth: send transactions are disabled" });
+  check("bank send-disabled explained", /switched off/.test(sd), sd);
+  const leg = txm.explainTxError("refused", { code: 1101, codespace: "dex",
+    raw_log: "the uanml leg (300) is above 295147905179352825840, the most one withdrawal pays as notes; withdraw in smaller parts: invalid amount" });
+  check("dex note-leg cap explained", /smaller parts/.test(leg) && /16 notes/.test(leg), leg);
+  const other = txm.explainTxError("failed", { code: 1101, codespace: "dex", raw_log: "amount must be positive: invalid amount" });
+  check("other dex 1101 not explained as the note-leg cap", !/16 notes/.test(other), other);
+
+  const dx = await import("../src/chain/dex.js");
+  const cap = ((1n << 64n) - 1n) * 16n;
+  check("note-leg cap is 16 x (2^64-1)", dx.MAX_WITHDRAWAL_NOTE_LEG === cap);
+  check("a leg at the cap starts", dx.withdrawalNoteLegProblem("1", cap.toString(), "1") === null);
+  check("a leg past the cap is refused before signing", /smaller parts/.test(dx.withdrawalNoteLegProblem("1", (cap + 1n).toString(), "1") ?? ""));
+  check("leg is floor(shares x reserve / supply)", dx.withdrawalNoteLegProblem("2", (cap * 2n + 1n).toString(), "4") === null &&
+    dx.withdrawalNoteLegProblem("3", (cap * 2n).toString(), "4") !== null && dx.withdrawalNoteLegProblem("1", "1", "0") === null);
+}
+
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
 const { run: runNotes } = await import("./check-notes.mjs");
 await runNotes(check);
