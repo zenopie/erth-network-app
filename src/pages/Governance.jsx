@@ -363,9 +363,12 @@ const Exclusions = ({ inputs }) => {
             </div>
           </div>
           <div className={styles.kv}>
-            <div className={styles.kvLabel}>Eligible if registered by</div>
+            <div className={styles.kvLabel}>Eligible</div>
             <div className={styles.kvValue}>
-              {inputs.maxActivation ? new Date(inputs.maxActivation * 1000).toLocaleString() : "—"}
+              {inputs.maxActivation !== null && <>Registered by {new Date(inputs.maxActivation * 1000).toLocaleString()}. </>}
+              {inputs.maxPredecessor !== null
+                ? <>An identity that replaced another (a switch or re-entry) after {new Date(inputs.maxPredecessor * 1000).toLocaleString()} cannot vote on it.</>
+                : inputs.maxActivation === null && "Every live registration."}
               {inputs.round > 0 && <span className={styles.muted}> · round {inputs.round + 1}</span>}
             </div>
           </div>

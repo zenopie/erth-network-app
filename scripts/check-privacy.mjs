@@ -94,6 +94,8 @@ const t = await assembly.proposalTally(4);
 check("human tally", t.yes === 9 && t.no === 2 && t.approved);
 const bi = await assembly.ballotInputs({ proposalId: 4 });
 check("excluded country decodes from its field", bi.excludedCountry === "FR", bi.excludedCountry);
+check("ballot bounds: activation unbounded from 4a663d5 on, predecessor read", bi.maxActivation === 1700000000 && bi.maxPredecessor === null);
+check("no bound reads as null", assembly.boundOf("9223372036854775807") === null && assembly.boundOf("1700000000") === 1700000000 && assembly.boundOf("x") === null);
 check("an all-zero excluded_dsc reads as none", bi.excludedDsc === "");
 check("countryFromField of zero is none", bytes.countryFromField(field("")) === "");
 const rb = await assembly.removalBallots();
