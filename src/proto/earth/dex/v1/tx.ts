@@ -83,7 +83,10 @@ export interface MsgRemoveLiquidity {
    * is paid to creator as usual. 32 bytes, zk/privacy.PC.
    */
   pc: Uint8Array;
-  /** ciphertext is the token note encrypted to its owner (optional). */
+  /**
+   * ciphertext is the token note's amount-blind v2 ciphertext (177 bytes),
+   * required with pc.
+   */
   ciphertext: Uint8Array;
 }
 
@@ -178,31 +181,30 @@ export interface MsgClaimLiquidityAuctionResponse {
  * authorization is the bundle (action proofs and binding signature over the
  * sighash), replay protection its nullifiers (see x/shielded/ante).
  *
- * bundle's balances: the asset in, plus the uerth fee (for an ERTH swap the
- * uerth balance is amount in + fee). The release map, after fee, must hold
- * exactly one positive denom: the asset in.
+ * bundle's balances: amount_in of denom_in, plus the uerth fee: the fee is
+ * the bundle's uerth balance less amount_in when denom_in is uerth, its whole
+ * uerth balance otherwise. The release map, after the fee, must hold exactly
+ * amount_in of denom_in.
  *
  * The swap runs in the private ante, atomically with the spend: if the
  * output would fall below min_amount_out the whole tx fails and nothing is
  * spent. Only the amounts and the pools are visible.
  *
- * fee_from_output > 0 pays the tx fee out of the output instead of from the
- * bundle: denom_out must be uerth, fee 0 and min_amount_out >
- * fee_from_output; pc receives the output less the fee.
+ * ciphertext is the output note's amount-blind v2 ciphertext (177 bytes).
  *
- * sighash fields: Bytes(denom_out), min_amount_out, pc, Bytes(ciphertext),
- * fee_from_output, fee.
+ * sighash fields: Bytes(denom_in), amount_in, Bytes(denom_out),
+ * min_amount_out, pc, Bytes(ciphertext).
  */
 export interface MsgNoteSwap {
   bundle: Bundle | undefined;
   denomOut: string;
-  /** min_amount_out is the least output (before fee_from_output) accepted. */
+  /** min_amount_out is the least output accepted. */
   minAmountOut: number;
   pc: Uint8Array;
   ciphertext: Uint8Array;
-  feeFromOutput: number;
-  /** fee is paid from bundle's uerth balance (0 with fee_from_output). */
-  fee: number;
+  /** denom_in and amount_in are the asset swapped in. */
+  denomIn: string;
+  amountIn: number;
 }
 
 /**
@@ -238,7 +240,8 @@ export interface MsgBuyAnmlResponse {
 /**
  * MsgAddLiquidityShielded deposits into pool_id from one bundle whose
  * balances are the pool's token (ANML) and uerth: the token balance is the
- * token leg, the uerth balance less fee the ERTH leg. The deposit is taken in
+ * token leg, erth_amount the ERTH leg, and the rest of the uerth balance the
+ * fee. The deposit is taken in
  * the pool ratio, as MsgAddLiquidity's is; whatever of each leg the ratio
  * does not take is minted back to refund_pc as a note.
  *
@@ -250,8 +253,11 @@ export interface MsgBuyAnmlResponse {
  * The deposit runs in the private ante, atomically with the spend: below
  * min_shares the whole tx fails and nothing is spent.
  *
+ * share_ciphertext and refund_ciphertext are amount-blind v2 ciphertexts (177
+ * bytes); the refund ciphertext serves both refund notes (same pc).
+ *
  * sighash fields: pool_id, Bytes(min_shares), share_pc,
- * Bytes(share_ciphertext), refund_pc, Bytes(refund_ciphertext), fee.
+ * Bytes(share_ciphertext), refund_pc, Bytes(refund_ciphertext), erth_amount.
  */
 export interface MsgAddLiquidityShielded {
   bundle: Bundle | undefined;
@@ -260,11 +266,11 @@ export interface MsgAddLiquidityShielded {
   minShares: string;
   refundPc: Uint8Array;
   refundCiphertext: Uint8Array;
-  /** fee is paid from bundle's uerth balance; the rest of it is the ERTH leg. */
-  fee: number;
   /** share_pc receives the LP shares as a note. */
   sharePc: Uint8Array;
   shareCiphertext: Uint8Array;
+  /** erth_amount is the ERTH leg, in uerth. */
+  erthAmount: number;
 }
 
 /** MsgAddLiquidityShieldedResponse returns the shares minted and the refunds. */
@@ -290,13 +296,15 @@ export interface MsgAddLiquidityShieldedResponse {
  *
  * Runs in the private ante, atomically with the spend.
  *
+ * The fee is the bundle's uerth balance. erth_ciphertext and
+ * token_ciphertext are amount-blind v2 ciphertexts (177 bytes).
+ *
  * sighash fields: pool_id, erth_pc, Bytes(erth_ciphertext), token_pc,
- * Bytes(token_ciphertext), fee.
+ * Bytes(token_ciphertext).
  */
 export interface MsgRemoveLiquidityShielded {
   bundle: Bundle | undefined;
   poolId: number;
-  fee: number;
   erthPc: Uint8Array;
   erthCiphertext: Uint8Array;
   tokenPc: Uint8Array;
@@ -1773,8 +1781,8 @@ function createBaseMsgNoteSwap(): MsgNoteSwap {
     minAmountOut: 0,
     pc: new Uint8Array(0),
     ciphertext: new Uint8Array(0),
-    feeFromOutput: 0,
-    fee: 0,
+    denomIn: "",
+    amountIn: 0,
   };
 }
 
@@ -1795,11 +1803,11 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
     if (message.ciphertext.length !== 0) {
       writer.uint32(42).bytes(message.ciphertext);
     }
-    if (message.feeFromOutput !== 0) {
-      writer.uint32(48).uint64(message.feeFromOutput);
+    if (message.denomIn !== "") {
+      writer.uint32(66).string(message.denomIn);
     }
-    if (message.fee !== 0) {
-      writer.uint32(56).uint64(message.fee);
+    if (message.amountIn !== 0) {
+      writer.uint32(72).uint64(message.amountIn);
     }
     return writer;
   },
@@ -1857,20 +1865,20 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
             message.ciphertext = reader.bytes();
             continue;
           }
-          case 6: {
-            if (tag !== 48) {
+          case 8: {
+            if (tag !== 66) {
               break;
             }
 
-            message.feeFromOutput = longToNumber(reader.uint64());
+            message.denomIn = reader.string();
             continue;
           }
-          case 7: {
-            if (tag !== 56) {
+          case 9: {
+            if (tag !== 72) {
               break;
             }
 
-            message.fee = longToNumber(reader.uint64());
+            message.amountIn = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -1900,12 +1908,16 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
         : 0,
       pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
       ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
-      feeFromOutput: isSet(object.feeFromOutput)
-        ? globalThis.Number(object.feeFromOutput)
-        : isSet(object.fee_from_output)
-        ? globalThis.Number(object.fee_from_output)
+      denomIn: isSet(object.denomIn)
+        ? globalThis.String(object.denomIn)
+        : isSet(object.denom_in)
+        ? globalThis.String(object.denom_in)
+        : "",
+      amountIn: isSet(object.amountIn)
+        ? globalThis.Number(object.amountIn)
+        : isSet(object.amount_in)
+        ? globalThis.Number(object.amount_in)
         : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
     };
   },
 
@@ -1926,11 +1938,11 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
     if (message.ciphertext.length !== 0) {
       obj.ciphertext = base64FromBytes(message.ciphertext);
     }
-    if (message.feeFromOutput !== 0) {
-      obj.feeFromOutput = Math.round(message.feeFromOutput);
+    if (message.denomIn !== "") {
+      obj.denomIn = message.denomIn;
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
+    if (message.amountIn !== 0) {
+      obj.amountIn = Math.round(message.amountIn);
     }
     return obj;
   },
@@ -1947,8 +1959,8 @@ export const MsgNoteSwap: MessageFns<MsgNoteSwap> = {
     message.minAmountOut = object.minAmountOut ?? 0;
     message.pc = object.pc ?? new Uint8Array(0);
     message.ciphertext = object.ciphertext ?? new Uint8Array(0);
-    message.feeFromOutput = object.feeFromOutput ?? 0;
-    message.fee = object.fee ?? 0;
+    message.denomIn = object.denomIn ?? "";
+    message.amountIn = object.amountIn ?? 0;
     return message;
   },
 };
@@ -2285,9 +2297,9 @@ function createBaseMsgAddLiquidityShielded(): MsgAddLiquidityShielded {
     minShares: "",
     refundPc: new Uint8Array(0),
     refundCiphertext: new Uint8Array(0),
-    fee: 0,
     sharePc: new Uint8Array(0),
     shareCiphertext: new Uint8Array(0),
+    erthAmount: 0,
   };
 }
 
@@ -2308,14 +2320,14 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
     if (message.refundCiphertext.length !== 0) {
       writer.uint32(58).bytes(message.refundCiphertext);
     }
-    if (message.fee !== 0) {
-      writer.uint32(64).uint64(message.fee);
-    }
     if (message.sharePc.length !== 0) {
       writer.uint32(74).bytes(message.sharePc);
     }
     if (message.shareCiphertext.length !== 0) {
       writer.uint32(82).bytes(message.shareCiphertext);
+    }
+    if (message.erthAmount !== 0) {
+      writer.uint32(88).uint64(message.erthAmount);
     }
     return writer;
   },
@@ -2373,14 +2385,6 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
             message.refundCiphertext = reader.bytes();
             continue;
           }
-          case 8: {
-            if (tag !== 64) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 9: {
             if (tag !== 74) {
               break;
@@ -2395,6 +2399,14 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
             }
 
             message.shareCiphertext = reader.bytes();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.erthAmount = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -2432,7 +2444,6 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
         : isSet(object.refund_ciphertext)
         ? bytesFromBase64(object.refund_ciphertext)
         : new Uint8Array(0),
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       sharePc: isSet(object.sharePc)
         ? bytesFromBase64(object.sharePc)
         : isSet(object.share_pc)
@@ -2443,6 +2454,11 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
         : isSet(object.share_ciphertext)
         ? bytesFromBase64(object.share_ciphertext)
         : new Uint8Array(0),
+      erthAmount: isSet(object.erthAmount)
+        ? globalThis.Number(object.erthAmount)
+        : isSet(object.erth_amount)
+        ? globalThis.Number(object.erth_amount)
+        : 0,
     };
   },
 
@@ -2463,14 +2479,14 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
     if (message.refundCiphertext.length !== 0) {
       obj.refundCiphertext = base64FromBytes(message.refundCiphertext);
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.sharePc.length !== 0) {
       obj.sharePc = base64FromBytes(message.sharePc);
     }
     if (message.shareCiphertext.length !== 0) {
       obj.shareCiphertext = base64FromBytes(message.shareCiphertext);
+    }
+    if (message.erthAmount !== 0) {
+      obj.erthAmount = Math.round(message.erthAmount);
     }
     return obj;
   },
@@ -2487,9 +2503,9 @@ export const MsgAddLiquidityShielded: MessageFns<MsgAddLiquidityShielded> = {
     message.minShares = object.minShares ?? "";
     message.refundPc = object.refundPc ?? new Uint8Array(0);
     message.refundCiphertext = object.refundCiphertext ?? new Uint8Array(0);
-    message.fee = object.fee ?? 0;
     message.sharePc = object.sharePc ?? new Uint8Array(0);
     message.shareCiphertext = object.shareCiphertext ?? new Uint8Array(0);
+    message.erthAmount = object.erthAmount ?? 0;
     return message;
   },
 };
@@ -2635,7 +2651,6 @@ function createBaseMsgRemoveLiquidityShielded(): MsgRemoveLiquidityShielded {
   return {
     bundle: undefined,
     poolId: 0,
-    fee: 0,
     erthPc: new Uint8Array(0),
     erthCiphertext: new Uint8Array(0),
     tokenPc: new Uint8Array(0),
@@ -2650,9 +2665,6 @@ export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> 
     }
     if (message.poolId !== 0) {
       writer.uint32(16).uint64(message.poolId);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(24).uint64(message.fee);
     }
     if (message.erthPc.length !== 0) {
       writer.uint32(34).bytes(message.erthPc);
@@ -2696,14 +2708,6 @@ export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> 
             }
 
             message.poolId = longToNumber(reader.uint64());
-            continue;
-          }
-          case 3: {
-            if (tag !== 24) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
             continue;
           }
           case 4: {
@@ -2758,7 +2762,6 @@ export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> 
         : isSet(object.pool_id)
         ? globalThis.Number(object.pool_id)
         : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       erthPc: isSet(object.erthPc)
         ? bytesFromBase64(object.erthPc)
         : isSet(object.erth_pc)
@@ -2790,9 +2793,6 @@ export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> 
     if (message.poolId !== 0) {
       obj.poolId = Math.round(message.poolId);
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.erthPc.length !== 0) {
       obj.erthPc = base64FromBytes(message.erthPc);
     }
@@ -2817,7 +2817,6 @@ export const MsgRemoveLiquidityShielded: MessageFns<MsgRemoveLiquidityShielded> 
       ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.poolId = object.poolId ?? 0;
-    message.fee = object.fee ?? 0;
     message.erthPc = object.erthPc ?? new Uint8Array(0);
     message.erthCiphertext = object.erthCiphertext ?? new Uint8Array(0);
     message.tokenPc = object.tokenPc ?? new Uint8Array(0);

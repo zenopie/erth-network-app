@@ -94,6 +94,31 @@ export interface ValidatorState {
    * and positions. derth is never a coin.
    */
   derthSupply: string;
+  /**
+   * checkpoint_seq is the latest snapshot sequence for which this book's
+   * derth_supply was checkpointed (SupplyCheckpoint) before it changed.
+   */
+  checkpointSeq: number;
+}
+
+/**
+ * SupplyCheckpoint is a book's derth supply just before its first change
+ * after the snapshot with sequence seq: the supply every snapshot with a
+ * sequence in (the book's previous checkpoint, seq] saw.
+ */
+export interface SupplyCheckpoint {
+  validator: string;
+  seq: number;
+  supply: string;
+}
+
+/**
+ * EpochSweep is the epoch-end processing of validator books, spread over
+ * blocks: active while a sweep is under way, cursor the last book processed.
+ */
+export interface EpochSweep {
+  active: boolean;
+  cursor: string;
 }
 
 /** UnbondRecord backs the unbond/<validator>/<epoch> stake notes (claims). */
@@ -136,12 +161,20 @@ export interface Position {
   splits: AllocationWeight[];
   createdHeight: number;
   /**
-   * weight is what the position currently carries in the Groundworks stream
-   * (derth x epoch rate).
+   * weight is what the position carries in the Groundworks stream (derth x
+   * its validator's epoch rate, 0 without a live split). Not stored: the
+   * stream weighs a validator's positions together (one voter per
+   * validator), and queries fill this in.
    */
   weight: string;
   /** owner_tag is H(TAG_OTAG, owner_pk, salt), 32 bytes (circuits/stake). */
   ownerTag: Uint8Array;
+  /**
+   * split_epoch is the Groundworks stream's allocation epoch the split was
+   * cast in. A governance reset bumps that epoch, and a split from an older
+   * one no longer counts (the owner votes again with MsgUpdatePosition).
+   */
+  splitEpoch: number;
 }
 
 /**
@@ -168,7 +201,14 @@ export interface ProposalSnapshot {
   height: number;
   /** voting_end, unix nanoseconds. Votes are accepted before it. */
   votingEnd: number;
+  /**
+   * validators is the per-validator snapshot of snapshots taken before
+   * seq existed (genesis compatibility); empty for newer ones, whose supplies
+   * are read from the books' SupplyCheckpoints.
+   */
   validators: ValidatorSnapshot[];
+  /** seq is this snapshot's sequence number (1, 2, ...); 0 for the legacy form. */
+  seq: number;
 }
 
 /** ValidatorSnapshot is one validator's derth supply and rate at a snapshot. */
@@ -317,7 +357,14 @@ export const Epoch: MessageFns<Epoch> = {
 };
 
 function createBaseValidatorState(): ValidatorState {
-  return { validator: "", pendingDelegation: "", pendingUndelegation: "", epochRate: "", derthSupply: "" };
+  return {
+    validator: "",
+    pendingDelegation: "",
+    pendingUndelegation: "",
+    epochRate: "",
+    derthSupply: "",
+    checkpointSeq: 0,
+  };
 }
 
 export const ValidatorState: MessageFns<ValidatorState> = {
@@ -336,6 +383,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     }
     if (message.derthSupply !== "") {
       writer.uint32(42).string(message.derthSupply);
+    }
+    if (message.checkpointSeq !== 0) {
+      writer.uint32(48).uint64(message.checkpointSeq);
     }
     return writer;
   },
@@ -393,6 +443,14 @@ export const ValidatorState: MessageFns<ValidatorState> = {
             message.derthSupply = reader.string();
             continue;
           }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.checkpointSeq = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -428,6 +486,11 @@ export const ValidatorState: MessageFns<ValidatorState> = {
         : isSet(object.derth_supply)
         ? globalThis.String(object.derth_supply)
         : "",
+      checkpointSeq: isSet(object.checkpointSeq)
+        ? globalThis.Number(object.checkpointSeq)
+        : isSet(object.checkpoint_seq)
+        ? globalThis.Number(object.checkpoint_seq)
+        : 0,
     };
   },
 
@@ -448,6 +511,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     if (message.derthSupply !== "") {
       obj.derthSupply = message.derthSupply;
     }
+    if (message.checkpointSeq !== 0) {
+      obj.checkpointSeq = Math.round(message.checkpointSeq);
+    }
     return obj;
   },
 
@@ -461,6 +527,193 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     message.pendingUndelegation = object.pendingUndelegation ?? "";
     message.epochRate = object.epochRate ?? "";
     message.derthSupply = object.derthSupply ?? "";
+    message.checkpointSeq = object.checkpointSeq ?? 0;
+    return message;
+  },
+};
+
+function createBaseSupplyCheckpoint(): SupplyCheckpoint {
+  return { validator: "", seq: 0, supply: "" };
+}
+
+export const SupplyCheckpoint: MessageFns<SupplyCheckpoint> = {
+  encode(message: SupplyCheckpoint, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.validator !== "") {
+      writer.uint32(10).string(message.validator);
+    }
+    if (message.seq !== 0) {
+      writer.uint32(16).uint64(message.seq);
+    }
+    if (message.supply !== "") {
+      writer.uint32(26).string(message.supply);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SupplyCheckpoint {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseSupplyCheckpoint();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.validator = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.seq = longToNumber(reader.uint64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.supply = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): SupplyCheckpoint {
+    return {
+      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      seq: isSet(object.seq) ? globalThis.Number(object.seq) : 0,
+      supply: isSet(object.supply) ? globalThis.String(object.supply) : "",
+    };
+  },
+
+  toJSON(message: SupplyCheckpoint): unknown {
+    const obj: any = {};
+    if (message.validator !== "") {
+      obj.validator = message.validator;
+    }
+    if (message.seq !== 0) {
+      obj.seq = Math.round(message.seq);
+    }
+    if (message.supply !== "") {
+      obj.supply = message.supply;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SupplyCheckpoint>, I>>(base?: I): SupplyCheckpoint {
+    return SupplyCheckpoint.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SupplyCheckpoint>, I>>(object: I): SupplyCheckpoint {
+    const message = createBaseSupplyCheckpoint();
+    message.validator = object.validator ?? "";
+    message.seq = object.seq ?? 0;
+    message.supply = object.supply ?? "";
+    return message;
+  },
+};
+
+function createBaseEpochSweep(): EpochSweep {
+  return { active: false, cursor: "" };
+}
+
+export const EpochSweep: MessageFns<EpochSweep> = {
+  encode(message: EpochSweep, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.active !== false) {
+      writer.uint32(8).bool(message.active);
+    }
+    if (message.cursor !== "") {
+      writer.uint32(18).string(message.cursor);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EpochSweep {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseEpochSweep();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.active = reader.bool();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.cursor = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): EpochSweep {
+    return {
+      active: isSet(object.active) ? globalThis.Boolean(object.active) : false,
+      cursor: isSet(object.cursor) ? globalThis.String(object.cursor) : "",
+    };
+  },
+
+  toJSON(message: EpochSweep): unknown {
+    const obj: any = {};
+    if (message.active !== false) {
+      obj.active = message.active;
+    }
+    if (message.cursor !== "") {
+      obj.cursor = message.cursor;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EpochSweep>, I>>(base?: I): EpochSweep {
+    return EpochSweep.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<EpochSweep>, I>>(object: I): EpochSweep {
+    const message = createBaseEpochSweep();
+    message.active = object.active ?? false;
+    message.cursor = object.cursor ?? "";
     return message;
   },
 };
@@ -715,7 +968,16 @@ export const UnbondRecord: MessageFns<UnbondRecord> = {
 };
 
 function createBasePosition(): Position {
-  return { id: 0, validator: "", derth: "", splits: [], createdHeight: 0, weight: "", ownerTag: new Uint8Array(0) };
+  return {
+    id: 0,
+    validator: "",
+    derth: "",
+    splits: [],
+    createdHeight: 0,
+    weight: "",
+    ownerTag: new Uint8Array(0),
+    splitEpoch: 0,
+  };
 }
 
 export const Position: MessageFns<Position> = {
@@ -740,6 +1002,9 @@ export const Position: MessageFns<Position> = {
     }
     if (message.ownerTag.length !== 0) {
       writer.uint32(74).bytes(message.ownerTag);
+    }
+    if (message.splitEpoch !== 0) {
+      writer.uint32(80).uint64(message.splitEpoch);
     }
     return writer;
   },
@@ -813,6 +1078,14 @@ export const Position: MessageFns<Position> = {
             message.ownerTag = reader.bytes();
             continue;
           }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.splitEpoch = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -844,6 +1117,11 @@ export const Position: MessageFns<Position> = {
         : isSet(object.owner_tag)
         ? bytesFromBase64(object.owner_tag)
         : new Uint8Array(0),
+      splitEpoch: isSet(object.splitEpoch)
+        ? globalThis.Number(object.splitEpoch)
+        : isSet(object.split_epoch)
+        ? globalThis.Number(object.split_epoch)
+        : 0,
     };
   },
 
@@ -870,6 +1148,9 @@ export const Position: MessageFns<Position> = {
     if (message.ownerTag.length !== 0) {
       obj.ownerTag = base64FromBytes(message.ownerTag);
     }
+    if (message.splitEpoch !== 0) {
+      obj.splitEpoch = Math.round(message.splitEpoch);
+    }
     return obj;
   },
 
@@ -885,6 +1166,7 @@ export const Position: MessageFns<Position> = {
     message.createdHeight = object.createdHeight ?? 0;
     message.weight = object.weight ?? "";
     message.ownerTag = object.ownerTag ?? new Uint8Array(0);
+    message.splitEpoch = object.splitEpoch ?? 0;
     return message;
   },
 };
@@ -1011,7 +1293,7 @@ export const StakeRoot: MessageFns<StakeRoot> = {
 };
 
 function createBaseProposalSnapshot(): ProposalSnapshot {
-  return { proposalId: 0, root: new Uint8Array(0), treeSize: 0, height: 0, votingEnd: 0, validators: [] };
+  return { proposalId: 0, root: new Uint8Array(0), treeSize: 0, height: 0, votingEnd: 0, validators: [], seq: 0 };
 }
 
 export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
@@ -1033,6 +1315,9 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     }
     for (const v of message.validators) {
       ValidatorSnapshot.encode(v!, writer.uint32(50).fork()).join();
+    }
+    if (message.seq !== 0) {
+      writer.uint32(56).uint64(message.seq);
     }
     return writer;
   },
@@ -1098,6 +1383,14 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
             message.validators.push(ValidatorSnapshot.decode(reader, reader.uint32()));
             continue;
           }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.seq = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1132,6 +1425,7 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
       validators: globalThis.Array.isArray(object?.validators)
         ? object.validators.map((e: any) => ValidatorSnapshot.fromJSON(e))
         : [],
+      seq: isSet(object.seq) ? globalThis.Number(object.seq) : 0,
     };
   },
 
@@ -1155,6 +1449,9 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     if (message.validators?.length) {
       obj.validators = message.validators.map((e) => ValidatorSnapshot.toJSON(e));
     }
+    if (message.seq !== 0) {
+      obj.seq = Math.round(message.seq);
+    }
     return obj;
   },
 
@@ -1169,6 +1466,7 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     message.height = object.height ?? 0;
     message.votingEnd = object.votingEnd ?? 0;
     message.validators = object.validators?.map((e) => ValidatorSnapshot.fromPartial(e)) || [];
+    message.seq = object.seq ?? 0;
     return message;
   },
 };

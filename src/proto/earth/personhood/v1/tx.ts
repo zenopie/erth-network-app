@@ -36,21 +36,24 @@ export interface MsgUpdateParamsResponse {
  * verifies dsc_der against the CSCA trust store and binds it to the proof's
  * dsc_key, pins current_date to block time, dedups on the passport nullifier,
  * and requires the proof's `address` input to equal
- * zk/privacy.RegistrationBinding(idc, pc_anml, pc_erth, affiliate) with
- * affiliate = Bytes(the affiliate's address bytes), 0 when none.
+ * zk/privacy.RegistrationBinding =
+ *   H(TAG_REG, idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
+ *     Bytes(ciphertext_erth), affiliate)
+ * with affiliate = Bytes(the affiliate's address bytes), 0 when none.
  *
  * A new registration (or one re-entering after its last lapsed) appends the
  * leaf, mints 1 ANML to pc_anml and the registrant's half of the reward to
  * pc_erth, and pays the referrer's half in transparent ERTH to affiliate,
  * which must hold a live referrer binding (MsgBindReferrer). A live
  * registration is a switch: the old leaf is zeroed and the new one appended,
- * and nothing is paid (affiliate is then not checked).
+ * and nothing is paid (affiliate is then not checked). A switch to the idc
+ * the live registration already holds is refused (a replay).
  *
  * sighash fields: idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
  * Bytes(ciphertext_erth), affiliate (as in the binding),
  * Bytes(signature_algorithm), then every public signal in order. The passport
- * proof binds the identity and pcs through its address input; the sighash
- * binds the rest to the fee bundle.
+ * proof binds the identity, pcs and ciphertexts through its address input;
+ * the sighash binds the rest to the fee bundle.
  */
 export interface MsgRegister {
   fee:
@@ -68,6 +71,10 @@ export interface MsgRegister {
   idc: Uint8Array;
   /** pc_anml receives the registration's ANML note. */
   pcAnml: Uint8Array;
+  /**
+   * ciphertext_anml / ciphertext_erth: each note's amount-blind v2
+   * ciphertext (zk/privacy.EncryptBlindNote), exactly 177 bytes, required.
+   */
   ciphertextAnml: Uint8Array;
   /** pc_erth receives the registrant's half of the registration reward. */
   pcErth: Uint8Array;
@@ -104,6 +111,7 @@ export interface MsgClaimAnml {
   membership: Membership | undefined;
   day: number;
   pc: Uint8Array;
+  /** ciphertext is the ANML note's amount-blind v2 ciphertext, 177 bytes. */
   ciphertext: Uint8Array;
 }
 
@@ -1291,8 +1299,9 @@ export const MsgBindReferrerResponse: MessageFns<MsgBindReferrerResponse> = {
  * unsigned, carried
  * alone in a tx, their fee paid from the shielded pool by the earth.shielded
  * Bundle each embeds as `fee` (see x/shielded PrivateMsg), whose only balance
- * is the uerth fee. Their sighash is zk/orchard.Sighash(type URL, chain id, 1,
- * digest(fee), fields...), which every action proof and the binding signature
+ * is the uerth fee. Their sighash is zk/orchard.Sighash(type URL, chain id,
+ * tx fields (memo, timeout_height, gas_limit), 1, digest(fee), fields...),
+ * which every action proof and the binding signature
  * bind, and which a membership proof binds as its signal. The fields are
  * listed on each msg.
  */

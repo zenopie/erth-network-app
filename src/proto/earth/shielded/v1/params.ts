@@ -43,8 +43,12 @@ export interface Params {
   rootWindowSeconds: number;
   /**
    * max_private_actions_per_block caps how many actions (proofs) the private
-   * txs of one block carry in total. Proof verification is the dominant
-   * block cost.
+   * txs that pass their ante in one block carry in total. A tx whose ante
+   * fails (a bad proof, a spent nullifier) is not counted: its count is
+   * written with the ante's other writes and discarded with them. Block gas
+   * bounds the verification work of failed txs too: each proof's
+   * proof_verification_gas is charged before any proof is verified, and that
+   * gas counts toward the block's max_gas whether or not the ante fails.
    */
   maxPrivateActionsPerBlock: number;
   /**

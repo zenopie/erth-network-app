@@ -55,8 +55,10 @@ export interface MsgShield {
   /** pc = H(TAG_PC, owner_pk, rho, rcm), 32 bytes. */
   pc: Uint8Array;
   /**
-   * ciphertext is optional: the note encrypted to its owner, when the owner
-   * is not the sender (a gas grant, a payment). Emitted, never stored.
+   * ciphertext is the note's amount-blind v2 ciphertext (zk/privacy
+   * EncryptBlindNote: rho, rcm, memo to the owner's ek_pub), exactly 177
+   * bytes. Required: every note the chain mints to a hidden owner carries
+   * one, so a wallet finds every note by trial decryption alone.
    */
   ciphertext: Uint8Array;
 }
@@ -79,8 +81,10 @@ export interface MsgShieldResponse {
  * With no receiver the balances must be exactly the fee.
  *
  * sighash = zk/orchard.Sighash("/earth.shielded.v1.MsgSend", chain_id,
- * [bundle], Bytes(receiver address bytes), fee), so neither the receiver,
- * the fee, a ciphertext nor any balance can be changed by whoever relays it.
+ * tx fields (memo, timeout_height, gas_limit), [bundle], Bytes(receiver
+ * address bytes), fee), so neither the receiver, the fee, a ciphertext, any
+ * balance nor the tx's memo, timeout height or gas limit can be changed by
+ * whoever relays it.
  */
 export interface MsgSend {
   bundle:

@@ -46,8 +46,9 @@ export interface Params {
   currentDateIndex: number;
   /**
    * address_index is the public-input position of the circuit's `address`
-   * input, which carries zk/privacy.RegistrationBinding(idc, pc_anml, pc_erth,
-   * affiliate): the identity commitment, the notes the registration pays and
+   * input, which carries zk/privacy.RegistrationBinding(idc, pc_anml,
+   * ciphertext_anml, pc_erth, ciphertext_erth, affiliate): the identity
+   * commitment, the notes the registration pays (and their ciphertexts) and
    * the referrer it pays. The chain recomputes it from MsgRegister's fields, so a proof read
    * out of a block cannot register anyone else's identity or pay anyone
    * else's notes.

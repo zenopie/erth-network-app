@@ -193,6 +193,20 @@ export interface Voter {
    * stream: resetting one stream leaves the other untouched.
    */
   epoch: number;
+  /**
+   * option_weights, when set, replace percentages and weight's split: the
+   * voter puts an absolute weight on each option, and weight is their sum.
+   * For a module that aggregates many splits into one voter
+   * (x/shieldedstaking files every Groundworks position of a validator as
+   * one voter, SetWeightedVoter). Never set together with percentages.
+   */
+  optionWeights: OptionWeight[];
+}
+
+/** OptionWeight is one option's absolute weight in a weighted voter. */
+export interface OptionWeight {
+  optionId: number;
+  weight: string;
 }
 
 function createBaseAllocationOption(): AllocationOption {
@@ -534,7 +548,7 @@ export const AllocationWeight: MessageFns<AllocationWeight> = {
 };
 
 function createBaseVoter(): Voter {
-  return { percentages: [], weight: "", epoch: 0 };
+  return { percentages: [], weight: "", epoch: 0, optionWeights: [] };
 }
 
 export const Voter: MessageFns<Voter> = {
@@ -547,6 +561,9 @@ export const Voter: MessageFns<Voter> = {
     }
     if (message.epoch !== 0) {
       writer.uint32(24).uint64(message.epoch);
+    }
+    for (const v of message.optionWeights) {
+      OptionWeight.encode(v!, writer.uint32(34).fork()).join();
     }
     return writer;
   },
@@ -588,6 +605,14 @@ export const Voter: MessageFns<Voter> = {
             message.epoch = longToNumber(reader.uint64());
             continue;
           }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.optionWeights.push(OptionWeight.decode(reader, reader.uint32()));
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -607,6 +632,11 @@ export const Voter: MessageFns<Voter> = {
         : [],
       weight: isSet(object.weight) ? globalThis.String(object.weight) : "",
       epoch: isSet(object.epoch) ? globalThis.Number(object.epoch) : 0,
+      optionWeights: globalThis.Array.isArray(object?.optionWeights)
+        ? object.optionWeights.map((e: any) => OptionWeight.fromJSON(e))
+        : globalThis.Array.isArray(object?.option_weights)
+        ? object.option_weights.map((e: any) => OptionWeight.fromJSON(e))
+        : [],
     };
   },
 
@@ -621,6 +651,9 @@ export const Voter: MessageFns<Voter> = {
     if (message.epoch !== 0) {
       obj.epoch = Math.round(message.epoch);
     }
+    if (message.optionWeights?.length) {
+      obj.optionWeights = message.optionWeights.map((e) => OptionWeight.toJSON(e));
+    }
     return obj;
   },
 
@@ -632,6 +665,96 @@ export const Voter: MessageFns<Voter> = {
     message.percentages = object.percentages?.map((e) => AllocationWeight.fromPartial(e)) || [];
     message.weight = object.weight ?? "";
     message.epoch = object.epoch ?? 0;
+    message.optionWeights = object.optionWeights?.map((e) => OptionWeight.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseOptionWeight(): OptionWeight {
+  return { optionId: 0, weight: "" };
+}
+
+export const OptionWeight: MessageFns<OptionWeight> = {
+  encode(message: OptionWeight, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.optionId !== 0) {
+      writer.uint32(8).uint64(message.optionId);
+    }
+    if (message.weight !== "") {
+      writer.uint32(18).string(message.weight);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): OptionWeight {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseOptionWeight();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.optionId = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.weight = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): OptionWeight {
+    return {
+      optionId: isSet(object.optionId)
+        ? globalThis.Number(object.optionId)
+        : isSet(object.option_id)
+        ? globalThis.Number(object.option_id)
+        : 0,
+      weight: isSet(object.weight) ? globalThis.String(object.weight) : "",
+    };
+  },
+
+  toJSON(message: OptionWeight): unknown {
+    const obj: any = {};
+    if (message.optionId !== 0) {
+      obj.optionId = Math.round(message.optionId);
+    }
+    if (message.weight !== "") {
+      obj.weight = message.weight;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<OptionWeight>, I>>(base?: I): OptionWeight {
+    return OptionWeight.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<OptionWeight>, I>>(object: I): OptionWeight {
+    const message = createBaseOptionWeight();
+    message.optionId = object.optionId ?? 0;
+    message.weight = object.weight ?? "";
     return message;
   },
 };

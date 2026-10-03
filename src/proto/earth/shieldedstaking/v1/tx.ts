@@ -61,22 +61,34 @@ export interface StakeProof {
    * LockPosition, compared by a position's later msgs.
    */
   ownerTag: Uint8Array;
+  /**
+   * spc_ciphertext is the amount-blind stake ciphertext (zk/privacy
+   * EncryptBlindStakeNote: rho, rcm, memo of spc_mint's note), exactly 177
+   * bytes, for the note the chain mints to spc_mint: required by the msgs
+   * that mint one (Delegate, Undelegate, StakeVote, UnlockPosition), empty
+   * otherwise. The owner recomputes spc and cm from the denom and amount the
+   * chain publishes with the note.
+   */
+  spcCiphertext: Uint8Array;
 }
 
 /**
- * MsgDelegate: bundle releases its uerth balance less fee into the module for
- * validator; the chain mints derth/<validator> at the live rate as a stake
- * note to stake.spc_mint, whose owner the stake proof knows nk for (one
- * delegates only to oneself). The proof spends and creates nothing. The ERTH
- * is delegated at the epoch's end.
+ * MsgDelegate: bundle releases amount uerth into the module for validator
+ * (the rest of its uerth balance is the fee); the chain mints
+ * derth/<validator> at the live rate as a stake note to stake.spc_mint, whose
+ * owner the stake proof knows nk for (one delegates only to oneself). The
+ * proof spends and creates nothing. The ERTH is delegated at the epoch's end.
  *
- * sighash fields: StakeFields(stake), Bytes(validator), fee.
+ * sighash fields: StakeFields(stake), Bytes(validator), amount.
  */
 export interface MsgDelegate {
   bundle: Bundle | undefined;
   validator: string;
-  fee: number;
-  stake: StakeProof | undefined;
+  stake:
+    | StakeProof
+    | undefined;
+  /** amount is the uerth delegated. */
+  amount: number;
 }
 
 /** MsgDelegateResponse returns the derth minted and the stake note's position. */
@@ -90,12 +102,11 @@ export interface MsgDelegateResponse {
  * the owner's derth/<validator> notes and creates one or two of the same
  * owner, the amounts balancing (hidden). bundle pays the fee only.
  *
- * sighash fields: StakeFields(stake), Bytes(validator), fee.
+ * sighash fields: StakeFields(stake), Bytes(validator).
  */
 export interface MsgRestake {
   bundle: Bundle | undefined;
   validator: string;
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -110,13 +121,12 @@ export interface MsgRestakeResponse {
  * owner-locked unbond/<validator>/<epoch> claim of the derth's live ERTH value
  * to stake.spc_mint. bundle pays the fee only.
  *
- * sighash fields: StakeFields(stake), Bytes(validator), amount, fee.
+ * sighash fields: StakeFields(stake), Bytes(validator), amount.
  */
 export interface MsgUndelegate {
   bundle: Bundle | undefined;
   validator: string;
   amount: number;
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -133,12 +143,14 @@ export interface MsgUndelegateResponse {
  * back; the chain mints ERTH = amount x payout / requested to pc in the
  * shielded pool (an ordinary, transferable note), less fee_from_output.
  *
- * With fee_from_output the msg carries no bundle (bundle empty, fee 0): the
- * fee comes out of the claimed ERTH and the claim runs in the private ante,
- * atomically with the spend. Otherwise bundle pays fee.
+ * With fee_from_output the msg carries no bundle: the fee comes out of the
+ * claimed ERTH and the claim runs in the private ante, atomically with the
+ * spend. Otherwise the bundle's uerth balance is the fee. A claim is the only
+ * private msg that may pay from its output. ciphertext is the payout note's
+ * amount-blind v2 ciphertext (177 bytes).
  *
  * sighash fields: StakeFields(stake), Bytes(validator), epoch, amount, pc,
- * Bytes(ciphertext), fee_from_output, fee.
+ * Bytes(ciphertext), fee_from_output.
  */
 export interface MsgClaimUnbonding {
   /** bundle is absent (no actions) when fee_from_output pays the fee. */
@@ -149,7 +161,6 @@ export interface MsgClaimUnbonding {
   pc: Uint8Array;
   ciphertext: Uint8Array;
   feeFromOutput: number;
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -174,7 +185,7 @@ export interface MsgClaimUnbondingResponse {
  * bundle pays the fee against the shielded pool's current roots.
  *
  * sighash fields: StakeFields(stake), proposal_id, Bytes(validator),
- * Bytes(OptionsBytes(options)), weight, fee.
+ * Bytes(OptionsBytes(options)), weight.
  */
 export interface MsgStakeVote {
   bundle: Bundle | undefined;
@@ -182,7 +193,6 @@ export interface MsgStakeVote {
   validator: string;
   options: WeightedVoteOption[];
   weight: number;
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -199,14 +209,13 @@ export interface MsgStakeVoteResponse {
  * the fee only.
  *
  * sighash fields: StakeFields(stake), Bytes(validator), amount,
- * Bytes(SplitsBytes(splits)), fee.
+ * Bytes(SplitsBytes(splits)).
  */
 export interface MsgLockPosition {
   bundle: Bundle | undefined;
   validator: string;
   amount: number;
   splits: AllocationWeight[];
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -219,14 +228,12 @@ export interface MsgLockPositionResponse {
  * MsgUpdatePosition replaces a position's split. The proof spends and creates
  * nothing; its owner_tag must be the position's. bundle pays the fee only.
  *
- * sighash fields: StakeFields(stake), position_id, Bytes(SplitsBytes(splits)),
- * fee.
+ * sighash fields: StakeFields(stake), position_id, Bytes(SplitsBytes(splits)).
  */
 export interface MsgUpdatePosition {
   bundle: Bundle | undefined;
   positionId: number;
   splits: AllocationWeight[];
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -239,12 +246,11 @@ export interface MsgUpdatePositionResponse {
  * its owner to stake.spc_mint. The proof spends and creates nothing; its
  * owner_tag must be the position's. bundle pays the fee only.
  *
- * sighash fields: StakeFields(stake), position_id, fee.
+ * sighash fields: StakeFields(stake), position_id.
  */
 export interface MsgUnlockPosition {
   bundle: Bundle | undefined;
   positionId: number;
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -260,14 +266,13 @@ export interface MsgUnlockPositionResponse {
  * only.
  *
  * sighash fields: StakeFields(stake), position_id, proposal_id,
- * Bytes(OptionsBytes(options)), fee.
+ * Bytes(OptionsBytes(options)).
  */
 export interface MsgPositionVote {
   bundle: Bundle | undefined;
   positionId: number;
   proposalId: number;
   options: WeightedVoteOption[];
-  fee: number;
   stake: StakeProof | undefined;
 }
 
@@ -423,6 +428,7 @@ function createBaseStakeProof(): StakeProof {
     ciphertexts: [],
     spcMint: new Uint8Array(0),
     ownerTag: new Uint8Array(0),
+    spcCiphertext: new Uint8Array(0),
   };
 }
 
@@ -448,6 +454,9 @@ export const StakeProof: MessageFns<StakeProof> = {
     }
     if (message.ownerTag.length !== 0) {
       writer.uint32(58).bytes(message.ownerTag);
+    }
+    if (message.spcCiphertext.length !== 0) {
+      writer.uint32(66).bytes(message.spcCiphertext);
     }
     return writer;
   },
@@ -521,6 +530,14 @@ export const StakeProof: MessageFns<StakeProof> = {
             message.ownerTag = reader.bytes();
             continue;
           }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.spcCiphertext = reader.bytes();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -556,6 +573,11 @@ export const StakeProof: MessageFns<StakeProof> = {
         : isSet(object.owner_tag)
         ? bytesFromBase64(object.owner_tag)
         : new Uint8Array(0),
+      spcCiphertext: isSet(object.spcCiphertext)
+        ? bytesFromBase64(object.spcCiphertext)
+        : isSet(object.spc_ciphertext)
+        ? bytesFromBase64(object.spc_ciphertext)
+        : new Uint8Array(0),
     };
   },
 
@@ -582,6 +604,9 @@ export const StakeProof: MessageFns<StakeProof> = {
     if (message.ownerTag.length !== 0) {
       obj.ownerTag = base64FromBytes(message.ownerTag);
     }
+    if (message.spcCiphertext.length !== 0) {
+      obj.spcCiphertext = base64FromBytes(message.spcCiphertext);
+    }
     return obj;
   },
 
@@ -597,12 +622,13 @@ export const StakeProof: MessageFns<StakeProof> = {
     message.ciphertexts = object.ciphertexts?.map((e) => e) || [];
     message.spcMint = object.spcMint ?? new Uint8Array(0);
     message.ownerTag = object.ownerTag ?? new Uint8Array(0);
+    message.spcCiphertext = object.spcCiphertext ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseMsgDelegate(): MsgDelegate {
-  return { bundle: undefined, validator: "", fee: 0, stake: undefined };
+  return { bundle: undefined, validator: "", stake: undefined, amount: 0 };
 }
 
 export const MsgDelegate: MessageFns<MsgDelegate> = {
@@ -613,11 +639,11 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
     if (message.validator !== "") {
       writer.uint32(18).string(message.validator);
     }
-    if (message.fee !== 0) {
-      writer.uint32(24).uint64(message.fee);
-    }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
+    }
+    if (message.amount !== 0) {
+      writer.uint32(40).uint64(message.amount);
     }
     return writer;
   },
@@ -651,20 +677,20 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
             message.validator = reader.string();
             continue;
           }
-          case 3: {
-            if (tag !== 24) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 4: {
             if (tag !== 34) {
               break;
             }
 
             message.stake = StakeProof.decode(reader, reader.uint32());
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.amount = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -683,8 +709,8 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
     return {
       bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
     };
   },
 
@@ -696,11 +722,11 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
     if (message.validator !== "") {
       obj.validator = message.validator;
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
+    }
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
     }
     return obj;
   },
@@ -714,10 +740,10 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
       ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.validator = object.validator ?? "";
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
+    message.amount = object.amount ?? 0;
     return message;
   },
 };
@@ -808,7 +834,7 @@ export const MsgDelegateResponse: MessageFns<MsgDelegateResponse> = {
 };
 
 function createBaseMsgRestake(): MsgRestake {
-  return { bundle: undefined, validator: "", fee: 0, stake: undefined };
+  return { bundle: undefined, validator: "", stake: undefined };
 }
 
 export const MsgRestake: MessageFns<MsgRestake> = {
@@ -818,9 +844,6 @@ export const MsgRestake: MessageFns<MsgRestake> = {
     }
     if (message.validator !== "") {
       writer.uint32(18).string(message.validator);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(24).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
@@ -857,14 +880,6 @@ export const MsgRestake: MessageFns<MsgRestake> = {
             message.validator = reader.string();
             continue;
           }
-          case 3: {
-            if (tag !== 24) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 4: {
             if (tag !== 34) {
               break;
@@ -889,7 +904,6 @@ export const MsgRestake: MessageFns<MsgRestake> = {
     return {
       bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -901,9 +915,6 @@ export const MsgRestake: MessageFns<MsgRestake> = {
     }
     if (message.validator !== "") {
       obj.validator = message.validator;
-    }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
     }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
@@ -920,7 +931,6 @@ export const MsgRestake: MessageFns<MsgRestake> = {
       ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.validator = object.validator ?? "";
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -1012,7 +1022,7 @@ export const MsgRestakeResponse: MessageFns<MsgRestakeResponse> = {
 };
 
 function createBaseMsgUndelegate(): MsgUndelegate {
-  return { bundle: undefined, validator: "", amount: 0, fee: 0, stake: undefined };
+  return { bundle: undefined, validator: "", amount: 0, stake: undefined };
 }
 
 export const MsgUndelegate: MessageFns<MsgUndelegate> = {
@@ -1025,9 +1035,6 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
     }
     if (message.amount !== 0) {
       writer.uint32(24).uint64(message.amount);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(32).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(42).fork()).join();
@@ -1072,14 +1079,6 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
             message.amount = longToNumber(reader.uint64());
             continue;
           }
-          case 4: {
-            if (tag !== 32) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 5: {
             if (tag !== 42) {
               break;
@@ -1105,7 +1104,6 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
       bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
       amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -1120,9 +1118,6 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
     }
     if (message.amount !== 0) {
       obj.amount = Math.round(message.amount);
-    }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
     }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
@@ -1140,7 +1135,6 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
       : undefined;
     message.validator = object.validator ?? "";
     message.amount = object.amount ?? 0;
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -1258,7 +1252,6 @@ function createBaseMsgClaimUnbonding(): MsgClaimUnbonding {
     pc: new Uint8Array(0),
     ciphertext: new Uint8Array(0),
     feeFromOutput: 0,
-    fee: 0,
     stake: undefined,
   };
 }
@@ -1285,9 +1278,6 @@ export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
     }
     if (message.feeFromOutput !== 0) {
       writer.uint32(56).uint64(message.feeFromOutput);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(64).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(74).fork()).join();
@@ -1364,14 +1354,6 @@ export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
             message.feeFromOutput = longToNumber(reader.uint64());
             continue;
           }
-          case 8: {
-            if (tag !== 64) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 9: {
             if (tag !== 74) {
               break;
@@ -1405,7 +1387,6 @@ export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
         : isSet(object.fee_from_output)
         ? globalThis.Number(object.fee_from_output)
         : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -1433,9 +1414,6 @@ export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
     if (message.feeFromOutput !== 0) {
       obj.feeFromOutput = Math.round(message.feeFromOutput);
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
     }
@@ -1456,7 +1434,6 @@ export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
     message.pc = object.pc ?? new Uint8Array(0);
     message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     message.feeFromOutput = object.feeFromOutput ?? 0;
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -1550,7 +1527,7 @@ export const MsgClaimUnbondingResponse: MessageFns<MsgClaimUnbondingResponse> = 
 };
 
 function createBaseMsgStakeVote(): MsgStakeVote {
-  return { bundle: undefined, proposalId: 0, validator: "", options: [], weight: 0, fee: 0, stake: undefined };
+  return { bundle: undefined, proposalId: 0, validator: "", options: [], weight: 0, stake: undefined };
 }
 
 export const MsgStakeVote: MessageFns<MsgStakeVote> = {
@@ -1569,9 +1546,6 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     }
     if (message.weight !== 0) {
       writer.uint32(40).uint64(message.weight);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(48).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(58).fork()).join();
@@ -1632,14 +1606,6 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
             message.weight = longToNumber(reader.uint64());
             continue;
           }
-          case 6: {
-            if (tag !== 48) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 7: {
             if (tag !== 58) {
               break;
@@ -1673,7 +1639,6 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
       weight: isSet(object.weight) ? globalThis.Number(object.weight) : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -1695,9 +1660,6 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     if (message.weight !== 0) {
       obj.weight = Math.round(message.weight);
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
     }
@@ -1716,7 +1678,6 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     message.validator = object.validator ?? "";
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
     message.weight = object.weight ?? 0;
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -1792,7 +1753,7 @@ export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
 };
 
 function createBaseMsgLockPosition(): MsgLockPosition {
-  return { bundle: undefined, validator: "", amount: 0, splits: [], fee: 0, stake: undefined };
+  return { bundle: undefined, validator: "", amount: 0, splits: [], stake: undefined };
 }
 
 export const MsgLockPosition: MessageFns<MsgLockPosition> = {
@@ -1808,9 +1769,6 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
     }
     for (const v of message.splits) {
       AllocationWeight.encode(v!, writer.uint32(34).fork()).join();
-    }
-    if (message.fee !== 0) {
-      writer.uint32(40).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(50).fork()).join();
@@ -1863,14 +1821,6 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
             message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
             continue;
           }
-          case 5: {
-            if (tag !== 40) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 6: {
             if (tag !== 50) {
               break;
@@ -1899,7 +1849,6 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -1918,9 +1867,6 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
     }
@@ -1938,7 +1884,6 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
     message.validator = object.validator ?? "";
     message.amount = object.amount ?? 0;
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -2020,7 +1965,7 @@ export const MsgLockPositionResponse: MessageFns<MsgLockPositionResponse> = {
 };
 
 function createBaseMsgUpdatePosition(): MsgUpdatePosition {
-  return { bundle: undefined, positionId: 0, splits: [], fee: 0, stake: undefined };
+  return { bundle: undefined, positionId: 0, splits: [], stake: undefined };
 }
 
 export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
@@ -2033,9 +1978,6 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
     }
     for (const v of message.splits) {
       AllocationWeight.encode(v!, writer.uint32(26).fork()).join();
-    }
-    if (message.fee !== 0) {
-      writer.uint32(32).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(42).fork()).join();
@@ -2080,14 +2022,6 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
             message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
             continue;
           }
-          case 4: {
-            if (tag !== 32) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 5: {
             if (tag !== 42) {
               break;
@@ -2119,7 +2053,6 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -2134,9 +2067,6 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
     }
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
-    }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
     }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
@@ -2154,7 +2084,6 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
       : undefined;
     message.positionId = object.positionId ?? 0;
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -2215,7 +2144,7 @@ export const MsgUpdatePositionResponse: MessageFns<MsgUpdatePositionResponse> = 
 };
 
 function createBaseMsgUnlockPosition(): MsgUnlockPosition {
-  return { bundle: undefined, positionId: 0, fee: 0, stake: undefined };
+  return { bundle: undefined, positionId: 0, stake: undefined };
 }
 
 export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
@@ -2225,9 +2154,6 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
     }
     if (message.positionId !== 0) {
       writer.uint32(16).uint64(message.positionId);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(24).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
@@ -2264,14 +2190,6 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
             message.positionId = longToNumber(reader.uint64());
             continue;
           }
-          case 3: {
-            if (tag !== 24) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 4: {
             if (tag !== 34) {
               break;
@@ -2300,7 +2218,6 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
         : isSet(object.position_id)
         ? globalThis.Number(object.position_id)
         : 0,
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -2312,9 +2229,6 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
     }
     if (message.positionId !== 0) {
       obj.positionId = Math.round(message.positionId);
-    }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
     }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
@@ -2331,7 +2245,6 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
       ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.positionId = object.positionId ?? 0;
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -2407,7 +2320,7 @@ export const MsgUnlockPositionResponse: MessageFns<MsgUnlockPositionResponse> = 
 };
 
 function createBaseMsgPositionVote(): MsgPositionVote {
-  return { bundle: undefined, positionId: 0, proposalId: 0, options: [], fee: 0, stake: undefined };
+  return { bundle: undefined, positionId: 0, proposalId: 0, options: [], stake: undefined };
 }
 
 export const MsgPositionVote: MessageFns<MsgPositionVote> = {
@@ -2423,9 +2336,6 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
     }
     for (const v of message.options) {
       WeightedVoteOption.encode(v!, writer.uint32(34).fork()).join();
-    }
-    if (message.fee !== 0) {
-      writer.uint32(40).uint64(message.fee);
     }
     if (message.stake !== undefined) {
       StakeProof.encode(message.stake, writer.uint32(50).fork()).join();
@@ -2478,14 +2388,6 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
             message.options.push(WeightedVoteOption.decode(reader, reader.uint32()));
             continue;
           }
-          case 5: {
-            if (tag !== 40) {
-              break;
-            }
-
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
           case 6: {
             if (tag !== 50) {
               break;
@@ -2522,7 +2424,6 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
       options: globalThis.Array.isArray(object?.options)
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
       stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
@@ -2541,9 +2442,6 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
     if (message.options?.length) {
       obj.options = message.options.map((e) => WeightedVoteOption.toJSON(e));
     }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
     if (message.stake !== undefined) {
       obj.stake = StakeProof.toJSON(message.stake);
     }
@@ -2561,7 +2459,6 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
     message.positionId = object.positionId ?? 0;
     message.proposalId = object.proposalId ?? 0;
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
-    message.fee = object.fee ?? 0;
     message.stake = (object.stake !== undefined && object.stake !== null)
       ? StakeProof.fromPartial(object.stake)
       : undefined;
@@ -2623,13 +2520,13 @@ export const MsgPositionVoteResponse: MessageFns<MsgPositionVoteResponse> = {
 
 /**
  * Msg is private staking. Every msg but UpdateParams is a private msg: no
- * signer, an ordinary shielded bundle paying its fee (out of its uerth
- * balance; a delegation's bundle also releases the ERTH it stakes), a stake
- * proof (circuits/stake) over the module's own owner-locked stake note tree,
- * and a sighash, zk/orchard.Sighash(type URL, chain id, K, bundle digests,
- * fields), binding every other field: the stake proof's public values
- * (StakeProof fields, see StakeFields), then the msg's own fields, ending with
- * its fee. See x/shielded/ante and ORCHARD_DESIGN.md section 13.
+ * signer, an ordinary shielded bundle paying its fee (its uerth balance; a
+ * delegation's bundle also releases the amount it stakes), a stake proof
+ * (circuits/stake) over the module's own owner-locked stake note tree, and a
+ * sighash, zk/orchard.Sighash(type URL, chain id, tx fields, K, bundle
+ * digests, fields), binding every other field: the stake proof's public
+ * values (StakeProof fields, see StakeFields), then the msg's own fields.
+ * See x/shielded/ante and ORCHARD_DESIGN.md section 13.
  *
  * Delegated stake (derth/<valoper>) and unbonding claims
  * (unbond/<valoper>/<epoch>) exist only as stake notes, never in the shielded

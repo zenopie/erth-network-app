@@ -647,7 +647,8 @@ export const MsgVoteRemovalResponse: MessageFns<MsgVoteRemovalResponse> = {
  * nothing about it is a governance parameter.
  *
  * fee is a fee bundle: its only balance is the uerth fee. Each msg's sighash
- * is zk/orchard.Sighash(type URL, chain id, 1, digest(fee), fields...), which
+ * is zk/orchard.Sighash(type URL, chain id, tx fields (memo, timeout_height,
+ * gas_limit), 1, digest(fee), fields...), which
  * every action proof and the binding signature bind and which the membership
  * proof binds as its signal; the fields are listed on each msg.
  */
