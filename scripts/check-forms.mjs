@@ -88,4 +88,16 @@ globalThis.fetch = async (url) => {
   check("a failed supply read is no floor (the form refuses)", (await dex.addLiquidityFloor(1, e, t, 2)) === "0");
 }
 
+// --- 3. Unknown denoms (audit 5, L9): never assumed to have 6 decimals.
+{
+  const tk = await import("../src/chain/tokens.js");
+  const ibc = "ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2";
+  check("L9: an unknown denom is not known, shown raw (decimals 0, raw denom)",
+    !tk.isKnownDenom(ibc) && tk.decimalsOf(ibc) === 0 && tk.symbolOf(ibc) === ibc && !tk.isKnownDenom("ufoo") && tk.symbolOf("ufoo") === "ufoo");
+  check("L9: no amount can be entered for an unknown denom", tk.toMicro("1", ibc) === "0" && tk.toMicro("5", "ufoo") === "0" && tk.toMicro("5", undefined) === "0");
+  check("L9: known denoms and LP shares still parse", tk.toMicro("1.5", "uerth") === "1500000" && tk.toMicro("2", "dexlp/3") === "2000000" &&
+    tk.isKnownDenom("dexlp/12") && !tk.isKnownDenom("dexlp/x"));
+  check("L9: raw display of an unknown denom", tk.formatUnits("123456789", ibc) === "123456789" && tk.toMacro("123456789", ibc) === 123456789);
+}
+
 process.exit(bad ? 1 : 0);

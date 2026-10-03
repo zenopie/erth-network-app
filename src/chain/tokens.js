@@ -15,21 +15,26 @@ export const TOKENS = {
 };
 
 /**
- * Metadata for any denom. Unknown denoms (new dex pools, LP shares) still
- * render sensibly rather than breaking the UI.
+ * Metadata for any denom.
+ *
+ * Only denoms whose decimals the app knows (TOKENS, and the dex's own LP
+ * shares) are `known`. Anything else (a new pool's token, an IBC asset) is
+ * shown as the chain holds it: raw base units under the raw denom, decimals 0,
+ * the way Keplr shows it. An amount can never be entered for it (toMicro
+ * refuses it): guessing 6 decimals would sign an 18-decimal asset 10^12 off.
  */
 export function tokenInfo(denom) {
-  if (TOKENS[denom]) return { denom, ...TOKENS[denom] };
-  if (denom?.startsWith("dexlp/")) {
-    return { denom, symbol: `LP #${denom.slice("dexlp/".length)}`, decimals: 6, logo: null };
+  if (TOKENS[denom]) return { denom, ...TOKENS[denom], known: true };
+  if (typeof denom === "string" && /^dexlp\/\d+$/.test(denom)) {
+    return { denom, symbol: `LP #${denom.slice("dexlp/".length)}`, decimals: 6, logo: null, known: true };
   }
-  // Convention: a "u"-prefixed micro denom, e.g. ufoo -> FOO.
-  const symbol = denom?.startsWith("u") ? denom.slice(1).toUpperCase() : (denom ?? "?");
-  return { denom, symbol, decimals: 6, logo: null };
+  return { denom, symbol: String(denom ?? "?"), decimals: 0, logo: null, known: false };
 }
 
 export const symbolOf = (denom) => tokenInfo(denom).symbol;
 export const decimalsOf = (denom) => tokenInfo(denom).decimals;
+/** Whether the app knows `denom`'s decimals, so an amount of it can be entered and signed. */
+export const isKnownDenom = (denom) => tokenInfo(denom).known;
 
 /** Base units (uerth) -> display units (ERTH). */
 export function toMacro(amount, denom) {
@@ -45,10 +50,12 @@ export function toMacro(amount, denom) {
  * 289999.99999999994 in floating point, so the float route floored a typed 0.29
  * to 289999 — one base unit short, and further out past 2^53. Digits beyond the
  * denom's decimals are truncated. Anything that is not a plain non-negative
- * decimal (a sign, an exponent, stray text) is "0", which every caller already
- * treats as nothing entered.
+ * decimal (a sign, an exponent, stray text), and any amount of a denom whose
+ * decimals the app does not know, is "0", which every caller already treats
+ * as nothing entered.
  */
 export function toMicro(amount, denom) {
+  if (!isKnownDenom(denom)) return "0";
   const m = /^(\d*)(?:\.(\d*))?$/.exec(String(amount ?? "").trim());
   if (!m || (m[1] === "" && !m[2])) return "0";
   const d = decimalsOf(denom);

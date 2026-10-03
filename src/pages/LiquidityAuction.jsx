@@ -3,7 +3,7 @@ import * as dex from "../chain/dex";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { isKnownDenom, symbolOf, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -228,6 +228,12 @@ const LiquidityAuction = () => {
               </button>
             </span>
           </div>
+          {!isKnownDenom(auction.bidDenom) && (
+            <p className={styles.warn}>
+              This app does not know how many decimals {bidSymbol} has, so it cannot enter a bid
+              in it. Amounts of it are shown in base units.
+            </p>
+          )}
           <input
             type="number"
             placeholder="0.0"

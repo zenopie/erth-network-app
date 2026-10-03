@@ -5,7 +5,7 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { formatUnits, ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { formatUnits, isKnownDenom, ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -624,6 +624,12 @@ const Markets = () => {
 
                     {lpTab === "Add" && (
                       <div className={styles.lpContent}>
+                        {!isKnownDenom(row.pool.tokenDenom) && (
+                          <p className={styles.lpNote}>
+                            This app does not know how many decimals {row.symbol} has, so it cannot
+                            enter a deposit of it. Its amounts are shown in base units.
+                          </p>
+                        )}
                         <div className={styles.lpInputGroup}>
                           <div className={styles.lpInputHeader}>
                             <label>{row.symbol}</label>

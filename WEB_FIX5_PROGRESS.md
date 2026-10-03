@@ -7,12 +7,12 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | --- | --- | --- |
 | M1 Handles page / Shield preview show unverified backend addresses | done | 89c623d |
 | L1 stale review after recipient change | done | 38e4831 |
-| L2 React error boundary | done | (this) |
+| L2 React error boundary | done | f391eef |
 | L3 exact decimal amounts, exact Max | todo | |
 | L4 @handle out of URL and Referer | todo | |
 | L6 rest.js redirect: "error" | todo | |
 | L8 declare cosmjs-types | todo | |
-| L9 refuse unknown denoms | todo | |
+| L9 refuse unknown denoms | done | (this) |
 
 ## M1
 - `handles.js`: `verifyAgainst(served, chain)`, `addressProblem(a)`, and on the directory `verifiedAll()` / `verifiedLookup()`. Every served entry is compared with the chain's whole directory (`chainDirectory()`): same address, status and times, and the address must decode (`decodeShieldedAddress`). Otherwise `verified: false` with a reason. Handles the chain has and the copy omits are added from the chain.
@@ -29,3 +29,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 
 ## Check status note
 - `check:dex` reads the live LCD (`lcd.erth.network`), which answers 530 (no chain behind it since the v0.9.3 lease closed). Its 4 failures ("at least one pool", fee, unbonding, apr) are the empty chain read, not this code; it fails identically on 4fa9191.
+
+## L9
+- `tokens.js`: only TOKENS and `dexlp/<n>` are `known` (`isKnownDenom`). Anything else is shown raw: base units under the raw denom (decimals 0, no "ufoo" -> "FOO" guess). `toMicro` returns "0" for an unknown denom, so no amount of it can be entered or signed.
+- Swap does not offer unknown denoms. The auction bid and Markets' Add say the decimals are unknown and the action stays disabled.
+- `check:forms` L9 checks.

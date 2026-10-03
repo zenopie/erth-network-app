@@ -7,6 +7,7 @@ import {
   TOKENS,
   clampSlippage,
   formatUnits,
+  isKnownDenom,
   minimumReceived,
   symbolOf,
   toMacro,
@@ -70,7 +71,9 @@ const SwapTokens = () => {
 
   // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool,
   // except ANML, which only trades note-to-note.
-  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom).filter((d) => d !== UANML)];
+  // A token whose decimals the app does not know is not offered: an amount of
+  // it could not be entered or shown in its own units.
+  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom).filter((d) => d !== UANML && isKnownDenom(d))];
 
   const fromBalance = toMacro(walletBalances[fromDenom] ?? 0, fromDenom);
   const toBalance = toMacro(walletBalances[toDenom] ?? 0, toDenom);
@@ -83,7 +86,7 @@ const SwapTokens = () => {
         const ps = await dex.pools();
         setPools(ps);
         // Default the output to the first transparent spoke, if there is one.
-        const first = ps.find((p) => p.tokenDenom !== UANML);
+        const first = ps.find((p) => p.tokenDenom !== UANML && isKnownDenom(p.tokenDenom));
         setToDenom((cur) => cur || (first?.tokenDenom ?? ""));
       } finally {
         hideLoading();
