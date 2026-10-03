@@ -182,6 +182,8 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
   check("M1: Handles page reads verifiedAll and gates Copy and Pay on it",
     page.includes("handleDirectory\n      .verifiedAll()") && page.includes("disabled={!ok}") && page.includes("st === LIVE && ok &&") &&
       page.includes("const ok = e.verified === true;"));
+  check("L1: a review counts only for the recipient it was asked for",
+    shield.includes("storedReview?.for === recipient") && shield.includes("if (recipientRef.current !== asked) return;"));
   check("M1: Shield preview is labelled unverified and decoded", shield.includes("(unverified until Review)") && shield.includes("addressProblem(e.address)"));
 }
 

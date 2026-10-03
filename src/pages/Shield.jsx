@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
@@ -50,8 +50,11 @@ const Shield = () => {
   // A handle recipient: what the directory says it names (preview), and the
   // reviewed target the signature is for ({ handle, address }).
   const [handleInfo, setHandleInfo] = useState(null);
-  const [review, setReview] = useState(null);
+  const [storedReview, setReview] = useState(null);
+  const recipientRef = useRef(recipient);
+  recipientRef.current = recipient;
   const toHandle = looksLikeHandle(recipient);
+  const review = toHandle && storedReview?.for === recipient ? storedReview : null;
 
   useEffect(() => {
     setReview(null);
@@ -137,14 +140,24 @@ const Shield = () => {
 
   // A handle is reviewed first: the directory read fresh and checked against
   // the chain's own, the handle and the address it names shown, then signed.
+  // A review is for the recipient it was asked for: one still resolving when
+  // the field changes is dropped, and a stored one counts only while the
+  // field still holds that recipient.
   const reviewHandle = async () => {
+    const asked = recipient;
     setReview(null);
-    const r = await handleDirectory.resolveForPayment(recipient);
+    let r;
+    try {
+      r = await handleDirectory.resolveForPayment(asked);
+    } catch (err) {
+      r = { ok: false, reason: `Couldn't read the handle directory: ${err.message}` };
+    }
+    if (recipientRef.current !== asked) return;
     if (!r.ok) {
       setHandleInfo({ ok: false, text: r.reason });
       return;
     }
-    setReview({ handle: r.entry.handle, address: r.entry.address });
+    setReview({ for: asked, handle: r.entry.handle, address: r.entry.address });
   };
 
   const submit = (e) => {

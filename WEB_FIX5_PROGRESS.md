@@ -5,8 +5,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 
 | Finding | Status | Commit |
 | --- | --- | --- |
-| M1 Handles page / Shield preview show unverified backend addresses | done | (this) |
-| L1 stale review after recipient change | todo | |
+| M1 Handles page / Shield preview show unverified backend addresses | done | 89c623d |
+| L1 stale review after recipient change | done | (this) |
 | L2 React error boundary | todo | |
 | L3 exact decimal amounts, exact Max | todo | |
 | L4 @handle out of URL and Referer | todo | |
@@ -19,3 +19,6 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - Handles page: first paint from `all()` with every row pending ("checking…"), then `verifiedAll()`. Copy is disabled and Pay hidden unless the row is verified; a mismatch shows "Unverified: <reason>".
 - Shield preview: the address is decoded and labelled "(unverified until Review)"; Review (`resolveForPayment`) is unchanged.
 - PoC as a check: `check:handles` "M1:" checks (forged address marked unverified, chain-only and copy-only rows, undecodable address, payment still refused, page source gating).
+
+## L1
+- Shield: the review stores the recipient it was asked for (`for`); it is used and shown only while the field still holds that recipient. A resolution that returns after the field changed is dropped (`recipientRef`), its failure text too. A directory read that throws during Review is now a shown reason, not an unhandled rejection.
