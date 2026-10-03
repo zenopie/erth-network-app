@@ -99,6 +99,15 @@ export interface ValidatorState {
    * derth_supply was checkpointed (SupplyCheckpoint) before it changed.
    */
   checkpointSeq: number;
+  /**
+   * supply_height is the height of the block in which derth_supply last
+   * changed, and supply_at_block_start its value before that block's first
+   * change. A snapshot taken in a block pairs the stake roots recorded at
+   * the end of the block before, so the supply it sees is the supply at the
+   * start of its block (audit 4, I1), not after changes earlier in the block.
+   */
+  supplyHeight: number;
+  supplyAtBlockStart: string;
 }
 
 /**
@@ -209,6 +218,14 @@ export interface ProposalSnapshot {
   validators: ValidatorSnapshot[];
   /** seq is this snapshot's sequence number (1, 2, ...); 0 for the legacy form. */
   seq: number;
+  /**
+   * nf_root is the stake nullifier tree's latest recorded root at that moment
+   * (the end of the same block as root), nf_size its leaf count (the
+   * sentinel included; 0 = nothing inserted, root indexed.EmptyRoot). A
+   * stake vote proves its note unspent against it (circuits/vote).
+   */
+  nfRoot: Uint8Array;
+  nfSize: number;
 }
 
 /** ValidatorSnapshot is one validator's derth supply and rate at a snapshot. */
@@ -364,6 +381,8 @@ function createBaseValidatorState(): ValidatorState {
     epochRate: "",
     derthSupply: "",
     checkpointSeq: 0,
+    supplyHeight: 0,
+    supplyAtBlockStart: "",
   };
 }
 
@@ -386,6 +405,12 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     }
     if (message.checkpointSeq !== 0) {
       writer.uint32(48).uint64(message.checkpointSeq);
+    }
+    if (message.supplyHeight !== 0) {
+      writer.uint32(56).int64(message.supplyHeight);
+    }
+    if (message.supplyAtBlockStart !== "") {
+      writer.uint32(66).string(message.supplyAtBlockStart);
     }
     return writer;
   },
@@ -451,6 +476,22 @@ export const ValidatorState: MessageFns<ValidatorState> = {
             message.checkpointSeq = longToNumber(reader.uint64());
             continue;
           }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.supplyHeight = longToNumber(reader.int64());
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.supplyAtBlockStart = reader.string();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -491,6 +532,16 @@ export const ValidatorState: MessageFns<ValidatorState> = {
         : isSet(object.checkpoint_seq)
         ? globalThis.Number(object.checkpoint_seq)
         : 0,
+      supplyHeight: isSet(object.supplyHeight)
+        ? globalThis.Number(object.supplyHeight)
+        : isSet(object.supply_height)
+        ? globalThis.Number(object.supply_height)
+        : 0,
+      supplyAtBlockStart: isSet(object.supplyAtBlockStart)
+        ? globalThis.String(object.supplyAtBlockStart)
+        : isSet(object.supply_at_block_start)
+        ? globalThis.String(object.supply_at_block_start)
+        : "",
     };
   },
 
@@ -514,6 +565,12 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     if (message.checkpointSeq !== 0) {
       obj.checkpointSeq = Math.round(message.checkpointSeq);
     }
+    if (message.supplyHeight !== 0) {
+      obj.supplyHeight = Math.round(message.supplyHeight);
+    }
+    if (message.supplyAtBlockStart !== "") {
+      obj.supplyAtBlockStart = message.supplyAtBlockStart;
+    }
     return obj;
   },
 
@@ -528,6 +585,8 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     message.epochRate = object.epochRate ?? "";
     message.derthSupply = object.derthSupply ?? "";
     message.checkpointSeq = object.checkpointSeq ?? 0;
+    message.supplyHeight = object.supplyHeight ?? 0;
+    message.supplyAtBlockStart = object.supplyAtBlockStart ?? "";
     return message;
   },
 };
@@ -1293,7 +1352,17 @@ export const StakeRoot: MessageFns<StakeRoot> = {
 };
 
 function createBaseProposalSnapshot(): ProposalSnapshot {
-  return { proposalId: 0, root: new Uint8Array(0), treeSize: 0, height: 0, votingEnd: 0, validators: [], seq: 0 };
+  return {
+    proposalId: 0,
+    root: new Uint8Array(0),
+    treeSize: 0,
+    height: 0,
+    votingEnd: 0,
+    validators: [],
+    seq: 0,
+    nfRoot: new Uint8Array(0),
+    nfSize: 0,
+  };
 }
 
 export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
@@ -1318,6 +1387,12 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     }
     if (message.seq !== 0) {
       writer.uint32(56).uint64(message.seq);
+    }
+    if (message.nfRoot.length !== 0) {
+      writer.uint32(66).bytes(message.nfRoot);
+    }
+    if (message.nfSize !== 0) {
+      writer.uint32(72).uint64(message.nfSize);
     }
     return writer;
   },
@@ -1391,6 +1466,22 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
             message.seq = longToNumber(reader.uint64());
             continue;
           }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.nfRoot = reader.bytes();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.nfSize = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1426,6 +1517,16 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
         ? object.validators.map((e: any) => ValidatorSnapshot.fromJSON(e))
         : [],
       seq: isSet(object.seq) ? globalThis.Number(object.seq) : 0,
+      nfRoot: isSet(object.nfRoot)
+        ? bytesFromBase64(object.nfRoot)
+        : isSet(object.nf_root)
+        ? bytesFromBase64(object.nf_root)
+        : new Uint8Array(0),
+      nfSize: isSet(object.nfSize)
+        ? globalThis.Number(object.nfSize)
+        : isSet(object.nf_size)
+        ? globalThis.Number(object.nf_size)
+        : 0,
     };
   },
 
@@ -1452,6 +1553,12 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     if (message.seq !== 0) {
       obj.seq = Math.round(message.seq);
     }
+    if (message.nfRoot.length !== 0) {
+      obj.nfRoot = base64FromBytes(message.nfRoot);
+    }
+    if (message.nfSize !== 0) {
+      obj.nfSize = Math.round(message.nfSize);
+    }
     return obj;
   },
 
@@ -1467,6 +1574,8 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     message.votingEnd = object.votingEnd ?? 0;
     message.validators = object.validators?.map((e) => ValidatorSnapshot.fromPartial(e)) || [];
     message.seq = object.seq ?? 0;
+    message.nfRoot = object.nfRoot ?? new Uint8Array(0);
+    message.nfSize = object.nfSize ?? 0;
     return message;
   },
 };

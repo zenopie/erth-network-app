@@ -19,7 +19,8 @@ const fmt = (n) => (n === null || n === undefined ? "—" : n.toLocaleString());
  *
  * Splits are cast anonymously from the mobile app — a membership proof filed
  * under a caretaker nullifier, not an address — and lapse after
- * caretaker_vote_seconds unless the app refreshes them. So this page shows
+ * caretaker_vote_seconds unless their owner casts again (renewal is manual;
+ * the app reminds them). So this page shows
  * the public outcome (each option's weight, how many splits count) and has
  * nothing to sign except triggering an ADDRESS option's payout.
  */
@@ -85,8 +86,8 @@ const CaretakerFund = () => {
 
       <MobileCta title="Cast your caretaker split in the Earth Wallet app">
         One registered human, one vote, cast anonymously with a proof made on your phone. Nobody
-        can tell which split is yours. A split counts for {leaseDays ?? "R"} days and the app
-        renews it for you.
+        can tell which split is yours. A split counts for {leaseDays ?? "R"} days; renew it in the
+        app before then (it reminds you; nothing renews on its own).
       </MobileCta>
 
       <div className={page.chart}>

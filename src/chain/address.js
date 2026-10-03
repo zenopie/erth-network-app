@@ -5,9 +5,8 @@ import { ADDRESS_PREFIX } from "./config";
  * The canonical (lowercase) encoding of a transparent bech32 address, or null
  * when `input` is not a valid address under `prefix` (default earth).
  *
- * The chain refuses any other spelling of an address it binds: a passport
- * proof binds the affiliate's bytes, and an address keyed state (referrers,
- * accounts) is stored under its canonical string. bech32 itself allows an
+ * The chain refuses any other spelling of an address it binds: address
+ * keyed state (accounts, delegations) is stored under its canonical string. bech32 itself allows an
  * all-uppercase spelling of the same bytes, so input is decoded and
  * re-encoded rather than trusted as typed. Mixed case is invalid bech32.
  */

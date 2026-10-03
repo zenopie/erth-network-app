@@ -22,7 +22,6 @@ import ExplorerShielded from './pages/ExplorerShielded';
 import Governance from './pages/Governance';
 import Anml from './pages/Anml';
 import Shield from './pages/Shield';
-import Referrers from './pages/Referrers';
 import './App.css';
 
 function App() {
@@ -41,7 +40,6 @@ function App() {
               <Route path="/anml" element={<Layout><Anml /></Layout>} />
               <Route path="/shield" element={<Layout><Shield /></Layout>} />
               <Route path="/governance" element={<Layout><Governance /></Layout>} />
-              <Route path="/referrers" element={<Layout><Referrers /></Layout>} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />
               <Route path="/liquidity-auction" element={<Layout><LiquidityAuction /></Layout>} />

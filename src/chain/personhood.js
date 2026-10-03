@@ -7,9 +7,10 @@ import { b64ToHex, normalizeHex } from "./bytes";
  * A registration names no account. It is keyed by its passport nullifier (the
  * public dedup key) and holds a leaf in the identity tree; everything its
  * holder does afterwards — the daily ANML claim, caretaker splits, assembly
- * votes, referrer bindings — is an anonymous membership proof made on the
- * phone. So there is no "my registration" here and nothing is looked up by
- * address, except a referrer binding, which is public by design.
+ * votes, handles — is an anonymous membership proof made on the phone. So
+ * there is no "my registration" here and nothing is looked up by address.
+ * The handle directory (public names for shielded addresses) is read whole,
+ * in chain/handles.js.
  */
 
 /** Live registration headcount: the denominator of the caretaker stream. */
@@ -85,19 +86,8 @@ export async function registrationsByDsc(dscKeyHex) {
 }
 
 /**
- * Whether `address` holds a live referrer binding, i.e. may be named as a
- * registration's affiliate, and until when (unix seconds). Bindings are made
- * anonymously from the mobile app; the address they point at is public.
- */
-export async function referrer(address) {
-  const data = await getOr(seg`/earth/personhood/v1/referrer/${address}`, null);
-  if (!data) return null;
-  return { live: Boolean(data.live), expiresAt: Number(data.expires_at ?? 0) };
-}
-
-/**
  * Module params, with the few the UI explains pulled out. caretakerVoteSeconds
- * is R: how long a caretaker split or a referrer binding lasts.
+ * is R: how long a caretaker split lasts (manual renewal; default 365 days).
  */
 export async function params() {
   const data = await getOr("/earth/personhood/v1/params", null);
@@ -105,8 +95,10 @@ export async function params() {
   if (!p) return null;
   return {
     registrationValiditySeconds: Number(p.registration_validity_seconds ?? 0),
-    // Zero means "use the chain default" for both (1 hour, 30 days).
+    // Zero means "use the chain default" (1 hour, 365 days, 365 days, 30 days).
     identityRootWindowSeconds: Number(p.identity_root_window_seconds ?? 0) || 3600,
-    caretakerVoteSeconds: Number(p.caretaker_vote_seconds ?? 0) || 30 * 86400,
+    caretakerVoteSeconds: Number(p.caretaker_vote_seconds ?? 0) || 365 * 86400,
+    handleLeaseSeconds: Number(p.handle_lease_seconds ?? 0) || 365 * 86400,
+    handleRenewalSeconds: Number(p.handle_renewal_seconds ?? 0) || 30 * 86400,
   };
 }

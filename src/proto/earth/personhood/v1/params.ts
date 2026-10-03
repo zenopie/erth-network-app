@@ -224,10 +224,39 @@ export interface Params {
    * registration lapses or switches, so every split lapses on its own and the
    * wallet refreshes it; a new identity secret may cast its first split only
    * once any split its predecessor cast has lapsed (activated at most
-   * now - R - identity_root_window_seconds). Zero falls back to the default
-   * (30 days).
+   * now - R - one day; a lowered R keeps the old one in that bound until the
+   * splits cast under it have lapsed). Zero falls back to the default
+   * (365 days). Nothing renews a split on its own: its owner casts again (a
+   * refresh or a change).
    */
   caretakerVoteSeconds: number;
+  /**
+   * buyback_max_trade_seconds caps one buyback trade at this many seconds of
+   * emission. A backlog (skipped windows, up to buyback_max_accrual_seconds)
+   * is worked off across successive windows, at most this much per trade,
+   * instead of arriving as one large market order. Zero falls back to the
+   * default (one hour); otherwise it must lie between
+   * buyback_twap_window_seconds and buyback_max_accrual_seconds.
+   */
+  buybackMaxTradeSeconds: number;
+  /**
+   * handle_renewal_seconds is how long a handle whose lease has ended
+   * (expires_at, refreshed by its owner's MsgBindHandle every
+   * caretaker_vote_seconds) stays reserved to its owner: it no longer
+   * resolves, and only the same nullifier may renew it; after it, the
+   * handle is released and anyone may claim it. Zero falls back to the
+   * default (30 days); at most a year.
+   */
+  handleRenewalSeconds: number;
+  /**
+   * handle_lease_seconds is a handle's lease: a claim or renewal holds it
+   * until now + this. Zero falls back to the default (365 days); at most two
+   * years. The claim bound for an identity with a predecessor uses the
+   * longest value ever set (GenesisState.handle_lease_max), so lowering it
+   * never lets a successor claim beside a handle its predecessor still
+   * holds.
+   */
+  handleLeaseSeconds: number;
 }
 
 export interface Params_VerifyingKeysEntry {
@@ -258,6 +287,9 @@ function createBaseParams(): Params {
     networkDailyRegistrationGrowthBps: 0,
     identityRootWindowSeconds: 0,
     caretakerVoteSeconds: 0,
+    buybackMaxTradeSeconds: 0,
+    handleRenewalSeconds: 0,
+    handleLeaseSeconds: 0,
   };
 }
 
@@ -325,6 +357,15 @@ export const Params: MessageFns<Params> = {
     }
     if (message.caretakerVoteSeconds !== 0) {
       writer.uint32(192).uint64(message.caretakerVoteSeconds);
+    }
+    if (message.buybackMaxTradeSeconds !== 0) {
+      writer.uint32(200).uint64(message.buybackMaxTradeSeconds);
+    }
+    if (message.handleRenewalSeconds !== 0) {
+      writer.uint32(208).uint64(message.handleRenewalSeconds);
+    }
+    if (message.handleLeaseSeconds !== 0) {
+      writer.uint32(216).uint64(message.handleLeaseSeconds);
     }
     return writer;
   },
@@ -513,6 +554,30 @@ export const Params: MessageFns<Params> = {
             message.caretakerVoteSeconds = longToNumber(reader.uint64());
             continue;
           }
+          case 25: {
+            if (tag !== 200) {
+              break;
+            }
+
+            message.buybackMaxTradeSeconds = longToNumber(reader.uint64());
+            continue;
+          }
+          case 26: {
+            if (tag !== 208) {
+              break;
+            }
+
+            message.handleRenewalSeconds = longToNumber(reader.uint64());
+            continue;
+          }
+          case 27: {
+            if (tag !== 216) {
+              break;
+            }
+
+            message.handleLeaseSeconds = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -654,6 +719,21 @@ export const Params: MessageFns<Params> = {
         : isSet(object.caretaker_vote_seconds)
         ? globalThis.Number(object.caretaker_vote_seconds)
         : 0,
+      buybackMaxTradeSeconds: isSet(object.buybackMaxTradeSeconds)
+        ? globalThis.Number(object.buybackMaxTradeSeconds)
+        : isSet(object.buyback_max_trade_seconds)
+        ? globalThis.Number(object.buyback_max_trade_seconds)
+        : 0,
+      handleRenewalSeconds: isSet(object.handleRenewalSeconds)
+        ? globalThis.Number(object.handleRenewalSeconds)
+        : isSet(object.handle_renewal_seconds)
+        ? globalThis.Number(object.handle_renewal_seconds)
+        : 0,
+      handleLeaseSeconds: isSet(object.handleLeaseSeconds)
+        ? globalThis.Number(object.handleLeaseSeconds)
+        : isSet(object.handle_lease_seconds)
+        ? globalThis.Number(object.handle_lease_seconds)
+        : 0,
     };
   },
 
@@ -728,6 +808,15 @@ export const Params: MessageFns<Params> = {
     if (message.caretakerVoteSeconds !== 0) {
       obj.caretakerVoteSeconds = Math.round(message.caretakerVoteSeconds);
     }
+    if (message.buybackMaxTradeSeconds !== 0) {
+      obj.buybackMaxTradeSeconds = Math.round(message.buybackMaxTradeSeconds);
+    }
+    if (message.handleRenewalSeconds !== 0) {
+      obj.handleRenewalSeconds = Math.round(message.handleRenewalSeconds);
+    }
+    if (message.handleLeaseSeconds !== 0) {
+      obj.handleLeaseSeconds = Math.round(message.handleLeaseSeconds);
+    }
     return obj;
   },
 
@@ -765,6 +854,9 @@ export const Params: MessageFns<Params> = {
     message.networkDailyRegistrationGrowthBps = object.networkDailyRegistrationGrowthBps ?? 0;
     message.identityRootWindowSeconds = object.identityRootWindowSeconds ?? 0;
     message.caretakerVoteSeconds = object.caretakerVoteSeconds ?? 0;
+    message.buybackMaxTradeSeconds = object.buybackMaxTradeSeconds ?? 0;
+    message.handleRenewalSeconds = object.handleRenewalSeconds ?? 0;
+    message.handleLeaseSeconds = object.handleLeaseSeconds ?? 0;
     return message;
   },
 };

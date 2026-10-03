@@ -21,8 +21,8 @@ export const protobufPackage = "earth.assembly.v1";
  * membership is proven with scope zk/privacy.ProposalScope(proposal_id, round),
  * excluded_dsc / excluded_country the proposal's subjects (a single revoked
  * Document Signer, or the one country all its revocations belong to; see
- * ProposalSubjects) and max_activation the round's opening time minus the
- * identity root window: a
+ * ProposalSubjects) and max_activation the round's opening time minus one day
+ * (86400, the largest identity root window, whatever the parameter): a
  * person who switched identity after the round opened cannot vote in it
  * again. Query BallotInputs for the round's values.
  *
@@ -49,7 +49,7 @@ export interface MsgVoteProposalResponse {
  *
  * membership is proven with scope zk/privacy.ProposeRemovalScope(option_id,
  * today's UTC day), excluded_dsc and excluded_country 0 and max_activation the start of today
- * (UTC) minus the identity root window. Its nullifier is not recorded.
+ * (UTC) minus one day (86400). Its nullifier is not recorded.
  *
  * sighash fields: option_id.
  */
@@ -69,8 +69,8 @@ export interface MsgProposeRemovalResponse {
  * MsgVoteRemoval votes on an open removal ballot.
  *
  * membership is proven with scope zk/privacy.RemovalScope(ballot_id),
- * excluded_dsc and excluded_country 0 and max_activation the ballot's opening time minus the
- * identity root window.
+ * excluded_dsc and excluded_country 0 and max_activation the ballot's opening time minus
+ * one day (86400).
  *
  * sighash fields: option_id, option.
  */

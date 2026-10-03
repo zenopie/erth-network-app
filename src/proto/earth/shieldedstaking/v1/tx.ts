@@ -65,7 +65,7 @@ export interface StakeProof {
    * spc_ciphertext is the amount-blind stake ciphertext (zk/privacy
    * EncryptBlindStakeNote: rho, rcm, memo of spc_mint's note), exactly 177
    * bytes, for the note the chain mints to spc_mint: required by the msgs
-   * that mint one (Delegate, Undelegate, StakeVote, UnlockPosition), empty
+   * that mint one (Delegate, Undelegate, UnlockPosition), empty
    * otherwise. The owner recomputes spc and cm from the denom and amount the
    * chain publishes with the note.
    */
@@ -174,18 +174,22 @@ export interface MsgClaimUnbondingResponse {
 }
 
 /**
- * MsgStakeVote votes stake on proposal_id by spending it (spend-to-vote): the
- * proof spends the owner's derth/<validator> notes against the proposal's
- * snapshot stake root (anchor == ProposalSnapshot.root; accepted after it
- * leaves the window), creates nothing, and weight of them leaves (v_out): the
- * vote's weight, public with the validator. The chain records the vote and
- * re-mints weight as a new stake note of the same owner to stake.spc_mint.
- * The spent nullifiers stop the notes voting again, and the new note is not
- * in the snapshot root, so it cannot vote on this proposal either. Final.
+ * MsgStakeVote votes one derth/<validator> stake note on proposal_id without
+ * spending it. proof (circuits/vote) shows, against the proposal's snapshot
+ * (ProposalSnapshot.root and .nf_root), that the note was in the stake tree
+ * and unspent when voting began, that 0 < weight <= its amount, and that
+ * vote_nullifier = H(TAG_VNF, nk, rho, position, proposal_id). The chain
+ * refuses a vote nullifier already used on the proposal (final: no
+ * re-vote) and records weight at the validator. Nothing is spent or minted:
+ * the note can vote on every other open proposal and be spent as usual.
  * bundle pays the fee against the shielded pool's current roots.
  *
- * sighash fields: StakeFields(stake), proposal_id, Bytes(validator),
- * Bytes(OptionsBytes(options)), weight.
+ * Public inputs (the chain supplies all but the proof and vote_nullifier):
+ * note_root, nf_root, asset = AssetID(derth/<validator>), weight,
+ * proposal_id, vote_nullifier, sighash.
+ *
+ * sighash fields: proposal_id, Bytes(validator), Bytes(OptionsBytes(options)),
+ * weight, vote_nullifier.
  */
 export interface MsgStakeVote {
   bundle: Bundle | undefined;
@@ -193,12 +197,14 @@ export interface MsgStakeVote {
   validator: string;
   options: WeightedVoteOption[];
   weight: number;
-  stake: StakeProof | undefined;
+  /** proof is the bb v5.0.0 UltraHonk proof of circuits/vote. */
+  proof: Uint8Array;
+  /** vote_nullifier is 32 bytes, one per note and proposal. */
+  voteNullifier: Uint8Array;
 }
 
-/** MsgStakeVoteResponse returns the re-minted note's position. */
+/** MsgStakeVoteResponse is empty (nothing is minted). */
 export interface MsgStakeVoteResponse {
-  position: number;
 }
 
 /**
@@ -1527,7 +1533,15 @@ export const MsgClaimUnbondingResponse: MessageFns<MsgClaimUnbondingResponse> = 
 };
 
 function createBaseMsgStakeVote(): MsgStakeVote {
-  return { bundle: undefined, proposalId: 0, validator: "", options: [], weight: 0, stake: undefined };
+  return {
+    bundle: undefined,
+    proposalId: 0,
+    validator: "",
+    options: [],
+    weight: 0,
+    proof: new Uint8Array(0),
+    voteNullifier: new Uint8Array(0),
+  };
 }
 
 export const MsgStakeVote: MessageFns<MsgStakeVote> = {
@@ -1547,8 +1561,11 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     if (message.weight !== 0) {
       writer.uint32(40).uint64(message.weight);
     }
-    if (message.stake !== undefined) {
-      StakeProof.encode(message.stake, writer.uint32(58).fork()).join();
+    if (message.proof.length !== 0) {
+      writer.uint32(66).bytes(message.proof);
+    }
+    if (message.voteNullifier.length !== 0) {
+      writer.uint32(74).bytes(message.voteNullifier);
     }
     return writer;
   },
@@ -1606,12 +1623,20 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
             message.weight = longToNumber(reader.uint64());
             continue;
           }
-          case 7: {
-            if (tag !== 58) {
+          case 8: {
+            if (tag !== 66) {
               break;
             }
 
-            message.stake = StakeProof.decode(reader, reader.uint32());
+            message.proof = reader.bytes();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.voteNullifier = reader.bytes();
             continue;
           }
         }
@@ -1639,7 +1664,12 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
       weight: isSet(object.weight) ? globalThis.Number(object.weight) : 0,
-      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      voteNullifier: isSet(object.voteNullifier)
+        ? bytesFromBase64(object.voteNullifier)
+        : isSet(object.vote_nullifier)
+        ? bytesFromBase64(object.vote_nullifier)
+        : new Uint8Array(0),
     };
   },
 
@@ -1660,8 +1690,11 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     if (message.weight !== 0) {
       obj.weight = Math.round(message.weight);
     }
-    if (message.stake !== undefined) {
-      obj.stake = StakeProof.toJSON(message.stake);
+    if (message.proof.length !== 0) {
+      obj.proof = base64FromBytes(message.proof);
+    }
+    if (message.voteNullifier.length !== 0) {
+      obj.voteNullifier = base64FromBytes(message.voteNullifier);
     }
     return obj;
   },
@@ -1678,22 +1711,18 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     message.validator = object.validator ?? "";
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
     message.weight = object.weight ?? 0;
-    message.stake = (object.stake !== undefined && object.stake !== null)
-      ? StakeProof.fromPartial(object.stake)
-      : undefined;
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.voteNullifier = object.voteNullifier ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseMsgStakeVoteResponse(): MsgStakeVoteResponse {
-  return { position: 0 };
+  return {};
 }
 
 export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
-  encode(message: MsgStakeVoteResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.position !== 0) {
-      writer.uint32(8).uint64(message.position);
-    }
+  encode(_: MsgStakeVoteResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
 
@@ -1710,14 +1739,6 @@ export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 8) {
-              break;
-            }
-
-            message.position = longToNumber(reader.uint64());
-            continue;
-          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1730,24 +1751,20 @@ export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
     }
   },
 
-  fromJSON(object: any): MsgStakeVoteResponse {
-    return { position: isSet(object.position) ? globalThis.Number(object.position) : 0 };
+  fromJSON(_: any): MsgStakeVoteResponse {
+    return {};
   },
 
-  toJSON(message: MsgStakeVoteResponse): unknown {
+  toJSON(_: MsgStakeVoteResponse): unknown {
     const obj: any = {};
-    if (message.position !== 0) {
-      obj.position = Math.round(message.position);
-    }
     return obj;
   },
 
   create<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(base?: I): MsgStakeVoteResponse {
     return MsgStakeVoteResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(object: I): MsgStakeVoteResponse {
+  fromPartial<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(_: I): MsgStakeVoteResponse {
     const message = createBaseMsgStakeVoteResponse();
-    message.position = object.position ?? 0;
     return message;
   },
 };

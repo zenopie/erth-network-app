@@ -5,7 +5,7 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { formatUnits, ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -242,25 +242,23 @@ const Markets = () => {
     setRemoveAmount("");
   };
 
-  // Deposits must match the current pool ratio, so editing one side sets the other.
+  // Deposits must match the current pool ratio, so editing one side sets the
+  // other: in base units, rounded UP as x/dex pulls each leg (dex.depositLeg),
+  // so the typed side buys every share it can and at most a unit comes back.
+  const derivedLeg = (val, typedDenom, from, to, otherDenom) => {
+    const micro = toMicro(val, typedDenom);
+    const leg = dex.depositLeg(micro, from, to);
+    return leg === "0" ? "" : formatUnits(leg, otherDenom);
+  };
+
   const handleErthChange = (val, row) => {
     setErthAmount(val);
-    const p = parseFloat(val);
-    setTokenBAmount(
-      Number.isFinite(p) && row.erthReserve > 0
-        ? ((p * row.tokenReserve) / row.erthReserve).toFixed(6)
-        : "",
-    );
+    setTokenBAmount(derivedLeg(val, UERTH, row.pool.erthReserve, row.pool.tokenReserve, row.pool.tokenDenom));
   };
 
   const handleTokenBChange = (val, row) => {
     setTokenBAmount(val);
-    const p = parseFloat(val);
-    setErthAmount(
-      Number.isFinite(p) && row.tokenReserve > 0
-        ? ((p * row.erthReserve) / row.tokenReserve).toFixed(6)
-        : "",
-    );
+    setErthAmount(derivedLeg(val, row.pool.tokenDenom, row.pool.tokenReserve, row.pool.erthReserve, UERTH));
   };
 
   const handleAddLiquidity = (row) => {

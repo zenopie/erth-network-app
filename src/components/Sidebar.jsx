@@ -125,9 +125,9 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
                   Groundworks Fund
                 </Link>
               </li>
-              <li className={location.pathname === "/referrers" ? "active" : ""}>
-                <Link to="/referrers" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Referrers
+              <li className={location.pathname === "/handles" ? "active" : ""}>
+                <Link to="/handles" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+                  Handles
                 </Link>
               </li>
             </ul>

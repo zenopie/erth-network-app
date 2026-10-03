@@ -332,6 +332,55 @@ export function quoteAddLiquidity(erthIn, tokenIn, erthReserve, tokenReserve, to
 }
 
 /**
+ * A deposit's other leg for `amount` of one side, against that side's reserve
+ * `from` and the other's `to`: ceil(amount * to / from), as an integer string.
+ *
+ * x/dex mints shares = min(floor(in_e * S / R_e), floor(in_t * S / R_t)) and
+ * pulls each leg rounded UP, ceil(shares * R / S) (audit 4, C2). A leg rounded
+ * up here never makes the other side the binding one, so the typed side buys
+ * every share it can and the pull never exceeds either leg. "0" for an empty
+ * pool or anything that is not an integer.
+ */
+export function depositLeg(amount, from, to) {
+  let a, f, t;
+  try {
+    [a, f, t] = [amount, from, to].map((v) => BigInt(String(v ?? "")));
+  } catch {
+    return "0";
+  }
+  if (a <= 0n || f <= 0n || t < 0n) return "0";
+  return ((a * t + f - 1n) / f).toString();
+}
+
+/**
+ * What x/dex mints and pulls for a deposit of `erthIn` and `tokenIn` into
+ * reserves (`re`, `rt`) with `supply` shares out: { shares, erth, token } as
+ * BigInt, each leg ceil(shares * R / S); null when it mints nothing
+ * (ErrZeroShares) or the pool cannot price it.
+ */
+export function depositPull(erthIn, tokenIn, re, rt, supply) {
+  let e, t, rE, rT, s;
+  try {
+    [e, t, rE, rT, s] = [erthIn, tokenIn, re, rt, supply].map((v) => BigInt(String(v ?? "")));
+  } catch {
+    return null;
+  }
+  if (s <= 0n || rE <= 0n || rT <= 0n || e < 0n || t < 0n) return null;
+  const byE = (e * s) / rE;
+  const byT = (t * s) / rT;
+  const shares = byE < byT ? byE : byT;
+  if (shares <= 0n) return null;
+  const up = (r) => (shares * r + s - 1n) / s;
+  const erth = up(rE);
+  const token = up(rT);
+  if (erth > e || token > t) return null;
+  return { shares, erth, token };
+}
+
+/** x/dex ErrPoolCap (codespace dex, code 1120): a reserve, share supply or input past 2^120. */
+export const POOL_CAP = 1n << 120n;
+
+/**
  * @param minShares base-unit floor on the shares minted, as a string. Sending
  *   "" is no floor — which is what this did before the field existed, and what
  *   left every deposit open to being sandwiched: a trade landing between

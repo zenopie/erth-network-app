@@ -43,12 +43,19 @@ export interface Params {
   rootWindowSeconds: number;
   /**
    * max_private_actions_per_block caps how many actions (proofs) the private
-   * txs that pass their ante in one block carry in total. A tx whose ante
-   * fails (a bad proof, a spent nullifier) is not counted: its count is
-   * written with the ante's other writes and discarded with them. Block gas
-   * bounds the verification work of failed txs too: each proof's
-   * proof_verification_gas is charged before any proof is verified, and that
-   * gas counts toward the block's max_gas whether or not the ante fails.
+   * txs that pass their ante in one block carry in total. It is enforced by
+   * the ante in FinalizeBlock (ErrBlockCap), not by ProcessProposal: a block
+   * may carry more private txs than the cap, and those past it fail their
+   * ante. An honest proposer leaves them out (PrepareProposal counts every
+   * private tx's actions, conservatively including txs that will fail for
+   * another reason, after dropping any whose timeout_height is below the
+   * block's height). A tx whose ante fails (a bad proof, a spent nullifier,
+   * the cap) is not counted: its count is written with the ante's other
+   * writes and discarded with them. It is not free: each proof's
+   * proof_verification_gas is charged before any proof is verified, and
+   * that gas is consumed from the block gas meter (consensus max_gas)
+   * whether the ante fails or panics (RecoverDecorator), so block gas, not
+   * this cap, bounds the verification work of failing txs.
    */
   maxPrivateActionsPerBlock: number;
   /**

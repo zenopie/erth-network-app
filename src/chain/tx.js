@@ -29,7 +29,8 @@ import { MsgShield } from "../proto/earth/shielded/v1/tx";
  * ./scripts/gen-proto.sh.
  *
  * Only messages a Keplr account signs belong here. The private messages
- * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindReferrer,
+ * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindHandle/
+ * MsgMoveHandle/MsgMoveCaretaker,
  * x/assembly votes, x/shielded MsgSend, x/dex MsgNoteSwap /
  * MsgAddLiquidityShielded / MsgRemoveLiquidityShielded, everything in
  * x/shieldedstaking) carry no signer at all: they are authorised by Orchard
@@ -355,9 +356,27 @@ export async function broadcast(messages, opts = {}) {
   // block. Code 19 (already in the mempool cache) is the exception: it is in.
   if (txResponse?.code && txResponse.code !== 19) {
     writePending(from, null);
-    throw new Error(`Transaction rejected (code ${txResponse.code}): ${txResponse.raw_log}`);
+    throw new Error(explainTxError("rejected", txResponse));
   }
   return waitForTx(hash, { address: from });
+}
+
+/**
+ * Chain errors that deserve a sentence of their own. A code means nothing
+ * without its codespace (x/dex and x/personhood both register 1120).
+ */
+const KNOWN_ERRORS = [
+  ["dex", 1120, "That amount is past the pool's cap (2^120 units). Use a smaller amount."],
+];
+
+/** The modal's text for a refused or failed tx: a known error's sentence first, then the chain's log. */
+export function explainTxError(kind, txResponse) {
+  const code = Number(txResponse?.code ?? 0);
+  const space = String(txResponse?.codespace ?? "");
+  const log = String(txResponse?.raw_log ?? "");
+  const known = KNOWN_ERRORS.find(([cs, c]) => c === code && cs === space);
+  const base = `Transaction ${kind} (code ${code}${space ? `, ${space}` : ""}): ${log}`;
+  return known ? `${known[2]}\n\n${base}` : base;
 }
 
 /**
@@ -383,7 +402,7 @@ export async function waitForTx(hash, { attempts = 30, intervalMs = 1000, addres
     if (!tx || !sameHash(tx, hash)) continue;
     for (const [a, p] of Object.entries(readAllPending())) if (p.hash === hash) writePending(a, null);
     if (tx.code) {
-      throw new Error(`Transaction failed (code ${tx.code}): ${tx.raw_log}`);
+      throw new Error(explainTxError("failed", tx));
     }
     return tx;
   }
