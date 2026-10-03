@@ -237,6 +237,11 @@ export async function run(check) {
     throws(() => dex.msgBuyAnml("earth1b", "uerth", "1", "0", buyBack.pc)) &&
     throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", rmBack.pc, new Uint8Array(176))) &&
     throws(() => dex.msgRemoveLiquidity("earth1lp", 2, "5", new Uint8Array(0), new Uint8Array(177))));
+  check("ANML-pool msgRemoveLiquidity refuses a pc that is not 32 bytes",
+    throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", new Uint8Array(31), new Uint8Array(177))) &&
+    throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", new Uint8Array(33), new Uint8Array(177))) &&
+    throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", Array(32).fill(0), new Uint8Array(177))) &&
+    !throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", new Uint8Array(32), new Uint8Array(177))));
   // Wire-level field numbers against chain privacy/orchard's tx.proto (a round
   // trip through the generated code alone cannot catch a renumbering).
   const tags = (buf) => {

@@ -356,10 +356,14 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
  * on any other pool); use removeLiquidityToShielded there.
  */
 export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(0), ciphertext = new Uint8Array(0)) {
-  // With pc (the ANML pool) the chain requires the 177-byte v2 ciphertext;
-  // without, neither.
-  if (pc.length) checkBlindCiphertext(ciphertext);
-  else if (ciphertext.length) throw new RangeError("a ciphertext without a pc");
+  // With pc (the ANML pool) the chain requires a 32-byte pc and the 177-byte
+  // v2 ciphertext; without, neither. A pc of any other length is refused
+  // here rather than signed into a tx the chain rejects.
+  if (!(pc instanceof Uint8Array)) throw new TypeError("pc must be bytes");
+  if (pc.length) {
+    if (pc.length !== 32) throw new RangeError("pc must be 32 bytes");
+    checkBlindCiphertext(ciphertext);
+  } else if (ciphertext.length) throw new RangeError("a ciphertext without a pc");
   return {
     typeUrl: "/earth.dex.v1.MsgRemoveLiquidity",
     value: {
