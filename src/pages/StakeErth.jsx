@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import * as staking from "../chain/staking";
 import * as shieldedStaking from "../chain/shieldedStaking";
+import * as allocation from "../chain/allocation";
 import * as explorer from "../chain/explorer";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
@@ -58,6 +59,7 @@ const StakeErth = () => {
   const [epoch, setEpoch] = useState(null);
   const [validators, setValidators] = useState(null);
   const [books, setBooks] = useState({});
+  const [gw, setGw] = useState({});
   const [operator, setOperator] = useState(null);
   const [liquid, setLiquid] = useState("0");
 
@@ -78,7 +80,15 @@ const StakeErth = () => {
         // Smallest first: nudge private stake away from the top validator.
         .sort((a, b) => a.votingPower - b.votingPower);
       setValidators(vals ? list : null);
-      setBooks(await shieldedStaking.validatorBooks(list.map((v) => v.operator)));
+      const ops = list.map((v) => v.operator);
+      const [bk, voters] = await Promise.all([
+        shieldedStaking.validatorBooks(ops),
+        // Each validator's Groundworks positions, as the one weighted voter
+        // the stream counts them as.
+        allocation.validatorVoters(ops),
+      ]);
+      setBooks(bk);
+      setGw(voters);
     } finally {
       hideLoading();
     }
@@ -167,6 +177,7 @@ const StakeErth = () => {
                 <th>Uptime</th>
                 <th>Rate</th>
                 <th>Private stake</th>
+                <th title="Its Groundworks positions, weighed together as one voter">Groundworks</th>
                 <th>Next epoch</th>
               </tr>
             </thead>
@@ -201,6 +212,9 @@ const StakeErth = () => {
                           {toMacro(b.supply, UERTH).toLocaleString()} derth
                         </div>
                       )}
+                    </td>
+                    <td title="rate × Σ(derth × percent) / 100 over its live positions">
+                      {gw[v.operator] && Number(gw[v.operator].weight) > 0 ? erth(gw[v.operator].weight) : "—"}
                     </td>
                     <td className={styles.muted}>
                       {pendIn || pendOut ? (

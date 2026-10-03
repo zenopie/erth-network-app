@@ -49,7 +49,7 @@ const routes = {
     state: { validator: "earthvaloper1w", derth_supply: "77", epoch_rate: "1" }, rate: "1", backing: "77",
   },
   "/earth/shieldedstaking/v1/stake_tree": { size: "12", root: b64([0xab, 0xcd]) },
-  "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }], owner_tag: b64([0x0a, 0x0b]) }], pagination: { next_key: null } },
+  "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }], owner_tag: b64([0x0a, 0x0b]), split_epoch: "2" }], pagination: { next_key: null } },
   "/cosmos/gov/v1/proposals": { proposals: [
     { id: "3", title: "Old", status: "PROPOSAL_STATUS_PASSED", messages: [], total_deposit: [{ denom: "uerth", amount: "5" }], final_tally_result: { yes_count: "1" } },
     { id: "4", title: "New", status: "PROPOSAL_STATUS_VOTING_PERIOD", expedited: true, messages: [{ "@type": "/earth.pki.v1.MsgRevokeDsc" }], total_deposit: [] },
@@ -115,6 +115,28 @@ check("stake tree", (await ss.stakeTree()).size === 12 && (await ss.stakeTree())
 check("a failed book read is null", (await ss.validator("earthvaloper1x")) === null);
 const pos = await ss.positions();
 check("positions", pos.length === 1 && pos[0].splits[0].optionId === 3 && pos[0].ownerTag === "0a0b");
+check("position carries its split epoch and the query's live weight", pos[0].splitEpoch === 2 && pos[0].weight === "11");
+check("params: no max_positions", !("maxPositions" in ((await ss.params()) ?? {})));
+
+// Groundworks: one weighted voter per validator, key "gwpos/" || val bytes,
+// queried as that key's bech32 under the account prefix.
+const alloc = await import("../src/chain/allocation.js");
+const { fromBech32, toBech32 } = await import("@cosmjs/encoding");
+const val = toBech32("earthvaloper", new Uint8Array(20).fill(5));
+const vaddr = alloc.validatorVoterAddress(val);
+const vkey = fromBech32(vaddr, 90);
+check("validator voter key is earth-prefixed \"gwpos/\" || 20 val bytes (26 bytes)",
+  vkey.prefix === "earth" && vkey.data.length === 26 &&
+  new TextDecoder().decode(vkey.data.slice(0, 6)) === "gwpos/" && vkey.data.slice(6).every((b) => b === 5));
+routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${vaddr}`] = {
+  voter: { percentages: [], weight: "303", epoch: "2", option_weights: [{ option_id: "3", weight: "202" }, { option_id: "4", weight: "101" }] },
+};
+const vv = await alloc.validatorVoter(val);
+check("validator voter: absolute weight per option, weight their sum",
+  vv.weight === "303" && vv.epoch === 2 && vv.splits.length === 0 &&
+  vv.optionWeights.map((w) => `${w.optionId}:${w.weight}`).join() === "3:202,4:101", JSON.stringify(vv));
+const none = await alloc.validatorVoter(toBech32("earthvaloper", new Uint8Array(20).fill(6)));
+check("a validator with no live positions reads as zero weight", none.weight === "0" && none.optionWeights.length === 0);
 check("no snapshot before voting", (await ss.snapshot(3)) === null);
 
 const ps = await gov.proposals();

@@ -33,8 +33,9 @@ export async function params() {
   if (!p) return null;
   return {
     epochSeconds: Number(p.epoch_seconds ?? 0),
+    // Positions are uncapped (max_positions is gone); min_position is the
+    // least derth one may lock.
     minPosition: p.min_position ?? "0",
-    maxPositions: Number(p.max_positions ?? 0),
   };
 }
 
@@ -74,13 +75,21 @@ export async function validatorBooks(valopers) {
  * (H(owner_pk, salt), proven by the stake circuit), so the split and weight
  * are public and the person behind it is not. The tag is per position and
  * links nothing.
+ *
+ * The stream does not weigh positions one by one: all of a validator's
+ * positions are one weighted voter (allocation.validatorVoter). A position's
+ * `weight` is not stored; the query fills it in as derth x its validator's
+ * epoch rate while its split is live, and 0 when the split is from before a
+ * Groundworks reset (`splitEpoch` older than the stream's epoch; the owner
+ * votes again from the app). Summed, positions' weights can exceed their
+ * validator voter's by a few uerth (the voter truncates once per option).
  */
 export async function positions() {
   const out = [];
   let key = "";
-  // Positions are capped by params.max_positions, so this terminates; the
-  // page guard is belt and braces against a misbehaving next_key.
-  for (let page = 0; page < 50; page++) {
+  // Positions are uncapped; the page guard (1,000 x 200) only stops a
+  // misbehaving next_key.
+  for (let page = 0; page < 1000; page++) {
     const q = `?pagination.limit=200${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
     const data = await getOr(`/earth/shieldedstaking/v1/positions${q}`, null);
     if (!data) return page === 0 ? null : out;
@@ -95,6 +104,7 @@ export async function positions() {
           percent: Number(w.percent),
         })),
         createdHeight: Number(p.created_height ?? 0),
+        splitEpoch: Number(p.split_epoch ?? 0),
         ownerTag: b64ToHex(p.owner_tag),
       });
     }
