@@ -30,7 +30,12 @@ const BuyAnml = () => {
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState(SLIPPAGE_DEFAULT);
-  const [quote, setQuote] = useState(null); // BigInt uanml, or null
+  // { micro, out (BigInt uanml), at } from dex.boundBuyAnmlQuote, or null.
+  // Bound to the amount it was asked for: dex.buyAnmlFloor gives no floor
+  // (and the button stays disabled) for any other amount or once it is older
+  // than QUOTE_TTL_MS.
+  const [quote, setQuote] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   const [bal, setBal] = useState(null);
   const [done, setDone] = useState(null);
   const seq = useRef(0);
@@ -48,19 +53,36 @@ const BuyAnml = () => {
     refresh();
   }, [refresh]);
 
+  // Every amount edit drops the quote at once (before the next render), so a
+  // slow or hung quote request can never leave an earlier amount's floor on
+  // screen or in the signed message.
+  const changeAmount = (v) => {
+    seq.current += 1;
+    setQuote(null);
+    setAmount(v);
+  };
+
   useEffect(() => {
     const id = ++seq.current;
-    if (micro === "0") {
-      setQuote(null);
-      return;
-    }
-    dex
-      .quoteBuyAnml(micro)
-      .then((q) => id === seq.current && setQuote(q))
-      .catch(() => id === seq.current && setQuote(null));
+    setQuote(null);
+    if (micro === "0") return undefined;
+    const ask = () =>
+      dex
+        .boundBuyAnmlQuote(micro)
+        .then((q) => id === seq.current && setQuote(q))
+        .catch(() => id === seq.current && setQuote(null));
+    ask();
+    // Re-ask before the quote ages out, and tick `now` so an expired quote
+    // disables the button even when no answer comes back.
+    const t = setInterval(() => {
+      setNow(Date.now());
+      ask();
+    }, dex.QUOTE_TTL_MS / 2);
+    return () => clearInterval(t);
   }, [micro]);
 
-  const minOut = quote ? minimumReceived(quote.toString(), slippage) : "0";
+  const minOut = dex.buyAnmlFloor(quote, micro, slippage, Math.max(now, quote?.at ?? 0));
+  const shown = quote && quote.micro === micro ? quote.out : null;
 
   let problem = "";
   if (!isConnected) problem = "Connect Keplr to buy.";
@@ -69,7 +91,8 @@ const BuyAnml = () => {
     try {
       decodeShieldedAddress(recipient);
       if (micro === "0") problem = "Enter an amount of ERTH.";
-      else if (!quote || minOut === "0") problem = "No ANML pool price for this amount.";
+      else if (!quote || quote.micro !== micro) problem = "Getting a price for this amount…";
+      else if (minOut === "0") problem = "No current ANML pool price for this amount.";
       else if (bal !== null && BigInt(micro) + FEE_HEADROOM > toBigInt(bal)) {
         problem = "Not enough ERTH for this amount plus the fee.";
       }
@@ -81,17 +104,22 @@ const BuyAnml = () => {
   const max = () => {
     if (bal === null) return;
     const m = toBigInt(bal) - FEE_HEADROOM;
-    setAmount(m > 0n ? formatUnits(m.toString(), UERTH) : "0");
+    changeAmount(m > 0n ? formatUnits(m.toString(), UERTH) : "0");
   };
 
   const submit = (e) => {
     e.preventDefault();
     if (problem) return;
+    // What was shown is what is signed: the amount and the floor read at the
+    // same render, the floor non-zero only for a fresh quote of this amount.
+    const signedMicro = micro;
+    const signedMin = dex.buyAnmlFloor(quote, signedMicro, slippage);
+    if (signedMin === "0") return;
     execute(async () => {
       // Fresh note secrets per attempt (buyAnmlTo draws them).
-      const tx = await broadcast([dex.buyAnmlTo(address, recipient, micro, minOut)]);
-      setDone({ hash: tx.txhash, erth: formatUnits(micro, UERTH) });
-      setAmount("");
+      const tx = await broadcast([dex.buyAnmlTo(address, recipient, signedMicro, signedMin)]);
+      setDone({ hash: tx.txhash, erth: formatUnits(signedMicro, UERTH) });
+      changeAmount("");
       refresh();
     });
   };
@@ -127,7 +155,7 @@ const BuyAnml = () => {
             inputMode="decimal"
             placeholder="0.0"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => changeAmount(e.target.value)}
           />
           <label className={forms.label} style={{ margin: 0 }}>
             Slippage %{" "}
@@ -145,9 +173,9 @@ const BuyAnml = () => {
           </label>
         </div>
 
-        {quote !== null && quote > 0n && (
+        {shown !== null && shown > 0n && minOut !== "0" && (
           <div className={forms.note}>
-            About {formatUnits(quote.toString(), UANML)} ANML · at least{" "}
+            About {formatUnits(shown.toString(), UANML)} ANML · at least{" "}
             {formatUnits(minOut, UANML)} ANML or the purchase is refused and nothing is spent.
           </div>
         )}

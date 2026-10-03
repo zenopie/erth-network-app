@@ -1,6 +1,8 @@
 import { getOr, seg } from "./rest";
 import { UANML, UERTH, lpDenom } from "./config";
 import { blindNotePayment, checkBlindCiphertext } from "./noteCipher";
+import { supplyOrNull } from "./bank";
+import { minimumReceived } from "./tokens";
 
 /**
  * x/dex — a spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH (the hub)
@@ -434,6 +436,45 @@ export async function quoteBuyAnml(erthIn) {
   const [p, fee] = await Promise.all([poolForToken(UANML), swapFeeDec()]);
   if (!p || fee === null) return 0n;
   return exactHubToToken(p.erthReserve, p.tokenReserve, erthIn, fee).out;
+}
+
+// How long a buy-ANML quote may back a signature. Older, it is re-asked.
+export const QUOTE_TTL_MS = 20_000;
+
+/**
+ * A buy-ANML quote bound to what it was computed for: { micro, out, at }.
+ * Built only from quoteBuyAnml's answer for exactly `micro`.
+ */
+export async function boundBuyAnmlQuote(micro, now = Date.now) {
+  const out = await quoteBuyAnml(micro);
+  return { micro: String(micro), out, at: now() };
+}
+
+/**
+ * The minimum ANML a purchase of `micro` uerth may sign for, from `quote`:
+ * "0" (nothing may be signed) unless the quote was computed for exactly this
+ * amount, is positive, and is younger than QUOTE_TTL_MS. A quote for an
+ * earlier amount (a slow or hung quote request after the amount changed, the
+ * audit-4 stale-quote finding) never becomes another amount's floor.
+ */
+export function buyAnmlFloor(quote, micro, slippage, now = Date.now()) {
+  if (!quote || quote.micro !== String(micro) || typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
+  if (!(now - quote.at >= 0 && now - quote.at <= QUOTE_TTL_MS)) return "0";
+  return minimumReceived(quote.out.toString(), slippage);
+}
+
+/**
+ * The min_shares floor for depositing (erthMicro, tokenMicro) into `poolId`,
+ * priced against reserves and share supply read now, not the ones a page
+ * loaded earlier (which a trade, a compounding or another deposit has since
+ * moved). "0" when either read fails: the caller refuses rather than send an
+ * unprotected deposit.
+ */
+export async function addLiquidityFloor(poolId, erthMicro, tokenMicro, slippagePercent) {
+  const [p, total] = await Promise.all([pool(poolId), supplyOrNull(lpDenom(poolId))]);
+  if (!p || total === null) return "0";
+  const expected = BigInt(quoteAddLiquidity(erthMicro, tokenMicro, p.erthReserve, p.tokenReserve, total));
+  return ((expected * BigInt(100 - slippagePercent)) / 100n).toString();
 }
 
 /** Bids are additive and cannot be withdrawn — this adds to any earlier bid. */

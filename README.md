@@ -162,6 +162,9 @@ npm run check:privacy                                             # fixture-driv
                                                                   # plus note-format golden vectors (Poseidon2, erthz, ciphertext)
 npm run check:tx                                                  # stubbed Keplr + LCD: a tx whose outcome cannot be read is
                                                                   # "submitted, status unknown" and blocks resubmission until it resolves
+                                                                  # (per account)
+npm run check:forms                                               # stubbed LCD: Buy ANML signs only a fresh quote of the same amount;
+                                                                  # add-liquidity min_shares priced on reserves read at submit
 ```
 
 ### Building for Production

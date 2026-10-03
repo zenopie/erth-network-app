@@ -266,30 +266,24 @@ const Markets = () => {
   const handleAddLiquidity = (row) => {
     if (!isConnected) return;
     execute(async () => {
-      // Price the deposit against the reserves the page is showing, then accept
-      // anything within LP_SLIPPAGE_PERCENT of it. Without a floor the deposit
-      // mints whatever ratio it lands on, and moving the ratio either side of
-      // it is the standard sandwich.
+      // Price the deposit against the pool's reserves and share supply read
+      // NOW, then accept anything within LP_SLIPPAGE_PERCENT of it. The rows
+      // on the page may be minutes old; a floor priced on them is a floor on
+      // a ratio that no longer exists. Without a floor the deposit mints
+      // whatever ratio it lands on, and moving the ratio either side of it is
+      // the standard sandwich.
       //
-      // All of it in base units on integers. A quote of zero means there was
-      // nothing to price against — most often the share supply failing to load —
-      // and it used to become a floor of zero, i.e. the unprotected deposit the
-      // floor exists to prevent. Refuse instead.
+      // All of it in base units on integers. A floor of zero means there was
+      // nothing to price against (a read failed): refuse rather than send the
+      // unprotected deposit the floor exists to prevent.
       const erthMicro = toMicro(erthAmount, UERTH);
       const tokenMicro = toMicro(tokenBAmount, row.pool.tokenDenom);
-      const expected = BigInt(
-        dex.quoteAddLiquidity(
-          erthMicro,
-          tokenMicro,
-          row.pool.erthReserve,
-          row.pool.tokenReserve,
-          row.totalSharesBase,
-        ),
+      const minShares = BigInt(
+        await dex.addLiquidityFloor(row.pool.id, erthMicro, tokenMicro, LP_SLIPPAGE_PERCENT),
       );
-      const minShares = (expected * BigInt(100 - LP_SLIPPAGE_PERCENT)) / 100n;
       if (minShares <= 0n) {
         throw new Error(
-          "Couldn't read this pool's share supply, so the deposit can't be protected " +
+          "Couldn't read this pool's reserves and share supply, so the deposit can't be protected " +
             "against price movement. Refresh and try again.",
         );
       }
