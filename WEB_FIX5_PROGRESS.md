@@ -8,8 +8,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | M1 Handles page / Shield preview show unverified backend addresses | done | 89c623d |
 | L1 stale review after recipient change | done | 38e4831 |
 | L2 React error boundary | done | f391eef |
-| L3 exact decimal amounts, exact Max | done | (this) |
-| L4 @handle out of URL and Referer | todo | |
+| L3 exact decimal amounts, exact Max | done | 418e6a0 |
+| L4 @handle out of URL and Referer | done | (this) |
 | L6 rest.js redirect: "error" | todo | |
 | L8 declare cosmjs-types | todo | |
 | L9 refuse unknown denoms | done | 623992b |
@@ -40,3 +40,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - Every amount input is text with `inputMode="decimal"` (Governance deposit x2, self-bond / unbond / create-validator, auction bid, Markets add x2 and remove x2, swap). Every button is gated on `amountOk`, never `parseFloat`.
 - Every Max is `formatUnits` of the base-unit balance (auction bid, Markets ERTH / token / shares x2); the auction keeps its balance in base units.
 - `check:forms` L3 checks (exponents refused, exact bounds, Max round-trips past 2^53 and 1e21, page sources free of float gating). The swap slippage stays a number input (not an amount; clamped).
+
+## L4
+- Handles' Pay links to `/shield#to=%40alice` (router `hash`); Shield reads `to` only from the fragment (`useSearchParams` removed, so an old `?to=` link prefills nothing).
+- `Referrer-Policy: no-referrer` in `security-headers.conf`, and `<meta name="referrer" content="no-referrer">` in `index.html` (covers dev/preview and any location missing the include).
+- `check:handles` L4 source checks.

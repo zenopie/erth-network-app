@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import { balance } from "../chain/bank";
@@ -37,10 +37,17 @@ const Shield = () => {
   const { address, isConnected } = useWallet();
   const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
-  const [params] = useSearchParams();
-  // The handle directory's Pay button lands here with ?to=@handle.
+  const { hash } = useLocation();
+  // The handle directory's Pay button lands here with #to=@handle: in the
+  // fragment, never the query, so the handle being paid is in no request
+  // line and no Referer (Cloudflare and the origin never see it).
   const [recipient, setRecipient] = useState(() => {
-    const to = params.get("to") ?? "";
+    let to = "";
+    try {
+      to = new URLSearchParams(hash.replace(/^#/, "")).get("to") ?? "";
+    } catch {
+      /* not ours */
+    }
     return looksLikeHandle(to) && parseHandle(to) ? `@${parseHandle(to)}` : "";
   });
   const [amount, setAmount] = useState("");

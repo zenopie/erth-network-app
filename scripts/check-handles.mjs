@@ -184,6 +184,14 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
       page.includes("const ok = e.verified === true;"));
   check("L1: a review counts only for the recipient it was asked for",
     shield.includes("storedReview?.for === recipient") && shield.includes("if (recipientRef.current !== asked) return;"));
+  const headers = readFileSync("security-headers.conf", "utf8");
+  const html = readFileSync("index.html", "utf8");
+  check("L4: Pay carries the handle in the fragment, Shield reads only the fragment",
+    page.includes('hash: `#to=${encodeURIComponent(`@${e.handle}`)}`') && !page.includes("?to=") &&
+      !shield.includes("useSearchParams") && shield.includes('new URLSearchParams(hash.replace(/^#/, ""))'));
+  check("L4: Referrer-Policy no-referrer (header and meta)",
+    /add_header Referrer-Policy "no-referrer" always;/.test(headers) && !/strict-origin/.test(headers) &&
+      html.includes('<meta name="referrer" content="no-referrer" />'));
   check("M1: Shield preview is labelled unverified and decoded", shield.includes("(unverified until Review)") && shield.includes("addressProblem(e.address)"));
 }
 

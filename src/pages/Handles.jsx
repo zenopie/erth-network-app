@@ -138,8 +138,10 @@ const Handles = () => {
                       </button>
                     </td>
                     <td>
+                      {/* The handle rides in the fragment, which no request
+                          carries: not the request line, not a Referer. */}
                       {st === LIVE && ok && (
-                        <Link className={styles.link} to={`/shield?to=${encodeURIComponent(`@${e.handle}`)}`}>
+                        <Link className={styles.link} to={{ pathname: "/shield", hash: `#to=${encodeURIComponent(`@${e.handle}`)}` }}>
                           Pay
                         </Link>
                       )}
