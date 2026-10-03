@@ -107,6 +107,17 @@ export async function run(check) {
   v2[0] = 2;
   const nonCanon = payload.slice();
   nonCanon.fill(0xff, 1, 33);
+  const withOwner = (o) => {
+    const q = payload.slice();
+    for (let i = 32, x = o; i >= 1; i--, x >>= 8n) q[i] = Number(x & 0xffn);
+    return q;
+  };
+  const withEk = (ek) => {
+    const q = payload.slice();
+    q.set(ek, 33);
+    return q;
+  };
+  check("address accepts owner_pk = p - 1", addr.isShieldedAddress(encWith("erthz", withOwner(P - 1n))));
   const refusals = {
     checksum: flip,
     "mixed case": C.address.slice(0, 10) + C.address.slice(10).toUpperCase(),
@@ -118,6 +129,11 @@ export async function run(check) {
     long: encWith("erthz", Uint8Array.from([...payload, 0])),
     "non-canonical owner_pk": encWith("erthz", nonCanon),
     "transparent address": "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4",
+    // Audit 4 (poc-address): owner_pk exactly p, and low-order ek_pub refused at decode.
+    "owner_pk = p": encWith("erthz", withOwner(P)),
+    "all-zero ek_pub": encWith("erthz", withEk(new Uint8Array(32))),
+    "ek_pub u=1 (low order)": encWith("erthz", withEk(Uint8Array.from({ length: 32 }, (_, i) => (i === 0 ? 1 : 0)))),
+    "ek_pub u=p (non-canonical zero)": encWith("erthz", withEk(Uint8Array.from({ length: 32 }, (_, i) => (i === 0 ? 0xed : i === 31 ? 0x7f : 0xff)))),
     empty: "",
     "over-long": C.address + "q".repeat(400),
   };
