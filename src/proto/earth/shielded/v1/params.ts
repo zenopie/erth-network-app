@@ -25,7 +25,9 @@ export interface Params {
   minFee: string;
   /**
    * proof_verification_gas is charged per action (one action proof), before
-   * it is verified, whatever the outcome, and also in simulate mode.
+   * it is verified, whatever the outcome, and also in simulate mode. At most
+   * 10,000,000 (note_gas and bundle_gas at most 1,000,000): above that a
+   * chamber vote could not fit a block, and no gov proposal could pass.
    */
   proofVerificationGas: number;
   /**
@@ -42,14 +44,18 @@ export interface Params {
    */
   rootWindowSeconds: number;
   /**
-   * max_private_actions_per_block caps how many actions (proofs) the private
-   * txs that pass their ante in one block carry in total. It is enforced by
+   * max_private_actions_per_block caps how many bundle actions (action
+   * proofs) the private txs that pass their ante in one block carry in total.
+   * It counts bundle actions only: a private msg's own proofs (a membership,
+   * stake, vote or passport proof) are not counted, and are bounded by block
+   * gas instead (each is priced in its msg's fixed gas). It is enforced by
    * the ante in FinalizeBlock (ErrBlockCap), not by ProcessProposal: a block
    * may carry more private txs than the cap, and those past it fail their
    * ante. An honest proposer leaves them out (PrepareProposal counts every
    * private tx's actions, conservatively including txs that will fail for
    * another reason, after dropping any whose timeout_height is below the
-   * block's height). A tx whose ante fails (a bad proof, a spent nullifier,
+   * block's height or whose anchor has lapsed by the block's time). A tx
+   * whose ante fails (a bad proof, a spent nullifier,
    * the cap) is not counted: its count is written with the ante's other
    * writes and discarded with them. It is not free: each proof's
    * proof_verification_gas is charged before any proof is verified, and

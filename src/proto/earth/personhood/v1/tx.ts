@@ -40,21 +40,24 @@ export interface MsgUpdateParamsResponse {
  *   H(TAG_REG, idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
  *     Bytes(ciphertext_erth), affiliate)
  * with affiliate = 0 when the registration names no referrer, and
- *   H(TAG_AFFILIATE, Bytes(affiliate_handle), affiliate_pc,
- *     Bytes(affiliate_ciphertext))
+ *   H(TAG_AFFILIATE, Bytes(affiliate_handle))
  * when it does (TAG_AFFILIATE = the field element of the bytes
- * "earth.affiliate"), so whoever relays it cannot swap the handle, the note
- * or its ciphertext.
+ * "earth.affiliate"), so whoever relays it cannot swap the handle.
  *
  * A new registration (or one re-entering after its last lapsed) appends the
  * leaf, mints 1 ANML to pc_anml and the registrant's half of the reward to
  * pc_erth, and, when it names affiliate_handle (a live handle: MsgBindHandle),
- * mints the referrer's half as a note to affiliate_pc with
- * affiliate_ciphertext: the registrant's wallet looks the handle's shielded
- * address up (Query/Handle or Query/Handles) and makes the note to it. A live
- * registration is a switch: the old leaf is zeroed and the new one appended,
- * and nothing is paid (affiliate is then not checked). A switch to the idc
- * the live registration already holds is refused (a replay).
+ * mints the referrer's half itself, to the address the handle resolves to at
+ * execution: pc = PC(handle owner_pk, rho, rcm) with
+ *   rho = H(TAG_REFERRAL, nullifier, leaf_index, 0)
+ *   rcm = H(TAG_REFERRAL, nullifier, leaf_index, 1)
+ * (zk/privacy.ReferralOpening; TAG_REFERRAL = "earth.referral", nullifier the
+ * passport nullifier, leaf_index the new leaf's). The note has no ciphertext:
+ * its shielded_mint event carries owner_pk, rho and rcm, and the handle
+ * owner's wallet finds it by owner_pk. The registrant cannot redirect it. A
+ * live registration is a switch: the old leaf is zeroed and the new one
+ * appended, and nothing is paid (affiliate is then not checked). A switch to
+ * the idc the live registration already holds is refused (a replay).
  *
  * sighash fields: idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
  * Bytes(ciphertext_erth), affiliate (as in the binding),
@@ -88,14 +91,6 @@ export interface MsgRegister {
   ciphertextErth: Uint8Array;
   /** affiliate_handle names the referrer (a live handle), empty for none. */
   affiliateHandle: string;
-  /**
-   * affiliate_pc / affiliate_ciphertext: the referrer's half of the reward,
-   * as a note to the handle's shielded address (a pc of its owner_pk, an
-   * amount-blind v2 ciphertext to its ek_pub, exactly 177 bytes). All three
-   * set, or none.
-   */
-  affiliatePc: Uint8Array;
-  affiliateCiphertext: Uint8Array;
 }
 
 /** MsgRegisterResponse returns what the registration did. */
@@ -426,8 +421,6 @@ function createBaseMsgRegister(): MsgRegister {
     pcErth: new Uint8Array(0),
     ciphertextErth: new Uint8Array(0),
     affiliateHandle: "",
-    affiliatePc: new Uint8Array(0),
-    affiliateCiphertext: new Uint8Array(0),
   };
 }
 
@@ -465,12 +458,6 @@ export const MsgRegister: MessageFns<MsgRegister> = {
     }
     if (message.affiliateHandle !== "") {
       writer.uint32(122).string(message.affiliateHandle);
-    }
-    if (message.affiliatePc.length !== 0) {
-      writer.uint32(90).bytes(message.affiliatePc);
-    }
-    if (message.affiliateCiphertext.length !== 0) {
-      writer.uint32(98).bytes(message.affiliateCiphertext);
     }
     return writer;
   },
@@ -576,22 +563,6 @@ export const MsgRegister: MessageFns<MsgRegister> = {
             message.affiliateHandle = reader.string();
             continue;
           }
-          case 11: {
-            if (tag !== 90) {
-              break;
-            }
-
-            message.affiliatePc = reader.bytes();
-            continue;
-          }
-          case 12: {
-            if (tag !== 98) {
-              break;
-            }
-
-            message.affiliateCiphertext = reader.bytes();
-            continue;
-          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -649,16 +620,6 @@ export const MsgRegister: MessageFns<MsgRegister> = {
         : isSet(object.affiliate_handle)
         ? globalThis.String(object.affiliate_handle)
         : "",
-      affiliatePc: isSet(object.affiliatePc)
-        ? bytesFromBase64(object.affiliatePc)
-        : isSet(object.affiliate_pc)
-        ? bytesFromBase64(object.affiliate_pc)
-        : new Uint8Array(0),
-      affiliateCiphertext: isSet(object.affiliateCiphertext)
-        ? bytesFromBase64(object.affiliateCiphertext)
-        : isSet(object.affiliate_ciphertext)
-        ? bytesFromBase64(object.affiliate_ciphertext)
-        : new Uint8Array(0),
     };
   },
 
@@ -697,12 +658,6 @@ export const MsgRegister: MessageFns<MsgRegister> = {
     if (message.affiliateHandle !== "") {
       obj.affiliateHandle = message.affiliateHandle;
     }
-    if (message.affiliatePc.length !== 0) {
-      obj.affiliatePc = base64FromBytes(message.affiliatePc);
-    }
-    if (message.affiliateCiphertext.length !== 0) {
-      obj.affiliateCiphertext = base64FromBytes(message.affiliateCiphertext);
-    }
     return obj;
   },
 
@@ -722,8 +677,6 @@ export const MsgRegister: MessageFns<MsgRegister> = {
     message.pcErth = object.pcErth ?? new Uint8Array(0);
     message.ciphertextErth = object.ciphertextErth ?? new Uint8Array(0);
     message.affiliateHandle = object.affiliateHandle ?? "";
-    message.affiliatePc = object.affiliatePc ?? new Uint8Array(0);
-    message.affiliateCiphertext = object.affiliateCiphertext ?? new Uint8Array(0);
     return message;
   },
 };

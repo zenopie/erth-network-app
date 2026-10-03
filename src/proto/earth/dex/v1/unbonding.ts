@@ -60,6 +60,12 @@ export interface LpUnbonding {
    * account's withdrawal.
    */
   withdrawalId: Uint8Array;
+  /**
+   * payout_attempts counts payouts that failed (a leg the pool could not pay
+   * as notes, say): the entry is never dropped, it is retried at
+   * completion_time, which each failure moves later (LpUnbondRetryDelay).
+   */
+  payoutAttempts: number;
 }
 
 function createBaseLpUnbonding(): LpUnbonding {
@@ -73,6 +79,7 @@ function createBaseLpUnbonding(): LpUnbonding {
     erthPc: new Uint8Array(0),
     erthCiphertext: new Uint8Array(0),
     withdrawalId: new Uint8Array(0),
+    payoutAttempts: 0,
   };
 }
 
@@ -104,6 +111,9 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     }
     if (message.withdrawalId.length !== 0) {
       writer.uint32(74).bytes(message.withdrawalId);
+    }
+    if (message.payoutAttempts !== 0) {
+      writer.uint32(80).uint32(message.payoutAttempts);
     }
     return writer;
   },
@@ -193,6 +203,14 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
             message.withdrawalId = reader.bytes();
             continue;
           }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.payoutAttempts = reader.uint32();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -236,6 +254,11 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
         : isSet(object.withdrawal_id)
         ? bytesFromBase64(object.withdrawal_id)
         : new Uint8Array(0),
+      payoutAttempts: isSet(object.payoutAttempts)
+        ? globalThis.Number(object.payoutAttempts)
+        : isSet(object.payout_attempts)
+        ? globalThis.Number(object.payout_attempts)
+        : 0,
     };
   },
 
@@ -268,6 +291,9 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     if (message.withdrawalId.length !== 0) {
       obj.withdrawalId = base64FromBytes(message.withdrawalId);
     }
+    if (message.payoutAttempts !== 0) {
+      obj.payoutAttempts = Math.round(message.payoutAttempts);
+    }
     return obj;
   },
 
@@ -287,6 +313,7 @@ export const LpUnbonding: MessageFns<LpUnbonding> = {
     message.erthPc = object.erthPc ?? new Uint8Array(0);
     message.erthCiphertext = object.erthCiphertext ?? new Uint8Array(0);
     message.withdrawalId = object.withdrawalId ?? new Uint8Array(0);
+    message.payoutAttempts = object.payoutAttempts ?? 0;
     return message;
   },
 };
