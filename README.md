@@ -160,6 +160,8 @@ npm run check:staking                                             # without an L
 npm run check:explorer                                            # fixture-driven, no chain needed
 npm run check:privacy                                             # fixture-driven: personhood/assembly/shielded/staking/gov reads,
                                                                   # plus note-format golden vectors (Poseidon2, erthz, ciphertext)
+npm run check:tx                                                  # stubbed Keplr + LCD: a tx whose outcome cannot be read is
+                                                                  # "submitted, status unknown" and blocks resubmission until it resolves
 ```
 
 ### Building for Production
