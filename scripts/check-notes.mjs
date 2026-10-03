@@ -192,15 +192,27 @@ export async function run(check) {
     fhex(pv.cm(pv.assetId("uerth"), 5n, pv.pc(chainOwner.ownerPk, frho, frcm))) === fresh1.cm);
 
   // ---- MsgShield encodes ---------------------------------------------------------
-  const m = shielded.msgShield("earth1sender", "uerth", "5", fresh1.pc, fresh1.ciphertext);
+  // Every note the chain mints, a shield's included, carries the v2 ciphertext
+  // (exactly 177 bytes); a v1 (217) or empty one is refused before signing.
+  const fb = nc.blindNotePayment(C.address);
+  const m = shielded.msgShield("earth1sender", "uerth", "5", fb.pc, fb.ciphertext);
   const bytes = registry.encode(m);
   const back = registry.decode({ typeUrl: m.typeUrl, value: bytes });
-  check("MsgShield round-trips pc and ciphertext", hex(back.pc) === hex(fresh1.pc) &&
-    hex(back.ciphertext) === hex(fresh1.ciphertext) && back.amount.amount === "5");
+  check("MsgShield round-trips pc and ciphertext", hex(back.pc) === hex(fb.pc) &&
+    hex(back.ciphertext) === hex(fb.ciphertext) && back.amount.amount === "5");
+  check("msgShield refuses a v1, empty or missing ciphertext",
+    throws(() => shielded.msgShield("earth1s", "uerth", "5", fresh1.pc, fresh1.ciphertext)) &&
+    throws(() => shielded.msgShield("earth1s", "uerth", "5", fb.pc, new Uint8Array(0))) &&
+    throws(() => shielded.msgShield("earth1s", "uerth", "5", fb.pc)));
   const sp = shielded.shieldTo("earth1sender", C.address, "1234567", { memo: "hi" });
-  check("shieldTo builds a MsgShield for uerth with a 217-byte ciphertext",
+  check("shieldTo builds a MsgShield for uerth with a 177-byte v2 ciphertext",
     sp.msg.typeUrl === "/earth.shielded.v1.MsgShield" && sp.msg.value.amount.denom === "uerth" &&
-    sp.msg.value.ciphertext.length === 217 && sp.msg.value.pc.length === 32);
+    sp.msg.value.ciphertext.length === 177 && sp.msg.value.pc.length === 32);
+  const sopen = openBlind(sp.msg.value.ciphertext, ek);
+  const spc = pv.pc(chainOwner.ownerPk, pv.fieldFromBytes(sopen.slice(1, 33)), pv.fieldFromBytes(sopen.slice(33, 65)));
+  check("shieldTo's note opens for the address; pc and cm recompute from the public amount",
+    sopen[0] === 2 && fhex(spc) === hex(sp.msg.value.pc) && fhex(pv.cm(pv.assetId("uerth"), 1234567n, spc)) === sp.cm &&
+    new TextDecoder().decode(sopen.slice(65, 67)) === "hi");
   check("shieldTo refuses a transparent recipient", throws(() => shielded.shieldTo("earth1sender", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1")));
   check("shieldTo refuses zero and non-integers", throws(() => shielded.shieldTo("earth1s", C.address, "0")) &&
     throws(() => shielded.shieldTo("earth1s", C.address, "1.5")));
@@ -220,6 +232,11 @@ export async function run(check) {
     BigInt(rmBack.poolId) === 1n && rmBack.shares.denom === "dexlp/1" && rmBack.pc.length === 32 && rmBack.ciphertext.length === 177);
   const plain = registry.decode({ typeUrl: "/earth.dex.v1.MsgRemoveLiquidity", value: registry.encode(dex.msgRemoveLiquidity("earth1lp", 2, "7")) });
   check("transparent-pool withdrawal still carries no pc", plain.pc.length === 0 && plain.ciphertext.length === 0);
+  check("msgBuyAnml / ANML-pool msgRemoveLiquidity refuse a ciphertext that is not 177 bytes",
+    throws(() => dex.msgBuyAnml("earth1b", "uerth", "1", "0", buyBack.pc, new Uint8Array(217))) &&
+    throws(() => dex.msgBuyAnml("earth1b", "uerth", "1", "0", buyBack.pc)) &&
+    throws(() => dex.msgRemoveLiquidity("earth1lp", 1, "5", rmBack.pc, new Uint8Array(176))) &&
+    throws(() => dex.msgRemoveLiquidity("earth1lp", 2, "5", new Uint8Array(0), new Uint8Array(177))));
   // Wire-level field numbers against chain privacy/orchard's tx.proto (a round
   // trip through the generated code alone cannot catch a renumbering).
   const tags = (buf) => {

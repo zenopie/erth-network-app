@@ -1,6 +1,6 @@
 import { getOr, seg } from "./rest";
 import { UANML, UERTH, lpDenom } from "./config";
-import { blindNotePayment } from "./noteCipher";
+import { blindNotePayment, checkBlindCiphertext } from "./noteCipher";
 
 /**
  * x/dex — a spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH (the hub)
@@ -356,6 +356,10 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
  * on any other pool); use removeLiquidityToShielded there.
  */
 export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(0), ciphertext = new Uint8Array(0)) {
+  // With pc (the ANML pool) the chain requires the 177-byte v2 ciphertext;
+  // without, neither.
+  if (pc.length) checkBlindCiphertext(ciphertext);
+  else if (ciphertext.length) throw new RangeError("a ciphertext without a pc");
   return {
     typeUrl: "/earth.dex.v1.MsgRemoveLiquidity",
     value: {
@@ -387,7 +391,8 @@ export function removeLiquidityToShielded(creator, poolId, shares, address, { me
  * `pc`. ANML never sits in an account, so this is how an ERTH holder buys it.
  * Use buyAnmlTo to pay a shielded address.
  */
-export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext = new Uint8Array(0)) {
+export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext) {
+  checkBlindCiphertext(ciphertext);
   return {
     typeUrl: "/earth.dex.v1.MsgBuyAnml",
     value: {

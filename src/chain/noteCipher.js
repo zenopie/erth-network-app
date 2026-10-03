@@ -142,8 +142,9 @@ function freshSecrets(rand) {
  * to show. rho, rcm and esk are fresh from crypto.getRandomValues; pass
  * `rand` only in tests.
  *
- * Only for a value fixed at signing time (MsgShield); see blindNotePayment
- * for a value the chain decides.
+ * v1 ciphertext: only for a note inside a private bundle (built on the
+ * phone). Every note the chain mints — MsgShield's included — carries the v2
+ * ciphertext instead (blindNotePayment).
  */
 export function notePayment(address, denom, value, { memo = "", rand } = {}) {
   const { ownerPk, ekPub } = decodeShieldedAddress(address);
@@ -160,10 +161,23 @@ export function notePayment(address, denom, value, { memo = "", rand } = {}) {
 }
 
 /**
- * { pc, ciphertext } (bytes) paying a note of a chain-decided asset and value
- * (MsgBuyAnml's output, an ANML-pool withdrawal's ANML leg) to the shielded
- * `address`, with the v2 value-blind ciphertext. The recipient's wallet
- * completes cm from the amount the chain publishes for the note.
+ * Throws unless `ct` is an amount-blind v2 ciphertext's exact length (177
+ * bytes): the chain requires one, and nothing else, on every note it mints
+ * (MsgShield, MsgBuyAnml, an ANML-pool MsgRemoveLiquidity, MsgRegister).
+ */
+export function checkBlindCiphertext(ct, what = "ciphertext") {
+  if (!(ct instanceof Uint8Array) || ct.length !== BLIND_NOTE_CIPHERTEXT_BYTES) {
+    throw new RangeError(`${what} must be a ${BLIND_NOTE_CIPHERTEXT_BYTES}-byte amount-blind ciphertext`);
+  }
+  return ct;
+}
+
+/**
+ * { pc, ciphertext } (bytes) paying a note the chain mints (MsgShield,
+ * MsgBuyAnml's output, an ANML-pool withdrawal's ANML leg) to the shielded
+ * `address`, with the v2 value-blind ciphertext. The chain's one
+ * note-discovery rule: the recipient's wallet opens it and completes cm from
+ * the asset and amount the chain publishes for the note.
  */
 export function blindNotePayment(address, { memo = "", rand } = {}) {
   const { ownerPk, ekPub } = decodeShieldedAddress(address);
