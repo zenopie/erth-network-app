@@ -1,0 +1,1445 @@
+{
+ "_source": "x/dex keeper mulDiv/mulDivUp at chain 4a663d5 (mobile-orch tools/privacyvectors/dexamm_test.go.in, dex_amm.json deposits)",
+ "deposits": [
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "123456789",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1",
+   "in_token": "50000000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "2",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "7",
+   "shares": "4",
+   "pull_erth": "6",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "999",
+   "shares": "4",
+   "pull_erth": "6",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "1000000",
+   "shares": "4",
+   "pull_erth": "6",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "123456789",
+   "shares": "4",
+   "pull_erth": "6",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "7",
+   "in_token": "50000000000",
+   "shares": "4",
+   "pull_erth": "6",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "2",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "7",
+   "shares": "9",
+   "pull_erth": "13",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "999",
+   "shares": "699",
+   "pull_erth": "999",
+   "pull_token": "500"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "1000000",
+   "shares": "699",
+   "pull_erth": "999",
+   "pull_token": "500"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "123456789",
+   "shares": "699",
+   "pull_erth": "999",
+   "pull_token": "500"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "999",
+   "in_token": "50000000000",
+   "shares": "699",
+   "pull_erth": "999",
+   "pull_token": "500"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "2",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "7",
+   "shares": "9",
+   "pull_erth": "13",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "999",
+   "shares": "1398",
+   "pull_erth": "1998",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "1000000",
+   "shares": "700000",
+   "pull_erth": "1000000",
+   "pull_token": "500000"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "123456789",
+   "shares": "700000",
+   "pull_erth": "1000000",
+   "pull_token": "500000"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "1000000",
+   "in_token": "50000000000",
+   "shares": "700000",
+   "pull_erth": "1000000",
+   "pull_token": "500000"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "2",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "7",
+   "shares": "9",
+   "pull_erth": "13",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "999",
+   "shares": "1398",
+   "pull_erth": "1998",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "1000000",
+   "shares": "1400000",
+   "pull_erth": "2000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "123456789",
+   "shares": "86419752",
+   "pull_erth": "123456789",
+   "pull_token": "61728395"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "123456789",
+   "in_token": "50000000000",
+   "shares": "86419752",
+   "pull_erth": "123456789",
+   "pull_token": "61728395"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "2",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "7",
+   "shares": "9",
+   "pull_erth": "13",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "999",
+   "shares": "1398",
+   "pull_erth": "1998",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "1000000",
+   "shares": "1400000",
+   "pull_erth": "2000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "123456789",
+   "shares": "172839504",
+   "pull_erth": "246913578",
+   "pull_token": "123456789"
+  },
+  {
+   "reserve_erth": "1000000000000",
+   "reserve_token": "500000000000",
+   "supply": "700000000000",
+   "in_erth": "50000000000",
+   "in_token": "50000000000",
+   "shares": "35000000000",
+   "pull_erth": "50000000000",
+   "pull_token": "25000000000"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "123456789",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1",
+   "in_token": "50000000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "123456789",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "7",
+   "in_token": "50000000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "123456789",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "999",
+   "in_token": "50000000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "123456789",
+   "shares": "4",
+   "pull_erth": "14817",
+   "pull_token": "118530372"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "1000000",
+   "in_token": "50000000000",
+   "shares": "269",
+   "pull_erth": "996396",
+   "pull_token": "7971167488"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "123456789",
+   "shares": "4",
+   "pull_erth": "14817",
+   "pull_token": "118530372"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "123456789",
+   "in_token": "50000000000",
+   "shares": "1687",
+   "pull_erth": "6248773",
+   "pull_token": "49990184209"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "1",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "7",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "999",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "1000000",
+   "shares": "0",
+   "pull_erth": "0",
+   "pull_token": "0"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "123456789",
+   "shares": "4",
+   "pull_erth": "14817",
+   "pull_token": "118530372"
+  },
+  {
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "supply": "3333",
+   "in_erth": "50000000000",
+   "in_token": "50000000000",
+   "shares": "1687",
+   "pull_erth": "6248773",
+   "pull_token": "49990184209"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "1",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "7",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "999",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "1000000",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "123456789",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1",
+   "in_token": "50000000000",
+   "shares": "142857",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "1",
+   "shares": "333333",
+   "pull_erth": "3",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "7",
+   "shares": "1000000",
+   "pull_erth": "7",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "999",
+   "shares": "1000000",
+   "pull_erth": "7",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "1000000",
+   "shares": "1000000",
+   "pull_erth": "7",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "123456789",
+   "shares": "1000000",
+   "pull_erth": "7",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "7",
+   "in_token": "50000000000",
+   "shares": "1000000",
+   "pull_erth": "7",
+   "pull_token": "3"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "1",
+   "shares": "333333",
+   "pull_erth": "3",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "7",
+   "shares": "2333333",
+   "pull_erth": "17",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "999",
+   "shares": "142714285",
+   "pull_erth": "999",
+   "pull_token": "429"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "1000000",
+   "shares": "142714285",
+   "pull_erth": "999",
+   "pull_token": "429"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "123456789",
+   "shares": "142714285",
+   "pull_erth": "999",
+   "pull_token": "429"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "999",
+   "in_token": "50000000000",
+   "shares": "142714285",
+   "pull_erth": "999",
+   "pull_token": "429"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "1",
+   "shares": "333333",
+   "pull_erth": "3",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "7",
+   "shares": "2333333",
+   "pull_erth": "17",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "999",
+   "shares": "333000000",
+   "pull_erth": "2331",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "1000000",
+   "shares": "142857142857",
+   "pull_erth": "1000000",
+   "pull_token": "428572"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "123456789",
+   "shares": "142857142857",
+   "pull_erth": "1000000",
+   "pull_token": "428572"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "1000000",
+   "in_token": "50000000000",
+   "shares": "142857142857",
+   "pull_erth": "1000000",
+   "pull_token": "428572"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "1",
+   "shares": "333333",
+   "pull_erth": "3",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "7",
+   "shares": "2333333",
+   "pull_erth": "17",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "999",
+   "shares": "333000000",
+   "pull_erth": "2331",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "1000000",
+   "shares": "333333333333",
+   "pull_erth": "2333334",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "123456789",
+   "shares": "17636684142857",
+   "pull_erth": "123456789",
+   "pull_token": "52910053"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "123456789",
+   "in_token": "50000000000",
+   "shares": "17636684142857",
+   "pull_erth": "123456789",
+   "pull_token": "52910053"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "1",
+   "shares": "333333",
+   "pull_erth": "3",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "7",
+   "shares": "2333333",
+   "pull_erth": "17",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "999",
+   "shares": "333000000",
+   "pull_erth": "2331",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "1000000",
+   "shares": "333333333333",
+   "pull_erth": "2333334",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "123456789",
+   "shares": "41152263000000",
+   "pull_erth": "288065841",
+   "pull_token": "123456789"
+  },
+  {
+   "reserve_erth": "7",
+   "reserve_token": "3",
+   "supply": "1000000",
+   "in_erth": "50000000000",
+   "in_token": "50000000000",
+   "shares": "7142857142857142",
+   "pull_erth": "50000000000",
+   "pull_token": "21428571429"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "7",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "999",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "1000000",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "123456789",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1",
+   "in_token": "50000000000",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "7",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "999",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "1000000",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "123456789",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "7",
+   "in_token": "50000000000",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "7",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "999",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "1000000",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "123456789",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "999",
+   "in_token": "50000000000",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "7",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "999",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "1000000",
+   "shares": "1000000",
+   "pull_erth": "1000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "123456789",
+   "shares": "1000000",
+   "pull_erth": "1000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "1000000",
+   "in_token": "50000000000",
+   "shares": "1000000",
+   "pull_erth": "1000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "7",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "999",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "1000000",
+   "shares": "1000000",
+   "pull_erth": "1000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "123456789",
+   "shares": "123456789",
+   "pull_erth": "123456789",
+   "pull_token": "123456789"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "123456789",
+   "in_token": "50000000000",
+   "shares": "123456789",
+   "pull_erth": "123456789",
+   "pull_token": "123456789"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "1",
+   "shares": "1",
+   "pull_erth": "1",
+   "pull_token": "1"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "7",
+   "shares": "7",
+   "pull_erth": "7",
+   "pull_token": "7"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "999",
+   "shares": "999",
+   "pull_erth": "999",
+   "pull_token": "999"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "1000000",
+   "shares": "1000000",
+   "pull_erth": "1000000",
+   "pull_token": "1000000"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "123456789",
+   "shares": "123456789",
+   "pull_erth": "123456789",
+   "pull_token": "123456789"
+  },
+  {
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "supply": "5000000",
+   "in_erth": "50000000000",
+   "in_token": "50000000000",
+   "shares": "50000000000",
+   "pull_erth": "50000000000",
+   "pull_token": "50000000000"
+  }
+ ]
+}

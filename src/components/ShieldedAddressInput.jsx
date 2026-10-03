@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import forms from "../pages/Forms.module.css";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
+import { looksLikeHandle } from "../chain/handles";
 
 // An erthz address anywhere in a scanned string (a bare address, or one
 // wrapped in a URI by the app's QR code).
@@ -14,14 +15,17 @@ const canScan = () => typeof window !== "undefined" && "BarcodeDetector" in wind
  * (camera, or a photo/screenshot of the code). `onChange(text)` gets the raw
  * text; the parent decodes it again when it builds the msg.
  */
-const ShieldedAddressInput = ({ value, onChange }) => {
+const ShieldedAddressInput = ({ value, onChange, allowHandle = false, handleStatus = null }) => {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState("");
   const videoRef = useRef(null);
   const fileRef = useRef(null);
 
   let status = null;
-  if (value.trim()) {
+  if (allowHandle && looksLikeHandle(value)) {
+    // A handle: the parent looks it up in the whole directory and says what it names.
+    status = handleStatus;
+  } else if (value.trim()) {
     try {
       decodeShieldedAddress(value);
       status = { ok: true, text: "Valid shielded address." };
@@ -100,14 +104,14 @@ const ShieldedAddressInput = ({ value, onChange }) => {
   return (
     <div>
       <label className={forms.label} htmlFor="shielded-recipient">
-        Recipient&apos;s shielded address
+        {allowHandle ? "Recipient: shielded address or @handle" : "Recipient's shielded address"}
       </label>
       <div className={forms.formRow}>
         <textarea
           id="shielded-recipient"
           className={`${forms.textarea} ${forms.field}`}
           style={{ minHeight: 64, fontFamily: "monospace", fontSize: 13, wordBreak: "break-all" }}
-          placeholder="erthz1…"
+          placeholder={allowHandle ? "erthz1… or @handle" : "erthz1…"}
           spellCheck={false}
           autoComplete="off"
           value={value}

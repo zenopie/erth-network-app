@@ -22,6 +22,7 @@ import ExplorerShielded from './pages/ExplorerShielded';
 import Governance from './pages/Governance';
 import Anml from './pages/Anml';
 import Shield from './pages/Shield';
+import Handles from './pages/Handles';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
               <Route path="/anml-claim" element={<Navigate to="/anml" replace />} />
               <Route path="/anml" element={<Layout><Anml /></Layout>} />
               <Route path="/shield" element={<Layout><Shield /></Layout>} />
+              <Route path="/handles" element={<Layout><Handles /></Layout>} />
               <Route path="/governance" element={<Layout><Governance /></Layout>} />
               <Route path="/swap-tokens" element={<Layout><SwapTokens /></Layout>} />
               <Route path="/markets" element={<Layout><Markets /></Layout>} />

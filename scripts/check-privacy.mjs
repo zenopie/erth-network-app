@@ -28,7 +28,6 @@ const routes = {
     registration: { nullifier: b64([10, 11]), leaf_index: "3", registered_at: "1700000000",
       activated_at: "1700000100", dsc_key: b64([1, 2, 3]), country: "DE" },
   },
-  "/earth/personhood/v1/referrer/earth1abc": { live: true, expires_at: "1800000000" },
   "/earth/personhood/v1/params": { params: { caretaker_vote_seconds: "0", identity_root_window_seconds: "0" } },
   "/earth/assembly/v1/proposal_tally/4": { tally: { yes: "9", no: "2" }, approved: true },
   "/earth/assembly/v1/ballot_inputs": {
@@ -86,10 +85,10 @@ const reg = await personhood.registrationByNullifier("0x0A0B");
 check("registration by nullifier", reg.registered && reg.leafIndex === 3 && reg.dscKey === "010203" && reg.country === "DE", JSON.stringify(reg));
 check("malformed nullifier is null", (await personhood.registrationByNullifier("xyz")) === null);
 check("unknown failure reads as null, not unregistered", (await personhood.registrationByNullifier("ff")) === null);
-const ref = await personhood.referrer("earth1abc");
-check("referrer binding", ref.live && ref.expiresAt === 1800000000);
+check("no referrer lookup left (handles replace it)", !("referrer" in personhood));
 const pp = await personhood.params();
-check("zero params fall back to chain defaults", pp.caretakerVoteSeconds === 30 * 86400 && pp.identityRootWindowSeconds === 3600);
+check("zero params fall back to chain defaults", pp.caretakerVoteSeconds === 365 * 86400 && pp.identityRootWindowSeconds === 3600 &&
+  pp.handleLeaseSeconds === 365 * 86400 && pp.handleRenewalSeconds === 30 * 86400);
 
 const t = await assembly.proposalTally(4);
 check("human tally", t.yes === 9 && t.no === 2 && t.approved);

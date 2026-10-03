@@ -33,6 +33,14 @@ export const EARTH_RPC_URL = isDev
   ? "/rpc"
   : (import.meta.env.VITE_EARTH_RPC ?? "https://rpc.erth.network");
 
+// The privacy backend (api.erth.network): the web app reads one stream from
+// it, the whole handle directory (chain/handles.js), and falls back to the
+// chain's own Query/Handles pages whenever it cannot (in dev, vite proxies
+// /api -> localhost:8000). "" turns the backend off: the LCD alone.
+export const EARTH_API_URL = isDev
+  ? "/api"
+  : (import.meta.env.VITE_EARTH_API ?? "https://api.erth.network");
+
 export const ADDRESS_PREFIX = "earth";
 
 // ERTH is the staking/hub coin; ANML is the proof-of-personhood coin. ANML

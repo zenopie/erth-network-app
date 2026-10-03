@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import { balance } from "../chain/bank";
@@ -14,13 +14,18 @@ import useTransaction from "../hooks/useTransaction";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
 import ShieldedAddressInput from "../components/ShieldedAddressInput";
+import { handleDirectory, looksLikeHandle, parseHandle, truncateAddress } from "../chain/handles";
 
 // broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
 const FEE_HEADROOM = 10_000n;
 
 /**
  * Shield ERTH: transparent ERTH from the connected Keplr account into a
- * private note owned by a shielded (erthz1…) address — MsgShield.
+ * private note owned by a shielded (erthz1…) address — MsgShield. The
+ * recipient may also be a handle ("@alice"): it is looked up in the whole
+ * handle directory (never on its own), checked live against the chain's own
+ * directory again just before signing, and the note goes to the address it
+ * names.
  *
  * The amount and the sending account are public; who receives the note is
  * not. The note is encrypted to the address, so the Earth Wallet app that
@@ -32,11 +37,49 @@ const Shield = () => {
   const { address, isConnected } = useWallet();
   const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
-  const [recipient, setRecipient] = useState("");
+  const [params] = useSearchParams();
+  // The handle directory's Pay button lands here with ?to=@handle.
+  const [recipient, setRecipient] = useState(() => {
+    const to = params.get("to") ?? "";
+    return looksLikeHandle(to) && parseHandle(to) ? `@${parseHandle(to)}` : "";
+  });
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [bal, setBal] = useState(null);
   const [done, setDone] = useState(null);
+  // A handle recipient: what the directory says it names (preview), and the
+  // reviewed target the signature is for ({ handle, address }).
+  const [handleInfo, setHandleInfo] = useState(null);
+  const [review, setReview] = useState(null);
+  const toHandle = looksLikeHandle(recipient);
+
+  useEffect(() => {
+    setReview(null);
+    setHandleInfo(null);
+    if (!toHandle) return undefined;
+    if (!parseHandle(recipient)) {
+      setHandleInfo({ ok: false, text: "A handle is 3-32 of a-z, 0-9 and -, no dash at either end." });
+      return undefined;
+    }
+    let live = true;
+    setHandleInfo({ ok: true, pending: true, text: "Looking up the handle directory…" });
+    const t = setTimeout(async () => {
+      try {
+        const e = await handleDirectory.lookup(parseHandle(recipient));
+        if (!live) return;
+        const now = Math.floor(Date.now() / 1000);
+        if (!e) setHandleInfo({ ok: false, text: `@${parseHandle(recipient)} is not claimed by anyone.` });
+        else if (e.status !== "live" || now >= e.expiresAt) setHandleInfo({ ok: false, text: `@${e.handle} has lapsed and names no address now.` });
+        else setHandleInfo({ ok: true, text: `@${e.handle} · ${truncateAddress(e.address)}` });
+      } catch (err) {
+        if (live) setHandleInfo({ ok: false, text: `Couldn't read the handle directory: ${err.message}` });
+      }
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [recipient, toHandle]);
 
   useEffect(() => {
     hideLoading();
@@ -67,10 +110,17 @@ const Shield = () => {
   let problem = "";
   if (!isConnected) problem = "Connect Keplr to shield.";
   else {
-    try {
-      checkShield(recipient, micro, memo);
-    } catch (e) {
-      problem = recipient.trim() ? e.message : "Enter the recipient's shielded address.";
+    if (toHandle) {
+      if (!handleInfo || handleInfo.pending) problem = "Looking up the handle…";
+      else if (!handleInfo.ok) problem = handleInfo.text;
+      else if (!/^\d+$/.test(micro) || BigInt(micro) <= 0n) problem = "Enter a positive amount.";
+      else if (!memoOk) problem = "The memo is limited to 64 bytes.";
+    } else {
+      try {
+        checkShield(recipient, micro, memo);
+      } catch (e) {
+        problem = recipient.trim() ? e.message : "Enter the recipient's shielded address or @handle.";
+      }
     }
     if (!problem && bal !== null && BigInt(micro) + FEE_HEADROOM > toBigInt(bal)) {
       problem = "Not enough ERTH for this amount plus the fee.";
@@ -83,15 +133,39 @@ const Shield = () => {
     setAmount(m > 0n ? formatUnits(m.toString(), UERTH) : "0");
   };
 
+  // A handle is reviewed first: the directory read fresh and checked against
+  // the chain's own, the handle and the address it names shown, then signed.
+  const reviewHandle = async () => {
+    setReview(null);
+    const r = await handleDirectory.resolveForPayment(recipient);
+    if (!r.ok) {
+      setHandleInfo({ ok: false, text: r.reason });
+      return;
+    }
+    setReview({ handle: r.entry.handle, address: r.entry.address });
+  };
+
   const submit = (e) => {
     e.preventDefault();
     if (problem) return;
+    if (toHandle && !review) {
+      reviewHandle();
+      return;
+    }
+    const to = toHandle ? review.address : recipient;
     execute(async () => {
+      if (toHandle) {
+        // Checked once more against a fresh copy: a handle released or moved
+        // since the review is never paid.
+        const r = await handleDirectory.resolveForPayment(recipient);
+        if (!r.ok || r.entry.address !== to) throw new Error(r.ok ? `@${review.handle} changed since the review. Review it again.` : r.reason);
+      }
       // Fresh rho, rcm and ephemeral key for every attempt: a retry never
       // reuses the note secrets of one that may already have landed.
-      const { msg, cm } = shieldTo(address, recipient, micro, { memo });
+      const { msg, cm } = shieldTo(address, to, micro, { memo });
       const tx = await broadcast([msg]);
-      setDone({ hash: tx.txhash, cm, amount: formatUnits(micro, UERTH) });
+      setDone({ hash: tx.txhash, cm, amount: formatUnits(micro, UERTH), to: toHandle ? `@${review.handle}` : null });
+      setReview(null);
       setAmount("");
       setMemo("");
       refresh();
@@ -121,7 +195,7 @@ const Shield = () => {
           the app&apos;s next sync.
         </p>
         <form onSubmit={submit}>
-          <ShieldedAddressInput value={recipient} onChange={setRecipient} />
+          <ShieldedAddressInput value={recipient} onChange={setRecipient} allowHandle handleStatus={handleInfo} />
 
           <label className={forms.label} htmlFor="shield-amount">
             Amount (ERTH)
@@ -159,14 +233,21 @@ const Shield = () => {
           {!memoOk && <div className={forms.warn}>The memo is limited to 64 bytes.</div>}
 
           {problem && recipient.trim() && amount && <div className={forms.warn}>{problem}</div>}
+          {review && (
+            <div className={forms.note}>
+              Pay <strong>@{review.handle}</strong> · <span style={{ fontFamily: "monospace" }}>{truncateAddress(review.address)}</span>
+              <br />
+              The amount and this account are public; who holds the handle is not.
+            </div>
+          )}
           <button className={forms.button} type="submit" disabled={Boolean(problem)}>
-            {isConnected ? "Shield" : "Connect Keplr to shield"}
+            {!isConnected ? "Connect Keplr to shield" : toHandle ? (review ? `Shield to @${review.handle}` : "Review") : "Shield"}
           </button>
         </form>
 
         {done && (
           <div className={styles.kv} style={{ marginTop: 12 }}>
-            <div className={styles.kvLabel}>Shielded {done.amount} ERTH</div>
+            <div className={styles.kvLabel}>Shielded {done.amount} ERTH{done.to ? ` to ${done.to}` : ""}</div>
             <div className={styles.kvValue}>
               <Link className={styles.link} to={`/explorer/tx/${done.hash}`}>
                 {done.hash.slice(0, 16)}…

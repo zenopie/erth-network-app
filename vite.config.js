@@ -14,6 +14,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/lcd/, ''),
       },
+      // The privacy backend (the handle directory stream).
+      '/api': {
+        target: process.env.EARTH_API ?? 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       // CometBFT RPC. The explorer uses it for one thing the LCD cannot do:
       // fetching a range of blocks in a single request.
       '/rpc': {
