@@ -201,9 +201,9 @@ const SwapTokens = () => {
     if (!amountOk(val, fromDenom)) return;
     const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
     if (seq !== quoteSeq.current) return;
-    // quoteHop is floating point; floor it so the floor is never above the
-    // pool's integer payout.
-    const whole = outMicro > 0 ? BigInt(Math.floor(outMicro)).toString() : "0";
+    // An integer in base units (BigInt): the chain's simulation, or its own
+    // integer maths over the reserves.
+    const whole = outMicro > 0n ? outMicro.toString() : "0";
     setQuoteMicro(whole);
     setToAmount(whole !== "0" ? formatUnits(whole, toDenom) : "");
   };

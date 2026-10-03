@@ -10,6 +10,7 @@ import { x25519 } from "@noble/curves/ed25519.js";
 import { chacha20poly1305 } from "@noble/ciphers/chacha.js";
 import V from "./fixtures/privacy-vectors.json";
 import D from "./fixtures/dex-deposits.json";
+import W from "./fixtures/dex-swaps.json";
 
 globalThis.crypto ??= webcrypto;
 
@@ -245,6 +246,27 @@ check("validBase", h.validBase("/privacy/earth-1/0123456789abcdef", "earth-1", "
   check("quoteAddLiquidity agrees with depositPull's shares",
     dex.quoteAddLiquidity("1000000", "700000", "1000000000000", "500000000000", "700000000000") ===
       dex.depositPull("1000000", "700000", "1000000000000", "500000000000", "700000000000").shares.toString());
+}
+
+// ---- swaps: x/dex's own maths (chain 203d3b2: the fee rounds up) ---------------
+{
+  let ok = 0;
+  for (const f of W.fees) {
+    const got = dex.exactFee(f.amount, f.fee).toString();
+    if (got === f.fee_of) ok++;
+    else console.log("  fee mismatch", JSON.stringify(f), got);
+  }
+  check(`feeOf matches x/dex (${W.fees.length})`, ok === W.fees.length && W.fees.length > 0, `${ok}`);
+  ok = 0;
+  for (const v of W.hops) {
+    const r = v.dir === "hub_for_token"
+      ? dex.exactHubToToken(v.reserve_erth, v.reserve_token, v.amount_in, v.fee)
+      : dex.exactTokenToHub(v.reserve_erth, v.reserve_token, v.amount_in, v.fee);
+    if ([r.out, r.fee, r.burn].join() === [v.amount_out, v.fee_erth, v.burn].join()) ok++;
+    else console.log("  hop mismatch", JSON.stringify(v), [r.out, r.fee, r.burn].join());
+  }
+  check(`swap hops match x/dex (${W.hops.length})`, ok === W.hops.length && W.hops.length > 0, `${ok}`);
+  check("a 1-unit swap at 0.3% pays a 1-unit fee", dex.exactFee("1", "0.3") === 1n && dex.exactFee("0", "0.3") === 0n);
 }
 
 // ---- ErrPoolCap explained -------------------------------------------------------

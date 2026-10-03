@@ -178,7 +178,7 @@ routes["/earth/dex/v1/params"] = { params: { swap_fee: "0.300000000000000000" } 
 const localAnml = dex.exactHubToToken("1000000", "1000000", "10000", "0.3").out;
 check("no simulation: buy-ANML quote is the local maths", (await dex.quoteBuyAnml("10000")) === localAnml, String(localAnml));
 const localSwap = await dex.quoteSwap("10000", "uerth", "uanml");
-check("no simulation: swap quote is the local maths", Math.abs(localSwap - Number(localAnml)) < 2, String(localSwap));
+check("no simulation: swap quote is the local maths", localSwap === localAnml, String(localSwap));
 let asked;
 routes["/earth/dex/v1/simulate_swap_exact_in"] = (q) => {
   asked = Object.fromEntries(q);
@@ -188,7 +188,7 @@ const sim = await dex.simulateSwapExactIn("10000", "uerth", "uanml");
 check("simulation parsed", sim.out === 9950n && sim.fee === 30n && sim.burn === 15n, JSON.stringify(asked));
 check("simulation query names offer and ask", asked.offer_denom === "uerth" && asked.offer_amount === "10000" && asked.ask_denom === "uanml");
 check("buy-ANML quote is the chain's", (await dex.quoteBuyAnml("10000")) === 9950n);
-check("swap quote is the chain's", (await dex.quoteSwap("10000", "uerth", "uanml")) === 9950);
+check("swap quote is the chain's", (await dex.quoteSwap("10000", "uerth", "uanml")) === 9950n);
 check("a non-positive amount is not asked", (await dex.simulateSwapExactIn("0", "uerth", "uanml")) === null);
 routes["/earth/dex/v1/simulate_swap_exact_in"] = () => ({ token_out: { denom: "uanml", amount: "0" }, fee: { denom: "uerth", amount: "0" } });
 check("a zero simulation falls back", (await dex.quoteBuyAnml("10000")) === localAnml);

@@ -164,19 +164,6 @@ export async function polBurns() {
 }
 
 /**
- * Constant-product output for one hop, net of the swap fee.
- * Mirrors the chain's AMM so the UI can quote before broadcasting.
- */
-export function quoteHop(amountIn, reserveIn, reserveOut, feePercent) {
-  const aIn = Number(amountIn);
-  const rIn = Number(reserveIn);
-  const rOut = Number(reserveOut);
-  if (!aIn || !rIn || !rOut) return 0;
-  const afterFee = aIn * (1 - feePercent / 100);
-  return (afterFee * rOut) / (rIn + afterFee);
-}
-
-/**
  * x/dex SimulateSwapExactIn: what swapping `amountIn` (base units) of
  * `denomIn` for `denomOut` pays at the current state, computed by the chain's
  * own swap (ERTH-hub routing, each pool's pending LP rewards settled into its
@@ -206,36 +193,42 @@ export async function simulateSwapExactIn(amountIn, denomIn, denomOut) {
 
 /**
  * Quotes a swap of `amountIn` of `denomIn` into `denomOut` (base units): the
- * chain's SimulateSwapExactIn when the node serves it, else constant-product
- * maths over the pools' reserves. ERTH is the hub, so a token->token swap is
- * two hops through ERTH.
+ * chain's SimulateSwapExactIn when the node serves it, else the chain's
+ * integer constant-product maths over the pools' reserves. ERTH is the hub,
+ * so a token->token swap is two hops through ERTH. Resolves to a BigInt (0n:
+ * no quote).
  */
 export async function quoteSwap(amountIn, denomIn, denomOut) {
   const sim = await simulateSwapExactIn(amountIn, denomIn, denomOut);
-  if (sim) return Number(sim.out);
-  const fee = await swapFeePercent();
-  const all = await pools();
-
-  if (denomIn === UERTH) {
-    const p = all.find((x) => x.tokenDenom === denomOut);
-    return p ? quoteHop(amountIn, p.erthReserve, p.tokenReserve, fee) : 0;
+  if (sim) return sim.out;
+  // The chain's own integer maths over the reserves (fee rounded up, taken
+  // from the ERTH side of each hop), not a floating-point estimate.
+  let a;
+  try {
+    a = toBig(amountIn);
+  } catch {
+    return 0n;
   }
-  if (denomOut === UERTH) {
-    const p = all.find((x) => x.tokenDenom === denomIn);
-    return p ? quoteHop(amountIn, p.tokenReserve, p.erthReserve, fee) : 0;
-  }
+  if (a <= 0n) return 0n;
+  const [fee, all] = await Promise.all([swapFeeDec(), pools()]);
+  if (fee == null) return 0n;
+  const live = (p) => p && BigInt(p.erthReserve) > 0n && BigInt(p.tokenReserve) > 0n;
   const pIn = all.find((x) => x.tokenDenom === denomIn);
   const pOut = all.find((x) => x.tokenDenom === denomOut);
-  if (!pIn || !pOut) return 0;
-  const erthOut = quoteHop(amountIn, pIn.tokenReserve, pIn.erthReserve, fee);
-  return quoteHop(erthOut, pOut.erthReserve, pOut.tokenReserve, fee);
+  let erth = a;
+  if (denomIn !== UERTH) {
+    if (!live(pIn)) return 0n;
+    erth = exactTokenToHub(pIn.erthReserve, pIn.tokenReserve, a, fee).out;
+  }
+  if (denomOut === UERTH) return erth;
+  if (!live(pOut) || erth <= 0n) return 0n;
+  return exactHubToToken(pOut.erthReserve, pOut.tokenReserve, erth, fee).out;
 }
 
 // --- exact AMM maths (x/dex keeper/amm.go) ---
 //
-// quoteHop above is floating point, fine for a display and for a floor taken
-// with slippage. These reproduce the chain's integer arithmetic exactly, for
-// anything that must name the very amount the chain will pay.
+// These reproduce the chain's integer arithmetic exactly (BigInt, never a
+// float), for quotes and for the floors taken from them.
 //
 // They price against the reserves the LCD shows. The chain first compounds
 // any pending LP rewards into the ERTH reserve (settlePoolRewards, at every
@@ -256,8 +249,10 @@ const toBig = (v) => {
 };
 
 /**
- * feeOf: LegacyDec(amount).Mul(fee).Quo(100).TruncateInt(). Mul is exact for
- * an integer amount; Quo rounds half to even at 18 decimals; then truncate.
+ * feeOf: LegacyDec(amount).Mul(fee).Quo(100).Ceil().TruncateInt() (chain
+ * 203d3b2, audit 5 L-DX4: rounded up, so a small swap cannot pay nothing).
+ * Mul is exact for an integer amount; Quo rounds half to even at 18
+ * decimals; then any fraction left rounds the fee up.
  */
 export function exactFee(amount, swapFee) {
   const f = typeof swapFee === "bigint" ? swapFee : parseDec18(swapFee);
@@ -265,7 +260,8 @@ export function exactFee(amount, swapFee) {
   let q = num / 100n;
   const r = num % 100n;
   if (2n * r > 100n || (2n * r === 100n && q % 2n === 1n)) q += 1n;
-  return q / 10n ** 18n;
+  const one = 10n ** 18n;
+  return (q + one - 1n) / one;
 }
 
 /** splitFee: the burn takes the odd unit. */

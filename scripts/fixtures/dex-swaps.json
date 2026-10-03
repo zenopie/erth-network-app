@@ -1,0 +1,5607 @@
+{
+ "_source": "x/dex keeper feeOf/swapHubForToken/swapTokenForHub at chain 203d3b2 (swap fee rounds up)",
+ "fees": [
+  {
+   "fee": "0.3",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "2",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "7",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "333",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "999",
+   "fee_of": "3"
+  },
+  {
+   "fee": "0.3",
+   "amount": "1000000",
+   "fee_of": "3000"
+  },
+  {
+   "fee": "0.3",
+   "amount": "123456789",
+   "fee_of": "370371"
+  },
+  {
+   "fee": "0.3",
+   "amount": "50000000000",
+   "fee_of": "150000000"
+  },
+  {
+   "fee": "0.3",
+   "amount": "3",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "100",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "101",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.3",
+   "amount": "1000000007",
+   "fee_of": "3000001"
+  },
+  {
+   "fee": "0.25",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "2",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "7",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "333",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "999",
+   "fee_of": "3"
+  },
+  {
+   "fee": "0.25",
+   "amount": "1000000",
+   "fee_of": "2500"
+  },
+  {
+   "fee": "0.25",
+   "amount": "123456789",
+   "fee_of": "308642"
+  },
+  {
+   "fee": "0.25",
+   "amount": "50000000000",
+   "fee_of": "125000000"
+  },
+  {
+   "fee": "0.25",
+   "amount": "3",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "100",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "101",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.25",
+   "amount": "1000000007",
+   "fee_of": "2500001"
+  },
+  {
+   "fee": "1",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "1",
+   "amount": "2",
+   "fee_of": "1"
+  },
+  {
+   "fee": "1",
+   "amount": "7",
+   "fee_of": "1"
+  },
+  {
+   "fee": "1",
+   "amount": "333",
+   "fee_of": "4"
+  },
+  {
+   "fee": "1",
+   "amount": "999",
+   "fee_of": "10"
+  },
+  {
+   "fee": "1",
+   "amount": "1000000",
+   "fee_of": "10000"
+  },
+  {
+   "fee": "1",
+   "amount": "123456789",
+   "fee_of": "1234568"
+  },
+  {
+   "fee": "1",
+   "amount": "50000000000",
+   "fee_of": "500000000"
+  },
+  {
+   "fee": "1",
+   "amount": "3",
+   "fee_of": "1"
+  },
+  {
+   "fee": "1",
+   "amount": "100",
+   "fee_of": "1"
+  },
+  {
+   "fee": "1",
+   "amount": "101",
+   "fee_of": "2"
+  },
+  {
+   "fee": "1",
+   "amount": "1000000007",
+   "fee_of": "10000001"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "2",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "7",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "333",
+   "fee_of": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "999",
+   "fee_of": "4"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "1000000",
+   "fee_of": "3334"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "123456789",
+   "fee_of": "411523"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "50000000000",
+   "fee_of": "166666667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "3",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "100",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "101",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "amount": "1000000007",
+   "fee_of": "3333334"
+  },
+  {
+   "fee": "10",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "10",
+   "amount": "2",
+   "fee_of": "1"
+  },
+  {
+   "fee": "10",
+   "amount": "7",
+   "fee_of": "1"
+  },
+  {
+   "fee": "10",
+   "amount": "333",
+   "fee_of": "34"
+  },
+  {
+   "fee": "10",
+   "amount": "999",
+   "fee_of": "100"
+  },
+  {
+   "fee": "10",
+   "amount": "1000000",
+   "fee_of": "100000"
+  },
+  {
+   "fee": "10",
+   "amount": "123456789",
+   "fee_of": "12345679"
+  },
+  {
+   "fee": "10",
+   "amount": "50000000000",
+   "fee_of": "5000000000"
+  },
+  {
+   "fee": "10",
+   "amount": "3",
+   "fee_of": "1"
+  },
+  {
+   "fee": "10",
+   "amount": "100",
+   "fee_of": "10"
+  },
+  {
+   "fee": "10",
+   "amount": "101",
+   "fee_of": "11"
+  },
+  {
+   "fee": "10",
+   "amount": "1000000007",
+   "fee_of": "100000001"
+  },
+  {
+   "fee": "0",
+   "amount": "1",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "2",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "7",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "333",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "999",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "1000000",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "123456789",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "50000000000",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "3",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "100",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "101",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0",
+   "amount": "1000000007",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "1",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "2",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "7",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "333",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "999",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "1000000",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "123456789",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "50000000000",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "3",
+   "fee_of": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "100",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "101",
+   "fee_of": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "amount": "1000000007",
+   "fee_of": "1"
+  },
+  {
+   "fee": "100",
+   "amount": "1",
+   "fee_of": "1"
+  },
+  {
+   "fee": "100",
+   "amount": "2",
+   "fee_of": "2"
+  },
+  {
+   "fee": "100",
+   "amount": "7",
+   "fee_of": "7"
+  },
+  {
+   "fee": "100",
+   "amount": "333",
+   "fee_of": "333"
+  },
+  {
+   "fee": "100",
+   "amount": "999",
+   "fee_of": "999"
+  },
+  {
+   "fee": "100",
+   "amount": "1000000",
+   "fee_of": "1000000"
+  },
+  {
+   "fee": "100",
+   "amount": "123456789",
+   "fee_of": "123456789"
+  },
+  {
+   "fee": "100",
+   "amount": "50000000000",
+   "fee_of": "50000000000"
+  },
+  {
+   "fee": "100",
+   "amount": "3",
+   "fee_of": "3"
+  },
+  {
+   "fee": "100",
+   "amount": "100",
+   "fee_of": "100"
+  },
+  {
+   "fee": "100",
+   "amount": "101",
+   "fee_of": "101"
+  },
+  {
+   "fee": "100",
+   "amount": "1000000007",
+   "fee_of": "1000000007"
+  }
+ ],
+ "hops": [
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "2",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "26",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "82",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1327",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "248",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3983",
+   "fee_erth": "12",
+   "burn": "6"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "249249",
+   "fee_erth": "3000",
+   "burn": "1500"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3987984",
+   "fee_erth": "12000",
+   "burn": "6000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30767817",
+   "fee_erth": "370371",
+   "burn": "185186"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "492102660",
+   "fee_erth": "1480751",
+   "burn": "740376"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11870743439",
+   "fee_erth": "150000000",
+   "burn": "75000000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "166166666666",
+   "fee_erth": "500000000",
+   "burn": "250000000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "47999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2655928",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7967357",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7380012903",
+   "fee_erth": "3000",
+   "burn": "1500"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "123",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89762202753",
+   "fee_erth": "370371",
+   "burn": "185186"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15365",
+   "fee_erth": "47",
+   "burn": "24"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98740978260",
+   "fee_erth": "150000000",
+   "burn": "75000000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4136928",
+   "fee_erth": "12449",
+   "burn": "6225"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "995",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "995",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "831248",
+   "fee_erth": "3000",
+   "burn": "1500"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "830833",
+   "fee_erth": "2500",
+   "burn": "1250"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4804819",
+   "fee_erth": "370371",
+   "burn": "185186"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4790965",
+   "fee_erth": "14417",
+   "burn": "7209"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999498",
+   "fee_erth": "150000000",
+   "burn": "75000000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4984501",
+   "fee_erth": "14999",
+   "burn": "7500"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "857142857",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996996996",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998996990",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999998996",
+   "fee_erth": "3000",
+   "burn": "1500"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "370371",
+   "burn": "185186"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "150000000",
+   "burn": "75000000"
+  },
+  {
+   "fee": "0.3",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "2",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "26",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "82",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1327",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "248",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3985",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "249374",
+   "fee_erth": "2500",
+   "burn": "1250"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3989984",
+   "fee_erth": "10000",
+   "burn": "5000"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30783245",
+   "fee_erth": "308642",
+   "burn": "154321"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "492349452",
+   "fee_erth": "1233959",
+   "burn": "616980"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11876413858",
+   "fee_erth": "125000000",
+   "burn": "62500000"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "166249999999",
+   "fee_erth": "416666667",
+   "burn": "208333334"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "47999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2655928",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7967357",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7383437328",
+   "fee_erth": "2500",
+   "burn": "1250"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "123",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89766304493",
+   "fee_erth": "308642",
+   "burn": "154321"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15373",
+   "fee_erth": "39",
+   "burn": "20"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98740990515",
+   "fee_erth": "125000000",
+   "burn": "62500000"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4139003",
+   "fee_erth": "10374",
+   "burn": "5187"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "995",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "995",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "831596",
+   "fee_erth": "2500",
+   "burn": "1250"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "831249",
+   "fee_erth": "2084",
+   "burn": "1042"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4804913",
+   "fee_erth": "308642",
+   "burn": "154321"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4793368",
+   "fee_erth": "12014",
+   "burn": "6007"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999498",
+   "fee_erth": "125000000",
+   "burn": "62500000"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4987001",
+   "fee_erth": "12499",
+   "burn": "6250"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "857142857",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996996996",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998996990",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999998997",
+   "fee_erth": "2500",
+   "burn": "1250"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "308642",
+   "burn": "154321"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "125000000",
+   "burn": "62500000"
+  },
+  {
+   "fee": "0.25",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "2",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "26",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "82",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1317",
+   "fee_erth": "14",
+   "burn": "7"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "247",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3955",
+   "fee_erth": "40",
+   "burn": "20"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "247499",
+   "fee_erth": "10000",
+   "burn": "5000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3959984",
+   "fee_erth": "40000",
+   "burn": "20000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30551821",
+   "fee_erth": "1234568",
+   "burn": "617284"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "488647576",
+   "fee_erth": "4935835",
+   "burn": "2467918"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11791329204",
+   "fee_erth": "500000000",
+   "burn": "250000000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "164999999999",
+   "fee_erth": "1666666667",
+   "burn": "833333334"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "47999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2631930",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7911366",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7332043994",
+   "fee_erth": "10000",
+   "burn": "5000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "122",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89704383884",
+   "fee_erth": "1234568",
+   "burn": "617284"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15257",
+   "fee_erth": "155",
+   "burn": "78"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98740805398",
+   "fee_erth": "500000000",
+   "burn": "250000000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4107883",
+   "fee_erth": "41494",
+   "burn": "20747"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "328",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "328",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "988",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "988",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "826377",
+   "fee_erth": "10000",
+   "burn": "5000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "824999",
+   "fee_erth": "8334",
+   "burn": "4167"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4803493",
+   "fee_erth": "1234568",
+   "burn": "617284"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4757328",
+   "fee_erth": "48054",
+   "burn": "24027"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999495",
+   "fee_erth": "500000000",
+   "burn": "250000000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4949505",
+   "fee_erth": "49995",
+   "burn": "24998"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "857142857",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996969696",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998989898",
+   "fee_erth": "10",
+   "burn": "5"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999998989",
+   "fee_erth": "10000",
+   "burn": "5000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "1234568",
+   "burn": "617284"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "500000000",
+   "burn": "250000000"
+  },
+  {
+   "fee": "1",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "2",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "26",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "82",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1326",
+   "fee_erth": "5",
+   "burn": "3"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "248",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3981",
+   "fee_erth": "14",
+   "burn": "7"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "249166",
+   "fee_erth": "3334",
+   "burn": "1667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3986650",
+   "fee_erth": "13334",
+   "burn": "6667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30757531",
+   "fee_erth": "411523",
+   "burn": "205762"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "491938132",
+   "fee_erth": "1645279",
+   "burn": "822640"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11866963009",
+   "fee_erth": "166666667",
+   "burn": "83333334"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "166111111110",
+   "fee_erth": "555555556",
+   "burn": "277777778"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "47999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2647929",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7959359",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7377725245",
+   "fee_erth": "3334",
+   "burn": "1667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "123",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89759466227",
+   "fee_erth": "411523",
+   "burn": "205762"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15360",
+   "fee_erth": "52",
+   "burn": "26"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98740970084",
+   "fee_erth": "166666667",
+   "burn": "83333334"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4135545",
+   "fee_erth": "13832",
+   "burn": "6916"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "330",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "330",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "994",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "994",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "831016",
+   "fee_erth": "3334",
+   "burn": "1667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "830555",
+   "fee_erth": "2778",
+   "burn": "1389"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4804756",
+   "fee_erth": "411523",
+   "burn": "205762"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4789364",
+   "fee_erth": "16018",
+   "burn": "8009"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999498",
+   "fee_erth": "166666667",
+   "burn": "83333334"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4982835",
+   "fee_erth": "16665",
+   "burn": "8333"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "857142857",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996987951",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998995983",
+   "fee_erth": "4",
+   "burn": "2"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999998996",
+   "fee_erth": "3334",
+   "burn": "1667"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "411523",
+   "burn": "205762"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "166666667",
+   "burn": "83333334"
+  },
+  {
+   "fee": "0.333333333333333333",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "2",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "24",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "74",
+   "fee_erth": "34",
+   "burn": "17"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1197",
+   "fee_erth": "134",
+   "burn": "67"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "224",
+   "fee_erth": "100",
+   "burn": "50"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3595",
+   "fee_erth": "400",
+   "burn": "200"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "224999",
+   "fee_erth": "100000",
+   "burn": "50000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3599985",
+   "fee_erth": "399999",
+   "burn": "200000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "27774691",
+   "fee_erth": "12345679",
+   "burn": "6172840"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "444225069",
+   "fee_erth": "49358342",
+   "burn": "24679171"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "10765550239",
+   "fee_erth": "5000000000",
+   "burn": "2500000000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "149999999999",
+   "fee_erth": "16666666667",
+   "burn": "8333333334"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "47999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2391942",
+   "fee_erth": "34",
+   "burn": "17"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7191476",
+   "fee_erth": "100",
+   "burn": "50"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "6710784370",
+   "fee_erth": "100000",
+   "burn": "50000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "111",
+   "fee_erth": "13",
+   "burn": "7"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "88888889538",
+   "fee_erth": "12345679",
+   "burn": "6172840"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "13870",
+   "fee_erth": "1542",
+   "burn": "771"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98738343402",
+   "fee_erth": "5000000000",
+   "burn": "2500000000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "3734439",
+   "fee_erth": "414938",
+   "burn": "207469"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "5",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "298",
+   "fee_erth": "34",
+   "burn": "17"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "298",
+   "fee_erth": "34",
+   "burn": "17"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "898",
+   "fee_erth": "100",
+   "burn": "50"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "898",
+   "fee_erth": "100",
+   "burn": "50"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "762711",
+   "fee_erth": "100000",
+   "burn": "50000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "749999",
+   "fee_erth": "83334",
+   "burn": "41667"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4784688",
+   "fee_erth": "12345679",
+   "burn": "6172840"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4324843",
+   "fee_erth": "480539",
+   "burn": "240270"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999444",
+   "fee_erth": "5000000000",
+   "burn": "2500000000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4499550",
+   "fee_erth": "499950",
+   "burn": "249975"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "857142857",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996666666",
+   "fee_erth": "34",
+   "burn": "17"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998888888",
+   "fee_erth": "100",
+   "burn": "50"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999998888",
+   "fee_erth": "100000",
+   "burn": "50000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999990",
+   "fee_erth": "12345679",
+   "burn": "6172840"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "5000000000",
+   "burn": "2500000000"
+  },
+  {
+   "fee": "10",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "3",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "7",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "27",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "83",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1331",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "249",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3995",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "249999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3999984",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30860387",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "493583411",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11904761904",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "166666666666",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "15999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "55999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2663928",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7991354",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7400555603",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "124",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89786757057",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15412",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98741051604",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4149377",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "6",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "332",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "332",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "998",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "833333",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "833333",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4805382",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4805382",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999500",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4999500",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "666666666",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "875000000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "997005988",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "999000000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "3",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "7",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "27",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "82",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "1330",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "249",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "3994",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "249999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "3999983",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "30860387",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "493583410",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "11904761904",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "166666666665",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "8000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "15999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "55999",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "2655928",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "7983355",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "7400548757",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "123",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "89786756991",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "15411",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "98741051604",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4149376",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "1",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "6",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "6",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "331",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "997",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "997",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "833332",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "833332",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "4805382",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "4805381",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "4999500",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "4999499",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "500000000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "666666666",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "875000000",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "996996996",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "998998998",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999000",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "999999991",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "999999999",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "0.000000000000000001",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "3",
+   "burn": "2"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "7",
+   "burn": "4"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "7",
+   "burn": "4"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "27",
+   "burn": "14"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "333",
+   "burn": "167"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1331",
+   "burn": "666"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "999",
+   "burn": "500"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "3995",
+   "burn": "1998"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1000000",
+   "burn": "500000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "3999984",
+   "burn": "1999992"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "123456789",
+   "burn": "61728395"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "493583411",
+   "burn": "246791706"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "50000000000",
+   "burn": "25000000000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1000000000000",
+   "reserve_token": "250000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "166666666666",
+   "burn": "83333333333"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "7",
+   "burn": "4"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "333",
+   "burn": "167"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "999",
+   "burn": "500"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1000000",
+   "burn": "500000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "124",
+   "burn": "62"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "123456789",
+   "burn": "61728395"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "15412",
+   "burn": "7706"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "50000000000",
+   "burn": "25000000000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "12345678",
+   "reserve_token": "98765432109",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "4149377",
+   "burn": "2074689"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "7",
+   "burn": "4"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "6",
+   "burn": "3"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "333",
+   "burn": "167"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "332",
+   "burn": "166"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "999",
+   "burn": "500"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "998",
+   "burn": "499"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1000000",
+   "burn": "500000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "833333",
+   "burn": "416667"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "123456789",
+   "burn": "61728395"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "4805382",
+   "burn": "2402691"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "50000000000",
+   "burn": "25000000000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "5000000",
+   "reserve_token": "5000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "4999500",
+   "burn": "2499750"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "2",
+   "burn": "1"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "2",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "7",
+   "burn": "4"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "7",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "333",
+   "burn": "167"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "333",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "999",
+   "burn": "500"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "999",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "1000000",
+   "burn": "500000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "1000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "123456789",
+   "burn": "61728395"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "123456789",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "hub_for_token",
+   "amount_out": "0",
+   "fee_erth": "50000000000",
+   "burn": "25000000000"
+  },
+  {
+   "fee": "100",
+   "reserve_erth": "1",
+   "reserve_token": "1000000000",
+   "amount_in": "50000000000",
+   "dir": "token_for_hub",
+   "amount_out": "0",
+   "fee_erth": "0",
+   "burn": "0"
+  }
+ ]
+}

@@ -285,16 +285,16 @@ export async function run(check) {
   check("buyAnmlTo refuses a transparent recipient", throws(() => dex.buyAnmlTo("earth1b", "earth1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5yvhcg4", "1", "0")));
 
   // ---- exact AMM maths (x/dex amm.go) --------------------------------------------
-  // feeOf truncates amount * fee% ; burn takes the odd unit; out = rT*eff/(rE+eff).
+  // feeOf rounds amount * fee% up (chain 203d3b2) ; burn takes the odd unit; out = rT*eff/(rE+eff).
   const hop = dex.exactHubToToken("1000000000", "500000000", "1000000", "0.3");
   // fee = 3000, eff = 997000, out = floor(500000000*997000 / 1000997000) = 498003
   check("exact ERTH->token hop", hop.out === 498003n && hop.fee === 3000n && hop.burn === 1500n, JSON.stringify(hop, (_, v) => (typeof v === "bigint" ? String(v) : v)));
   const odd = dex.exactHubToToken("1000000000", "500000000", "1001", "0.3");
-  // fee = trunc(3.003) = 3, burn = 2 (takes the odd unit)
-  check("exact hop: fee truncates, burn rounds up", odd.fee === 3n && odd.burn === 2n);
+  // fee = ceil(3.003) = 4, burn = 2
+  check("exact hop: fee rounds up, burn takes the odd unit", odd.fee === 4n && odd.burn === 2n);
   const back2 = dex.exactTokenToHub("1000000000", "500000000", "1000000", "0.3");
-  // gross = 1e9*1e6/(5e8+1e6) = 1996007 ; fee = trunc(5988.021) = 5988 ; out = 1990019
-  check("exact token->ERTH hop", back2.out === 1990019n && back2.fee === 5988n, String(back2.out));
+  // gross = 1e9*1e6/(5e8+1e6) = 1996007 ; fee = ceil(5988.021) = 5989 ; out = 1990018
+  check("exact token->ERTH hop", back2.out === 1990018n && back2.fee === 5989n, String(back2.out));
   check("swap fee parses chain decimals", dex.parseDec18("0.300000000000000000") === 300000000000000000n &&
     dex.parseDec18("1") === 10n ** 18n && throws(() => dex.parseDec18("abc")));
 }
