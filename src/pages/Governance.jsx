@@ -46,7 +46,7 @@ const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
 const Governance = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
   const [list, setList] = useState(undefined);
   const [params, setParams] = useState(null);
   const [isOperator, setIsOperator] = useState(false);
@@ -88,7 +88,7 @@ const Governance = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.header}>
         <h2 className={styles.title}>Governance</h2>

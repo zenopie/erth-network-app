@@ -83,7 +83,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
  */
 const AllocationFund = ({ title, stream, options, onChanged }) => {
   const { address, isConnected } = useWallet();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const editable = stream === allocation.STREAM_GROUNDWORKS && isConnected;
 
@@ -330,7 +330,7 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
         </div>
       )}
 
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
     </div>
   );
 };

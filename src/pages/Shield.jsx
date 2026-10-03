@@ -30,7 +30,7 @@ const FEE_HEADROOM = 10_000n;
 const Shield = () => {
   const { hideLoading } = useLoading();
   const { address, isConnected } = useWallet();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -100,7 +100,7 @@ const Shield = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
       <div className={styles.header}>
         <h2 className={styles.title}>Shield ERTH</h2>
       </div>

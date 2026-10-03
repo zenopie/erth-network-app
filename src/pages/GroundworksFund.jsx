@@ -38,7 +38,7 @@ const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
 const GroundworksFund = () => {
   const { address } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
   const [view, setView] = useState(undefined);
   const [positions, setPositions] = useState(undefined);
   const [ballots, setBallots] = useState(undefined);
@@ -103,7 +103,7 @@ const GroundworksFund = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.statsRow}>
         <div className={styles.stat}>

@@ -41,7 +41,7 @@ import styles from "./SwapTokens.module.css";
 const SwapTokens = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [fromDenom, setFromDenom] = useState(UERTH);
   const [toDenom, setToDenom] = useState("");
@@ -237,7 +237,7 @@ const SwapTokens = () => {
 
   return (
     <div className={styles.container}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.titleContainer}>
         <h2 className={styles.title}>Swap Tokens</h2>

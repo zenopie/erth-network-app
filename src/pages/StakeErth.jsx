@@ -52,7 +52,7 @@ function until(unix) {
 const StakeErth = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [totalBonded, setTotalBonded] = useState(null);
   const [unbondDays, setUnbondDays] = useState(21);
@@ -127,7 +127,7 @@ const StakeErth = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={head.header}>
         <div className={head.headerLeft}>

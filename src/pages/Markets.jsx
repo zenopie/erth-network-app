@@ -37,7 +37,7 @@ const LP_SLIPPAGE_PERCENT = 1;
 const Markets = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [pools, setPools] = useState([]);
   const [lpSupplies, setLpSupplies] = useState({}); // lpDenom -> total shares, null if unread
@@ -352,7 +352,7 @@ const Markets = () => {
 
   return (
     <div className={styles.marketsPage}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       {/* Header */}
       <div className={styles.marketsHeader}>

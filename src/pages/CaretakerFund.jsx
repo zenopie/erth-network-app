@@ -26,7 +26,7 @@ const fmt = (n) => (n === null || n === undefined ? "—" : n.toLocaleString());
 const CaretakerFund = () => {
   const { address } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
   const [view, setView] = useState(undefined);
   const [voters, setVoters] = useState(null);
   const [humans, setHumans] = useState(null);
@@ -64,7 +64,7 @@ const CaretakerFund = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.statsRow}>
         <div className={styles.stat}>

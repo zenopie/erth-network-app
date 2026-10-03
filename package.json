@@ -36,7 +36,8 @@
     "check:explorer": "./scripts/check-explorer.sh",
     "check:staking": "./scripts/check-staking.sh",
     "check:dex": "./scripts/check-dex.sh",
-    "check:privacy": "./scripts/check-privacy.sh"
+    "check:privacy": "./scripts/check-privacy.sh",
+    "check:tx": "./scripts/check-tx.sh"
   },
   "overrides": {
     "d3-color": "^3.1.0"

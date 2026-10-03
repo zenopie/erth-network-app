@@ -25,7 +25,7 @@ const FEE_HEADROOM = 10_000n;
  */
 const BuyAnml = () => {
   const { address, isConnected } = useWallet();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -98,7 +98,7 @@ const BuyAnml = () => {
 
   return (
     <div className={styles.card}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
       <h3 className={styles.cardTitle}>Buy ANML with ERTH</h3>
       <p className={forms.note}>
         Pay transparent ERTH from Keplr; the ANML arrives as a private note at a shielded address
