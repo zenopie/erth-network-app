@@ -6,7 +6,7 @@ import * as explorer from "../chain/explorer";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { formatMacro, formatUnits, toBigInt, toMacro, toMicro } from "../chain/tokens";
+import { amountOk, formatMacro, formatUnits, toBigInt, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -302,7 +302,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             </label>
             <input
               className={forms.input}
-              type="number"
+              inputMode="decimal"
               placeholder="0.0"
               value={bondAmount}
               onChange={(e) => setBondAmount(e.target.value)}
@@ -311,7 +311,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
-            disabled={!(parseFloat(bondAmount) > 0) || BigInt(toMicro(bondAmount, UERTH)) > toBigInt(liquid)}
+            disabled={!amountOk(bondAmount, UERTH, liquid)}
             onClick={() =>
               run(() => [staking.msgSelfBond(address, toMicro(bondAmount, UERTH))]).then(() =>
                 setBondAmount(""),
@@ -334,7 +334,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             </label>
             <input
               className={forms.input}
-              type="number"
+              inputMode="decimal"
               placeholder="0.0"
               value={unbondAmount}
               onChange={(e) => setUnbondAmount(e.target.value)}
@@ -344,8 +344,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
             disabled={
-              !(parseFloat(unbondAmount) > 0) ||
-              BigInt(toMicro(unbondAmount, UERTH)) > toBigInt(operator.selfBond)
+              !amountOk(unbondAmount, UERTH, operator.selfBond)
             }
             onClick={() =>
               run(() => [staking.msgSelfUnbond(address, toMicro(unbondAmount, UERTH))]).then(() =>
@@ -444,7 +443,7 @@ const CreateValidator = ({ address, liquid, run }) => {
               <label className={forms.label}>
                 Self-bond (balance {toMacro(liquid, UERTH).toLocaleString()} ERTH)
               </label>
-              <input className={forms.input} type="number" value={form.selfBond} onChange={set("selfBond")} />
+              <input className={forms.input} inputMode="decimal" placeholder="0.0" value={form.selfBond} onChange={set("selfBond")} />
             </div>
             <div className={forms.field}>
               <label className={forms.label}>Commission / max / max daily change</label>
@@ -463,7 +462,7 @@ const CreateValidator = ({ address, liquid, run }) => {
           </div>
           <button
             className={forms.button}
-            disabled={!form.moniker || !form.consensusPubkey || !(parseFloat(form.selfBond) > 0)}
+            disabled={!form.moniker || !form.consensusPubkey || !amountOk(form.selfBond, UERTH, liquid)}
             onClick={() =>
               run(() => [
                 staking.msgCreateValidator(address, {

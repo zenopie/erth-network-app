@@ -5,7 +5,7 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { formatUnits, isKnownDenom, ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { amountOk, formatUnits, isKnownDenom, ratio, sumBig, symbolOf, toMacro, toMicro, typedFloat } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -191,6 +191,7 @@ const Markets = () => {
           erthReserve,
           tokenReserve,
           userShares,
+          userSharesBase: String(walletBalances[p.lpDenom] ?? "0"),
           totalShares,
           totalSharesBase,
           ownership,
@@ -552,7 +553,7 @@ const Markets = () => {
                                 Bal: {row.userShares.toLocaleString()}{" "}
                                 <button
                                   className={styles.lpMaxBtn}
-                                  onClick={() => setRemoveAmount(String(row.userShares))}
+                                  onClick={() => setRemoveAmount(formatUnits(row.userSharesBase, row.pool.lpDenom))}
                                 >
                                   Max
                                 </button>
@@ -561,7 +562,7 @@ const Markets = () => {
                             <div className={styles.lpInputWrapper}>
                               <div className={styles.lpInputInner} style={{ paddingLeft: 16 }}>
                                 <input
-                                  type="number"
+                                  inputMode="decimal"
                                   placeholder="0.0"
                                   value={removeAmount}
                                   onChange={(e) => setRemoveAmount(e.target.value)}
@@ -576,8 +577,7 @@ const Markets = () => {
                             disabled={
                               !isConnected ||
                               !anmlRecipientOk ||
-                              !parseFloat(removeAmount) ||
-                              parseFloat(removeAmount) > row.userShares
+                              !amountOk(removeAmount, row.pool.lpDenom, row.userSharesBase)
                             }
                           >
                             Remove Liquidity
@@ -637,7 +637,7 @@ const Markets = () => {
                               Bal: {tokenBalance.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => handleTokenBChange(String(tokenBalance), row)}
+                                onClick={() => handleTokenBChange(formatUnits(walletBalances[row.pool.tokenDenom] ?? "0", row.pool.tokenDenom), row)}
                               >
                                 Max
                               </button>
@@ -651,7 +651,7 @@ const Markets = () => {
                             />
                             <div className={styles.lpInputInner}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={tokenBAmount}
                                 onChange={(e) => handleTokenBChange(e.target.value, row)}
@@ -659,7 +659,7 @@ const Markets = () => {
                               />
                               <span className={styles.lpInputUsd}>
                                 {tokenBAmount && row.price ? (
-                                  <Amount value={parseFloat(tokenBAmount) * row.price} mode="price" />
+                                  <Amount value={typedFloat(tokenBAmount, row.pool.tokenDenom) * row.price} mode="price" />
                                 ) : (
                                   ""
                                 )}
@@ -674,7 +674,7 @@ const Markets = () => {
                               Bal: {erthBalance.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => handleErthChange(String(erthBalance), row)}
+                                onClick={() => handleErthChange(formatUnits(walletBalances[UERTH] ?? "0", UERTH), row)}
                               >
                                 Max
                               </button>
@@ -684,7 +684,7 @@ const Markets = () => {
                             <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.lpInputLogo} />
                             <div className={styles.lpInputInner}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={erthAmount}
                                 onChange={(e) => handleErthChange(e.target.value, row)}
@@ -692,7 +692,7 @@ const Markets = () => {
                               />
                               <span className={styles.lpInputUsd}>
                                 {currency === "USD" && erthAmount && erthPrice
-                                  ? formatUSD(parseFloat(erthAmount) * erthPrice)
+                                  ? formatUSD(typedFloat(erthAmount, UERTH) * erthPrice)
                                   : ""}
                               </span>
                             </div>
@@ -704,9 +704,8 @@ const Markets = () => {
                           disabled={
                             !isConnected ||
                             row.totalSharesBase === null ||
-                            !(parseFloat(erthAmount) > 0 && parseFloat(tokenBAmount) > 0) ||
-                            parseFloat(erthAmount) > erthBalance ||
-                            parseFloat(tokenBAmount) > tokenBalance
+                            !amountOk(erthAmount, UERTH, walletBalances[UERTH] ?? "0") ||
+                            !amountOk(tokenBAmount, row.pool.tokenDenom, walletBalances[row.pool.tokenDenom] ?? "0")
                           }
                         >
                           Add Liquidity
@@ -723,7 +722,7 @@ const Markets = () => {
                               Bal: {row.userShares.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => setRemoveAmount(String(row.userShares))}
+                                onClick={() => setRemoveAmount(formatUnits(row.userSharesBase, row.pool.lpDenom))}
                               >
                                 Max
                               </button>
@@ -732,7 +731,7 @@ const Markets = () => {
                           <div className={styles.lpInputWrapper}>
                             <div className={styles.lpInputInner} style={{ paddingLeft: 16 }}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={removeAmount}
                                 onChange={(e) => setRemoveAmount(e.target.value)}
@@ -746,8 +745,7 @@ const Markets = () => {
                           onClick={() => handleRemoveLiquidity(row)}
                           disabled={
                             !isConnected ||
-                            !parseFloat(removeAmount) ||
-                            parseFloat(removeAmount) > row.userShares
+                            !amountOk(removeAmount, row.pool.lpDenom, row.userSharesBase)
                           }
                         >
                           Remove Liquidity

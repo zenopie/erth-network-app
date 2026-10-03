@@ -64,6 +64,22 @@ export function toMicro(amount, denom) {
 }
 
 /**
+ * Whether a typed amount is positive and, given `maxBase` (base units), within
+ * it: decided on toMicro's result, exactly what will be signed. parseFloat
+ * accepted "1e3" (and a browser-normalised number input) and enabled a button
+ * that then signed 0.
+ */
+export function amountOk(typed, denom, maxBase) {
+  const v = BigInt(toMicro(typed, denom));
+  return v > 0n && (maxBase === undefined || v <= toBigInt(maxBase));
+}
+
+/** A typed amount as a float, for estimates only: the amount toMicro will sign, so the estimate is of that. */
+export function typedFloat(typed, denom) {
+  return toMacro(toMicro(typed, denom), denom);
+}
+
+/**
  * Base units -> an exact display-unit decimal string, trailing zeros dropped.
  * The inverse of toMicro, for anything that is fed back into an input (a Max
  * button) where toMacro's float could come back a unit off.

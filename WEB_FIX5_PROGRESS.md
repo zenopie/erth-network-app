@@ -8,11 +8,11 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | M1 Handles page / Shield preview show unverified backend addresses | done | 89c623d |
 | L1 stale review after recipient change | done | 38e4831 |
 | L2 React error boundary | done | f391eef |
-| L3 exact decimal amounts, exact Max | todo | |
+| L3 exact decimal amounts, exact Max | done | (this) |
 | L4 @handle out of URL and Referer | todo | |
 | L6 rest.js redirect: "error" | todo | |
 | L8 declare cosmjs-types | todo | |
-| L9 refuse unknown denoms | done | (this) |
+| L9 refuse unknown denoms | done | 623992b |
 
 ## M1
 - `handles.js`: `verifyAgainst(served, chain)`, `addressProblem(a)`, and on the directory `verifiedAll()` / `verifiedLookup()`. Every served entry is compared with the chain's whole directory (`chainDirectory()`): same address, status and times, and the address must decode (`decodeShieldedAddress`). Otherwise `verified: false` with a reason. Handles the chain has and the copy omits are added from the chain.
@@ -34,3 +34,9 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - `tokens.js`: only TOKENS and `dexlp/<n>` are `known` (`isKnownDenom`). Anything else is shown raw: base units under the raw denom (decimals 0, no "ufoo" -> "FOO" guess). `toMicro` returns "0" for an unknown denom, so no amount of it can be entered or signed.
 - Swap does not offer unknown denoms. The auction bid and Markets' Add say the decimals are unknown and the action stays disabled.
 - `check:forms` L9 checks.
+
+## L3
+- `tokens.js`: `amountOk(typed, denom, maxBase?)` (positive and within the balance, decided on `toMicro`'s base units) and `typedFloat` (estimates of the amount that will be signed).
+- Every amount input is text with `inputMode="decimal"` (Governance deposit x2, self-bond / unbond / create-validator, auction bid, Markets add x2 and remove x2, swap). Every button is gated on `amountOk`, never `parseFloat`.
+- Every Max is `formatUnits` of the base-unit balance (auction bid, Markets ERTH / token / shares x2); the auction keeps its balance in base units.
+- `check:forms` L3 checks (exponents refused, exact bounds, Max round-trips past 2^53 and 1e21, page sources free of float gating). The swap slippage stays a number input (not an amount; clamped).

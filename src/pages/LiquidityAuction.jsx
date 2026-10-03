@@ -3,7 +3,7 @@ import * as dex from "../chain/dex";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { isKnownDenom, symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { amountOk, formatUnits, isKnownDenom, symbolOf, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -49,7 +49,7 @@ const LiquidityAuction = () => {
 
   const [auction, setAuction] = useState(null);
   const [bid, setBid] = useState(null); // this wallet's { amount, claimed, claimable }
-  const [bidBalance, setBidBalance] = useState(0);
+  const [bidBalance, setBidBalance] = useState("0");
   const [bidAmount, setBidAmount] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -65,10 +65,10 @@ const LiquidityAuction = () => {
         balance(address, a.bidDenom),
       ]);
       setBid(b);
-      setBidBalance(toMacro(bal, a.bidDenom));
+      setBidBalance(String(bal ?? "0"));
     } else {
       setBid(null);
-      setBidBalance(0);
+      setBidBalance("0");
     }
   }, [address]);
 
@@ -152,7 +152,6 @@ const LiquidityAuction = () => {
 
   const isOpen = auction.status === dex.AUCTION_OPEN;
   const isSettled = auction.status === dex.AUCTION_SETTLED;
-  const bidNum = parseFloat(bidAmount);
 
   return (
     <div className={styles.page}>
@@ -222,8 +221,8 @@ const LiquidityAuction = () => {
           <div className={styles.inputHeader}>
             <label>Bid {bidSymbol}</label>
             <span className={styles.balance}>
-              Bal: {bidBalance.toLocaleString()}{" "}
-              <button className={styles.maxBtn} onClick={() => setBidAmount(String(bidBalance))}>
+              Bal: {toMacro(bidBalance, auction.bidDenom).toLocaleString()}{" "}
+              <button className={styles.maxBtn} onClick={() => setBidAmount(formatUnits(bidBalance, auction.bidDenom))}>
                 Max
               </button>
             </span>
@@ -235,7 +234,7 @@ const LiquidityAuction = () => {
             </p>
           )}
           <input
-            type="number"
+            inputMode="decimal"
             placeholder="0.0"
             value={bidAmount}
             onChange={(e) => setBidAmount(e.target.value)}
@@ -244,7 +243,7 @@ const LiquidityAuction = () => {
           <button
             className={styles.actionBtn}
             onClick={handleBid}
-            disabled={!isConnected || !(bidNum > 0) || bidNum > bidBalance}
+            disabled={!isConnected || !amountOk(bidAmount, auction.bidDenom, bidBalance)}
           >
             {isConnected ? "Place Bid" : "Connect a wallet to bid"}
           </button>

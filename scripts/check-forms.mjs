@@ -100,4 +100,27 @@ globalThis.fetch = async (url) => {
   check("L9: raw display of an unknown denom", tk.formatUnits("123456789", ibc) === "123456789" && tk.toMacro("123456789", ibc) === 123456789);
 }
 
+// --- 4. Amounts (audit 5, L3): the button agrees with what is signed, Max is exact.
+{
+  const tk = await import("../src/chain/tokens.js");
+  check("L3: an exponent is not an amount (the button stays off; it would sign 0)",
+    !tk.amountOk("1e3", "uerth") && !tk.amountOk("1e+21", "uerth") && !tk.amountOk("-1", "uerth") && !tk.amountOk("0.0000001", "uerth") &&
+      tk.amountOk("0.000001", "uerth") && tk.amountOk("1000", "uerth"));
+  check("L3: the balance bound is exact in base units",
+    tk.amountOk("1.000001", "uerth", "1000001") && !tk.amountOk("1.000002", "uerth", "1000001") &&
+      tk.amountOk("123456789012345.678901", "uerth", "123456789012345678901") && !tk.amountOk("123456789012345.678902", "uerth", "123456789012345678901"));
+  // Max from base units: exact past 2^53 and past 1e21, where String(float) was "1e+21".
+  const huge = "1000000000000000000000000001";
+  check("L3: Max (formatUnits) round-trips exactly, past 2^53 and 1e21",
+    tk.toMicro(tk.formatUnits(huge, "uerth"), "uerth") === huge && tk.amountOk(tk.formatUnits(huge, "uerth"), "uerth", huge) &&
+      String(tk.toMacro(huge, "uerth")).includes("e+") && tk.toMicro(String(tk.toMacro(huge, "uerth")), "uerth") === "0");
+  check("L3: an estimate is of the signed amount", tk.typedFloat("1e3", "uerth") === 0 && tk.typedFloat("2.5", "uerth") === 2.5);
+  const { readFileSync } = await import("node:fs");
+  const pages = ["Governance", "StakeErth", "LiquidityAuction", "Markets", "SwapTokens", "Shield"].map((n) => [n, readFileSync(`src/pages/${n}.jsx`, "utf8")]);
+  const bad3 = pages.filter(([, src]) => /parseFloat\(|String\(\w*[bB]alance\)|String\(row\.userShares\)/.test(src)).map(([n]) => n);
+  check("L3: no page gates or fills an amount through a float", bad3.length === 0, bad3.join(","));
+  const numInputs = pages.flatMap(([n, src]) => (src.match(/type="number"/g) ?? []).map(() => n));
+  check("L3: the only number input left is the swap slippage", numInputs.join() === "SwapTokens", numInputs.join());
+}
+
 process.exit(bad ? 1 : 0);

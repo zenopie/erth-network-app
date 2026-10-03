@@ -6,6 +6,7 @@ import { UANML, UERTH } from "../chain/config";
 import {
   TOKENS,
   clampSlippage,
+  amountOk,
   formatUnits,
   isKnownDenom,
   minimumReceived,
@@ -13,6 +14,7 @@ import {
   toMacro,
   toMicro,
   tokenInfo,
+  typedFloat,
 } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -133,11 +135,12 @@ const SwapTokens = () => {
    */
   const displayValue = useCallback(
     (denom, amount) => {
-      if (!(parseFloat(amount) > 0)) return null;
+      const typed = typedFloat(amount, denom);
+      if (!(typed > 0)) return null;
       const rate = spotRateInErth(denom);
       if (!rate) return null;
 
-      const inErth = parseFloat(amount) * rate;
+      const inErth = typed * rate;
       if (currency === "ERTH") return inErth;
       return erthPrice ? inErth * erthPrice : null;
     },
@@ -173,14 +176,14 @@ const SwapTokens = () => {
   );
 
   useEffect(() => {
-    if (parseFloat(fromAmount) > 0) {
+    if (amountOk(fromAmount, fromDenom)) {
       setFromValue(displayValue(fromDenom, fromAmount));
       setPriceImpact(calcPriceImpact(fromAmount));
     } else {
       setFromValue(null);
       setPriceImpact(null);
     }
-    setToValue(parseFloat(toAmount) > 0 ? displayValue(toDenom, toAmount) : null);
+    setToValue(amountOk(toAmount, toDenom) ? displayValue(toDenom, toAmount) : null);
   }, [fromAmount, toAmount, fromDenom, toDenom, displayValue, calcPriceImpact]);
 
   const clearAmounts = () => {
@@ -195,7 +198,7 @@ const SwapTokens = () => {
     setFromAmount(val);
     setToAmount("");
     setQuoteMicro("0");
-    if (!(parseFloat(val) > 0)) return;
+    if (!amountOk(val, fromDenom)) return;
     const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
     if (seq !== quoteSeq.current) return;
     // quoteHop is floating point; floor it so the floor is never above the
@@ -208,7 +211,7 @@ const SwapTokens = () => {
   const minOut = minimumReceived(quoteMicro, slippage);
 
   const handleSwap = async () => {
-    if (!isConnected || !(parseFloat(fromAmount) > 0) || minOut === "0") return;
+    if (!isConnected || !amountOk(fromAmount, fromDenom) || minOut === "0") return;
     execute(async () => {
       await broadcast([
         dex.msgSwap(address, fromDenom, toMicro(fromAmount, fromDenom), toDenom, minOut),
@@ -282,7 +285,7 @@ const SwapTokens = () => {
             </select>
             <div className={styles.amountContainer}>
               <input
-                type="number"
+                inputMode="decimal"
                 className={styles.tokenInput}
                 placeholder="0.0"
                 value={fromAmount}
@@ -324,7 +327,7 @@ const SwapTokens = () => {
             </select>
             <div className={styles.amountContainer}>
               <input
-                type="number"
+                inputMode="decimal"
                 className={styles.tokenInput}
                 placeholder="0.0"
                 value={toAmount}
@@ -342,7 +345,7 @@ const SwapTokens = () => {
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!isConnected || !toDenom || !fromAmount || parseFloat(fromAmount) <= 0 || minOut === "0"}
+        disabled={!isConnected || !toDenom || !amountOk(fromAmount, fromDenom) || minOut === "0"}
       >
         {isConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
@@ -358,7 +361,7 @@ const SwapTokens = () => {
             <p>
               <span>Rate:</span>
               <span>
-                1 {symbolOf(fromDenom)} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)}{" "}
+                1 {symbolOf(fromDenom)} = {(typedFloat(toAmount, toDenom) / typedFloat(fromAmount, fromDenom)).toFixed(6)}{" "}
                 {symbolOf(toDenom)}
               </span>
             </p>

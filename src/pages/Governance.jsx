@@ -9,7 +9,7 @@ import * as shieldedStaking from "../chain/shieldedStaking";
 import * as staking from "../chain/staking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { toMacro, toMicro } from "../chain/tokens";
+import { amountOk, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -252,7 +252,8 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
                   <label className={forms.label}>Add to the deposit (ERTH)</label>
                   <input
                     className={forms.input}
-                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.0"
                     value={deposit}
                     onChange={(e) => setDeposit(e.target.value)}
                   />
@@ -260,7 +261,7 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
                 <button
                   className={forms.button}
                   style={{ alignSelf: "flex-end" }}
-                  disabled={!(parseFloat(deposit) > 0)}
+                  disabled={!amountOk(deposit, UERTH)}
                   onClick={() => run(() => [gov.msgDeposit(address, p.id, toMicro(deposit, UERTH))])}
                 >
                   Deposit
@@ -444,12 +445,12 @@ const NewProposal = ({ address, minDeposit, run }) => {
           <div className={forms.formRow}>
             <div className={forms.field}>
               <label className={forms.label}>Initial deposit (ERTH)</label>
-              <input className={forms.input} type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
+              <input className={forms.input} inputMode="decimal" placeholder="0.0" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
             </div>
             <button
               className={forms.button}
               style={{ alignSelf: "flex-end" }}
-              disabled={!title.trim() || !summary.trim() || !(parseFloat(deposit) > 0)}
+              disabled={!title.trim() || !summary.trim() || !amountOk(deposit, UERTH)}
               onClick={() =>
                 run(() => [
                   gov.msgSubmitTextProposal(address, title.trim(), summary.trim(), toMicro(deposit, UERTH)),
