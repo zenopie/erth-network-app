@@ -11,7 +11,7 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L3 exact decimal amounts, exact Max | done | 418e6a0 |
 | L4 @handle out of URL and Referer | done | ad80a1e |
 | L6 rest.js redirect: "error" | done | a803f31 |
-| L8 declare cosmjs-types | done | (this) |
+| L8 declare cosmjs-types | done | 23392d6 |
 | L9 refuse unknown denoms | done | 623992b |
 
 ## M1
@@ -52,3 +52,10 @@ Gate: `npm run build` and every `check:*` pass after each step.
 
 ## L8
 - `"cosmjs-types": "0.11.0"` (exact, the version already locked) in `dependencies` and the lockfile's root entry. Edited by hand, since `node_modules` is a symlink into app-privacy; `npm install --package-lock-only` on a copy reproduces the lockfile byte for byte.
+
+## Not in this round
+- L5 (per-nullifier registration lookup), L7 (dev toolchain advisories, Docker base images) and I1-I4 were not asked for.
+- `all()` / `lookup()` still return the served copy unverified. Nothing in the UI shows or copies an address from them now. The Handles page uses `verifiedAll()`, the Shield preview is labelled, and payment goes through `resolveForPayment`.
+
+## Final gate (23392d6)
+`npm run build` passes. check:explorer 13/13, check:staking 8/8, check:privacy 148/148, check:tx 28/28, check:forms 20/20, check:handles 46/46. check:dex has 10 passes and 4 failures, because the live LCD is down (530); it fails the same way on 4fa9191.
