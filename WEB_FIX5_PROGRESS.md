@@ -9,8 +9,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L1 stale review after recipient change | done | 38e4831 |
 | L2 React error boundary | done | f391eef |
 | L3 exact decimal amounts, exact Max | done | 418e6a0 |
-| L4 @handle out of URL and Referer | done | (this) |
-| L6 rest.js redirect: "error" | todo | |
+| L4 @handle out of URL and Referer | done | ad80a1e |
+| L6 rest.js redirect: "error" | done | (this) |
 | L8 declare cosmjs-types | todo | |
 | L9 refuse unknown denoms | done | 623992b |
 
@@ -45,3 +45,7 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - Handles' Pay links to `/shield#to=%40alice` (router `hash`); Shield reads `to` only from the fragment (`useSearchParams` removed, so an old `?to=` link prefills nothing).
 - `Referrer-Policy: no-referrer` in `security-headers.conf`, and `<meta name="referrer" content="no-referrer">` in `index.html` (covers dev/preview and any location missing the include).
 - `check:handles` L4 source checks.
+
+## L6
+- `rest.js` `get()` and `rpcOrNull()`, and the broadcast POST in `tx.js`, pass `redirect: "error"` (as `handles.js` already did). Every `fetch` in `src/` now refuses redirects.
+- `check:tx` L6 records every stubbed request's redirect mode (fails on the old rest.js: 81 of 89 followed).

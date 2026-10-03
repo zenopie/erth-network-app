@@ -330,6 +330,7 @@ export async function broadcast(messages, opts = {}) {
   try {
     res = await fetch(`${EARTH_LCD_URL}/cosmos/tx/v1beta1/txs`, {
       method: "POST",
+      redirect: "error",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tx_bytes: toBase64(txBytes),

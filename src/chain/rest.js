@@ -52,7 +52,8 @@ export function text(v) {
  * "/cosmos/bank/v1beta1/balances/earth1...".
  */
 export async function get(path) {
-  const res = await fetch(EARTH_LCD_URL + path);
+  // A 3xx is never followed (spec §4a): the LCD answers here or not at all.
+  const res = await fetch(EARTH_LCD_URL + path, { redirect: "error" });
   if (!res.ok) {
     throw new Error(`LCD ${res.status} on ${path}: ${await res.text()}`);
   }
@@ -84,7 +85,7 @@ export async function getOr(path, fallback) {
 export async function rpcOrNull(path) {
   if (!EARTH_RPC_URL) return null;
   try {
-    const res = await fetch(EARTH_RPC_URL + path);
+    const res = await fetch(EARTH_RPC_URL + path, { redirect: "error" });
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {

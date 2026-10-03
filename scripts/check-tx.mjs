@@ -43,8 +43,11 @@ const res530 = { ok: false, status: 530, text: async () => "cf 530" };
 // The LCD answers about the hash asked for (txhash echoed), unless a case says otherwise.
 const found = (code = 0, txhash) => (q) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: txhash ?? q, raw_log: "boom" } }) });
 
+// Every request's redirect mode (audit 5, L6: a 3xx is never followed).
+const redirects = [];
 globalThis.fetch = async (url, opts) => {
   url = String(url);
+  redirects.push(opts?.redirect ?? "follow");
   if (opts?.method === "POST") {
     posted.push(JSON.parse(opts.body).tx_bytes);
     return post();
@@ -193,5 +196,8 @@ const outcome = async (p) => {
   height = 3000;
   check("a real height past the timeout expires it", (await tx.resolvePendingTx(A))?.status === "expired" && tx.pendingTx(A) === null);
 }
+
+check("L6: every LCD read and the broadcast POST refuse redirects", redirects.length > 0 && redirects.every((r) => r === "error"),
+  `${redirects.filter((r) => r !== "error").length} of ${redirects.length} follow`);
 
 process.exit(bad ? 1 : 0);
