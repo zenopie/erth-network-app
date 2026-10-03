@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import styles from "./Explorer.module.css";
 import * as explorer from "../chain/explorer";
 import * as staking from "../chain/staking";
+import { canonicalAddress } from "../chain/address";
 import { balances } from "../chain/bank";
 import { UERTH } from "../chain/config";
 import { symbolOf, toMacro } from "../chain/tokens";
@@ -11,7 +12,9 @@ import { Row, SearchBar, TxTable, short } from "../components/ExplorerBits";
 
 /** Account detail: balances, delegations and transactions signed by this address. */
 const ExplorerAccount = () => {
-  const { address } = useParams();
+  const { address: param } = useParams();
+  // The LCD indexes accounts by the canonical (lowercase) address.
+  const address = canonicalAddress(param) ?? param;
   const { hideLoading } = useLoading();
   const [coins, setCoins] = useState({});
   const [delegations, setDelegations] = useState([]);

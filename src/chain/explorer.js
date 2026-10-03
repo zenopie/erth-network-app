@@ -1,4 +1,5 @@
 import { fromBase64, toBech32 } from "@cosmjs/encoding";
+import { canonicalAddress } from "./address";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { get, getOr, rpcOrNull, seg } from "./rest";
 import { ADDRESS_PREFIX } from "./config";
@@ -321,7 +322,8 @@ export function classifySearch(term) {
   if (!t) return null;
   if (/^\d+$/.test(t)) return { kind: "block", value: t };
   if (/^[0-9a-fA-F]{64}$/.test(t)) return { kind: "tx", value: t.toUpperCase() };
-  if (/^earth[0-9a-z]{6,}$/.test(t)) return { kind: "account", value: t };
+  const account = canonicalAddress(t) ?? canonicalAddress(t, `${ADDRESS_PREFIX}valoper`);
+  if (account) return { kind: "account", value: account };
   return null;
 }
 

@@ -1,20 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { fromBech32 } from "@cosmjs/encoding";
 import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import * as personhood from "../chain/personhood";
+import { canonicalAddress } from "../chain/address";
 import { ADDRESS_PREFIX } from "../chain/config";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import MobileCta from "../components/MobileCta";
 
-const isAddress = (s) => {
-  try {
-    return fromBech32(s, 90).prefix === ADDRESS_PREFIX;
-  } catch {
-    return false;
-  }
-};
 
 /**
  * Referrers.
@@ -42,10 +35,12 @@ const Referrers = () => {
       .catch(() => {});
   }, [hideLoading]);
 
-  const lookup = useCallback(async (addr) => {
+  const lookup = useCallback(async (input) => {
     setError("");
     setResult(null);
-    if (!isAddress(addr)) {
+    // Referrers are keyed by the canonical (lowercase) address.
+    const addr = canonicalAddress(input);
+    if (!addr) {
       setError(`Enter an ${ADDRESS_PREFIX}1… address.`);
       return;
     }

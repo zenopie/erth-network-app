@@ -73,4 +73,18 @@ check(
 );
 check("a non-hex proposer is passed through untouched", ex.valconsFromHex("") === "");
 
+// Canonical lowercase bech32: an all-uppercase spelling of an address is the
+// same bytes, and is searched and queried as the lowercase one; mixed case,
+// a wrong prefix or a bad checksum is not an address.
+const addrMod = await import("../src/chain/address.js");
+const lower = toBech32("earth", new Uint8Array(20).fill(7));
+check("canonicalAddress keeps a lowercase address", addrMod.canonicalAddress(lower) === lower);
+check("canonicalAddress lowercases an all-uppercase address", addrMod.canonicalAddress(lower.toUpperCase()) === lower);
+check("canonicalAddress refuses mixed case, other prefixes, bad checksums",
+  addrMod.canonicalAddress(lower.slice(0, 10) + lower.slice(10).toUpperCase()) === null &&
+  addrMod.canonicalAddress(toBech32("cosmos", new Uint8Array(20))) === null &&
+  addrMod.canonicalAddress(lower.slice(0, -1) + (lower.endsWith("q") ? "p" : "q")) === null);
+check("search routes an uppercase address to its canonical account",
+  ex.classifySearch(lower.toUpperCase())?.value === lower && ex.classifySearch(lower)?.kind === "account");
+
 process.exit(bad ? 1 : 0);
