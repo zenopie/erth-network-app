@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import styles from "../pages/Explorer.module.css";
 import forms from "../pages/Forms.module.css";
 import { UERTH } from "../chain/config";
-import { toMacro } from "../chain/tokens";
+import { formatMacro, percentString, sumBig, toBigInt } from "../chain/tokens";
 import { short } from "./ExplorerBits";
 
 const KIND = {
@@ -21,13 +21,14 @@ const AllocationOptionsTable = ({ options, address, onClaim }) => {
   if (options === null) return <div className={styles.empty}>Could not load options.</div>;
   if (!options.length) return <div className={styles.empty}>No options yet.</div>;
 
-  const total = options.reduce((s, o) => s + (o.removed ? 0 : Number(o.amountAllocated)), 0);
+  // Option weights are integer strings past 2^53 (Groundworks: rate x derth).
+  const total = sumBig(options.filter((o) => !o.removed).map((o) => o.amountAllocated));
   const canClaim = (o) =>
     address &&
     onClaim &&
     !o.removed &&
     o.kind === "ALLOCATION_KIND_ADDRESS" &&
-    Number(o.accumulated) > 0 &&
+    toBigInt(o.accumulated) > 0n &&
     (!o.claimer || o.claimer === address);
 
   return (
@@ -59,11 +60,9 @@ const AllocationOptionsTable = ({ options, address, onClaim }) => {
             </td>
             <td>{KIND[o.kind] ?? o.kind}</td>
             <td>
-              {total > 0 && !o.removed
-                ? `${((Number(o.amountAllocated) / total) * 100).toFixed(1)}%`
-                : "—"}
+              {total > 0n && !o.removed ? `${percentString(o.amountAllocated, total)}%` : "—"}
             </td>
-            <td>{toMacro(o.accumulated, UERTH).toLocaleString()} ERTH</td>
+            <td>{formatMacro(o.accumulated, UERTH)} ERTH</td>
             <td>
               {canClaim(o) && (
                 <button className={forms.ghostButton} onClick={() => onClaim(o)}>

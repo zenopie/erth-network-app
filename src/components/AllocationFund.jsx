@@ -6,6 +6,8 @@ import { broadcast } from "../chain/tx";
 import * as allocation from "../chain/allocation";
 import StatusModal from "../components/StatusModal";
 import useTransaction from "../hooks/useTransaction";
+import { UERTH } from "../chain/config";
+import { formatMacro, percentString, sumBig, toBigInt } from "../chain/tokens";
 
 // Colors for the pie chart - earth/nature theme with distinct colors
 const COLORS = ["#4CAF50", "#2196F3", "#FFC107", "#00BCD4", "#8E24AA", "#FF7043"];
@@ -94,9 +96,12 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
   const labelFor = (option) => `#${option.id} ${option.description || "Unknown"}`;
   const live = (options ?? []).filter((o) => !o.removed);
   const allocationOptions = live.map((o) => ({ id: o.id, name: labelFor(o) }));
+  // The pie takes floats: each option's share of the total in percent, worked
+  // out exactly from the integer weights first (they pass 2^53).
+  const liveTotal = sumBig(live.map((o) => o.amountAllocated));
   const dataActual = live
-    .map((o) => ({ id: o.id, name: labelFor(o), value: Number(o.amountAllocated) }))
-    .filter((alloc) => alloc.value > 0);
+    .filter((o) => toBigInt(o.amountAllocated) > 0n)
+    .map((o) => ({ id: o.id, name: labelFor(o), value: Number(percentString(o.amountAllocated, liveTotal, 4)) }));
 
   const totalPercentage = selectedAllocations.reduce(
     (acc, alloc) => acc + (parseInt(alloc.value) || 0),
@@ -227,7 +232,7 @@ const AllocationFund = ({ title, stream, options, onChanged }) => {
         <div className={styles.allocationFundChartBox}>
           <p className={styles.allocationFundNote}>
             Only transparent bonded stake counts here, which on this chain is a validator&apos;s own
-            self-bond. Your weight: {(Number(voterWeight) / 1e6).toLocaleString()} ERTH.
+            self-bond. Your weight: {formatMacro(voterWeight, UERTH)} ERTH.
             Private stakers direct Groundworks with positions in the mobile app.
           </p>
           <div className={styles.allocationFundCanvasContainer}>

@@ -75,6 +75,81 @@ export function formatUnits(amount, denom) {
   return s.slice(0, s.length - d) + (frac ? "." + frac : "");
 }
 
+// --- exact integer math for chain amounts and weights --------------------
+//
+// Chain amounts and Groundworks weights arrive as decimal strings of any size
+// (a weight is rate x derth, so it outgrows 2^53 long before an amount
+// does). Number() rounds them silently; these stay in BigInt until the one
+// step that has to produce a float or a display string.
+
+/** A non-negative integer (decimal string, bigint or safe integer) as a BigInt; anything else 0n. */
+export function toBigInt(v) {
+  if (typeof v === "bigint") return v < 0n ? 0n : v;
+  if (typeof v === "number" && !Number.isSafeInteger(v)) return 0n;
+  const s = String(v ?? "").trim();
+  if (!/^\d+$/.test(s)) return 0n;
+  return BigInt(s);
+}
+
+/** The sum of integer strings, exactly. */
+export function sumBig(values) {
+  let t = 0n;
+  for (const v of values) t += toBigInt(v);
+  return t;
+}
+
+/** Sort comparator for integer strings, largest first. */
+export function byBigDesc(a, b) {
+  const x = toBigInt(a), y = toBigInt(b);
+  return x > y ? -1 : x < y ? 1 : 0;
+}
+
+/**
+ * part / total x 100 as a decimal string with `digits` places, rounded half
+ * up, computed exactly; null when total is 0.
+ */
+export function percentString(part, total, digits = 1) {
+  const p = toBigInt(part), t = toBigInt(total);
+  if (t === 0n) return null;
+  const scale = 10n ** BigInt(digits);
+  const q = (p * 100n * scale * 2n + t) / (2n * t);
+  if (!digits) return q.toString();
+  const s = q.toString().padStart(digits + 1, "0");
+  return `${s.slice(0, -digits)}.${s.slice(-digits)}`;
+}
+
+/** part / total as a float, the division done exactly and rounded once; 0 when total is 0. */
+export function ratio(part, total) {
+  const t = toBigInt(total);
+  if (t === 0n) return 0;
+  const SCALE = 10n ** 15n;
+  return Number((toBigInt(part) * SCALE) / t) / 1e15;
+}
+
+let decimalSeparator;
+function decimalSep() {
+  if (decimalSeparator === undefined) {
+    try {
+      decimalSeparator = new Intl.NumberFormat().formatToParts(1.1).find((x) => x.type === "decimal")?.value ?? ".";
+    } catch {
+      decimalSeparator = ".";
+    }
+  }
+  return decimalSeparator;
+}
+
+/**
+ * Base units as a grouped display-unit string, exact at any size: the integer
+ * part is a BigInt, the fraction is truncated to `maxFraction` digits (what
+ * Number#toLocaleString shows by default).
+ */
+export function formatMacro(amount, denom, maxFraction = 3) {
+  const [i, f = ""] = formatUnits(toBigInt(amount).toString(), denom).split(".");
+  const frac = f.slice(0, maxFraction).replace(/0+$/, "");
+  const int = BigInt(i).toLocaleString();
+  return frac ? `${int}${decimalSep()}${frac}` : int;
+}
+
 /** Slippage tolerance bounds, in percent. The input's own min/max are advisory. */
 export const SLIPPAGE_MIN = 0.1;
 export const SLIPPAGE_MAX = 50;

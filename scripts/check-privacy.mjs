@@ -168,6 +168,33 @@ check("a non-positive amount is not asked", (await dex.simulateSwapExactIn("0", 
 routes["/earth/dex/v1/simulate_swap_exact_in"] = () => ({ token_out: { denom: "uanml", amount: "0" }, fee: { denom: "uerth", amount: "0" } });
 check("a zero simulation falls back", (await dex.quoteBuyAnml("10000")) === localAnml);
 
+// Groundworks weights are integer strings past 2^53 (rate x derth): the page
+// math stays in BigInt. 2^53 + 1 is the first integer Number() cannot hold.
+const tk = await import("../src/chain/tokens.js");
+{
+  const big = "9007199254740993"; // 2^53 + 1
+  const w = ["123456789012345678901234567890", "1"];
+  check("toBigInt keeps 2^53 + 1 exact; junk is 0", tk.toBigInt(big) === 9007199254740993n &&
+    tk.toBigInt("1.5") === 0n && tk.toBigInt("-3") === 0n && tk.toBigInt(undefined) === 0n && tk.toBigInt(1e21) === 0n);
+  check("sumBig is exact past 2^53", tk.sumBig([big, big, "1"]) === 18014398509481987n &&
+    tk.sumBig(w) === 123456789012345678901234567891n);
+  check("Number would have lost it", Number(big) + Number(big) + 1 !== 18014398509481987);
+  check("byBigDesc orders weights Number() ties", [big, "9007199254740992", "9007199254740994"].sort(tk.byBigDesc).join() ===
+    "9007199254740994,9007199254740993,9007199254740992");
+  check("percentString: exact share of a huge total, rounded half up",
+    tk.percentString(w[1], w[0]) === "0.0" && tk.percentString(1, 3) === "33.3" && tk.percentString(2, 3) === "66.7" &&
+    tk.percentString("50000000000000000000000000001", "100000000000000000000000000000", 4) === "50.0000" &&
+    tk.percentString(1, 8, 2) === "12.50" && tk.percentString(5, 0) === null && tk.percentString(3, 3, 0) === "100");
+  check("ratio divides exactly before the float", tk.ratio("1", "4") === 0.25 && tk.ratio(big, big) === 1 && tk.ratio(1, 0) === 0 &&
+    Math.abs(tk.ratio("123456789012345678901234567890", "246913578024691357802469135780") - 0.5) < 1e-15);
+  const fm = tk.formatMacro("123456789012345678901234567", "uerth");
+  check("formatMacro: every integer digit of a weight past 2^53", fm.replace(/\D/g, "") === "123456789012345678901" + "234",
+    fm);
+  check("formatMacro: small amounts as toLocaleString shows them",
+    tk.formatMacro("1500000", "uerth") === (1.5).toLocaleString() && tk.formatMacro("0", "uerth") === "0" &&
+    tk.formatMacro("1", "uerth") === "0");
+}
+
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
 const { run: runNotes } = await import("./check-notes.mjs");
 await runNotes(check);

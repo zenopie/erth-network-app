@@ -6,7 +6,7 @@ import * as explorer from "../chain/explorer";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { formatUnits, toMacro, toMicro } from "../chain/tokens";
+import { formatMacro, formatUnits, toBigInt, toMacro, toMicro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -214,7 +214,9 @@ const StakeErth = () => {
                       )}
                     </td>
                     <td title="rate × Σ(derth × percent) / 100 over its live positions">
-                      {gw[v.operator] && Number(gw[v.operator].weight) > 0 ? erth(gw[v.operator].weight) : "—"}
+                      {gw[v.operator] && toBigInt(gw[v.operator].weight) > 0n
+                        ? `${formatMacro(gw[v.operator].weight, UERTH)} ERTH`
+                        : "—"}
                     </td>
                     <td className={styles.muted}>
                       {pendIn || pendOut ? (

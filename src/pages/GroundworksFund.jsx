@@ -12,12 +12,13 @@ import * as explorer from "../chain/explorer";
 import * as shieldedStaking from "../chain/shieldedStaking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { toMacro } from "../chain/tokens";
+import { byBigDesc, formatMacro, percentString, sumBig, toBigInt } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 
-const erth = (micro) => `${toMacro(micro, UERTH).toLocaleString()} ERTH`;
+// Weights and amounts are integer strings past 2^53; never through Number.
+const erth = (micro) => `${formatMacro(micro, UERTH)} ERTH`;
 const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
 
 /**
@@ -84,8 +85,8 @@ const GroundworksFund = () => {
     return o ? `#${id} ${o.description}` : `#${id}`;
   };
   // The stream counts each validator's voter, not the positions one by one.
-  const positionWeight = Object.values(voters ?? {}).reduce((s, v) => s + Number(v?.weight ?? 0), 0);
-  const totalWeight = Number(view?.totalWeight ?? 0);
+  const positionWeight = sumBig(Object.values(voters ?? {}).map((v) => v?.weight));
+  const totalWeight = toBigInt(view?.totalWeight);
   const streamEpoch = Number(view?.epoch ?? 0);
   // A split cast before a Groundworks reset no longer counts (weight 0) until
   // its owner votes again.
@@ -98,7 +99,7 @@ const GroundworksFund = () => {
       return acc;
     }, {}),
   ).map(([validator, a]) => ({ validator, ...a, voter: voters?.[validator] ?? null }))
-    .sort((x, y) => Number(y.voter?.weight ?? 0) - Number(x.voter?.weight ?? 0));
+    .sort((x, y) => byBigDesc(x.voter?.weight, y.voter?.weight));
 
   return (
     <div className={styles.page}>
@@ -116,8 +117,8 @@ const GroundworksFund = () => {
         <div className={styles.stat}>
           <span className={styles.statLabel}>From positions</span>
           <span className={styles.statValue}>
-            {positions && voters && totalWeight > 0
-              ? `${Math.min(100, (positionWeight / totalWeight) * 100).toFixed(1)}%`
+            {positions && voters && totalWeight > 0n
+              ? `${percentString(positionWeight > totalWeight ? totalWeight : positionWeight, totalWeight)}%`
               : "—"}
           </span>
         </div>
@@ -169,7 +170,7 @@ const GroundworksFund = () => {
                   <td className={styles.mono}>{monikers[r.validator] || short(r.validator, 14, 6)}</td>
                   <td>
                     {r.count.toLocaleString()}
-                    <div className={styles.muted}>{toMacro(String(r.derth), UERTH).toLocaleString()} derth</div>
+                    <div className={styles.muted}>{formatMacro(r.derth, UERTH)} derth</div>
                   </td>
                   <td>{r.voter ? erth(r.voter.weight) : "—"}</td>
                   <td>
@@ -214,7 +215,7 @@ const GroundworksFund = () => {
                   <td>
                     {/* Filled in by the query: derth x epoch rate while the split is live. */}
                     {erth(p.weight)}
-                    <div className={styles.muted}>{toMacro(p.derth, UERTH).toLocaleString()} derth</div>
+                    <div className={styles.muted}>{formatMacro(p.derth, UERTH)} derth</div>
                     {lapsed(p) && (
                       <div className={styles.muted}>Lapsed at a reset; the owner votes again in the app</div>
                     )}

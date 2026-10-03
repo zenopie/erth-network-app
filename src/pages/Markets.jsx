@@ -5,7 +5,7 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { ratio, sumBig, symbolOf, toMacro, toMicro } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -88,11 +88,10 @@ const Markets = () => {
         setUnbondSeconds(escrowSeconds);
         setBurns(polSchedules);
 
-        const totalWeight = options.reduce((s, o) => s + Number(o.amountAllocated), 0);
+        // Integer weights past 2^53: the ratio is taken exactly, then made a float.
+        const totalWeight = sumBig(options.map((o) => o.amountAllocated));
         const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED");
-        setLpRewardShare(
-          totalWeight > 0 && lpOption ? Number(lpOption.amountAllocated) / totalWeight : 0,
-        );
+        setLpRewardShare(lpOption ? ratio(lpOption.amountAllocated, totalWeight) : 0);
 
         const supplies = await Promise.all(ps.map((p) => supplyOrNull(p.lpDenom)));
         if (cancelled) return;
