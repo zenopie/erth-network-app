@@ -10,10 +10,13 @@ const PrivacyPolicy = () => {
   }, []);
   return (
     <div className={styles.privacyPolicyContainer}>
-      <h1>Privacy Policy for Earth Wallet</h1>
-      <p className={styles.lastUpdated}><strong>Last updated:</strong> {new Date().toLocaleDateString()}</p>
+      <h1>Privacy Policy for Earth Wallet and the Earth Network web app</h1>
+      <p className={styles.lastUpdated}><strong>Last updated:</strong> October 3, 2026</p>
 
-      <p>Earth Network ("we", "our", or "us") operates the Earth Wallet mobile application (the "Service").</p>
+      <p>
+        Earth Network ("we", "our", or "us") operates the Earth Wallet mobile application and the Earth Network web app
+        at erth.network (together, the "Service"). The sections below say which part each applies to.
+      </p>
 
       <section>
         <h2>INFORMATION WE COLLECT AND PROCESS</h2>
@@ -46,15 +49,28 @@ const PrivacyPolicy = () => {
         <ul>
           <li><strong>Blockchain:</strong> The app communicates with the Earth Network blockchain for transaction processing</li>
           <li><strong>Public Ledger:</strong> Earth is a transparent chain. Your address, balances, transactions and votes are readable by anyone — this is not private data, and an address that has been linked to you links everything it has ever done</li>
-          <li><strong>Backend:</strong> Limited communication with our servers for network status and, if you ask for free gas for a transaction, to send you that grant. The request carries your wallet address and a device attestation — from Apple's App Attest on iPhone, or your Android phone's own secure hardware — proving it came from a genuine copy of the app. The attestation identifies the app install, not you, and is not stored</li>
-          <li><strong>No Personal Data:</strong> No personal information is transmitted in these communications</li>
+          <li><strong>Private notes:</strong> To find your private (shielded) notes, the app downloads the chain's encrypted notes from our indexer and tries to decrypt them on your device. The indexer serves everyone the same data and is not told which notes are yours</li>
+          <li><strong>Free gas for registration:</strong> A first registration has no ERTH to pay its fee with, so the app may ask our server for a small gas grant. The request carries the registration transaction about to be broadcast (public on the chain once it lands) and, when the server asks for one, a proof of work computed on your phone. The server checks the registration the way the chain would and sends the gas to a private note; no device identifier or attestation is sent</li>
+          <li><strong>No Personal Data:</strong> No personal information is transmitted in these communications. Like any server, ours see the IP address a request comes from</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>THE WEB APP</h2>
+        <ul>
+          <li><strong>No account, no tracking:</strong> The web app has no sign-up, no analytics, no advertising and no third-party scripts or fonts. Everything it loads comes from erth.network</li>
+          <li><strong>Keplr:</strong> Transactions are signed in the Keplr browser extension; the web app never sees your keys. Connecting shares your Keplr account's public address with the page</li>
+          <li><strong>Chain reads:</strong> The page reads public chain data from our LCD and RPC nodes (lcd.erth.network, rpc.erth.network), which see your IP address and the addresses, transactions and blocks you look up, like any web server</li>
+          <li><strong>Stored in your browser:</strong> The connected address, your display-currency choice and the hash of a transaction whose outcome is not yet known (so it is not sent twice) are kept in your browser's local storage. Clearing site data removes them</li>
+          <li><strong>Camera:</strong> Scanning a shielded address QR code uses your camera only while the scanner is open; frames are read in the browser and never uploaded</li>
+          <li><strong>Buying ANML for a shielded address:</strong> The ERTH spent and the ANML bought are public on the chain; who receives the note is not</li>
         </ul>
       </section>
 
       <section>
         <h2>DATA SECURITY</h2>
         <ul>
-          <li>Passport reading and proof generation happen entirely on your device</li>
+          <li>Passport reading and proof generation happen entirely on your device (mobile app only; the web app never reads a passport)</li>
           <li>Local data is encrypted using industry-standard encryption</li>
           <li>Network communications use secure protocols</li>
           <li>We employ privacy-by-design principles throughout the application</li>
@@ -74,7 +90,7 @@ const PrivacyPolicy = () => {
         <h2>CHANGES TO THIS POLICY</h2>
         <p>
           We may update this privacy policy from time to time. We will notify users of any changes by posting the new policy in the app and
-          updating the "Last updated" date.
+          on this page, and updating the "Last updated" date.
         </p>
       </section>
 
