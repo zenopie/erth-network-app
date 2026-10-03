@@ -149,44 +149,72 @@ export class TxStatusUnknownError extends Error {
   }
 }
 
-// The unresolved tx per account: { hash, address, timeoutHeight } (timeoutHeight
-// a decimal string). Kept in localStorage so a reload does not unblock a retry.
+// The unresolved tx per account, keyed by address: { [address]: { hash,
+// address, timeoutHeight } } (timeoutHeight a decimal string). Kept in
+// localStorage so a reload does not unblock a retry. One record per account:
+// another Keplr account sending in the same browser must not erase this
+// account's "do not resend" guard.
 const PENDING_KEY = "earth.pendingTx";
-let pendingMem = null;
+let pendingMem = {};
 
-function readPending() {
+const isRecord = (p) =>
+  p && typeof p === "object" && typeof p.hash === "string" && /^[0-9A-F]{64}$/.test(p.hash) &&
+  typeof p.address === "string" && typeof p.timeoutHeight === "string" && /^\d{1,20}$/.test(p.timeoutHeight);
+
+function readAllPending() {
   try {
     const raw = globalThis.localStorage?.getItem(PENDING_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const v = JSON.parse(raw);
+      const out = {};
+      // Pre-audit-4 format: a single record for whichever account sent last.
+      if (isRecord(v)) out[v.address] = v;
+      else if (v && typeof v === "object") for (const [a, p] of Object.entries(v)) if (isRecord(p) && p.address === a) out[a] = p;
+      return { ...pendingMem, ...out };
+    }
   } catch {
     /* storage unavailable or junk: fall back to memory */
   }
-  return pendingMem;
+  return { ...pendingMem };
 }
 
-function writePending(p) {
-  pendingMem = p;
+function readPending(address) {
+  return (address && readAllPending()[address]) || null;
+}
+
+function writePending(address, p) {
+  const all = readAllPending();
+  if (p) all[address] = p;
+  else delete all[address];
+  pendingMem = all;
   try {
-    if (p) globalThis.localStorage?.setItem(PENDING_KEY, JSON.stringify(p));
+    if (Object.keys(all).length) globalThis.localStorage?.setItem(PENDING_KEY, JSON.stringify(all));
     else globalThis.localStorage?.removeItem(PENDING_KEY);
   } catch {
     /* memory copy still blocks within this page */
   }
 }
 
-/** The connected account's unresolved tx ({ hash, timeoutHeight }), or null. */
+/** The account's unresolved tx ({ hash, address, timeoutHeight }), or null. */
 export function pendingTx(address = wallet?.address) {
-  const p = readPending();
-  return p && address && p.address === address ? p : null;
+  return readPending(address);
 }
+
+// The LCD's answer is about the hash asked for, not some other tx.
+const sameHash = (tx, hash) => typeof tx?.txhash === "string" && tx.txhash.toUpperCase() === hash;
 
 const isNotFound = (err) => /LCD 404/.test(err?.message ?? "");
 
 async function latestHeight() {
   const data = await get("/cosmos/base/tendermint/v1beta1/blocks/latest");
   const h = data?.block?.header?.height ?? data?.sdk_block?.header?.height;
-  if (typeof h !== "string" || !/^\d+$/.test(h)) throw new Error("LCD returned no block height.");
-  return BigInt(h);
+  // A decimal string, positive, below 2^53: anything else (a number, junk, a
+  // value no chain reaches) is refused rather than trusted to expire a
+  // pending tx or to compute a timeout height.
+  if (typeof h !== "string" || !/^[1-9]\d{0,15}$/.test(h)) throw new Error("LCD returned no valid block height.");
+  const v = BigInt(h);
+  if (v > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("LCD returned no valid block height.");
+  return v;
 }
 
 /**
@@ -202,16 +230,18 @@ export async function resolvePendingTx(address = wallet?.address) {
   if (!p) return null;
   try {
     const { tx_response: tx } = await get(seg`/cosmos/tx/v1beta1/txs/${p.hash}`);
-    if (tx) {
-      writePending(null);
+    if (tx && sameHash(tx, p.hash)) {
+      writePending(address, null);
       return { status: tx.code ? "failed" : "confirmed", hash: p.hash, tx };
     }
+    // An answer about some other tx (or none at all) is not an answer.
+    return { status: "unknown", hash: p.hash };
   } catch (err) {
     if (!isNotFound(err)) return { status: "unknown", hash: p.hash };
   }
   try {
     if ((await latestHeight()) > BigInt(p.timeoutHeight)) {
-      writePending(null);
+      writePending(address, null);
       return { status: "expired", hash: p.hash };
     }
   } catch {
@@ -292,7 +322,8 @@ export async function broadcast(messages, opts = {}) {
   }
   // No timeout means it could land at any later height: never auto-expire.
   const pendingTimeout = signedTimeout > 0n ? signedTimeout : (1n << 63n) - 1n;
-  writePending({ hash, address: wallet.address, timeoutHeight: pendingTimeout.toString() });
+  const from = wallet.address;
+  writePending(from, { hash, address: from, timeoutHeight: pendingTimeout.toString() });
 
   let res;
   try {
@@ -310,7 +341,7 @@ export async function broadcast(messages, opts = {}) {
   // A 5xx (or a proxy's 52x) says nothing about whether the node took the tx.
   if (!res.ok && res.status >= 500) throw new TxStatusUnknownError(hash);
   if (!res.ok) {
-    writePending(null);
+    writePending(from, null);
     throw new Error(`Broadcast failed: ${await res.text()}`);
   }
 
@@ -323,10 +354,10 @@ export async function broadcast(messages, opts = {}) {
   // A non-zero code here is a CheckTx rejection — the tx never entered a
   // block. Code 19 (already in the mempool cache) is the exception: it is in.
   if (txResponse?.code && txResponse.code !== 19) {
-    writePending(null);
+    writePending(from, null);
     throw new Error(`Transaction rejected (code ${txResponse.code}): ${txResponse.raw_log}`);
   }
-  return waitForTx(hash);
+  return waitForTx(hash, { address: from });
 }
 
 /**
@@ -335,7 +366,8 @@ export async function broadcast(messages, opts = {}) {
  * be read back separately. A transient read error is retried, never reported
  * as a failure; running out of attempts is "status unknown", not "failed".
  */
-export async function waitForTx(hash, { attempts = 30, intervalMs = 1000 } = {}) {
+export async function waitForTx(hash, { attempts = 30, intervalMs = 1000, address = wallet?.address } = {}) {
+  hash = String(hash).toUpperCase();
   for (let i = 0; i < attempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
     let tx;
@@ -346,9 +378,10 @@ export async function waitForTx(hash, { attempts = 30, intervalMs = 1000 } = {})
       // 530) says nothing about the tx: keep polling.
       continue;
     }
-    if (!tx) continue;
-    const p = readPending();
-    if (p?.hash === hash) writePending(null);
+    // An answer about another tx (a confused or hostile LCD) says nothing
+    // about this one: keep polling, never clear the pending hash on it.
+    if (!tx || !sameHash(tx, hash)) continue;
+    for (const [a, p] of Object.entries(readAllPending())) if (p.hash === hash) writePending(a, null);
     if (tx.code) {
       throw new Error(`Transaction failed (code ${tx.code}): ${tx.raw_log}`);
     }

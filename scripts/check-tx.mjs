@@ -19,7 +19,7 @@ console.error = () => {};
 
 const kp = await Secp256k1.makeKeypair(new Uint8Array(32).fill(7));
 const pub = Secp256k1.compressPubkey(kp.pubkey);
-const address = "earth1xxxx";
+let address = "earth1xxxx";
 globalThis.window = {
   keplr: {
     experimentalSuggestChain: async () => {},
@@ -34,12 +34,14 @@ globalThis.window = {
 
 // Scenario knobs, reset per case.
 let height = 100;
+let heightRaw = null; // overrides the LCD's height string when set
 let posted = [];
 let post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0, txhash: "IGNORED" } }) });
 let lookup = () => ({ ok: false, status: 404, text: async () => "tx not found" });
 const res404 = { ok: false, status: 404, text: async () => "tx not found" };
 const res530 = { ok: false, status: 530, text: async () => "cf 530" };
-const found = (code = 0) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: "X", raw_log: "boom" } }) });
+// The LCD answers about the hash asked for (txhash echoed), unless a case says otherwise.
+const found = (code = 0, txhash) => (q) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: txhash ?? q, raw_log: "boom" } }) });
 
 globalThis.fetch = async (url, opts) => {
   url = String(url);
@@ -48,7 +50,7 @@ globalThis.fetch = async (url, opts) => {
     return post();
   }
   if (url.includes("/auth/")) return { ok: true, json: async () => ({ account: { account_number: "1", sequence: "0" } }) };
-  if (url.includes("/blocks/latest")) return { ok: true, json: async () => ({ block: { header: { height: String(height) } } }) };
+  if (url.includes("/blocks/latest")) return { ok: true, json: async () => ({ block: { header: { height: heightRaw ?? String(height) } } }) };
   if (url.includes("/cosmos/tx/v1beta1/txs/")) return lookup(url.split("/").pop());
   return res530;
 };
@@ -77,11 +79,11 @@ const outcome = async (p) => {
 {
   let polls = 0;
   posted = [];
-  lookup = () => {
+  lookup = (q) => {
     polls++;
     if (polls === 1) throw new TypeError("Failed to fetch");
     if (polls === 2) return res530;
-    return found(0);
+    return found(0)(q);
   };
   const r = await outcome(send());
   check("transient poll errors are retried, not reported as failure", r.ok && posted.length === 1 && polls === 3, r.err?.message);
@@ -112,7 +114,7 @@ const outcome = async (p) => {
   check("resolvePendingTx: pending", (await tx.resolvePendingTx())?.status === "pending");
 
   // 4. The hash lands: unblocked.
-  lookup = (q) => (q === h ? found(0) : res404);
+  lookup = (q) => (q === h ? found(0)(q) : res404);
   check("resolvePendingTx: confirmed, then cleared", (await tx.resolvePendingTx())?.status === "confirmed" && tx.pendingTx() === null);
 }
 
@@ -144,10 +146,52 @@ const outcome = async (p) => {
   const r = await outcome(send());
   check("a CheckTx rejection is a plain error", r.err && !(r.err instanceof tx.TxStatusUnknownError) && tx.pendingTx() === null, r.err?.message);
   post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0 } }) });
-  lookup = () => found(11);
+  lookup = found(11);
   const r2 = await outcome(send());
   check("a deliver failure is a plain error and clears the hash",
     /failed \(code 11\)/.test(r2.err?.message ?? "") && !(r2.err instanceof tx.TxStatusUnknownError) && tx.pendingTx() === null, r2.err?.message);
+}
+
+// 7. Audit 4 (poc-pending-overwrite): one record per account. Another Keplr
+// account sending in the same browser must not erase A's unresolved hash.
+{
+  const A = address;
+  const B = "earth1yyyy";
+  posted = [];
+  post = () => res530;
+  lookup = () => res404;
+  height = 2000;
+  const r = await outcome(send());
+  const hA = posted[0] && hashOf(posted[0]);
+  check("A: status unknown, pending", r.err instanceof tx.TxStatusUnknownError && tx.pendingTx(A)?.hash === hA);
+  address = B;
+  await tx.connectKeplr();
+  post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0 } }) });
+  lookup = (q) => (q === hA ? res404 : found(0)(q));
+  const rb = await outcome(send());
+  check("B sends while A is unresolved", rb.ok && posted.length === 2 && tx.pendingTx(B) === null, rb.err?.message);
+  check("A's pending hash survives B's send", tx.pendingTx(A)?.hash === hA);
+  address = A;
+  await tx.connectKeplr();
+  const ra = await outcome(send());
+  check("A's resend is still refused", ra.err instanceof tx.TxStatusUnknownError && ra.err.hash === hA && posted.length === 2, ra.err?.message);
+
+  // 8. A tx_response about another hash neither confirms nor clears A's.
+  lookup = (q) => found(0, "AB".repeat(32))(q);
+  check("resolvePendingTx: a mismatched txhash is unknown", (await tx.resolvePendingTx(A))?.status === "unknown" && tx.pendingTx(A)?.hash === hA);
+  const w = await outcome(tx.waitForTx(hA, { attempts: 3, address: A }));
+  check("waitForTx ignores an answer about another hash", w.err instanceof tx.TxStatusUnknownError && tx.pendingTx(A)?.hash === hA, w.err?.message);
+
+  // 9. latestHeight guard: junk or absurd heights never expire a pending tx.
+  lookup = () => res404;
+  for (const junk of ["99999999999999999999", "1e9", "-5", "0", ""]) {
+    heightRaw = junk;
+    const s = (await tx.resolvePendingTx(A))?.status;
+    check(`height ${JSON.stringify(junk)} does not expire the pending tx`, s === "unknown" && tx.pendingTx(A)?.hash === hA, s);
+  }
+  heightRaw = null;
+  height = 3000;
+  check("a real height past the timeout expires it", (await tx.resolvePendingTx(A))?.status === "expired" && tx.pendingTx(A) === null);
 }
 
 process.exit(bad ? 1 : 0);
