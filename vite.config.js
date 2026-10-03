@@ -7,11 +7,6 @@ export default defineConfig({
     port: 3000,
     open: true,
     proxy: {
-      '/api': {
-        target: 'https://api.erth.network',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
       // Earth chain LCD. Points at a local `ignite chain serve` by default;
       // override with EARTH_LCD to develop against a remote node.
       '/lcd': {
