@@ -1,4 +1,4 @@
-import { getOr, seg } from "./rest";
+import { getOr, seg, text as str } from "./rest";
 import { UERTH } from "./config";
 
 /**
@@ -27,16 +27,16 @@ const toTally = (t) => ({
 function toProposal(p) {
   return {
     id: Number(p.id ?? 0),
-    title: p.title || "(untitled)",
-    summary: p.summary ?? "",
-    status: p.status ?? "",
+    title: str(p.title) || "(untitled)",
+    summary: str(p.summary),
+    status: str(p.status),
     expedited: Boolean(p.expedited),
-    proposer: p.proposer ?? "",
-    messages: (p.messages ?? []).map((m) => (m["@type"] ?? "").split(".").pop()),
-    submitTime: p.submit_time ?? "",
-    depositEndTime: p.deposit_end_time ?? "",
-    votingStartTime: p.voting_start_time ?? "",
-    votingEndTime: p.voting_end_time ?? "",
+    proposer: str(p.proposer),
+    messages: (Array.isArray(p.messages) ? p.messages : []).map((m) => str(m?.["@type"]).split(".").pop()),
+    submitTime: str(p.submit_time),
+    depositEndTime: str(p.deposit_end_time),
+    votingStartTime: str(p.voting_start_time),
+    votingEndTime: str(p.voting_end_time),
     totalDeposit: (p.total_deposit ?? []).find((c) => c.denom === UERTH)?.amount ?? "0",
     finalTally: toTally(p.final_tally_result),
   };

@@ -36,6 +36,16 @@ function segment(value) {
 }
 
 /**
+ * An LCD field that will be rendered as text: the string itself, a number as
+ * its digits, and "" for anything else. LCD JSON is not trusted to be the
+ * shape it should be, and an object handed to React as a child crashes the
+ * render.
+ */
+export function text(v) {
+  return typeof v === "string" ? v : typeof v === "number" || typeof v === "bigint" ? String(v) : "";
+}
+
+/**
  * Minimal REST client for the earth LCD (cosmos gRPC-gateway).
  *
  * All chain reads go through here. `path` is relative to EARTH_LCD_URL, e.g.

@@ -1,7 +1,7 @@
 import { fromBase64, fromBech32, toBech32 } from "@cosmjs/encoding";
 import { canonicalAddress } from "./address";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { get, getOr, rpcOrNull, seg } from "./rest";
+import { get, getOr, rpcOrNull, seg, text as str } from "./rest";
 import { ADDRESS_PREFIX } from "./config";
 
 /**
@@ -194,22 +194,22 @@ export async function txByHash(hash) {
 }
 
 function toTx(res, body) {
-  const messages = body?.body?.messages ?? [];
+  const messages = Array.isArray(body?.body?.messages) ? body.body.messages : [];
   return {
-    hash: res.txhash,
+    hash: str(res.txhash),
     height: Number(res.height),
     // A non-zero code means the transaction was included but failed.
     success: Number(res.code) === 0,
     code: Number(res.code),
-    rawLog: res.raw_log ?? "",
+    rawLog: str(res.raw_log),
     gasUsed: Number(res.gas_used ?? 0),
     gasWanted: Number(res.gas_wanted ?? 0),
-    timestamp: res.timestamp,
-    memo: body?.body?.memo ?? "",
+    timestamp: str(res.timestamp),
+    memo: str(body?.body?.memo),
     fee: body?.auth_info?.fee?.amount ?? [],
     messages,
     // "/earth.dex.v1.MsgSwap" -> "MsgSwap"
-    types: messages.map((m) => (m["@type"] ?? "").split(".").pop()).filter(Boolean),
+    types: messages.map((m) => str(m?.["@type"]).split(".").pop()).filter(Boolean),
     events: res.events ?? [],
   };
 }

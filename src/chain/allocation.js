@@ -1,5 +1,5 @@
 import { fromBech32, toBech32 } from "@cosmjs/encoding";
-import { get, getOr, seg } from "./rest";
+import { get, getOr, seg, text as str } from "./rest";
 import { valoperOf } from "./staking";
 import { ADDRESS_PREFIX } from "./config";
 
@@ -204,12 +204,12 @@ export function msgClaimAllocation(creator, stream, optionId) {
 function toOption(o) {
   return {
     id: Number(o.id),
-    stream: o.stream ?? "",
-    description: o.description ?? "",
-    kind: o.kind ?? "",
-    recipient: o.recipient ?? "",
-    handler: o.handler ?? "",
-    claimer: o.claimer ?? "",
+    stream: str(o.stream),
+    description: str(o.description),
+    kind: str(o.kind),
+    recipient: str(o.recipient),
+    handler: str(o.handler),
+    claimer: str(o.claimer),
     removed: Boolean(o.removed),
     amountAllocated: o.amount_allocated ?? "0",
     accumulated: o.accumulated ?? "0",

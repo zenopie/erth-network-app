@@ -6,8 +6,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | Finding | Status | Commit |
 | --- | --- | --- |
 | M1 Handles page / Shield preview show unverified backend addresses | done | 89c623d |
-| L1 stale review after recipient change | done | (this) |
-| L2 React error boundary | todo | |
+| L1 stale review after recipient change | done | 38e4831 |
+| L2 React error boundary | done | (this) |
 | L3 exact decimal amounts, exact Max | todo | |
 | L4 @handle out of URL and Referer | todo | |
 | L6 rest.js redirect: "error" | todo | |
@@ -22,3 +22,10 @@ Gate: `npm run build` and every `check:*` pass after each step.
 
 ## L1
 - Shield: the review stores the recipient it was asked for (`for`); it is used and shown only while the field still holds that recipient. A resolution that returns after the field changed is dropped (`recipientRef`), its failure text too. A directory read that throws during Review is now a shown reason, not an unhandled rejection.
+
+## L2
+- `components/ErrorBoundary.jsx`, wrapped around every page inside `Layout`, keyed by path (navigating away clears it; "Try again" re-renders). The sidebar stays up.
+- `rest.text()`: LCD fields rendered as text are coerced (string, number digits, else ""). Used in `gov.js` `toProposal`, `allocation.js` `toOption`, `explorer.js` `toTx` (messages must be an array).
+
+## Check status note
+- `check:dex` reads the live LCD (`lcd.erth.network`), which answers 530 (no chain behind it since the v0.9.3 lease closed). Its 4 failures ("at least one pool", fee, unbonding, apr) are the empty chain read, not this code; it fails identically on 4fa9191.

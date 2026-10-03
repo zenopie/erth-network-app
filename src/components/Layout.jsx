@@ -1,5 +1,7 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import ErrorBoundary from "./ErrorBoundary";
 import CurrencyToggle from "./CurrencyToggle";
 import { useWallet } from "../contexts/WalletContext";
 import { useLoading } from "../contexts/LoadingContext";
@@ -21,6 +23,7 @@ const Layout = ({ children }) => {
     useWallet();
   const { isLoading } = useLoading();
   const isMobile = useIsMobile();
+  const { pathname } = useLocation();
 
   // No registry to wait for: earth state is public, so pages render immediately.
   return (
@@ -41,7 +44,9 @@ const Layout = ({ children }) => {
             <OrbitLoader />
           </div>
         )}
-        <div className="home-content">{children}</div>
+        <div className="home-content">
+          <ErrorBoundary key={pathname}>{children}</ErrorBoundary>
+        </div>
       </div>
     </div>
   );
