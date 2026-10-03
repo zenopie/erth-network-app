@@ -32,20 +32,23 @@ const CaretakerFund = () => {
   const [voters, setVoters] = useState(null);
   const [humans, setHumans] = useState(null);
   const [leaseDays, setLeaseDays] = useState(null);
+  const [switchDays, setSwitchDays] = useState(null);
 
   const load = useCallback(async () => {
     showLoading();
     try {
-      const [v, c, h, p] = await Promise.all([
+      const [v, c, h, p, b] = await Promise.all([
         allocation.streamView(allocation.STREAM_CARETAKER),
         personhood.caretakerVoterCount(),
         personhood.registrationCount(),
         personhood.params(),
+        personhood.leaseBounds(),
       ]);
       setView(v);
       setVoters(c);
       setHumans(h);
       setLeaseDays(p ? Math.round(p.caretakerVoteSeconds / 86400) : null);
+      setSwitchDays(personhood.switchWaitDays(b, "caretaker"));
     } finally {
       hideLoading();
     }
@@ -87,7 +90,9 @@ const CaretakerFund = () => {
       <MobileCta title="Cast your caretaker split in the Earth Wallet app">
         One registered human, one vote, cast anonymously with a proof made on your phone. Nobody
         can tell which split is yours. A split counts for {leaseDays ?? "R"} days; renew it in the
-        app before then (it reminds you; nothing renews on its own).
+        app before then (it reminds you; nothing renews on its own). Once it has lapsed, casting
+        again is a new split: a passport that replaced another (a switch) waits until anything its
+        predecessor cast could have lapsed{switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 
       <div className={page.chart}>

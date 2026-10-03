@@ -370,7 +370,13 @@ const Exclusions = ({ inputs }) => {
               {inputs.maxPredecessor !== null
                 ? <>An identity that replaced another (a switch or re-entry) after {new Date(inputs.maxPredecessor * 1000).toLocaleString()} cannot vote on it.</>
                 : inputs.maxActivation === null && "Every live registration."}
-              {inputs.round > 0 && <span className={styles.muted}> · round {inputs.round + 1}</span>}
+              {inputs.round > 0 && (
+                <span className={styles.muted}>
+                  {" "}
+                  · round {inputs.round + 1}: a new ballot (its own vote scope) after the expedited
+                  round, so votes cast before do not carry over; vote again in the app.
+                </span>
+              )}
             </div>
           </div>
         </>

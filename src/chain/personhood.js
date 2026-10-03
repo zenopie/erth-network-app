@@ -102,3 +102,49 @@ export async function params() {
     handleRenewalSeconds: Number(p.handle_renewal_seconds ?? 0) || 30 * 86400,
   };
 }
+
+const INT64_MAX = (1n << 63n) - 1n;
+
+/** An int64 JSON field as a Number of seconds, or null (absent, malformed, negative or past 10^12). */
+function seconds(v) {
+  if (v === undefined || v === null || v === "") return 0;
+  if (!/^\d{1,19}$/.test(String(v))) return null;
+  const x = BigInt(String(v));
+  if (x > INT64_MAX || x > 1_000_000_000_000n) return null;
+  return Number(x);
+}
+
+/**
+ * x/personhood Query/LeaseBounds (chain 203d3b2): the lease lengths the
+ * predecessor bounds use as the chain enforces them now (the longest handle
+ * lease ever in force; the caretaker lease including a longer one held after
+ * a cut), and both bounds at block_time. What the app explains about a
+ * switched identity's wait comes from here, never from Params, which may be
+ * shorter. null when the node cannot say or answers inconsistently.
+ */
+export async function leaseBounds() {
+  const data = await getOr("/earth/personhood/v1/lease_bounds", null);
+  if (!data) return null;
+  const f = {
+    blockTime: seconds(data.block_time),
+    marginSeconds: seconds(data.activation_margin_seconds),
+    handleLeaseSeconds: seconds(data.handle_lease_seconds),
+    caretakerLeaseSeconds: seconds(data.caretaker_lease_seconds),
+    caretakerLeaseHoldUntil: seconds(data.caretaker_lease_hold_until),
+  };
+  if (Object.values(f).some((v) => v === null) || !f.blockTime || !f.handleLeaseSeconds || !f.caretakerLeaseSeconds) return null;
+  // The bounds are block_time - lease - margin (signed: an early chain's is negative).
+  const bound = (v) => (/^-?\d{1,19}$/.test(String(v ?? "")) ? Number(v) : NaN);
+  const hb = bound(data.handle_claim_bound);
+  const cb = bound(data.caretaker_cast_bound);
+  if (hb !== f.blockTime - f.handleLeaseSeconds - f.marginSeconds || cb !== f.blockTime - f.caretakerLeaseSeconds - f.marginSeconds) return null;
+  return { ...f, handleClaimBound: hb, caretakerCastBound: cb };
+}
+
+/**
+ * The longest a passport that replaced another (a switch, or a re-entry)
+ * waits before it may claim a handle or cast a new caretaker split, in whole
+ * days rounded up: the lease the chain bounds that scope by, plus its margin.
+ */
+export const switchWaitDays = (b, scope) =>
+  b ? Math.ceil(((scope === "handle" ? b.handleLeaseSeconds : b.caretakerLeaseSeconds) + b.marginSeconds) / 86400) : null;

@@ -4,6 +4,7 @@ import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import { handleDirectory, statusAt, truncateAddress, LIVE, RENEWAL } from "../chain/handles";
 import { useLoading } from "../contexts/LoadingContext";
+import { leaseBounds, switchWaitDays } from "../chain/personhood";
 import MobileCta from "../components/MobileCta";
 
 const date = (s) => (s ? new Date(s * 1000).toLocaleString() : "—");
@@ -24,6 +25,17 @@ const Handles = () => {
   const [error, setError] = useState("");
   const [term, setTerm] = useState("");
   const [copied, setCopied] = useState("");
+  const [switchDays, setSwitchDays] = useState(null);
+
+  useEffect(() => {
+    let live = true;
+    leaseBounds()
+      .then((b) => live && setSwitchDays(switchWaitDays(b, "handle")))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     hideLoading();
@@ -76,7 +88,10 @@ const Handles = () => {
       <MobileCta title="Claim your handle in the Earth Wallet app">
         A handle lets anyone pay you by name: their wallet looks it up here and sends to your
         shielded address. Who holds a handle is not public. It lasts a year from each renewal and
-        never renews on its own; the app reminds you before it ends.
+        never renews on its own; the app reminds you before it ends. Renew it while it is live: in
+        its renewal period it cannot be moved to another identity, and renewing it then counts as a
+        new claim, which a passport that replaced another (a switch) cannot make until its
+        predecessor&apos;s handle could have lapsed{switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 
       <div className={styles.card}>
