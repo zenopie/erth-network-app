@@ -49,6 +49,7 @@ const PrivacyPolicy = () => {
         <ul>
           <li><strong>Blockchain:</strong> The app communicates with the Earth Network blockchain for transaction processing</li>
           <li><strong>Public Ledger:</strong> Earth is a transparent chain. Your address, balances, transactions and votes are readable by anyone — this is not private data, and an address that has been linked to you links everything it has ever done</li>
+          <li><strong>Handles:</strong> To pay a handle, or check one named as your referrer, the app downloads the whole handle directory and searches it on your phone; no server is told which handle you pay or who referred you</li>
           <li><strong>Private notes:</strong> To find your private (shielded) notes, the app downloads the chain's encrypted notes from our indexer and tries to decrypt them on your device. The indexer serves everyone the same data and is not told which notes are yours</li>
           <li><strong>Free gas for registration:</strong> A first registration has no ERTH to pay its fee with, so the app may ask our server for a small gas grant. The request carries the registration transaction about to be broadcast (public on the chain once it lands) and, when the server asks for one, a proof of work computed on your phone. The server checks the registration the way the chain would and sends the gas to a private note; no device identifier or attestation is sent</li>
           <li><strong>No Personal Data:</strong> No personal information is transmitted in these communications. Like any server, ours see the IP address a request comes from</li>
@@ -63,6 +64,7 @@ const PrivacyPolicy = () => {
           <li><strong>Chain reads:</strong> The page reads public chain data from our LCD and RPC nodes (lcd.erth.network, rpc.erth.network), which see your IP address and the addresses, transactions and blocks you look up, like any web server</li>
           <li><strong>Stored in your browser:</strong> The connected address, your display-currency choice and the hash of a transaction whose outcome is not yet known (so it is not sent twice) are kept in your browser's local storage. Clearing site data removes them</li>
           <li><strong>Camera:</strong> Scanning a shielded address QR code uses your camera only while the scanner is open; frames are read in the browser and never uploaded</li>
+          <li><strong>Handles:</strong> To pay or look up a handle, the page downloads the whole handle directory (from our indexer, api.erth.network, and from the LCD) and searches it in your browser; it never asks about the one handle you look up or pay. The shield transaction's amount and your account are public; who holds the handle is not</li>
           <li><strong>Buying ANML for a shielded address:</strong> The ERTH spent and the ANML bought are public on the chain; who receives the note is not</li>
         </ul>
       </section>
