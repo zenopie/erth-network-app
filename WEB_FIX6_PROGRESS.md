@@ -16,8 +16,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-10 extra decimals said, not dropped | done | 67c5e2f |
 | L-11 refuse to sign on account read failure | done | 2af6b94 |
 | L-12 build image, nginx pin, vite/postcss | done | d3254ad |
-| O-1 tunnel host docs, http->https | done (docs) | (this) |
-| I-2 fresh npm ci + build ships .well-known | verified; guard in d3254ad | (this) |
+| O-1 tunnel host docs, http->https | done (docs) | b4a0c9d |
+| I-2 fresh npm ci + build ships .well-known | verified; guard in d3254ad | b4a0c9d |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -82,3 +82,9 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - The Dockerfile now fails the image if either file is missing (`RUN test -s ...`), and `.dockerignore` keeps a local `build/` out of the context.
 - npm 11 (Node 24) reports esbuild's postinstall as not covered by allowScripts; it only verifies the binary, the platform package is used either way, and the build succeeds.
 - Local `node_modules` in this worktree was a symlink into `app-privacy`; it is now a real `npm ci` of this lockfile (gitignored, local only).
+
+## Final gate (after b4a0c9d)
+- `npm run build`: ok.
+- check:tx 34/0, check:handles 58/0, check:privacy 182/0, check:forms 33/0, check:explorer 13/0, check:staking 8/0.
+- check:dex 10/4: the 4 are the live LCD read (`lcd.erth.network` 530, no chain), unchanged from round 5.
+- Not in scope: L-5, I-1, I-3, X-1.
