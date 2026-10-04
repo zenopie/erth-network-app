@@ -7,11 +7,13 @@ npm-debug.log*
 *.env
 .git
 .gitignore
-README.md
+.github
 .DS_Store
 .vscode
-coverage
-.nyc_output
 # Local build output: the image builds its own from a fresh npm ci.
 build
 build-check
+# Not part of the image: docs, the deploy SDL and scripts, the checks.
+*.md
+deploy
+scripts
