@@ -370,7 +370,7 @@ export async function broadcast(messages, opts = {}) {
 const KNOWN_ERRORS = [
   ["dex", 1120, "That amount is past the pool's cap (2^120 units). Use a smaller amount."],
   ["dex", 1101, "This withdrawal's note-paid leg is worth more than one withdrawal can pay as notes " +
-    "(16 notes of 2^64 - 1 units). Withdraw in smaller parts.", /pays as notes/],
+    "(32 notes of 2^63 - 1 units). Withdraw in smaller parts.", /pays as notes/],
   ["bank", 5, "Transfers of this token are switched off on the chain, so it cannot be shielded (or sent) now.",
     /send transactions are disabled|is not allowed to be sent|send.*disabled/i],
 ];

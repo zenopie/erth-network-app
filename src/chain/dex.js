@@ -430,8 +430,8 @@ export const MAX_WITHDRAWAL_NOTE_LEG = ((1n << 63n) - 1n) * 32n;
  * Why x/dex would refuse to start a withdrawal of `shares` whose token leg
  * is paid as notes (the ANML pool), or null: at the pool as it stands, a
  * leg of floor(shares * reserve / supply) above MAX_WITHDRAWAL_NOTE_LEG is
- * refused at start (chain 203d3b2, checkWithdrawalNoteLegs). A leg past a
- * note's u64 is otherwise paid as several notes at maturity.
+ * refused at start (x/dex checkWithdrawalNoteLegs, 8ed1278). A leg above
+ * one note's 2^63 - 1 is otherwise paid as several notes at maturity.
  */
 export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
   let s, r, t;
@@ -442,7 +442,7 @@ export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
   }
   if (t <= 0n || s < 0n || r < 0n) return null;
   return (s * r) / t > MAX_WITHDRAWAL_NOTE_LEG
-    ? "This withdrawal's ANML leg is more than one withdrawal can pay as notes (16 notes of 2^64 - 1 units). Withdraw in smaller parts."
+    ? "This withdrawal's ANML leg is more than one withdrawal can pay as notes (32 notes of 2^63 - 1 units). Withdraw in smaller parts."
     : null;
 }
 
@@ -451,9 +451,9 @@ export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
  * the ANML leg as a note to the shielded `address`. The payout is priced
  * when the escrow matures, so the note carries the value-blind (v2)
  * ciphertext; the owner's wallet completes it from the amount the chain
- * publishes then. A leg past a note's u64 is paid as several notes, all to
- * this one pc and ciphertext at their own positions, each with its own
- * public amount (chain 203d3b2, MintNoteSplit). Note: a second withdrawal from the same pool in the same
+ * publishes then. A leg above one note's 2^63 - 1 is paid as several notes
+ * (up to 128 per withdrawal), all to this one pc and ciphertext at their own
+ * positions, each with its own public amount (x/dex MintNoteSplit). Note: a second withdrawal from the same pool in the same
  * block must name the same pc, so it is refused — submit them apart.
  */
 export function removeLiquidityToShielded(creator, poolId, shares, address, { memo = "" } = {}) {
