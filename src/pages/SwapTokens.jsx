@@ -4,15 +4,14 @@ import { balances } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
 import {
-  TOKENS,
   clampSlippage,
   amountOk,
   formatUnits,
   isKnownDenom,
+  logoOf,
   symbolOf,
   toMacro,
   toMicro,
-  tokenInfo,
   typedFloat,
 } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
@@ -291,7 +290,7 @@ const SwapTokens = () => {
 
           <div className={styles.inputWrapper}>
             <img
-              src={tokenInfo(fromDenom).logo ?? TOKENS[UERTH].logo}
+              src={logoOf(fromDenom)}
               alt={`${symbolOf(fromDenom)} logo`}
               className={styles.inputLogo}
             />
@@ -333,7 +332,7 @@ const SwapTokens = () => {
 
           <div className={styles.inputWrapper}>
             <img
-              src={tokenInfo(toDenom).logo ?? TOKENS[UERTH].logo}
+              src={logoOf(toDenom)}
               alt={`${symbolOf(toDenom)} logo`}
               className={styles.inputLogo}
             />

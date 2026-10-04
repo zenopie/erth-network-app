@@ -5,7 +5,7 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { amountOk, formatUnits, isKnownDenom, ratio, sumBig, symbolOf, toMacro, toMicro, typedFloat } from "../chain/tokens";
+import { amountOk, formatUnits, isKnownDenom, logoOf, ratio, sumBig, symbolOf, toMacro, toMicro, typedFloat } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -425,7 +425,7 @@ const Markets = () => {
             <div className={styles.poolRowTop}>
               <div className={styles.poolRowPair}>
                 <img
-                  src={`/images/coin/${row.symbol}.png`}
+                  src={logoOf(row.pool.tokenDenom)}
                   alt={row.symbol}
                   className={styles.poolRowLogo}
                 />
@@ -654,7 +654,7 @@ const Markets = () => {
                           </div>
                           <div className={styles.lpInputWrapper}>
                             <img
-                              src={`/images/coin/${row.symbol}.png`}
+                              src={logoOf(row.pool.tokenDenom)}
                               alt={row.symbol}
                               className={styles.lpInputLogo}
                             />

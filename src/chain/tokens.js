@@ -10,9 +10,16 @@ import { UANML, UERTH } from "./config";
 export const TOKENS = {
   [UERTH]: { symbol: "ERTH", decimals: 6, logo: "/images/coin/ERTH.png" },
   [UANML]: { symbol: "ANML", decimals: 6, logo: "/images/coin/ANML.png" },
-  uusdc: { symbol: "USDC", decimals: 6, logo: "/images/coin/USDC.png" },
-  uatom: { symbol: "ATOM", decimals: 6, logo: "/images/coin/ATOM.png" },
+  // No USDC or ATOM artwork ships with the app: they show GENERIC_LOGO.
+  uusdc: { symbol: "USDC", decimals: 6, logo: null },
+  uatom: { symbol: "ATOM", decimals: 6, logo: null },
 };
+
+/** A neutral coin, for any denom without a logo of its own. */
+export const GENERIC_LOGO = "/images/coin/generic.svg";
+
+/** The logo to show for `denom`: its own, else GENERIC_LOGO (never another token's). */
+export const logoOf = (denom) => tokenInfo(denom).logo ?? GENERIC_LOGO;
 
 /**
  * Metadata for any denom.

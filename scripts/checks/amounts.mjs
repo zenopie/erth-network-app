@@ -87,4 +87,15 @@ const tk = await import("../../src/chain/tokens.js");
   check("toBigInt guards LCD junk", tk.toBigInt("12.5") === 0n && tk.toBigInt("1e9") === 0n && tk.toBigInt(null) === 0n);
 }
 
+// ---- logos: every one shown is a file the app ships ---------------------------
+{
+  const { existsSync } = await import("node:fs");
+  const shipped = (logo) => existsSync(`public${logo}`);
+  const denoms = [...Object.keys(tk.TOKENS), "dexlp/3", "ibc/ABC"];
+  const missing = denoms.filter((d) => !shipped(tk.logoOf(d)));
+  check("every token's logo is a shipped file", missing.length === 0, missing.join(", "));
+  check("a token without artwork gets the neutral coin, not ERTH's",
+    tk.logoOf("uusdc") === tk.GENERIC_LOGO && tk.logoOf("ibc/ABC") === tk.GENERIC_LOGO);
+}
+
 done();
