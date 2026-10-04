@@ -160,7 +160,11 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
     (async () => {
       const [stake, human, inputs, snap, mine] = await Promise.all([
         isVoting ? gov.tally(p.id) : Promise.resolve(p.finalTally),
-        isDeposit ? Promise.resolve(null) : assembly.proposalTally(p.id),
+        // The chain keeps the human tally only while the round is open: the
+        // round's end removes its ballot, after which the query answers a
+        // zero tally (approved=false) whatever the outcome. No result is
+        // kept in state, so a closed round shows no tally at all.
+        isVoting ? assembly.proposalTally(p.id) : Promise.resolve(null),
         isVoting ? assembly.ballotInputs({ proposalId: p.id }) : Promise.resolve(null),
         isDeposit ? Promise.resolve(null) : shieldedStaking.snapshot(p.id),
         address && !isDeposit ? gov.vote(p.id, address) : Promise.resolve(null),
@@ -210,7 +214,11 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
           {!isDeposit && (
             <>
               <StakeTally tally={detail?.stake} final={!isVoting} />
-              <HumanTally tally={detail?.human} expedited={p.expedited} />
+              {isVoting ? (
+                <HumanTally tally={detail?.human} expedited={p.expedited} />
+              ) : (
+                <ClosedHumanTally />
+              )}
               {isVoting && <Exclusions inputs={detail?.inputs} />}
               <Snapshot snap={detail?.snap} />
             </>
@@ -298,6 +306,18 @@ const StakeTally = ({ tally, final }) => {
   );
 };
 
+/** A closed round: the chain does not keep its human tally, so none is shown. */
+const ClosedHumanTally = () => (
+  <div className={forms.section}>
+    <h4 className={forms.sectionTitle}>Human chamber</h4>
+    <p className={forms.note}>
+      The chain keeps the human tally only while voting is open, so a finished proposal's human votes are not shown.
+      The proposal's status above is the outcome of both chambers.
+    </p>
+  </div>
+);
+
+/** The live human tally of a proposal in voting. */
 const HumanTally = ({ tally, expedited }) => {
   if (tally === undefined) return null;
   if (tally === null) {

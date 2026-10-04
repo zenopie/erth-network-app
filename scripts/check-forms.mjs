@@ -121,6 +121,13 @@ globalThis.fetch = async (url) => {
   check("L3: no page gates or fills an amount through a float", bad3.length === 0, bad3.join(","));
   const numInputs = pages.flatMap(([n, src]) => (src.match(/type="number"/g) ?? []).map(() => n));
   check("L3: the only number input left is the swap slippage", numInputs.join() === "SwapTokens", numInputs.join());
+
+  // Audit 6 L-2: the human tally is read only while the proposal is voting;
+  // a closed round's ballot is gone and the query answers a zero tally.
+  const govSrc = pages.find(([n]) => n === "Governance")[1];
+  const tallyCalls = govSrc.match(/[^\n]*assembly\.proposalTally\([^\n]*/g) ?? [];
+  check("L-2 (audit 6): proposalTally only under isVoting", tallyCalls.length === 1 && /isVoting \? assembly\.proposalTally/.test(tallyCalls[0]), tallyCalls.join(" | "));
+  check("L-2 (audit 6): a closed proposal renders no live human tally", /isVoting \?\s*\(\s*<HumanTally/.test(govSrc) && /<ClosedHumanTally/.test(govSrc));
 }
 
 process.exit(bad ? 1 : 0);
