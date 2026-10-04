@@ -508,7 +508,7 @@ export async function quoteBuyAnml(erthIn) {
   return exactHubToToken(p.erthReserve, p.tokenReserve, erthIn, fee).out;
 }
 
-// How long a buy-ANML quote may back a signature. Older, it is re-asked.
+// How long a quote (buy-ANML or swap) may back a signature. Older, it is re-asked.
 export const QUOTE_TTL_MS = 20_000;
 
 /**
@@ -529,6 +529,29 @@ export async function boundBuyAnmlQuote(micro, now = Date.now) {
  */
 export function buyAnmlFloor(quote, micro, slippage, now = Date.now()) {
   if (!quote || quote.micro !== String(micro) || typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
+  if (!(now - quote.at >= 0 && now - quote.at <= QUOTE_TTL_MS)) return "0";
+  return minimumReceived(quote.out.toString(), slippage);
+}
+
+/**
+ * A swap quote bound to what it was computed for: { micro, from, to, out, at }.
+ * Built only from quoteSwap's answer for exactly `micro` of `from` into `to`.
+ */
+export async function boundSwapQuote(micro, from, to, now = Date.now) {
+  const out = await quoteSwap(micro, from, to);
+  return { micro: String(micro), from, to, out, at: now() };
+}
+
+/**
+ * The min_amount_out a swap of `micro` `from` into `to` may sign for, from
+ * `quote`: "0" (nothing may be signed) unless the quote was computed for
+ * exactly this amount and pair, is positive, and is younger than
+ * QUOTE_TTL_MS. A page left open does not sign a floor priced at an old
+ * reserve (audit 6 L-3).
+ */
+export function swapFloor(quote, micro, from, to, slippage, now = Date.now()) {
+  if (!quote || quote.micro !== String(micro) || quote.from !== from || quote.to !== to) return "0";
+  if (typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
   if (!(now - quote.at >= 0 && now - quote.at <= QUOTE_TTL_MS)) return "0";
   return minimumReceived(quote.out.toString(), slippage);
 }

@@ -9,7 +9,6 @@ import {
   amountOk,
   formatUnits,
   isKnownDenom,
-  minimumReceived,
   symbolOf,
   toMacro,
   toMicro,
@@ -49,10 +48,12 @@ const SwapTokens = () => {
   const [fromDenom, setFromDenom] = useState(UERTH);
   const [toDenom, setToDenom] = useState("");
   const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
-  // The quote behind toAmount, in whole base units. The swap's floor is taken
-  // from this, not from the six-decimal display string.
-  const [quoteMicro, setQuoteMicro] = useState("0");
+  // { micro, from, to, out (BigInt), at } from dex.boundSwapQuote, or null.
+  // The swap's floor is taken from this (dex.swapFloor), never from the
+  // display string, and only while it is for this exact amount and pair and
+  // younger than QUOTE_TTL_MS; it is re-asked on an interval (audit 6 L-3).
+  const [quote, setQuote] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   // Bumped by every edit that invalidates a quote in flight. A quote that
   // comes back to a different number than it left with is dropped: quotes
   // are async, and a slow one for an old amount used to land after a newer
@@ -189,33 +190,50 @@ const SwapTokens = () => {
   const clearAmounts = () => {
     quoteSeq.current += 1;
     setFromAmount("");
-    setToAmount("");
-    setQuoteMicro("0");
+    setQuote(null);
   };
 
-  const handleFromAmountChange = async (val) => {
-    const seq = ++quoteSeq.current;
+  const handleFromAmountChange = (val) => {
+    quoteSeq.current += 1;
     setFromAmount(val);
-    setToAmount("");
-    setQuoteMicro("0");
-    if (!amountOk(val, fromDenom)) return;
-    const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
-    if (seq !== quoteSeq.current) return;
-    // An integer in base units (BigInt): the chain's simulation, or its own
-    // integer maths over the reserves.
-    const whole = outMicro > 0n ? outMicro.toString() : "0";
-    setQuoteMicro(whole);
-    setToAmount(whole !== "0" ? formatUnits(whole, toDenom) : "");
+    setQuote(null);
   };
 
-  const minOut = minimumReceived(quoteMicro, slippage);
+  const micro = amountOk(fromAmount, fromDenom) ? toMicro(fromAmount, fromDenom) : "0";
+
+  useEffect(() => {
+    const id = ++quoteSeq.current;
+    setQuote(null);
+    if (micro === "0" || !toDenom) return undefined;
+    const ask = () =>
+      dex
+        .boundSwapQuote(micro, fromDenom, toDenom)
+        .then((q) => id === quoteSeq.current && setQuote(q))
+        .catch(() => id === quoteSeq.current && setQuote(null));
+    ask();
+    // Re-ask before the quote ages out, and tick `now` so an expired quote
+    // disables Swap even when no answer comes back.
+    const t = setInterval(() => {
+      setNow(Date.now());
+      ask();
+    }, dex.QUOTE_TTL_MS / 2);
+    return () => clearInterval(t);
+  }, [micro, fromDenom, toDenom]);
+
+  const current = quote && quote.micro === micro && quote.from === fromDenom && quote.to === toDenom ? quote : null;
+  const toAmount = current && current.out > 0n ? formatUnits(current.out.toString(), toDenom) : "";
+  const minOut = dex.swapFloor(quote, micro, fromDenom, toDenom, slippage, Math.max(now, quote?.at ?? 0));
 
   const handleSwap = async () => {
-    if (!isConnected || !amountOk(fromAmount, fromDenom) || minOut === "0") return;
+    if (!isConnected || micro === "0") return;
+    // What was shown is what is signed: the amount, pair and floor read at
+    // the same render, the floor non-zero only for a fresh quote of them.
+    const signedMicro = micro;
+    const [signedFrom, signedTo] = [fromDenom, toDenom];
+    const signedMin = dex.swapFloor(quote, signedMicro, signedFrom, signedTo, slippage);
+    if (signedMin === "0") return;
     execute(async () => {
-      await broadcast([
-        dex.msgSwap(address, fromDenom, toMicro(fromAmount, fromDenom), toDenom, minOut),
-      ]);
+      await broadcast([dex.msgSwap(address, signedFrom, signedMicro, signedTo, signedMin)]);
       clearAmounts();
       fetchBalances();
     });

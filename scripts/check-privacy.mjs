@@ -308,6 +308,15 @@ const tk = await import("../src/chain/tokens.js");
   check("pre-sign note-leg text names 32 x (2^63 - 1)", /32 notes of 2\^63 - 1/.test(dx.withdrawalNoteLegProblem("1", (cap + 1n).toString(), "1") ?? ""));
   check("leg is floor(shares x reserve / supply)", dx.withdrawalNoteLegProblem("2", (cap * 2n + 1n).toString(), "4") === null &&
     dx.withdrawalNoteLegProblem("3", (cap * 2n).toString(), "4") !== null && dx.withdrawalNoteLegProblem("1", "1", "0") === null);
+
+  // Audit 6 L-3: a swap floor only from a fresh quote of this exact amount and pair.
+  const sq = { micro: "1000", from: "uerth", to: "ufoo", out: 500n, at: 1_000_000 };
+  check("L-3: fresh swap quote gives a floor", dx.swapFloor(sq, "1000", "uerth", "ufoo", 1, 1_000_000 + dx.QUOTE_TTL_MS) === "495");
+  check("L-3: an expired swap quote gives none", dx.swapFloor(sq, "1000", "uerth", "ufoo", 1, 1_000_001 + dx.QUOTE_TTL_MS) === "0" &&
+    dx.swapFloor(sq, "1000", "uerth", "ufoo", 1, 999_999) === "0");
+  check("L-3: another amount or pair gives none", dx.swapFloor(sq, "1001", "uerth", "ufoo", 1, 1_000_000) === "0" &&
+    dx.swapFloor(sq, "1000", "ufoo", "uerth", 1, 1_000_000) === "0" && dx.swapFloor(null, "1000", "uerth", "ufoo", 1) === "0" &&
+    dx.swapFloor({ ...sq, out: 0n }, "1000", "uerth", "ufoo", 1, 1_000_000) === "0");
 }
 
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
