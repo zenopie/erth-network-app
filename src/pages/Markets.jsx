@@ -19,6 +19,7 @@ import ShieldedAddressInput from "../components/ShieldedAddressInput";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
+import AmountNote from "../components/AmountNote";
 
 // Slippage tolerance for a liquidity deposit, in percent.
 //
@@ -576,6 +577,7 @@ const Markets = () => {
                                   className={styles.lpInput}
                                 />
                               </div>
+                              <AmountNote value={removeAmount} denom={row.pool.lpDenom} />
                             </div>
                           </div>
                           <button
@@ -664,6 +666,7 @@ const Markets = () => {
                                 onChange={(e) => handleTokenBChange(e.target.value, row)}
                                 className={styles.lpInput}
                               />
+                              <AmountNote value={tokenBAmount} denom={row.pool.tokenDenom} />
                               <span className={styles.lpInputUsd}>
                                 {tokenBAmount && row.price ? (
                                   <Amount value={typedFloat(tokenBAmount, row.pool.tokenDenom) * row.price} mode="price" />
@@ -697,6 +700,7 @@ const Markets = () => {
                                 onChange={(e) => handleErthChange(e.target.value, row)}
                                 className={styles.lpInput}
                               />
+                              <AmountNote value={erthAmount} denom={UERTH} />
                               <span className={styles.lpInputUsd}>
                                 {currency === "USD" && erthAmount && erthPrice
                                   ? formatUSD(typedFloat(erthAmount, UERTH) * erthPrice)
@@ -745,6 +749,7 @@ const Markets = () => {
                                 className={styles.lpInput}
                               />
                             </div>
+                            <AmountNote value={removeAmount} denom={row.pool.lpDenom} />
                           </div>
                         </div>
                         <button

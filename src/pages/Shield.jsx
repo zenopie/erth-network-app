@@ -15,6 +15,7 @@ import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
 import ShieldedAddressInput from "../components/ShieldedAddressInput";
 import { addressProblem, handleDirectory, looksLikeHandle, parseHandle, truncateAddress } from "../chain/handles";
+import AmountNote from "../components/AmountNote";
 
 // broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
 const FEE_HEADROOM = 10_000n;
@@ -244,6 +245,7 @@ const Shield = () => {
               onChange={(e) => setAmount(e.target.value)}
             />
           </div>
+          <AmountNote value={amount} denom={UERTH} />
 
           <label className={forms.label} htmlFor="shield-memo">
             Memo (optional, encrypted: only the recipient can read it) · {memoLen}/64 bytes

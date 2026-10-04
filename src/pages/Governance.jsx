@@ -16,6 +16,7 @@ import useTransaction from "../hooks/useTransaction";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
 import { short } from "../components/ExplorerBits";
+import AmountNote from "../components/AmountNote";
 
 countries.registerLocale(enLocale);
 
@@ -266,6 +267,7 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
                     onChange={(e) => setDeposit(e.target.value)}
                   />
                 </div>
+                <AmountNote value={deposit} denom={UERTH} />
                 <button
                   className={forms.button}
                   style={{ alignSelf: "flex-end" }}
@@ -473,6 +475,7 @@ const NewProposal = ({ address, minDeposit, run }) => {
               <label className={forms.label}>Initial deposit (ERTH)</label>
               <input className={forms.input} inputMode="decimal" placeholder="0.0" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
             </div>
+            <AmountNote value={deposit} denom={UERTH} />
             <button
               className={forms.button}
               style={{ alignSelf: "flex-end" }}

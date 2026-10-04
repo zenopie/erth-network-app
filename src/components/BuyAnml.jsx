@@ -12,6 +12,7 @@ import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import StatusModal from "./StatusModal";
 import ShieldedAddressInput from "./ShieldedAddressInput";
+import AmountNote from "./AmountNote";
 
 // broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
 const FEE_HEADROOM = 10_000n;
@@ -157,6 +158,7 @@ const BuyAnml = () => {
             value={amount}
             onChange={(e) => changeAmount(e.target.value)}
           />
+          <AmountNote value={amount} denom={UERTH} />
           <label className={forms.label} style={{ margin: 0 }}>
             Slippage %{" "}
             <input

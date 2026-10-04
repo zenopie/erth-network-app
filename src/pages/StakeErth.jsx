@@ -15,6 +15,7 @@ import forms from "./Forms.module.css";
 import head from "./StakeErth.module.css";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
+import AmountNote from "../components/AmountNote";
 
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
@@ -308,6 +309,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
               onChange={(e) => setBondAmount(e.target.value)}
             />
           </div>
+          <AmountNote value={bondAmount} denom={UERTH} />
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
@@ -340,6 +342,7 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
               onChange={(e) => setUnbondAmount(e.target.value)}
             />
           </div>
+          <AmountNote value={unbondAmount} denom={UERTH} />
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
@@ -445,6 +448,7 @@ const CreateValidator = ({ address, liquid, run }) => {
               </label>
               <input className={forms.input} inputMode="decimal" placeholder="0.0" value={form.selfBond} onChange={set("selfBond")} />
             </div>
+            <AmountNote value={form.selfBond} denom={UERTH} />
             <div className={forms.field}>
               <label className={forms.label}>Commission / max / max daily change</label>
               <div className={forms.formRow} style={{ margin: 0 }}>

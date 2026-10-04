@@ -12,7 +12,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-6 allocation options past 2000 | done | 272c2b3 |
 | L-7 split editor refuses 0 / negative | done | dd16677 |
 | L-8 handle directory 1M-row cap, times rule | done | 0545f67 |
-| L-9 LeaseBounds ranges | done | (this) |
+| L-9 LeaseBounds ranges | done | dcb8b5b |
+| L-10 extra decimals said, not dropped | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -50,3 +51,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 ## L-9
 - `personhood.leaseBounds` refuses (null) a handle or caretaker lease outside 1 s..10 years or a margin outside 0..10 years (`LEASE_MAX_SECONDS`), as spec §4h and the Android `leaseParam`. Display only (wait days).
 - `check:privacy` L-9 checks.
+
+## L-10
+- `tokens.toMicro` refuses ("0") an amount with non-zero digits past the denom's decimals instead of truncating it (trailing zeros are fine), so every `amountOk` gate disables its button and nothing smaller than typed is signed.
+- `tokens.amountNote` + `components/AmountNote.jsx`: "ERTH has at most 6 decimal places; remove the extra digits." under every typed amount input (Swap, BuyAnml, Shield, auction bid, self-bond / unbond / create-validator, Governance deposit x2, Markets add x2 and remove x2).
+- `check:forms` L-10 checks (incl. every decimal input has a note).

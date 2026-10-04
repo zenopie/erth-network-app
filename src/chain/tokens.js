@@ -48,8 +48,10 @@ export function toMacro(amount, denom) {
  *
  * Parsed as a decimal string rather than through parseFloat: `0.29 * 1e6` is
  * 289999.99999999994 in floating point, so the float route floored a typed 0.29
- * to 289999 — one base unit short, and further out past 2^53. Digits beyond the
- * denom's decimals are truncated. Anything that is not a plain non-negative
+ * to 289999 — one base unit short, and further out past 2^53. Non-zero digits
+ * beyond the denom's decimals are refused ("0"), not truncated: the amount
+ * typed is never silently signed as a smaller one (audit 6 L-10; amountNote
+ * says why). Trailing zeros past them are harmless. Anything that is not a plain non-negative
  * decimal (a sign, an exponent, stray text), and any amount of a denom whose
  * decimals the app does not know, is "0", which every caller already treats
  * as nothing entered.
@@ -59,8 +61,22 @@ export function toMicro(amount, denom) {
   const m = /^(\d*)(?:\.(\d*))?$/.exec(String(amount ?? "").trim());
   if (!m || (m[1] === "" && !m[2])) return "0";
   const d = decimalsOf(denom);
+  if (/[1-9]/.test((m[2] ?? "").slice(d))) return "0";
   const frac = (m[2] ?? "").slice(0, d).padEnd(d, "0");
   return BigInt((m[1] || "0") + frac).toString();
+}
+
+/**
+ * Why a typed amount cannot be used, for the user to read next to the field,
+ * or "" when there is nothing to say (empty, or fine). Today: more decimal
+ * places than the denom has (audit 6 L-10), which toMicro refuses.
+ */
+export function amountNote(typed, denom) {
+  const m = /^\d*\.(\d*)$/.exec(String(typed ?? "").trim());
+  if (!m || !isKnownDenom(denom)) return "";
+  const d = decimalsOf(denom);
+  if (!/[1-9]/.test(m[1].slice(d))) return "";
+  return `${symbolOf(denom)} has at most ${d} decimal places; remove the extra digits.`;
 }
 
 /**

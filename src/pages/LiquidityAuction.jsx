@@ -9,6 +9,7 @@ import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import StatusModal from "../components/StatusModal";
 import styles from "./LiquidityAuction.module.css";
+import AmountNote from "../components/AmountNote";
 
 /**
  * The genesis liquidity auction.
@@ -240,6 +241,7 @@ const LiquidityAuction = () => {
             onChange={(e) => setBidAmount(e.target.value)}
             className={styles.input}
           />
+          <AmountNote value={bidAmount} denom={auction.bidDenom} />
           <button
             className={styles.actionBtn}
             onClick={handleBid}

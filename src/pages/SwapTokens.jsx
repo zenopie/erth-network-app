@@ -24,6 +24,7 @@ import MobileCta from "../components/MobileCta";
 import Amount from "../components/Amount";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 import styles from "./SwapTokens.module.css";
+import AmountNote from "../components/AmountNote";
 
 /**
  * Token swaps against x/dex.
@@ -309,6 +310,7 @@ const SwapTokens = () => {
                 value={fromAmount}
                 onChange={(e) => handleFromAmountChange(e.target.value)}
               />
+              <AmountNote value={fromAmount} denom={fromDenom} />
               {/* Nothing at all when the unit on display has no price, rather
                   than a zero that reads as "this is worthless". */}
               <div className={styles.quoteValue}>

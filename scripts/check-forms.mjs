@@ -127,6 +127,19 @@ globalThis.fetch = async (url) => {
   const govSrc = pages.find(([n]) => n === "Governance")[1];
   const tallyCalls = govSrc.match(/[^\n]*assembly\.proposalTally\([^\n]*/g) ?? [];
   check("L-2 (audit 6): proposalTally only under isVoting", tallyCalls.length === 1 && /isVoting \? assembly\.proposalTally/.test(tallyCalls[0]), tallyCalls.join(" | "));
+  // Audit 6 L-10: extra decimals are refused and said, never dropped.
+  const tk6 = await import("../src/chain/tokens.js");
+  check("L-10: 1.1234567 ERTH is refused, not signed as 1.123456", tk6.toMicro("1.1234567", "uerth") === "0" && !tk6.amountOk("1.1234567", "uerth"));
+  check("L-10: trailing zeros past the decimals are fine", tk6.toMicro("1.1234560", "uerth") === "1123456" && tk6.amountNote("1.1234560", "uerth") === "");
+  check("L-10: the user is told", /at most 6 decimal places/.test(tk6.amountNote("1.1234567", "uerth")) && tk6.amountNote("1.5", "uerth") === "" && tk6.amountNote("", "uerth") === "");
+  const allInputs = [...pages, ["BuyAnml", readFileSync("src/components/BuyAnml.jsx", "utf8")]];
+  const unnoted = allInputs.filter(([, src]) => {
+    const inputs = (src.match(/inputMode="decimal"/g) ?? []).length;
+    const notes = (src.match(/<AmountNote /g) ?? []).length;
+    return inputs - (src.includes("value={toAmount}") ? 1 : 0) !== notes;
+  }).map(([n]) => n);
+  check("L-10: every typed amount input has an AmountNote", unnoted.length === 0, unnoted.join(","));
+
   // Audit 6 L-7: every split entry an integer 1..100, distinct, summing to 100.
   const al = await import("../src/chain/allocation.js");
   const sp = (...ps) => al.splitProblem(ps.map((p, i) => ({ optionId: i + 1, percent: p })));
