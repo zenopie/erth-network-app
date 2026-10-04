@@ -9,7 +9,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-2 human tally only while voting | done | 5677e7e |
 | L-3 swap quote expiry | done | 6518fd0 |
 | L-4 reserve re-read before signing | done | 2e9eeb7 |
-| L-6 allocation options past 2000 | done | (this) |
+| L-6 allocation options past 2000 | done | 272c2b3 |
+| L-7 split editor refuses 0 / negative | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -34,3 +35,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - `allocation.streamView` pages until `next_key` is empty, guarded at `MAX_OPTION_PAGES` = 1000 pages (100 000 options). It returns `partial: true` when a later page fails, a page key repeats, or the guard is hit. Aggregates (`total_weight`, `epoch`) come from the first page.
 - Shares use the chain's `total_weight` (x/allocation TotalWeight = the sum over live options): the pie (unread weight is its own "Options not read" slice), the options table, and Markets' `lpRewardShare` (Markets now reads `streamView`). Caretaker and Groundworks pages show a "Partial list" note.
 - `check:privacy` L-6 checks (3000 options, failed page, repeated key, guard, failed first page).
+
+## L-7
+- `allocation.splitPercent` (integer 1..100 or null) and `allocation.splitProblem(weights)` mirror x/allocation `ValidateSplit`: each share 1..100, distinct options, at most 20 (`MaxVoterOptions`), sum exactly 100. `msgSetAllocations` throws on a problem.
+- AllocationFund keeps each share as typed (no `parseInt || 0` coercion), shows the problem, and disables Set Allocation while there is one.
+- `check:forms` L-7 checks.

@@ -193,11 +193,45 @@ export async function validatorVoters(valopers) {
  * ts-proto emits `number` for uint64, not bigint — passing BigInt breaks
  * encoding. Everything numeric here goes through Number().
  */
+// x/allocation MaxVoterOptions: the most options one split may name.
+export const MAX_SPLIT_OPTIONS = 20;
+
+/** A split entry's percent as typed: an integer 1..100, else null. */
+export function splitPercent(v) {
+  const s = String(v ?? "").trim();
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 100 ? n : null;
+}
+
+/**
+ * Why x/allocation ValidateSplit would refuse this non-empty split, or null:
+ * each entry an integer share of 1..100 % (no zero, no negative), distinct
+ * options, at most MAX_SPLIT_OPTIONS of them, summing to exactly 100
+ * (audit 6 L-7). Refused before signing rather than for a fee.
+ */
+export function splitProblem(weights) {
+  if (!weights.length) return "Add at least one option.";
+  if (weights.length > MAX_SPLIT_OPTIONS) return `A split names at most ${MAX_SPLIT_OPTIONS} options.`;
+  const ids = new Set();
+  let sum = 0;
+  for (const w of weights) {
+    const p = splitPercent(w.percent);
+    if (p === null) return "Each option's share must be a whole percent from 1 to 100.";
+    if (ids.has(String(w.optionId))) return "An option appears twice.";
+    ids.add(String(w.optionId));
+    sum += p;
+  }
+  return sum === 100 ? null : "Total allocation must equal 100%.";
+}
+
 // Groundworks only: the chain refuses a caretaker split from an address.
 export function msgSetAllocations(creator, stream, weights) {
   if (Number(stream) !== STREAM_GROUNDWORKS) {
     throw new Error("Caretaker splits are cast privately from the mobile app.");
   }
+  const problem = splitProblem(weights);
+  if (problem) throw new Error(problem);
   return {
     typeUrl: "/earth.allocation.v1.MsgSetAllocations",
     value: {

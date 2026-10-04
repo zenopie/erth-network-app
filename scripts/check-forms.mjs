@@ -127,6 +127,20 @@ globalThis.fetch = async (url) => {
   const govSrc = pages.find(([n]) => n === "Governance")[1];
   const tallyCalls = govSrc.match(/[^\n]*assembly\.proposalTally\([^\n]*/g) ?? [];
   check("L-2 (audit 6): proposalTally only under isVoting", tallyCalls.length === 1 && /isVoting \? assembly\.proposalTally/.test(tallyCalls[0]), tallyCalls.join(" | "));
+  // Audit 6 L-7: every split entry an integer 1..100, distinct, summing to 100.
+  const al = await import("../src/chain/allocation.js");
+  const sp = (...ps) => al.splitProblem(ps.map((p, i) => ({ optionId: i + 1, percent: p })));
+  check("L-7: 100 and 60/40 are accepted", sp(100) === null && sp("60", "40") === null);
+  check("L-7: zero, negative, fractional, empty and >100 shares are refused",
+    sp(100, 0) !== null && sp(150, -50) !== null && sp("50.5", "49.5") !== null && sp("", 100) !== null && sp(101) !== null && sp("1e2") !== null);
+  check("L-7: a sum other than 100 is refused", sp(50, 49) !== null && sp() !== null);
+  check("L-7: a duplicate option is refused", al.splitProblem([{ optionId: 1, percent: 50 }, { optionId: 1, percent: 50 }]) !== null);
+  check("L-7: more than 20 options refused", al.splitProblem(Array.from({ length: 21 }, (_, i) => ({ optionId: i, percent: i ? 5 : 0 }))) !== null);
+  let threw = false;
+  try { al.msgSetAllocations("earth1x", al.STREAM_GROUNDWORKS, [{ optionId: 1, percent: 150 }, { optionId: 2, percent: -50 }]); } catch { threw = true; }
+  check("L-7: msgSetAllocations refuses an invalid split", threw);
+  const afSrc = readFileSync("src/components/AllocationFund.jsx", "utf8");
+  check("L-7: Set Allocation is gated on splitProblem", /disabled=\{isSubmitting \|\| Boolean\(splitProblem\)/.test(afSrc) && !/parseInt\(value/.test(afSrc));
   check("L-2 (audit 6): a closed proposal renders no live human tally", /isVoting \?\s*\(\s*<HumanTally/.test(govSrc) && /<ClosedHumanTally/.test(govSrc));
 }
 

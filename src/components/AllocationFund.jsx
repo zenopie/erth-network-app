@@ -52,12 +52,13 @@ const renderCustomLegend = (props, data) => {
 };
 
 const getChartDataWithUnallocated = (allocations = []) => {
-  const totalPercentage = allocations.reduce((acc, alloc) => acc + alloc.value, 0);
+  // Only valid shares (1..100) are drawn; an invalid entry is refused below.
+  const totalPercentage = allocations.reduce((acc, alloc) => acc + (allocation.splitPercent(alloc.value) ?? 0), 0);
   const unallocatedPercentage = Math.max(100 - totalPercentage, 0);
 
   const chartData = allocations.map((alloc) => ({
     ...alloc,
-    value: alloc.value,
+    value: allocation.splitPercent(alloc.value) ?? 0,
   }));
 
   if (unallocatedPercentage > 0) {
@@ -113,9 +114,13 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   }
 
   const totalPercentage = selectedAllocations.reduce(
-    (acc, alloc) => acc + (parseInt(alloc.value) || 0),
+    (acc, alloc) => acc + (allocation.splitPercent(alloc.value) ?? 0),
     0,
   );
+  // Each share an integer 1..100, distinct, summing to 100 (audit 6 L-7):
+  // the chain's ValidateSplit, checked before a fee is spent on it.
+  const splitWeights = selectedAllocations.map((alloc) => ({ optionId: alloc.id, percent: alloc.value }));
+  const splitProblem = allocation.splitProblem(splitWeights);
 
   useEffect(() => {
     if (!editable) setActiveTab("Actual");
@@ -150,7 +155,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
     if (!option) return;
     const isDuplicate = selectedAllocations.some((alloc) => String(alloc.id) === String(option.id));
     if (!isDuplicate) {
-      setSelectedAllocations([...selectedAllocations, { ...option, value: 0 }]);
+      setSelectedAllocations([...selectedAllocations, { ...option, value: "" }]);
     }
     setShowDropdown(false);
   };
@@ -162,15 +167,17 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   const handlePercentageChange = (id, value) => {
     setSelectedAllocations(
       selectedAllocations.map((alloc) =>
-        alloc.id === id ? { ...alloc, value: parseInt(value, 10) || 0 } : alloc,
+        // Kept as typed: a non-integer, zero or negative share stays visible
+        // and blocks Set Allocation rather than being coerced.
+        alloc.id === id ? { ...alloc, value: String(value) } : alloc,
       ),
     );
   };
 
   const handleSetAllocation = async () => {
-    if (totalPercentage !== 100) {
+    if (splitProblem) {
       await execute(async () => {
-        throw new Error("Total allocation must equal 100%");
+        throw new Error(splitProblem);
       });
       return;
     }
@@ -178,7 +185,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
     await execute(async () => {
       const weights = selectedAllocations.map((alloc) => ({
         optionId: Number(alloc.id),
-        percent: Number(alloc.value),
+        percent: allocation.splitPercent(alloc.value),
       }));
       await broadcast([allocation.msgSetAllocations(address, stream, weights)]);
       onChanged?.();
@@ -304,6 +311,9 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
                 <span>{alloc.name}</span>
                 <input
                   type="number"
+                  min="1"
+                  max="100"
+                  step="1"
                   value={alloc.value}
                   onChange={(e) => handlePercentageChange(alloc.id, e.target.value)}
                   placeholder="%"
@@ -340,11 +350,16 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
             )}
           </div>
 
+          {selectedAllocations.length > 0 && splitProblem && (
+            <p className={styles.allocationFundNote} role="status">
+              {splitProblem}
+            </p>
+          )}
           {selectedAllocations.length > 0 && (
             <button
               onClick={handleSetAllocation}
               className={styles.allocationFundClaimButton}
-              disabled={isSubmitting || totalPercentage !== 100 || voterWeight === "0"}
+              disabled={isSubmitting || Boolean(splitProblem) || voterWeight === "0"}
             >
               {isSubmitting ? "Submitting..." : "Set Allocation"}
             </button>
