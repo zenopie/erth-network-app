@@ -52,9 +52,6 @@ export const UANML = "uanml";
 // LP shares for a dex pool are an ordinary bank denom.
 export const lpDenom = (poolId) => `dexlp/${poolId}`;
 
-// Gas price paid in ERTH. Earth has no separate fee token.
-export const GAS_PRICE = `0.025${UERTH}`;
-
 /**
  * Where the private actions live. Registration, ANML claims, caretaker splits,
  * assembly votes, private staking and stake votes, Groundworks positions and

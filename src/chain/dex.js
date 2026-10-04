@@ -373,9 +373,6 @@ export function depositPull(erthIn, tokenIn, re, rt, supply) {
   return { shares, erth, token };
 }
 
-/** x/dex ErrPoolCap (codespace dex, code 1120): a reserve, share supply or input past 2^120. */
-export const POOL_CAP = 1n << 120n;
-
 /**
  * @param minShares base-unit floor on the shares minted, as a string. Sending
  *   "" is no floor — which is what this did before the field existed, and what

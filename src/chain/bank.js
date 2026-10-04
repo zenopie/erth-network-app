@@ -43,14 +43,3 @@ export async function sendEnabled(denom) {
   const d = p?.params?.default_send_enabled;
   return typeof d === "boolean" ? d : null;
 }
-
-export function msgSend(from, to, denom, amount) {
-  return {
-    typeUrl: "/cosmos.bank.v1beta1.MsgSend",
-    value: {
-      fromAddress: from,
-      toAddress: to,
-      amount: [{ denom, amount: String(amount) }],
-    },
-  };
-}
