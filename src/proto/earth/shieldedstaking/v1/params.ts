@@ -30,7 +30,7 @@ export interface Params {
   stakeRootWindowSeconds: number;
   /**
    * min_delegation is the smallest private delegation, in uerth, and the
-   * least derth one may mint. It keeps validator books from being created
+   * least derth one may credit. It keeps validator books from being created
    * for dust (every book is processed at epoch end) and bounds the rounding
    * a donation to the validator's rewards pool can inflict on a delegator.
    */

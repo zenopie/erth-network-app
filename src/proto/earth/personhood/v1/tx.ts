@@ -37,7 +37,7 @@ export interface MsgUpdateParamsResponse {
  * dsc_key, pins current_date to block time, dedups on the passport nullifier,
  * and requires the proof's `address` input to equal
  * zk/privacy.RegistrationBinding =
- *   H(TAG_REG, idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
+ *   H(TAG_REG, Bytes(chain_id), idc, pc_anml, Bytes(ciphertext_anml), pc_erth,
  *     Bytes(ciphertext_erth), affiliate)
  * with affiliate = 0 when the registration names no referrer, and
  *   H(TAG_AFFILIATE, Bytes(affiliate_handle))
@@ -200,10 +200,10 @@ export interface MsgMoveCaretakerResponse {
  * NoBound (2^63 - 1) and max_predecessor this msg's max_predecessor.
  *
  *   - handle and address set, the prover holding a handle: renew it (the
- *     same handle, live or in its renewal period: lease now +
- *     handle_lease_seconds, address updated) or change to another (the old
- *     one is released at once, the new one claimed in the same msg). Any
- *     max_predecessor.
+ *     same handle: lease now + handle_lease_seconds, address updated) or
+ *     change to another (the old one is released at once, the new one
+ *     claimed in the same msg). Any max_predecessor while the held handle is
+ *     live; in its renewal period, under the claim bound, as a claim.
  *   - handle and address set, the prover holding none: claim a free handle.
  *     max_predecessor must be strictly below now - the longest
  *     handle_lease_seconds ever set - 86400: an identity that replaced
@@ -242,8 +242,8 @@ export interface MsgBindHandleResponse {
 }
 
 /**
- * MsgMoveHandle transfers the prover's handle (live or in its renewal
- * period) to new_owner: the handle-scope nullifier of the identity that is to
+ * MsgMoveHandle transfers the prover's live handle (one in its renewal
+ * period must be renewed first) to new_owner: the handle-scope nullifier of the identity that is to
  * hold it, H(TAG_SN, new_id_secret, Scope("handle")), which that identity
  * reveals when it next proves in the handle scope (to renew it). The lease
  * is unchanged. It is how an identity switch keeps its handle: the wallet

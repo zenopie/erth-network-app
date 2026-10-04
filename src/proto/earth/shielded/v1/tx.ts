@@ -48,7 +48,10 @@ export interface MsgRegisterAssetResponse {
  */
 export interface MsgShield {
   sender: string;
-  /** amount of a registered denom, at most 2^64 - 1 (note values are u64). */
+  /**
+   * amount of a registered denom, at most 2^63 - 1 (MaxNoteValue: what
+   * every wallet holds).
+   */
   amount:
     | Coin
     | undefined;
@@ -97,8 +100,8 @@ export interface MsgSend {
   receiver: string;
   /**
    * fee is the uerth the bundle pays to fee_collector; the tx's declared fee
-   * must equal it. An unshield of uerth pays it out of what it releases (a
-   * fee from output), with no separate fee note.
+   * must equal it. An unshield of uerth pays it out of what it releases,
+   * with no separate fee note.
    */
   fee: number;
 }

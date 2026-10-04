@@ -13,11 +13,17 @@ export const protobufPackage = "earth.shieldedstaking.v1";
 
 /** UnbondStatus is where an epoch's undelegation for one validator stands. */
 export enum UnbondStatus {
-  /** UNBOND_STATUS_PENDING - UNBOND_STATUS_PENDING: notes minted, SDK undelegation not yet made. */
+  /**
+   * UNBOND_STATUS_PENDING - UNBOND_STATUS_PENDING: undelegations booked, SDK undelegation not yet
+   * made.
+   */
   UNBOND_STATUS_PENDING = 0,
   /** UNBOND_STATUS_UNBONDING - UNBOND_STATUS_UNBONDING: an SDK unbonding entry exists. */
   UNBOND_STATUS_UNBONDING = 1,
-  /** UNBOND_STATUS_MATURED - UNBOND_STATUS_MATURED: the entry paid out; notes can be claimed. */
+  /**
+   * UNBOND_STATUS_MATURED - UNBOND_STATUS_MATURED: the entry paid out; the record's payouts are
+   * minted, a bounded number a block.
+   */
   UNBOND_STATUS_MATURED = 2,
   UNRECOGNIZED = -1,
 }
@@ -57,8 +63,8 @@ export function unbondStatusToJSON(object: UnbondStatus): string {
 /** Epoch is the epoch in progress. */
 export interface Epoch {
   /**
-   * number of the epoch in progress; unbond/<valoper>/<number> notes minted
-   * now are executed at its end.
+   * number of the epoch in progress; undelegations made now are executed at
+   * its end.
    */
   number: number;
   /**
@@ -80,8 +86,8 @@ export interface ValidatorState {
    */
   pendingDelegation: string;
   /**
-   * pending_undelegation is the ERTH value of unbond notes minted and not yet
-   * undelegated (sum of the PENDING records' target).
+   * pending_undelegation is the ERTH value undelegated privately and not yet
+   * undelegated from x/staking (sum of the PENDING records' target).
    */
   pendingUndelegation: string;
   /**
@@ -108,6 +114,65 @@ export interface ValidatorState {
    */
   supplyHeight: number;
   supplyAtBlockStart: string;
+  /**
+   * slash_debt is the derth taken off derth_supply by slashes of private
+   * redelegations INTO this validator (ORCHARD_DESIGN.md 8.7): what
+   * x/staking burned from the module's delegation here, valued at the rate,
+   * so the rate did not move. The exposed notes pay it as they clear their
+   * labels (their exposure counts at its retained value). Only grows.
+   */
+  slashDebt: string;
+}
+
+/**
+ * Move is a private redelegation while a slash of its source can still reach
+ * it (until its x/staking entry matures). Its credited derth/<dst> sits,
+ * labelled with the move, in its owner's note at dst; the label clears once
+ * the window closes, at what the slash debt tree says it is worth.
+ */
+export interface Move {
+  /**
+   * key is the move key: the redelegation's credit nullifier (32 bytes),
+   * which the note's label carries.
+   */
+  key: Uint8Array;
+  srcValidator: string;
+  dstValidator: string;
+  /**
+   * height is the block it ran in; move_time the time its msg named (unix
+   * seconds, at most move_time_slack before the block): the label's.
+   */
+  height: number;
+  moveTime: number;
+  /** credited is the derth/<dst> it credited: the note's exposure. */
+  credited: string;
+  /**
+   * shares are its shares of the module's x/staking redelegation entry
+   * (src, dst, entry_height): what a slash of src takes, pro rata. Always
+   * positive: a move with no entry (nothing bonded moved, or src unbonded)
+   * is not recorded.
+   */
+  shares: string;
+  entryHeight: number;
+  /**
+   * completion is when the entry matures (unix ns); the record is dropped
+   * then (a slashed move keeps its debt row).
+   */
+  completion: number;
+  /**
+   * retained is what the exposure is still worth: credited, less the
+   * slashes so far.
+   */
+  retained: string;
+}
+
+/**
+ * DebtRow is one row of the slash debt tree: a slashed move's key and what
+ * its exposure is still worth.
+ */
+export interface DebtRow {
+  key: Uint8Array;
+  retained: number;
 }
 
 /**
@@ -130,12 +195,18 @@ export interface EpochSweep {
   cursor: string;
 }
 
-/** UnbondRecord backs the unbond/<validator>/<epoch> stake notes (claims). */
+/**
+ * UnbondRecord is one epoch's private undelegation from one validator: the
+ * UnbondPayouts queued against it share its payout pro rata.
+ */
 export interface UnbondRecord {
   validator: string;
   epoch: number;
   status: UnbondStatus;
-  /** requested is the total value of the claim notes minted. */
+  /**
+   * requested is the total ERTH value of the undelegations booked (the sum
+   * of its payouts' values).
+   */
   requested: string;
   /**
    * target is what to undelegate: requested, less the share of any slash
@@ -153,10 +224,36 @@ export interface UnbondRecord {
   completionTime: number;
   /** payout is the ERTH the entry paid for this record at maturity. */
   payout: string;
-  /** outstanding is the note value not yet claimed. */
+  /** outstanding is the value of its payouts not yet paid. */
   outstanding: string;
-  /** paid is the ERTH claimed so far. */
+  /** paid is the ERTH paid out so far. */
   paid: string;
+}
+
+/**
+ * UnbondPayout is one private undelegation's queued payout. At its record's
+ * maturity the chain mints value x record.payout / record.requested ERTH as
+ * notes to pc with ciphertext (several notes of at most 2^63-1 each when it
+ * is above that). A payout that fails is kept and retried, never dropped.
+ */
+export interface UnbondPayout {
+  /** id is unique and increasing (MsgUndelegateResponse.payout_id). */
+  id: number;
+  validator: string;
+  epoch: number;
+  /**
+   * value is the ERTH value booked at undelegation (its share of
+   * record.requested).
+   */
+  value: string;
+  pc: Uint8Array;
+  ciphertext: Uint8Array;
+  /**
+   * payout_attempts is how many times paying it failed; retry_at (unix
+   * seconds) is when it is tried again, 0 until it first fails.
+   */
+  payoutAttempts: number;
+  retryAt: number;
 }
 
 /**
@@ -236,20 +333,26 @@ export interface ValidatorSnapshot {
 }
 
 /**
- * StakeVote is one private stake vote: spent stake notes' (keyed by the
- * stake proof's first nullifier) or a position's.
+ * StakeVote is one private stake vote: up to two stake notes' (keyed by
+ * their first vote nullifier) or a position's.
  */
 export interface StakeVote {
   proposalId: number;
   /**
-   * key is 0x00 || the stake proof's first nullifier (32 bytes) of a note vote,
-   * or 0x01 || the position id (8 bytes big-endian) of a position vote.
+   * key is 0x00 || the first vote nullifier (32 bytes) of a note vote, or
+   * 0x01 || the position id (8 bytes big-endian) of a position vote.
    */
   key: Uint8Array;
   position: boolean;
   validator: string;
   derth: string;
   options: WeightedVoteOption[];
+  /**
+   * vote_nullifiers are a note vote's two vote nullifiers (a used slot's or
+   * an unused slot's padding, indistinguishable; the first the key's); empty
+   * for a position vote.
+   */
+  voteNullifiers: Uint8Array[];
 }
 
 /**
@@ -383,6 +486,7 @@ function createBaseValidatorState(): ValidatorState {
     checkpointSeq: 0,
     supplyHeight: 0,
     supplyAtBlockStart: "",
+    slashDebt: "",
   };
 }
 
@@ -411,6 +515,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     }
     if (message.supplyAtBlockStart !== "") {
       writer.uint32(66).string(message.supplyAtBlockStart);
+    }
+    if (message.slashDebt !== "") {
+      writer.uint32(74).string(message.slashDebt);
     }
     return writer;
   },
@@ -492,6 +599,14 @@ export const ValidatorState: MessageFns<ValidatorState> = {
             message.supplyAtBlockStart = reader.string();
             continue;
           }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.slashDebt = reader.string();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -542,6 +657,11 @@ export const ValidatorState: MessageFns<ValidatorState> = {
         : isSet(object.supply_at_block_start)
         ? globalThis.String(object.supply_at_block_start)
         : "",
+      slashDebt: isSet(object.slashDebt)
+        ? globalThis.String(object.slashDebt)
+        : isSet(object.slash_debt)
+        ? globalThis.String(object.slash_debt)
+        : "",
     };
   },
 
@@ -571,6 +691,9 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     if (message.supplyAtBlockStart !== "") {
       obj.supplyAtBlockStart = message.supplyAtBlockStart;
     }
+    if (message.slashDebt !== "") {
+      obj.slashDebt = message.slashDebt;
+    }
     return obj;
   },
 
@@ -587,6 +710,332 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     message.checkpointSeq = object.checkpointSeq ?? 0;
     message.supplyHeight = object.supplyHeight ?? 0;
     message.supplyAtBlockStart = object.supplyAtBlockStart ?? "";
+    message.slashDebt = object.slashDebt ?? "";
+    return message;
+  },
+};
+
+function createBaseMove(): Move {
+  return {
+    key: new Uint8Array(0),
+    srcValidator: "",
+    dstValidator: "",
+    height: 0,
+    moveTime: 0,
+    credited: "",
+    shares: "",
+    entryHeight: 0,
+    completion: 0,
+    retained: "",
+  };
+}
+
+export const Move: MessageFns<Move> = {
+  encode(message: Move, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.srcValidator !== "") {
+      writer.uint32(18).string(message.srcValidator);
+    }
+    if (message.dstValidator !== "") {
+      writer.uint32(26).string(message.dstValidator);
+    }
+    if (message.height !== 0) {
+      writer.uint32(32).int64(message.height);
+    }
+    if (message.moveTime !== 0) {
+      writer.uint32(40).uint64(message.moveTime);
+    }
+    if (message.credited !== "") {
+      writer.uint32(50).string(message.credited);
+    }
+    if (message.shares !== "") {
+      writer.uint32(58).string(message.shares);
+    }
+    if (message.entryHeight !== 0) {
+      writer.uint32(64).int64(message.entryHeight);
+    }
+    if (message.completion !== 0) {
+      writer.uint32(72).int64(message.completion);
+    }
+    if (message.retained !== "") {
+      writer.uint32(82).string(message.retained);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Move {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMove();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.key = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.srcValidator = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.dstValidator = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.height = longToNumber(reader.int64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.moveTime = longToNumber(reader.uint64());
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.credited = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.shares = reader.string();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.entryHeight = longToNumber(reader.int64());
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.completion = longToNumber(reader.int64());
+            continue;
+          }
+          case 10: {
+            if (tag !== 82) {
+              break;
+            }
+
+            message.retained = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): Move {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
+      srcValidator: isSet(object.srcValidator)
+        ? globalThis.String(object.srcValidator)
+        : isSet(object.src_validator)
+        ? globalThis.String(object.src_validator)
+        : "",
+      dstValidator: isSet(object.dstValidator)
+        ? globalThis.String(object.dstValidator)
+        : isSet(object.dst_validator)
+        ? globalThis.String(object.dst_validator)
+        : "",
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      moveTime: isSet(object.moveTime)
+        ? globalThis.Number(object.moveTime)
+        : isSet(object.move_time)
+        ? globalThis.Number(object.move_time)
+        : 0,
+      credited: isSet(object.credited) ? globalThis.String(object.credited) : "",
+      shares: isSet(object.shares) ? globalThis.String(object.shares) : "",
+      entryHeight: isSet(object.entryHeight)
+        ? globalThis.Number(object.entryHeight)
+        : isSet(object.entry_height)
+        ? globalThis.Number(object.entry_height)
+        : 0,
+      completion: isSet(object.completion) ? globalThis.Number(object.completion) : 0,
+      retained: isSet(object.retained) ? globalThis.String(object.retained) : "",
+    };
+  },
+
+  toJSON(message: Move): unknown {
+    const obj: any = {};
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
+    }
+    if (message.srcValidator !== "") {
+      obj.srcValidator = message.srcValidator;
+    }
+    if (message.dstValidator !== "") {
+      obj.dstValidator = message.dstValidator;
+    }
+    if (message.height !== 0) {
+      obj.height = Math.round(message.height);
+    }
+    if (message.moveTime !== 0) {
+      obj.moveTime = Math.round(message.moveTime);
+    }
+    if (message.credited !== "") {
+      obj.credited = message.credited;
+    }
+    if (message.shares !== "") {
+      obj.shares = message.shares;
+    }
+    if (message.entryHeight !== 0) {
+      obj.entryHeight = Math.round(message.entryHeight);
+    }
+    if (message.completion !== 0) {
+      obj.completion = Math.round(message.completion);
+    }
+    if (message.retained !== "") {
+      obj.retained = message.retained;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Move>, I>>(base?: I): Move {
+    return Move.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Move>, I>>(object: I): Move {
+    const message = createBaseMove();
+    message.key = object.key ?? new Uint8Array(0);
+    message.srcValidator = object.srcValidator ?? "";
+    message.dstValidator = object.dstValidator ?? "";
+    message.height = object.height ?? 0;
+    message.moveTime = object.moveTime ?? 0;
+    message.credited = object.credited ?? "";
+    message.shares = object.shares ?? "";
+    message.entryHeight = object.entryHeight ?? 0;
+    message.completion = object.completion ?? 0;
+    message.retained = object.retained ?? "";
+    return message;
+  },
+};
+
+function createBaseDebtRow(): DebtRow {
+  return { key: new Uint8Array(0), retained: 0 };
+}
+
+export const DebtRow: MessageFns<DebtRow> = {
+  encode(message: DebtRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.retained !== 0) {
+      writer.uint32(16).uint64(message.retained);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DebtRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseDebtRow();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.key = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.retained = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): DebtRow {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
+      retained: isSet(object.retained) ? globalThis.Number(object.retained) : 0,
+    };
+  },
+
+  toJSON(message: DebtRow): unknown {
+    const obj: any = {};
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
+    }
+    if (message.retained !== 0) {
+      obj.retained = Math.round(message.retained);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DebtRow>, I>>(base?: I): DebtRow {
+    return DebtRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DebtRow>, I>>(object: I): DebtRow {
+    const message = createBaseDebtRow();
+    message.key = object.key ?? new Uint8Array(0);
+    message.retained = object.retained ?? 0;
     return message;
   },
 };
@@ -1022,6 +1471,204 @@ export const UnbondRecord: MessageFns<UnbondRecord> = {
     message.payout = object.payout ?? "";
     message.outstanding = object.outstanding ?? "";
     message.paid = object.paid ?? "";
+    return message;
+  },
+};
+
+function createBaseUnbondPayout(): UnbondPayout {
+  return {
+    id: 0,
+    validator: "",
+    epoch: 0,
+    value: "",
+    pc: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+    payoutAttempts: 0,
+    retryAt: 0,
+  };
+}
+
+export const UnbondPayout: MessageFns<UnbondPayout> = {
+  encode(message: UnbondPayout, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    if (message.validator !== "") {
+      writer.uint32(18).string(message.validator);
+    }
+    if (message.epoch !== 0) {
+      writer.uint32(24).uint64(message.epoch);
+    }
+    if (message.value !== "") {
+      writer.uint32(34).string(message.value);
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(42).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(50).bytes(message.ciphertext);
+    }
+    if (message.payoutAttempts !== 0) {
+      writer.uint32(56).uint32(message.payoutAttempts);
+    }
+    if (message.retryAt !== 0) {
+      writer.uint32(64).int64(message.retryAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UnbondPayout {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseUnbondPayout();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.id = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.validator = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.epoch = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.value = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.payoutAttempts = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.retryAt = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): UnbondPayout {
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      epoch: isSet(object.epoch) ? globalThis.Number(object.epoch) : 0,
+      value: isSet(object.value) ? globalThis.String(object.value) : "",
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      payoutAttempts: isSet(object.payoutAttempts)
+        ? globalThis.Number(object.payoutAttempts)
+        : isSet(object.payout_attempts)
+        ? globalThis.Number(object.payout_attempts)
+        : 0,
+      retryAt: isSet(object.retryAt)
+        ? globalThis.Number(object.retryAt)
+        : isSet(object.retry_at)
+        ? globalThis.Number(object.retry_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: UnbondPayout): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.validator !== "") {
+      obj.validator = message.validator;
+    }
+    if (message.epoch !== 0) {
+      obj.epoch = Math.round(message.epoch);
+    }
+    if (message.value !== "") {
+      obj.value = message.value;
+    }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
+    if (message.payoutAttempts !== 0) {
+      obj.payoutAttempts = Math.round(message.payoutAttempts);
+    }
+    if (message.retryAt !== 0) {
+      obj.retryAt = Math.round(message.retryAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnbondPayout>, I>>(base?: I): UnbondPayout {
+    return UnbondPayout.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnbondPayout>, I>>(object: I): UnbondPayout {
+    const message = createBaseUnbondPayout();
+    message.id = object.id ?? 0;
+    message.validator = object.validator ?? "";
+    message.epoch = object.epoch ?? 0;
+    message.value = object.value ?? "";
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.payoutAttempts = object.payoutAttempts ?? 0;
+    message.retryAt = object.retryAt ?? 0;
     return message;
   },
 };
@@ -1682,7 +2329,15 @@ export const ValidatorSnapshot: MessageFns<ValidatorSnapshot> = {
 };
 
 function createBaseStakeVote(): StakeVote {
-  return { proposalId: 0, key: new Uint8Array(0), position: false, validator: "", derth: "", options: [] };
+  return {
+    proposalId: 0,
+    key: new Uint8Array(0),
+    position: false,
+    validator: "",
+    derth: "",
+    options: [],
+    voteNullifiers: [],
+  };
 }
 
 export const StakeVote: MessageFns<StakeVote> = {
@@ -1704,6 +2359,9 @@ export const StakeVote: MessageFns<StakeVote> = {
     }
     for (const v of message.options) {
       WeightedVoteOption.encode(v!, writer.uint32(50).fork()).join();
+    }
+    for (const v of message.voteNullifiers) {
+      writer.uint32(58).bytes(v!);
     }
     return writer;
   },
@@ -1769,6 +2427,14 @@ export const StakeVote: MessageFns<StakeVote> = {
             message.options.push(WeightedVoteOption.decode(reader, reader.uint32()));
             continue;
           }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.voteNullifiers.push(reader.bytes());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1795,6 +2461,11 @@ export const StakeVote: MessageFns<StakeVote> = {
       options: globalThis.Array.isArray(object?.options)
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
+      voteNullifiers: globalThis.Array.isArray(object?.voteNullifiers)
+        ? object.voteNullifiers.map((e: any) => bytesFromBase64(e))
+        : globalThis.Array.isArray(object?.vote_nullifiers)
+        ? object.vote_nullifiers.map((e: any) => bytesFromBase64(e))
+        : [],
     };
   },
 
@@ -1818,6 +2489,9 @@ export const StakeVote: MessageFns<StakeVote> = {
     if (message.options?.length) {
       obj.options = message.options.map((e) => WeightedVoteOption.toJSON(e));
     }
+    if (message.voteNullifiers?.length) {
+      obj.voteNullifiers = message.voteNullifiers.map((e) => base64FromBytes(e));
+    }
     return obj;
   },
 
@@ -1832,6 +2506,7 @@ export const StakeVote: MessageFns<StakeVote> = {
     message.validator = object.validator ?? "";
     message.derth = object.derth ?? "";
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
+    message.voteNullifiers = object.voteNullifiers?.map((e) => e) || [];
     return message;
   },
 };

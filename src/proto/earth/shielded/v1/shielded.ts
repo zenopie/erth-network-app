@@ -18,8 +18,8 @@ export const protobufPackage = "earth.shielded.v1";
 export interface Action {
   /**
    * anchor is the note-tree root the spend is proven against: 32 bytes, a
-   * root recorded within root_window_seconds (or one the msg's action
-   * handler vouches for). Required of dummy spends too.
+   * root recorded within root_window_seconds, the same for every action of
+   * the bundle. Required of dummy spends too.
    */
   anchor: Uint8Array;
   /**

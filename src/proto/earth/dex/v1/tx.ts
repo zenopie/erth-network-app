@@ -208,8 +208,8 @@ export interface MsgNoteSwap {
 }
 
 /**
- * MsgNoteSwapResponse returns the swap's output (before any fee from output)
- * and the minted note's position.
+ * MsgNoteSwapResponse returns the swap's output (all of it minted to pc) and
+ * the minted note's position.
  */
 export interface MsgNoteSwapResponse {
   tokenOut: Coin | undefined;

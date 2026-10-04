@@ -12,7 +12,8 @@ export const protobufPackage = "earth.shielded.v1";
 /** Params defines the parameters of the shielded pool. */
 export interface Params {
   /**
-   * verifying_keys maps a circuit name ("action", "membership") to its
+   * verifying_keys maps a circuit name ("action", "membership", "stake",
+   * "vote") to its
    * Barretenberg UltraHonk (bb v5.0.0) verifying key. A private msg whose
    * circuit has no key is refused.
    */

@@ -30,8 +30,9 @@ export enum StreamId {
    */
   STREAM_ID_CARETAKER = 1,
   /**
-   * STREAM_ID_GROUNDWORKS - STREAM_ID_GROUNDWORKS is the Groundworks Fund: stake-weighted. Weight is
-   * the voter's bonded stake, normalized by the stake compounding index.
+   * STREAM_ID_GROUNDWORKS - STREAM_ID_GROUNDWORKS is the Groundworks Fund: stake-weighted, by the
+   * weight source x/shieldedstaking registers (each validator's positions as
+   * one voter, and operators' self-bonds at Bonded validators).
    */
   STREAM_ID_GROUNDWORKS = 2,
   UNRECOGNIZED = -1,
@@ -178,8 +179,8 @@ export interface AllocationWeight {
 /**
  * Voter records one address's split within one stream, and the weight it was
  * applied with. The human stream applies the same fixed weight to everyone; the
- * capital stream applies the voter's normalized bonded stake, kept in sync by
- * the staking hooks.
+ * capital stream applies the weight its weight source reports (positions per
+ * validator, an operator's self-bond while Bonded), kept in sync by hooks.
  */
 export interface Voter {
   percentages: AllocationWeight[];
