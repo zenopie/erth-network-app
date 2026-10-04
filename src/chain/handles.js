@@ -28,7 +28,15 @@ const STATUSES = new Set([LIVE, RENEWAL, FREE]);
 
 /** Query/Handles' largest page; the backend's page. */
 export const PAGE = 1000;
-const MAX_PAGES = 10_000;
+/**
+ * The most rows a directory may have (the backend's cap, spec §4g / audit 5
+ * L7): more, or a stream whose page 0 claims more, is refused whole rather
+ * than downloaded and held (audit 6 L-8).
+ */
+export const MAX_ROWS = 1_000_000;
+const MAX_PAGES = MAX_ROWS / PAGE;
+/** How far ahead of now a lease time may be: 10 years (spec §4g). */
+export const MAX_AHEAD_SECONDS = 10 * 365 * 86400;
 const STREAM_RESTARTS = 3;
 /** How old a copy a payment may use, in seconds. */
 export const FRESH_SECONDS = 60;
@@ -82,17 +90,27 @@ const entry = (handle, address, status, expiresAt, renewalUntil) => ({
   renewalUntil: num(renewalUntil),
 });
 
-function check(e, after, out) {
+/** 0 < expires_at <= renewal_until <= now + 10 years: times a lease can have (spec §4g). */
+export const timesOk = (e, now) =>
+  e.expiresAt > 0 && e.expiresAt <= e.renewalUntil && e.renewalUntil <= now + MAX_AHEAD_SECONDS;
+
+function check(e, after, out, now) {
   if (!validHandle(e.handle)) throw new Error(`the directory holds ${JSON.stringify(e.handle.slice(0, 40))}, not a handle`);
   if (e.handle <= after || out.has(e.handle)) throw new Error(`the directory is out of order at ${e.handle}`);
   if (!STATUSES.has(e.status)) throw new Error(`handle ${e.handle}: status ${e.status.slice(0, 20)}`);
+  // Audit 6 L-8 (spec §4g): an entry whose times no lease has refuses the
+  // whole directory, as does a row past MAX_ROWS.
+  if (!timesOk(e, now)) throw new Error(`handle ${e.handle}: times out of range`);
+  if (out.size >= MAX_ROWS) throw new Error(`the directory has more than ${MAX_ROWS} handles`);
 }
+
+const unixNow = () => Math.floor(Date.now() / 1000);
 
 /**
  * The chain's directory, every page from the first: `fetchChainPage(start,
  * limit)` resolves to { handles: [entry], next } (next "" when exhausted).
  */
-export async function readChainDirectory(fetchChainPage) {
+export async function readChainDirectory(fetchChainPage, now = unixNow()) {
   const out = new Map();
   let start = "";
   for (let pages = 0; ; pages++) {
@@ -100,7 +118,7 @@ export async function readChainDirectory(fetchChainPage) {
     const page = await fetchChainPage(start, PAGE);
     if (page.handles.length > PAGE) throw new Error("the node sent more handles than a page holds");
     for (const e of page.handles) {
-      check(e, start, out);
+      check(e, start, out, now);
       out.set(e.handle, e);
       start = e.handle;
     }
@@ -115,7 +133,7 @@ export async function readChainDirectory(fetchChainPage) {
  * between pages (at most STREAM_RESTARTS times). `fetchStreamPage(fromIndex,
  * limit)` resolves to { handles, height, size, fromIndex, lastPage }.
  */
-export async function readStreamDirectory(fetchStreamPage) {
+export async function readStreamDirectory(fetchStreamPage, now = unixNow()) {
   for (let attempt = 0; attempt < STREAM_RESTARTS; attempt++) {
     const out = new Map();
     let from = 0;
@@ -125,13 +143,17 @@ export async function readStreamDirectory(fetchStreamPage) {
     for (;;) {
       const page = await fetchStreamPage(from, PAGE);
       if (page.fromIndex !== from || page.handles.length > PAGE) throw new Error("the indexer's handle page is not the one asked for");
-      if (from === 0) height = page.height;
-      else if (page.height !== height) {
+      if (from === 0) {
+        height = page.height;
+        if (!Number.isSafeInteger(page.size) || page.size < 0 || page.size > MAX_ROWS) {
+          throw new Error(`the indexer's directory claims ${String(page.size).slice(0, 20)} handles`);
+        }
+      } else if (page.height !== height) {
         moved = true;
         break;
       }
       for (const e of page.handles) {
-        check(e, last, out);
+        check(e, last, out, now);
         out.set(e.handle, e);
         last = e.handle;
       }
@@ -195,7 +217,7 @@ export function createHandleDirectory({ fetchChainPage, fetchStreamPage = null, 
   async function chainDirectory(maxAge = maxAgeSeconds) {
     const t = now();
     if (chainEntries && t - chainFetchedAt >= 0 && t - chainFetchedAt <= maxAge) return chainEntries;
-    chainEntries = await readChainDirectory(fetchChainPage);
+    chainEntries = await readChainDirectory(fetchChainPage, now());
     chainFetchedAt = now();
     return chainEntries;
   }
@@ -206,7 +228,7 @@ export function createHandleDirectory({ fetchChainPage, fetchStreamPage = null, 
     let out = null;
     if (fetchStreamPage) {
       try {
-        out = await readStreamDirectory(fetchStreamPage);
+        out = await readStreamDirectory(fetchStreamPage, now());
       } catch {
         out = null; // the chain's own pages instead
       }

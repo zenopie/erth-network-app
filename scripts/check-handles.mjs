@@ -121,6 +121,23 @@ for (const [name, mutate] of [
     check(`stream refused: ${name}`, threw);
   })();
 }
+// Audit 6 L-8 (spec §4g): times no lease has, or more than 1,000,000 rows, refuse the whole directory.
+for (const [name, e] of [
+  ["expires_at 0", { ...mk("aaa", alice, now), expiresAt: 0 }],
+  ["renewal_until before expires_at", { ...mk("aaa", alice, now), renewalUntil: now - 1 }],
+  ["renewal_until past now + 10 years", mk("aaa", alice, now + 10 * 365 * 86400)],
+]) {
+  check(`L-8: stream refused: ${name}`, await rejects(h.readStreamDirectory(async (from) => ({ handles: [e], height: 1, size: 1, fromIndex: from, lastPage: true }), now)));
+  check(`L-8: chain refused: ${name}`, await rejects(h.readChainDirectory(async () => ({ handles: [e], next: "" }), now)));
+}
+check("L-8: renewal_until at exactly now + 10 years is accepted",
+  (await h.readChainDirectory(async () => ({ handles: [{ ...mk("aaa", alice, now), renewalUntil: now + 10 * 365 * 86400 }], next: "" }), now)).size === 1);
+{
+  let asked = 0;
+  const huge = async (from) => { asked++; return { handles: [mk("aaa", alice, now + 9)], height: 1, size: h.MAX_ROWS + 1, fromIndex: from, lastPage: false }; };
+  check("L-8: a stream whose page 0 claims more than 1,000,000 rows is refused before page 1", await rejects(h.readStreamDirectory(huge, now)) && asked === 1);
+  check("L-8: the row cap is 1,000,000", h.MAX_ROWS === 1_000_000);
+}
 check("stream refused: size mismatch", await rejects(h.readStreamDirectory(async (from) => ({ handles: [mk("aaa", alice, 1)], height: 1, size: 2, fromIndex: from, lastPage: true }))));
 check("stream refused: wrong page", await rejects(h.readStreamDirectory(async () => ({ handles: [], height: 1, size: 0, fromIndex: 5, lastPage: true }))));
 check("chain refused: next is not the last handle", await rejects(h.readChainDirectory(async () => ({ handles: [mk("aaa", alice, 1)], next: "zzz" }))));

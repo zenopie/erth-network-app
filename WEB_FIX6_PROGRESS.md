@@ -10,7 +10,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-3 swap quote expiry | done | 6518fd0 |
 | L-4 reserve re-read before signing | done | 2e9eeb7 |
 | L-6 allocation options past 2000 | done | 272c2b3 |
-| L-7 split editor refuses 0 / negative | done | (this) |
+| L-7 split editor refuses 0 / negative | done | dd16677 |
+| L-8 handle directory 1M-row cap, times rule | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -40,3 +41,7 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - `allocation.splitPercent` (integer 1..100 or null) and `allocation.splitProblem(weights)` mirror x/allocation `ValidateSplit`: each share 1..100, distinct options, at most 20 (`MaxVoterOptions`), sum exactly 100. `msgSetAllocations` throws on a problem.
 - AllocationFund keeps each share as typed (no `parseInt || 0` coercion), shows the problem, and disables Set Allocation while there is one.
 - `check:forms` L-7 checks.
+
+## L-8
+- `handles.js`: `MAX_ROWS` = 1 000 000 (pages capped at MAX_ROWS / PAGE); `check()` refuses the whole directory (chain or stream) on a row past the cap or an entry outside `0 < expires_at <= renewal_until <= now + 10 years` (`timesOk`, 365-day years as the Android wallet). A stream whose page 0 claims more than 1 000 000 rows (or a non-integer size) is refused before page 1. Both readers take `now` (the directory's clock).
+- `check:handles` L-8 checks.
