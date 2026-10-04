@@ -68,7 +68,26 @@ One tunnel per deployment — replicas are chosen by proximity with no traffic
 steering, so connectors able to reach different origins would black-hole
 requests. Configure the Public Hostname on Cloudflare's side:
 
-    app.erth.network -> http://web:80
+    erth.network -> http://web:80
+
+The host is the apex, `erth.network`: it is the App Link / universal link host
+(`public/.well-known/*`, `applinks:erth.network`, the Android `autoVerify`
+filter), `og:url` in `index.html` and `MOBILE_APP_URL` in `src/chain/config.js`.
+There is no `app.erth.network` record; an earlier version of this file named
+it, and a tunnel hostname set to it serves nothing.
+
+TLS ends at Cloudflare, and nginx only ever sees plain HTTP from the tunnel
+connector, so the http -> https redirect is Cloudflare's, not nginx's: SSL/TLS
+-> Edge Certificates -> **Always Use HTTPS** on for the zone. nginx cannot
+tell the browser's scheme apart (every request reaches it as http), so a
+redirect there would loop. As of 2026-10-03, `http://erth.network/` answers
+200 rather than a redirect: that setting needs turning on.
+
+After a deploy, check what is live:
+
+    curl -sI http://erth.network/ | head -1                         # 301 to https
+    curl -sI https://erth.network/ | grep -i referrer-policy        # no-referrer
+    curl -i https://erth.network/.well-known/apple-app-site-association   # 200 application/json
 
 The chain and the ads-for-gas backend each have their own tunnel and their own
 lease.

@@ -15,7 +15,9 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-9 LeaseBounds ranges | done | dcb8b5b |
 | L-10 extra decimals said, not dropped | done | 67c5e2f |
 | L-11 refuse to sign on account read failure | done | 2af6b94 |
-| L-12 build image, nginx pin, vite/postcss | done | (this) |
+| L-12 build image, nginx pin, vite/postcss | done | d3254ad |
+| O-1 tunnel host docs, http->https | done (docs) | (this) |
+| I-2 fresh npm ci + build ships .well-known | verified; guard in d3254ad | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -68,3 +70,15 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - Dockerfile build stage: `node:24.21.0-alpine3.24@sha256:ebfe2f90…ec1c1` (Node 24 Krypton, active LTS; was node:18, EOL). Serve stage: `nginx:1.31.6-alpine3.24@sha256:df221db8…abeac2` (the nginx:alpine index digest on 2026-10-03). Digests read from registry-1.docker.io.
 - `.dockerignore` now excludes `build` and `build-check`: the image never sees a local build.
 - Checks: `check:dex` reads the live LCD (`lcd.erth.network` answers 530, no chain behind it); its 4 failures are that empty read, as in round 5. Every other check passes.
+
+## O-1 (docs only)
+- `deploy/akash/README.md`: the tunnel's Public Hostname is `erth.network -> http://web:80` (the apex: App Link host, `og:url`, `MOBILE_APP_URL`; `app.erth.network` has no DNS record). Adds post-deploy curl checks.
+- http -> https: TLS ends at Cloudflare and nginx only sees plain HTTP from the tunnel, so the redirect is Cloudflare's "Always Use HTTPS" (an nginx redirect would loop). No nginx change. Live on 2026-10-03, `http://erth.network/` answers 200, so the setting needs turning on; noted in the README.
+- `security-headers.conf` HSTS comment corrected (apex; includeSubDomains covers lcd/rpc/api).
+- Still needed by hand: redeploy (tag, CI pin, `deploy/akash/deploy.sh`) and the Cloudflare setting.
+
+## I-2
+- Fresh clone of this branch, Node 24.21.0 (the image's toolchain), `npm ci` + `npm run build`: `build/.well-known/assetlinks.json` and `apple-app-site-association` present and byte-identical to `public/.well-known`; `npm audit` 0; check:tx/handles/privacy/forms pass there too.
+- The Dockerfile now fails the image if either file is missing (`RUN test -s ...`), and `.dockerignore` keeps a local `build/` out of the context.
+- npm 11 (Node 24) reports esbuild's postinstall as not covered by allowScripts; it only verifies the binary, the platform package is used either way, and the build succeeds.
+- Local `node_modules` in this worktree was a symlink into `app-privacy`; it is now a real `npm ci` of this lockfile (gitignored, local only).
