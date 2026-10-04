@@ -12,5 +12,6 @@ README.md
 .vscode
 coverage
 .nyc_output
-build/static/js/*.map
-build/static/css/*.map
+# Local build output: the image builds its own from a fresh npm ci.
+build
+build-check

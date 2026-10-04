@@ -14,7 +14,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-8 handle directory 1M-row cap, times rule | done | 0545f67 |
 | L-9 LeaseBounds ranges | done | dcb8b5b |
 | L-10 extra decimals said, not dropped | done | 67c5e2f |
-| L-11 refuse to sign on account read failure | done | (this) |
+| L-11 refuse to sign on account read failure | done | 2af6b94 |
+| L-12 build image, nginx pin, vite/postcss | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -61,3 +62,9 @@ Gate: `npm run build` and every `check:*` pass after each step.
 ## L-11
 - `tx.fetchAccount` (now exported): only the LCD's 404 (x/auth NotFound) is a new account (0/0). Any other error (5xx, network) or a malformed answer throws "Could not read your account … nothing was signed", so `broadcast` signs nothing.
 - `check:tx` L-11 checks (404, 530, network error, malformed, wrapped account, broadcast posts nothing).
+
+## L-12
+- vite ^6.4.3 (6.4.3) and `npm audit fix` (no --force): postcss 8.5.28, nanoid 3.3.19, browserslist 4.29.3, @babel/* 7.29.7+, baseline-browser-mapping 2.11.27. All dev/build only; production deps unchanged. `npm audit`: 0 vulnerabilities (was 6, 4 high).
+- Dockerfile build stage: `node:24.21.0-alpine3.24@sha256:ebfe2f90…ec1c1` (Node 24 Krypton, active LTS; was node:18, EOL). Serve stage: `nginx:1.31.6-alpine3.24@sha256:df221db8…abeac2` (the nginx:alpine index digest on 2026-10-03). Digests read from registry-1.docker.io.
+- `.dockerignore` now excludes `build` and `build-check`: the image never sees a local build.
+- Checks: `check:dex` reads the live LCD (`lcd.erth.network` answers 530, no chain behind it); its 4 failures are that empty read, as in round 5. Every other check passes.
