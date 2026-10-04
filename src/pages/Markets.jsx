@@ -321,8 +321,8 @@ const Markets = () => {
     if (!isConnected) return;
     execute(async () => {
       const shares = toMicro(removeAmount, row.pool.lpDenom);
-      const total = await supplyOrNull(row.pool.lpDenom);
-      const problem = total == null ? null : dex.withdrawalNoteLegProblem(shares, row.pool.tokenReserve, total);
+      // Reserve and supply read together now; a failed read refuses (audit 6 L-4).
+      const problem = await dex.withdrawalNoteLegProblemNow(row.pool.id, shares);
       if (problem) throw new Error(problem);
       await broadcast([
         dex.removeLiquidityToShielded(

@@ -7,7 +7,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | --- | --- | --- |
 | L-1 note-leg cap text 32 x (2^63 - 1) | done | 6f4ce09 |
 | L-2 human tally only while voting | done | 5677e7e |
-| L-3 swap quote expiry | done | (this) |
+| L-3 swap quote expiry | done | 6518fd0 |
+| L-4 reserve re-read before signing | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -22,3 +23,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - `dex.boundSwapQuote(micro, from, to)` -> `{ micro, from, to, out, at }`; `dex.swapFloor(quote, micro, from, to, slippage, now)` is "0" unless the quote is for exactly that amount and pair, positive, and younger than `QUOTE_TTL_MS` (20 s, shared with BuyAnml).
 - SwapTokens re-asks the quote every 10 s and ticks `now`, so an expired quote disables Swap; `handleSwap` signs the floor from `swapFloor` at click time.
 - `check:privacy` L-3 checks.
+
+## L-4
+- `dex.withdrawalNoteLegProblemNow(poolId, shares)` reads `dex.pool(id)` and the LP supply together at sign time; either read failing refuses ("cannot be checked"). Markets' ANML withdrawal uses it instead of the page-load reserve.
+- Not closed client-side: the chain checks the leg folded with an earlier same-block withdrawal from the pool, which the client cannot see (documented in the doc comment).
+- `check:privacy` L-4 checks (over, at cap, pool read fails, supply read fails).

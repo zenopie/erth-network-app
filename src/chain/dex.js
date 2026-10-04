@@ -447,6 +447,20 @@ export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
 }
 
 /**
+ * withdrawalNoteLegProblem against the pool's reserve and share supply read
+ * together now, at sign time, not the reserve a page loaded earlier (audit 6
+ * L-4). Either read failing is itself a reason to refuse: the leg cannot be
+ * checked. The chain checks the leg folded with any earlier withdrawal from
+ * this pool in the same block, which a client cannot see; that one still
+ * fails at deliver.
+ */
+export async function withdrawalNoteLegProblemNow(poolId, shares) {
+  const [p, total] = await Promise.all([pool(poolId), supplyOrNull(lpDenom(poolId))]);
+  if (!p || total === null) return "Could not read the pool from the chain, so this withdrawal cannot be checked. Try again.";
+  return withdrawalNoteLegProblem(shares, p.tokenReserve, total);
+}
+
+/**
  * MsgRemoveLiquidity for the ANML pool: the ERTH leg is paid to `creator`,
  * the ANML leg as a note to the shielded `address`. The payout is priced
  * when the escrow matures, so the note carries the value-blind (v2)

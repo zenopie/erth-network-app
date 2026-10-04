@@ -309,6 +309,17 @@ const tk = await import("../src/chain/tokens.js");
   check("leg is floor(shares x reserve / supply)", dx.withdrawalNoteLegProblem("2", (cap * 2n + 1n).toString(), "4") === null &&
     dx.withdrawalNoteLegProblem("3", (cap * 2n).toString(), "4") !== null && dx.withdrawalNoteLegProblem("1", "1", "0") === null);
 
+  // Audit 6 L-4: the reserve is re-read with the supply at sign time; a failed read refuses.
+  routes["/earth/dex/v1/pool/7"] = { pool: { pool_id: "7", reserve_erth: { denom: "uerth", amount: "1" }, reserve_token: { denom: "uanml", amount: (cap + 1n).toString() } } };
+  routes["/cosmos/bank/v1beta1/supply/by_denom"] = (q) => (q.get("denom") === "dexlp/7" ? { amount: { denom: "dexlp/7", amount: "1" } } : null);
+  check("L-4: a leg over the cap at the fresh reserve is refused", /smaller parts/.test((await dx.withdrawalNoteLegProblemNow(7, "1")) ?? ""));
+  routes["/earth/dex/v1/pool/7"].pool.reserve_token.amount = cap.toString();
+  check("L-4: at the cap it starts", (await dx.withdrawalNoteLegProblemNow(7, "1")) === null);
+  check("L-4: a failed pool read refuses", /cannot be checked/.test((await dx.withdrawalNoteLegProblemNow(8, "1")) ?? ""));
+  delete routes["/cosmos/bank/v1beta1/supply/by_denom"];
+  check("L-4: a failed supply read refuses", /cannot be checked/.test((await dx.withdrawalNoteLegProblemNow(7, "1")) ?? ""));
+  delete routes["/earth/dex/v1/pool/7"];
+
   // Audit 6 L-3: a swap floor only from a fresh quote of this exact amount and pair.
   const sq = { micro: "1000", from: "uerth", to: "ufoo", out: 500n, at: 1_000_000 };
   check("L-3: fresh swap quote gives a floor", dx.swapFloor(sq, "1000", "uerth", "ufoo", 1, 1_000_000 + dx.QUOTE_TTL_MS) === "495");
