@@ -91,6 +91,9 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   const [activeTab, setActiveTab] = useState("Actual");
   const [selectedAllocations, setSelectedAllocations] = useState([]);
   const [voterWeight, setVoterWeight] = useState("0");
+  // x/staking status of the account's own validator ("" when it runs none,
+  // null until read). Outside BONDED it has no Groundworks weight.
+  const [validatorStatus, setValidatorStatus] = useState(null);
   // { epoch } of a split filed before the stream's current epoch: shown, but
   // it no longer counts until set again.
   const [staleSplit, setStaleSplit] = useState(null);
@@ -131,9 +134,10 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
     let cancelled = false;
     allocation
       .groundworksVoter(address, { streamEpoch })
-      .then(({ splits, weight, stale, epoch }) => {
+      .then(({ splits, weight, stale, epoch, validatorStatus: status }) => {
         if (cancelled) return;
         setVoterWeight(weight);
+        setValidatorStatus(status);
         setStaleSplit(stale ? { epoch } : null);
         setSelectedAllocations(
           splits.map((w) => {
@@ -142,7 +146,13 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
           }),
         );
       })
-      .catch((err) => console.error(`Error fetching split for ${title}:`, err));
+      .catch((err) => {
+        if (cancelled) return;
+        // Unread is not "has weight": Save stays off until the weight is known.
+        setVoterWeight("0");
+        setValidatorStatus(null);
+        console.error(`Error fetching split for ${title}:`, err);
+      });
     return () => {
       cancelled = true;
     };
@@ -255,9 +265,21 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
         <div className={styles.allocationFundChartBox}>
           <p className={styles.allocationFundNote}>
             Only transparent bonded stake counts here, which on this chain is a validator&apos;s own
-            self-bond. Your weight: {formatMacro(voterWeight, UERTH)} ERTH.
+            self-bond while that validator is in the active set. Your weight: {formatMacro(voterWeight, UERTH)} ERTH.
             Private stakers direct Groundworks with positions in the mobile app.
           </p>
+          {validatorStatus === "" && (
+            <p className={styles.allocationFundNote} role="status">
+              This account runs no validator, so it has no Groundworks weight here.
+            </p>
+          )}
+          {validatorStatus && validatorStatus !== "BOND_STATUS_BONDED" && (
+            <p className={styles.allocationFundNote} role="status">
+              Your validator isn&apos;t in the active set (it is jailed, unbonding or unbonded), so it
+              has no Groundworks weight and its split cannot be set. Its self-bond counts again once
+              it is back in the active set.
+            </p>
+          )}
           {staleSplit && (
             <p className={styles.allocationFundNote} role="status">
               Stale split: this was set in epoch {staleSplit.epoch}, and the stream is now in epoch{" "}
@@ -359,7 +381,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
             <button
               onClick={handleSetAllocation}
               className={styles.allocationFundClaimButton}
-              disabled={isSubmitting || Boolean(splitProblem) || voterWeight === "0"}
+              disabled={isSubmitting || Boolean(splitProblem) || toBigInt(voterWeight) <= 0n}
             >
               {isSubmitting ? "Submitting..." : "Set Allocation"}
             </button>

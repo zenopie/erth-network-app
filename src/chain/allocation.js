@@ -19,8 +19,10 @@ import { ADDRESS_PREFIX } from "./config";
  *                 weighed per validator: all of one validator's positions are
  *                 ONE weighted voter (validatorVoter) carrying an absolute
  *                 weight per option, trunc(rate x sum(derth x percent) / 100).
- *                 The rest is validators' own self-bond, which an operator can
- *                 still direct transparently with MsgSetAllocations.
+ *                 The rest is validators' own self-bond, counted only while
+ *                 the validator is Bonded (in the active set), which an
+ *                 operator can still direct transparently with
+ *                 MsgSetAllocations.
  */
 
 /**
@@ -112,10 +114,12 @@ function toVoter(v) {
 
 /**
  * An address's Groundworks split as [{ optionId, percent }] and the weight it
- * carries (its bonded stake — on this chain, a validator's self-bond).
- * Caretaker splits are keyed by nullifier and cannot be read this way.
+ * carries: its stake at Bonded validators, which on this chain is a
+ * validator's self-bond while that validator is in the active set
+ * (BOND_STATUS_BONDED). Caretaker splits are keyed by nullifier and cannot be
+ * read this way.
  *
- * { splits, weight, epoch, exists, stale }:
+ * { splits, weight, epoch, exists, stale, validatorStatus }:
  *   exists — the chain has a voter record. The LCD 404s for an address that
  *            has never voted; that is not zero weight, it is a validator yet to
  *            set its first split, so the weight it would vote with is read
@@ -124,6 +128,11 @@ function toVoter(v) {
  *            (`streamEpoch`, from streamView): its split no longer counts
  *            until set again, so it is shown as stale and the weight is again
  *            the self-bond it would be re-cast with.
+ *   validatorStatus — x/staking's status of the address's own validator
+ *            ("BOND_STATUS_BONDED", ...; "" when it runs none). Outside
+ *            BONDED the weight is "0" whatever the record says: x/allocation
+ *            weighs only stake at Bonded validators, and ApplySplit refuses a
+ *            non-empty split at zero weight (ErrNoWeight) with the fee spent.
  * Any other read failure throws rather than passing for "no weight".
  */
 export async function groundworksVoter(address, { streamEpoch = 0 } = {}) {
@@ -137,11 +146,39 @@ export async function groundworksVoter(address, { streamEpoch = 0 } = {}) {
   const v = toVoter(voter);
   const exists = voter !== null;
   const stale = exists && Number(streamEpoch) > 0 && v.epoch < Number(streamEpoch);
-  if (exists && !stale) return { ...v, exists, stale };
-  return { ...v, weight: await selfBond(address), exists, stale };
+  const validatorStatus = await ownValidatorStatus(address);
+  if (validatorStatus !== BONDED) return { ...v, weight: "0", exists, stale, validatorStatus };
+  if (exists && !stale) return { ...v, exists, stale, validatorStatus };
+  return { ...v, weight: await selfBond(address), exists, stale, validatorStatus };
 }
 
-/** The account's bond to its own validator (uerth string), "0" when it runs none. */
+const BONDED = "BOND_STATUS_BONDED";
+
+/** Is a groundworksVoter() result's validator in the active set? */
+export const validatorBonded = (gv) => gv?.validatorStatus === BONDED;
+
+/**
+ * x/staking's status of the account's own validator, "" when it runs none
+ * (the LCD 404s). Any other failure throws: an unread status is not "no
+ * validator".
+ */
+async function ownValidatorStatus(address) {
+  const valoper = valoperOf(address);
+  if (!valoper) return "";
+  try {
+    const data = await get(seg`/cosmos/staking/v1beta1/validators/${valoper}`);
+    return str(data?.validator?.status);
+  } catch (err) {
+    if (/LCD 404/.test(err?.message ?? "")) return "";
+    throw err;
+  }
+}
+
+/**
+ * The account's bond to its own validator (uerth string), "0" when it runs
+ * none. Its Groundworks weight only while that validator is Bonded: the
+ * caller (groundworksVoter) checks the status first.
+ */
 async function selfBond(address) {
   const valoper = valoperOf(address);
   if (!valoper) return "0";

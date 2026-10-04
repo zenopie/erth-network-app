@@ -93,6 +93,7 @@ const al = await import("../../src/chain/allocation.js");
   routes[`/cosmos/staking/v1beta1/validators/${ownVal}/delegations/${acct}`] = {
     delegation_response: { balance: { denom: "uerth", amount: "5000000" } },
   };
+  routes[`/cosmos/staking/v1beta1/validators/${ownVal}`] = { validator: { operator_address: ownVal, status: "BOND_STATUS_BONDED" } };
   const gv = await al.groundworksVoter(acct, { streamEpoch: 3 });
   check("no voter yet: weight from self-bond, not zero", !gv.exists && !gv.stale && gv.weight === "5000000" && gv.splits.length === 0,
     JSON.stringify(gv));
@@ -106,8 +107,26 @@ const al = await import("../../src/chain/allocation.js");
   routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`].voter.epoch = "3";
   const cur = await al.groundworksVoter(acct, { streamEpoch: 3 });
   check("current voter: its own weight", cur.exists && !cur.stale && cur.weight === "4000000");
+  check("bonded validator reads as bonded", al.validatorBonded(cur) && cur.validatorStatus === "BOND_STATUS_BONDED");
+  // Weight counts self-bond at Bonded validators only (chain fd79d39): a
+  // jailed, unbonding or unbonded validator's operator has none, whatever its
+  // self-bond or its record says, so Save stays off instead of failing with
+  // ErrNoWeight at deliver.
+  for (const status of ["BOND_STATUS_UNBONDING", "BOND_STATUS_UNBONDED"]) {
+    routes[`/cosmos/staking/v1beta1/validators/${ownVal}`].validator.status = status;
+    const off = await al.groundworksVoter(acct, { streamEpoch: 3 });
+    check(`${status}: zero weight despite record and self-bond`,
+      off.weight === "0" && off.validatorStatus === status && !al.validatorBonded(off), JSON.stringify(off));
+    delete routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`];
+    const fresh = await al.groundworksVoter(acct, { streamEpoch: 3 });
+    check(`${status}: no voter yet, zero weight despite self-bond`, fresh.weight === "0" && !fresh.exists, JSON.stringify(fresh));
+    routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`] = {
+      voter: { percentages: [{ option_id: "3", percent: "100" }], weight: "4000000", epoch: "3" },
+    };
+  }
+  routes[`/cosmos/staking/v1beta1/validators/${ownVal}`].validator.status = "BOND_STATUS_BONDED";
   const nobody = await al.groundworksVoter(toBech32("earth", new Uint8Array(20).fill(9)));
-  check("no voter and no validator: zero", nobody.weight === "0" && !nobody.exists);
+  check("no voter and no validator: zero", nobody.weight === "0" && !nobody.exists && nobody.validatorStatus === "");
 }
 
 // ---- options: paged until next_key is empty; a failed later page, a repeated

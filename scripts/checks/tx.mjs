@@ -235,6 +235,8 @@ check("every LCD read and the broadcast POST refuse redirects", redirects.length
   check("dex 1120 explained", /pool's cap/.test(m) && /code 1120, dex/.test(m), m);
   const p = tx.explainTxError("failed", { code: 1120, codespace: "personhood", raw_log: "identity tree full" });
   check("personhood 1120 is not the pool cap", !/pool's cap/.test(p), p);
+  const nw = tx.explainTxError("failed", { code: 1105, codespace: "allocation", raw_log: "voter carries no weight in this stream" });
+  check("allocation ErrNoWeight explained", /isn't in the active set/.test(nw) && /code 1105, allocation/.test(nw), nw);
 }
 
 done();
