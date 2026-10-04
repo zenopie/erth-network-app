@@ -111,19 +111,30 @@ export async function connectKeplr() {
   return { address: wallet.address, name: (key?.name ?? "").slice(0, 12) };
 }
 
-/** Account number + sequence, or zeroes for an account the chain has never seen. */
-async function fetchAccount(address) {
+/**
+ * Account number + sequence, or zeroes for an account the chain has never
+ * seen (the LCD's 404: x/auth NotFound). Any other failure (LCD down, a 5xx,
+ * a malformed answer) throws, so nothing is signed with a made-up 0/0 that
+ * CheckTx would only refuse as a signature error (audit 6 L-11).
+ */
+export async function fetchAccount(address) {
+  let data;
   try {
-    const { account } = await get(seg`/cosmos/auth/v1beta1/accounts/${address}`);
-    // Accounts may be wrapped (e.g. vesting accounts nest a BaseAccount).
-    const base = account?.base_account ?? account;
-    return {
-      accountNumber: Number(base?.account_number ?? 0),
-      sequence: Number(base?.sequence ?? 0),
-    };
-  } catch {
-    return { accountNumber: 0, sequence: 0 };
+    data = await get(seg`/cosmos/auth/v1beta1/accounts/${address}`);
+  } catch (err) {
+    if (/^LCD 404 /.test(err?.message ?? "")) return { accountNumber: 0, sequence: 0 };
+    throw new Error("Could not read your account from the chain (the LCD is unavailable), so nothing was signed. Try again shortly.");
   }
+  // Accounts may be wrapped (e.g. vesting accounts nest a BaseAccount).
+  const account = data?.account;
+  const base = account?.base_account ?? account;
+  const int = (v) => (v === undefined || v === null ? 0 : /^\d{1,15}$/.test(String(v)) ? Number(v) : NaN);
+  const accountNumber = int(base?.account_number);
+  const sequence = int(base?.sequence);
+  if (!base || !Number.isSafeInteger(accountNumber) || !Number.isSafeInteger(sequence)) {
+    throw new Error("The chain's answer for your account could not be read, so nothing was signed. Try again shortly.");
+  }
+  return { accountNumber, sequence };
 }
 
 // How many blocks a signed tx stays valid for (TxBody.timeout_height). Past

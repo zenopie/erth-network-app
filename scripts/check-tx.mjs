@@ -43,6 +43,7 @@ const res530 = { ok: false, status: 530, text: async () => "cf 530" };
 // The LCD answers about the hash asked for (txhash echoed), unless a case says otherwise.
 const found = (code = 0, txhash) => (q) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: txhash ?? q, raw_log: "boom" } }) });
 
+let authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "1", sequence: "0" } }) });
 // Every request's redirect mode (audit 5, L6: a 3xx is never followed).
 const redirects = [];
 globalThis.fetch = async (url, opts) => {
@@ -52,7 +53,7 @@ globalThis.fetch = async (url, opts) => {
     posted.push(JSON.parse(opts.body).tx_bytes);
     return post();
   }
-  if (url.includes("/auth/")) return { ok: true, json: async () => ({ account: { account_number: "1", sequence: "0" } }) };
+  if (url.includes("/auth/")) return authRes();
   if (url.includes("/blocks/latest")) return { ok: true, json: async () => ({ block: { header: { height: heightRaw ?? String(height) } } }) };
   if (url.includes("/cosmos/tx/v1beta1/txs/")) return lookup(url.split("/").pop());
   return res530;
@@ -199,5 +200,30 @@ const outcome = async (p) => {
 
 check("L6: every LCD read and the broadcast POST refuse redirects", redirects.length > 0 && redirects.every((r) => r === "error"),
   `${redirects.filter((r) => r !== "error").length} of ${redirects.length} follow`);
+
+// Audit 6 L-11: only a NotFound account is a new one (0/0); any other read failure refuses to sign.
+{
+  const prev = authRes;
+  authRes = () => ({ ok: false, status: 404, text: async () => '{"code":5,"message":"account earth1x not found"}' });
+  const a = await outcome(tx.fetchAccount(address));
+  check("L-11: an account the chain has not seen is 0/0", a.ok?.accountNumber === 0 && a.ok?.sequence === 0, a.err?.message);
+  authRes = () => res530;
+  const b = await outcome(tx.fetchAccount(address));
+  check("L-11: an LCD error refuses, not 0/0", /nothing was signed/.test(b.err?.message ?? ""), b.err?.message ?? JSON.stringify(b.ok));
+  authRes = () => { throw new TypeError("Failed to fetch"); };
+  const c = await outcome(tx.fetchAccount(address));
+  check("L-11: a network error refuses", /nothing was signed/.test(c.err?.message ?? ""), c.err?.message);
+  authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "x1", sequence: "0" } }) });
+  const d = await outcome(tx.fetchAccount(address));
+  check("L-11: a malformed account refuses", /nothing was signed/.test(d.err?.message ?? ""), d.err?.message);
+  authRes = () => res530;
+  const before = posted.length;
+  const e = await outcome(send());
+  check("L-11: broadcast signs nothing when the account read fails", e.err && posted.length === before, e.err?.message);
+  authRes = () => ({ ok: true, json: async () => ({ account: { base_account: { account_number: "7", sequence: "3" } } }) });
+  const f = await outcome(tx.fetchAccount(address));
+  check("L-11: a wrapped account reads", f.ok?.accountNumber === 7 && f.ok?.sequence === 3);
+  authRes = prev;
+}
 
 process.exit(bad ? 1 : 0);
