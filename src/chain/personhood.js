@@ -105,6 +105,9 @@ export async function params() {
 
 const INT64_MAX = (1n << 63n) - 1n;
 
+/** The longest lease or activation margin LeaseBounds may report: 10 years (spec §4h). */
+export const LEASE_MAX_SECONDS = 10 * 365 * 86400;
+
 /** An int64 JSON field as a Number of seconds, or null (absent, malformed, negative or past 10^12). */
 function seconds(v) {
   if (v === undefined || v === null || v === "") return 0;
@@ -133,6 +136,9 @@ export async function leaseBounds() {
     caretakerLeaseHoldUntil: seconds(data.caretaker_lease_hold_until),
   };
   if (Object.values(f).some((v) => v === null) || !f.blockTime || !f.handleLeaseSeconds || !f.caretakerLeaseSeconds) return null;
+  // Spec §4h (audit 6 L-9): leases in 1 s..10 years, the margin in 0..10 years.
+  const inRange = (v, lo) => v >= lo && v <= LEASE_MAX_SECONDS;
+  if (!inRange(f.handleLeaseSeconds, 1) || !inRange(f.caretakerLeaseSeconds, 1) || !inRange(f.marginSeconds, 0)) return null;
   // The bounds are block_time - lease - margin (signed: an early chain's is negative).
   const bound = (v) => (/^-?\d{1,19}$/.test(String(v ?? "")) ? Number(v) : NaN);
   const hb = bound(data.handle_claim_bound);

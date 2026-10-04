@@ -11,7 +11,8 @@ Gate: `npm run build` and every `check:*` pass after each step.
 | L-4 reserve re-read before signing | done | 2e9eeb7 |
 | L-6 allocation options past 2000 | done | 272c2b3 |
 | L-7 split editor refuses 0 / negative | done | dd16677 |
-| L-8 handle directory 1M-row cap, times rule | done | (this) |
+| L-8 handle directory 1M-row cap, times rule | done | 0545f67 |
+| L-9 LeaseBounds ranges | done | (this) |
 
 ## L-1
 - `dex.withdrawalNoteLegProblem` and the dex 1101 sentence in `tx.js` now say "32 notes of 2^63 - 1 units"; doc comments no longer say "past a note's u64".
@@ -45,3 +46,7 @@ Gate: `npm run build` and every `check:*` pass after each step.
 ## L-8
 - `handles.js`: `MAX_ROWS` = 1 000 000 (pages capped at MAX_ROWS / PAGE); `check()` refuses the whole directory (chain or stream) on a row past the cap or an entry outside `0 < expires_at <= renewal_until <= now + 10 years` (`timesOk`, 365-day years as the Android wallet). A stream whose page 0 claims more than 1 000 000 rows (or a non-integer size) is refused before page 1. Both readers take `now` (the directory's clock).
 - `check:handles` L-8 checks.
+
+## L-9
+- `personhood.leaseBounds` refuses (null) a handle or caretaker lease outside 1 s..10 years or a margin outside 0..10 years (`LEASE_MAX_SECONDS`), as spec §4h and the Android `leaseParam`. Display only (wait days).
+- `check:privacy` L-9 checks.

@@ -275,6 +275,21 @@ const tk = await import("../src/chain/tokens.js");
   check("inconsistent LeaseBounds refused", (await personhood.leaseBounds()) === null);
   routes["/earth/personhood/v1/lease_bounds"] = { ...lb, handle_lease_seconds: "-1" };
   check("malformed LeaseBounds refused", (await personhood.leaseBounds()) === null);
+  // Audit 6 L-9: leases in 1..10 years, margin in 0..10 years.
+  const TEN = 10 * 365 * 86400;
+  const lbWith = (o) => {
+    const x = { ...lb, ...o };
+    const t = Number(x.block_time), m = Number(x.activation_margin_seconds);
+    return { ...x, handle_claim_bound: String(t - Number(x.handle_lease_seconds) - m), caretaker_cast_bound: String(t - Number(x.caretaker_lease_seconds) - m) };
+  };
+  routes["/earth/personhood/v1/lease_bounds"] = lbWith({ handle_lease_seconds: String(TEN) , activation_margin_seconds: String(TEN) });
+  check("L-9: a 10-year lease and margin are read", (await personhood.leaseBounds()) !== null);
+  routes["/earth/personhood/v1/lease_bounds"] = lbWith({ handle_lease_seconds: String(TEN + 1) });
+  check("L-9: a handle lease over 10 years refused", (await personhood.leaseBounds()) === null);
+  routes["/earth/personhood/v1/lease_bounds"] = lbWith({ caretaker_lease_seconds: String(TEN + 1) });
+  check("L-9: a caretaker lease over 10 years refused", (await personhood.leaseBounds()) === null);
+  routes["/earth/personhood/v1/lease_bounds"] = lbWith({ activation_margin_seconds: String(TEN + 1) });
+  check("L-9: a margin over 10 years refused", (await personhood.leaseBounds()) === null);
   delete routes["/earth/personhood/v1/lease_bounds"];
   check("no LeaseBounds served: null", (await personhood.leaseBounds()) === null);
 
