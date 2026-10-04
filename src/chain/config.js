@@ -10,7 +10,7 @@
 const isDev = import.meta.env.DEV;
 
 // In dev, vite proxies /lcd -> http://localhost:1317 (see vite.config.js) so a
-// local `ignite chain serve` works without CORS. In production these default to
+// local node (the chain repo's scripts/testnet-3val.sh) works without CORS. In production these default to
 // the public endpoints, which the deployed bundle relies on: the image is built
 // without VITE_ vars, so whatever is written here is what ships.
 export const EARTH_LCD_URL = isDev

@@ -8,7 +8,7 @@ import { MAT_DIAG4, ROUND_CONSTANTS } from "./poseidon2Constants";
  *
  * Plain BigInt arithmetic. The web app hashes a handful of elements per
  * note, so speed is not a concern; matching the chain bit for bit is, and the
- * golden vectors in scripts/check-notes.mjs pin it.
+ * golden vectors in scripts/checks/shielded.mjs pin it.
  */
 
 /** The BN254 scalar field modulus. */
