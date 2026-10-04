@@ -115,7 +115,7 @@ export async function connectKeplr() {
  * Account number + sequence, or zeroes for an account the chain has never
  * seen (the LCD's 404: x/auth NotFound). Any other failure (LCD down, a 5xx,
  * a malformed answer) throws, so nothing is signed with a made-up 0/0 that
- * CheckTx would only refuse as a signature error (audit 6 L-11).
+ * CheckTx would only refuse as a signature error.
  */
 export async function fetchAccount(address) {
   let data;
@@ -179,7 +179,7 @@ function readAllPending() {
     if (raw) {
       const v = JSON.parse(raw);
       const out = {};
-      // Pre-audit-4 format: a single record for whichever account sent last.
+      // The older format: a single record for whichever account sent last.
       if (isRecord(v)) out[v.address] = v;
       else if (v && typeof v === "object") for (const [a, p] of Object.entries(v)) if (isRecord(p) && p.address === a) out[a] = p;
       return { ...pendingMem, ...out };

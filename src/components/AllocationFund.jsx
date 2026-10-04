@@ -102,7 +102,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   const allocationOptions = live.map((o) => ({ id: o.id, name: labelFor(o) }));
   // The pie takes floats: each option's share of the total in percent, worked
   // out exactly from the integer weights first (they pass 2^53). The total is
-  // the chain's stream total, so a partial option list (audit 6 L-6) leaves
+  // the chain's stream total, so a partial option list leaves
   // its unread weight as its own slice rather than inflating the rest.
   const loadedTotal = sumBig(live.map((o) => o.amountAllocated));
   const liveTotal = toBigInt(totalWeight) > loadedTotal ? toBigInt(totalWeight) : loadedTotal;
@@ -117,7 +117,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
     (acc, alloc) => acc + (allocation.splitPercent(alloc.value) ?? 0),
     0,
   );
-  // Each share an integer 1..100, distinct, summing to 100 (audit 6 L-7):
+  // Each share an integer 1..100, distinct, summing to 100:
   // the chain's ValidateSplit, checked before a fee is spent on it.
   const splitWeights = selectedAllocations.map((alloc) => ({ optionId: alloc.id, percent: alloc.value }));
   const splitProblem = allocation.splitProblem(splitWeights);

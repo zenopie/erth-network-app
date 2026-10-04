@@ -9,10 +9,11 @@ import { b64ToHex } from "./bytes";
  * each. derth is not a coin and not a shielded-pool asset: stake notes live in
  * the module's own owner-locked stake tree (non-transferable), and the supply
  * is a book entry (ValidatorState.derth_supply), so it is read from the
- * Validator query, never from x/bank. Rewards are compounded into the module's delegation at every epoch end, so
- * the rate rises instead of anyone being paid. Delegations, undelegations and
- * claims are batched at epoch end and made from the phone. Everything here is
- * per validator or per position, never per owner.
+ * Validator query, never from x/bank. Rewards are compounded into the
+ * module's delegation at every epoch end, so the rate rises instead of anyone
+ * being paid. Delegations and undelegations are batched at epoch end and made
+ * from the phone; a matured undelegation is paid out by the chain itself.
+ * Everything here is per validator or per position, never per owner.
  */
 
 /** The epoch in progress: { number, startTime, endTime } in unix seconds. */
@@ -137,7 +138,7 @@ export async function snapshot(proposalId) {
 }
 
 /**
- * The stake note tree (derth and unbond claims): leaf count and latest root
+ * The stake note tree (derth notes): leaf count and latest root
  * (hex, "" before the first note). Null when the read fails.
  */
 export async function stakeTree() {

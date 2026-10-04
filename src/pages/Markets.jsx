@@ -91,7 +91,7 @@ const Markets = () => {
 
         // Integer weights past 2^53: the ratio is taken exactly, then made a
         // float. The share is of the chain's stream total, not of the options
-        // loaded (a partial list would overstate it, audit 6 L-6).
+        // loaded (a partial list would overstate it).
         const options = stream?.options ?? [];
         const totalWeight = stream && BigInt(stream.totalWeight) > 0n ? stream.totalWeight : sumBig(options.map((o) => o.amountAllocated));
         const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED" && !o.removed);
@@ -325,7 +325,7 @@ const Markets = () => {
     if (!isConnected) return;
     execute(async () => {
       const shares = toMicro(removeAmount, row.pool.lpDenom);
-      // Reserve and supply read together now; a failed read refuses (audit 6 L-4).
+      // Reserve and supply read together now; a failed read refuses.
       const problem = await dex.withdrawalNoteLegProblemNow(row.pool.id, shares);
       if (problem) throw new Error(problem);
       await broadcast([

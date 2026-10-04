@@ -52,7 +52,7 @@ const SwapTokens = () => {
   // { micro, from, to, out (BigInt), at } from dex.boundSwapQuote, or null.
   // The swap's floor is taken from this (dex.swapFloor), never from the
   // display string, and only while it is for this exact amount and pair and
-  // younger than QUOTE_TTL_MS; it is re-asked on an interval (audit 6 L-3).
+  // younger than QUOTE_TTL_MS; it is re-asked on an interval.
   const [quote, setQuote] = useState(null);
   const [now, setNow] = useState(() => Date.now());
   // Bumped by every edit that invalidates a quote in flight. A quote that

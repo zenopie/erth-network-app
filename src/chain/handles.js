@@ -29,9 +29,9 @@ const STATUSES = new Set([LIVE, RENEWAL, FREE]);
 /** Query/Handles' largest page; the backend's page. */
 export const PAGE = 1000;
 /**
- * The most rows a directory may have (the backend's cap, spec §4g / audit 5
- * L7): more, or a stream whose page 0 claims more, is refused whole rather
- * than downloaded and held (audit 6 L-8).
+ * The most rows a directory may have (the backend's cap, spec §4g): more, or
+ * a stream whose page 0 claims more, is refused whole rather than downloaded
+ * and held.
  */
 export const MAX_ROWS = 1_000_000;
 const MAX_PAGES = MAX_ROWS / PAGE;
@@ -98,7 +98,7 @@ function check(e, after, out, now) {
   if (!validHandle(e.handle)) throw new Error(`the directory holds ${JSON.stringify(e.handle.slice(0, 40))}, not a handle`);
   if (e.handle <= after || out.has(e.handle)) throw new Error(`the directory is out of order at ${e.handle}`);
   if (!STATUSES.has(e.status)) throw new Error(`handle ${e.handle}: status ${e.status.slice(0, 20)}`);
-  // Audit 6 L-8 (spec §4g): an entry whose times no lease has refuses the
+  // Spec §4g: an entry whose times no lease has refuses the
   // whole directory, as does a row past MAX_ROWS.
   if (!timesOk(e, now)) throw new Error(`handle ${e.handle}: times out of range`);
   if (out.size >= MAX_ROWS) throw new Error(`the directory has more than ${MAX_ROWS} handles`);

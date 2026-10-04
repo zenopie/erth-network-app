@@ -118,7 +118,7 @@ function seconds(v) {
 }
 
 /**
- * x/personhood Query/LeaseBounds (chain 203d3b2): the lease lengths the
+ * x/personhood Query/LeaseBounds: the lease lengths the
  * predecessor bounds use as the chain enforces them now (the longest handle
  * lease ever in force; the caretaker lease including a longer one held after
  * a cut), and both bounds at block_time. What the app explains about a
@@ -136,7 +136,7 @@ export async function leaseBounds() {
     caretakerLeaseHoldUntil: seconds(data.caretaker_lease_hold_until),
   };
   if (Object.values(f).some((v) => v === null) || !f.blockTime || !f.handleLeaseSeconds || !f.caretakerLeaseSeconds) return null;
-  // Spec §4h (audit 6 L-9): leases in 1 s..10 years, the margin in 0..10 years.
+  // Spec §4h: leases in 1 s..10 years, the margin in 0..10 years.
   const inRange = (v, lo) => v >= lo && v <= LEASE_MAX_SECONDS;
   if (!inRange(f.handleLeaseSeconds, 1) || !inRange(f.caretakerLeaseSeconds, 1) || !inRange(f.marginSeconds, 0)) return null;
   // The bounds are block_time - lease - margin (signed: an early chain's is negative).

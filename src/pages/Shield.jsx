@@ -183,7 +183,7 @@ const Shield = () => {
         const r = await handleDirectory.resolveForPayment(recipient);
         if (!r.ok || r.entry.address !== to) throw new Error(r.ok ? `@${review.handle} changed since the review. Review it again.` : r.reason);
       }
-      // The chain refuses to shield a send-disabled denom (chain 203d3b2).
+      // The chain refuses to shield a send-disabled denom.
       if ((await sendEnabled(UERTH)) === false) {
         throw new Error("Transfers of ERTH are switched off on the chain right now, so it cannot be shielded. Nothing was sent.");
       }

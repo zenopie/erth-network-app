@@ -13,7 +13,7 @@ import { ADDRESS_PREFIX } from "./config";
  *                 mobile app (x/personhood MsgSetCaretaker, a membership
  *                 proof) and filed under a nullifier, not an address, so
  *                 there is no per-voter read here; each split lapses after
- *                 R days unless the app refreshes it.
+ *                 R days unless its owner refreshes it (manual).
  *   GROUNDWORKS — weighted by stake. Most of that weight is Groundworks
  *                 positions (locked private derth, see ./shieldedStaking.js),
  *                 weighed per validator: all of one validator's positions are
@@ -61,7 +61,7 @@ export const MAX_OPTION_PAGES = 1000;
  * next_key is empty. `partial` is true when a later page failed, a page key
  * repeated, or MAX_OPTION_PAGES was hit: the options are then not all of
  * them, and shares must be taken against `totalWeight` (the chain's sum over
- * every live option), never the sum of the options loaded (audit 6 L-6).
+ * every live option), never the sum of the options loaded.
  */
 export async function streamView(stream, { maxPages = MAX_OPTION_PAGES } = {}) {
   const options = [];
@@ -207,8 +207,8 @@ export function splitPercent(v) {
 /**
  * Why x/allocation ValidateSplit would refuse this non-empty split, or null:
  * each entry an integer share of 1..100 % (no zero, no negative), distinct
- * options, at most MAX_SPLIT_OPTIONS of them, summing to exactly 100
- * (audit 6 L-7). Refused before signing rather than for a fee.
+ * options, at most MAX_SPLIT_OPTIONS of them, summing to exactly 100.
+ * Refused before signing rather than for a fee.
  */
 export function splitProblem(weights) {
   if (!weights.length) return "Add at least one option.";

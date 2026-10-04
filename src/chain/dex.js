@@ -249,8 +249,8 @@ const toBig = (v) => {
 };
 
 /**
- * feeOf: LegacyDec(amount).Mul(fee).Quo(100).Ceil().TruncateInt() (chain
- * 203d3b2, audit 5 L-DX4: rounded up, so a small swap cannot pay nothing).
+ * feeOf: LegacyDec(amount).Mul(fee).Quo(100).Ceil().TruncateInt() (rounded
+ * up, so a small swap cannot pay nothing).
  * Mul is exact for an integer amount; Quo rounds half to even at 18
  * decimals; then any fraction left rounds the fee up.
  */
@@ -332,7 +332,7 @@ export function quoteAddLiquidity(erthIn, tokenIn, erthReserve, tokenReserve, to
  * `from` and the other's `to`: ceil(amount * to / from), as an integer string.
  *
  * x/dex mints shares = min(floor(in_e * S / R_e), floor(in_t * S / R_t)) and
- * pulls each leg rounded UP, ceil(shares * R / S) (audit 4, C2). A leg rounded
+ * pulls each leg rounded UP, ceil(shares * R / S). A leg rounded
  * up here never makes the other side the binding one, so the typed side buys
  * every share it can and the pull never exceeds either leg. "0" for an empty
  * pool or anything that is not an integer.
@@ -427,7 +427,7 @@ export const MAX_WITHDRAWAL_NOTE_LEG = ((1n << 63n) - 1n) * 32n;
  * Why x/dex would refuse to start a withdrawal of `shares` whose token leg
  * is paid as notes (the ANML pool), or null: at the pool as it stands, a
  * leg of floor(shares * reserve / supply) above MAX_WITHDRAWAL_NOTE_LEG is
- * refused at start (x/dex checkWithdrawalNoteLegs, 8ed1278). A leg above
+ * refused at start (x/dex checkWithdrawalNoteLegs). A leg above
  * one note's 2^63 - 1 is otherwise paid as several notes at maturity.
  */
 export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
@@ -445,8 +445,8 @@ export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
 
 /**
  * withdrawalNoteLegProblem against the pool's reserve and share supply read
- * together now, at sign time, not the reserve a page loaded earlier (audit 6
- * L-4). Either read failing is itself a reason to refuse: the leg cannot be
+ * together now, at sign time, not the reserve a page loaded earlier. Either
+ * read failing is itself a reason to refuse: the leg cannot be
  * checked. The chain checks the leg folded with any earlier withdrawal from
  * this pool in the same block, which a client cannot see; that one still
  * fails at deliver.
@@ -535,8 +535,8 @@ export async function boundBuyAnmlQuote(micro, now = Date.now) {
  * The minimum ANML a purchase of `micro` uerth may sign for, from `quote`:
  * "0" (nothing may be signed) unless the quote was computed for exactly this
  * amount, is positive, and is younger than QUOTE_TTL_MS. A quote for an
- * earlier amount (a slow or hung quote request after the amount changed, the
- * audit-4 stale-quote finding) never becomes another amount's floor.
+ * earlier amount (a slow or hung quote request after the amount changed)
+ * never becomes another amount's floor.
  */
 export function buyAnmlFloor(quote, micro, slippage, now = Date.now()) {
   if (!quote || quote.micro !== String(micro) || typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
@@ -558,7 +558,7 @@ export async function boundSwapQuote(micro, from, to, now = Date.now) {
  * `quote`: "0" (nothing may be signed) unless the quote was computed for
  * exactly this amount and pair, is positive, and is younger than
  * QUOTE_TTL_MS. A page left open does not sign a floor priced at an old
- * reserve (audit 6 L-3).
+ * reserve.
  */
 export function swapFloor(quote, micro, from, to, slippage, now = Date.now()) {
   if (!quote || quote.micro !== String(micro) || quote.from !== from || quote.to !== to) return "0";

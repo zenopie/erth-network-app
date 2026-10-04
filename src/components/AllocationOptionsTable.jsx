@@ -23,7 +23,7 @@ const AllocationOptionsTable = ({ options, address, onClaim, totalWeight, partia
 
   // Option weights are integer strings past 2^53 (Groundworks: rate x derth).
   // Shares are of the chain's stream total (every live option), not of the
-  // options loaded, which may be a partial list (audit 6 L-6).
+  // options loaded, which may be a partial list.
   const loaded = sumBig(options.filter((o) => !o.removed).map((o) => o.amountAllocated));
   const total = toBigInt(totalWeight) > loaded ? toBigInt(totalWeight) : loaded;
   const canClaim = (o) =>
