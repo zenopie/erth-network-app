@@ -25,8 +25,9 @@ const assetLabel = (denom) => {
  * The shielded pool: how many notes exist, and per asset what has entered
  * and left it. Every owner, value and transfer inside it is private; the
  * turnstiles are the public boundary, and `in - out` is exactly what the pool
- * module holds. derth and unbond claims are not pool assets: they are stake
- * notes in x/shieldedstaking's own tree (shown here by size only). LP shares
+ * module holds. derth is not a pool asset: it is held in stake notes (one per
+ * owner and validator) in x/shieldedstaking's own tree, shown here by size
+ * only. An undelegation is paid into this pool by the chain when it matures. LP shares
  * (dexlp/*) can be pool assets: shielded deposits mint them as notes, and they
  * leave only through a private withdrawal.
  */
@@ -144,7 +145,7 @@ const ExplorerShielded = () => {
           <div className={styles.kvLabel}>Stake notes</div>
           <div className={styles.kvValue}>
             {stakeTree ? stakeTree.size.toLocaleString() : "—"}
-            <span className={styles.muted}> (derth and unbond claims, x/shieldedstaking&apos;s own tree)</span>
+            <span className={styles.muted}> (derth, one note per owner and validator, in x/shieldedstaking&apos;s own tree)</span>
           </div>
         </div>
       </div>
@@ -185,9 +186,9 @@ const ExplorerShielded = () => {
         )}
         <p className={forms.note}>
           Shielded is entered minus left, which the chain keeps equal to the pool&apos;s own
-          balance. Notes minted inside the pool — registration rewards, ANML claims, staking —
-          count as entering it. LP shares held here are private: their owners are not public. derth
-          and unbond claims are not in this pool: they are owner-locked stake notes in the staking
+          balance. Notes minted inside the pool — registration rewards, ANML claims, undelegation
+          payouts — count as entering it. LP shares held here are private: their owners are not
+          public. derth is not in this pool: it is held in owner-locked stake notes in the staking
           module&apos;s own tree; see <Link className={styles.link} to="/stake-erth">staking</Link>.
         </p>
       </div>

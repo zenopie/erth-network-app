@@ -43,10 +43,12 @@ function until(unix) {
  *
  * x/shieldedstaking is the only delegator on this chain besides validators'
  * own operators. Holders stake privately from the mobile app: they spend ERTH
- * notes for derth/<validator> stake notes (owner-locked, non-transferable, in
- * the module's own stake tree; derth is not a coin), the module delegates the batch at the end
- * of each epoch, and rewards compound into each validator's rate instead of
- * being paid out. This page shows that public side — the validators, each
+ * notes and the chain credits derth/<validator> into the holder's one stake
+ * note for that validator (owner-locked, non-transferable, in the module's
+ * own stake tree; derth is not a coin). The module delegates the batch at the
+ * end of each epoch, rewards compound into each validator's rate instead of
+ * being paid out, and a matured undelegation is paid to the holder's
+ * shielded address by the chain itself. This page shows that public side — the validators, each
  * one's rate and derth supply, the epoch clock — and gives a validator's
  * operator the transparent self-bond operations Keplr can still sign.
  */
@@ -178,9 +180,10 @@ const StakeErth = () => {
       </div>
 
       <MobileCta title="Stake privately in the Earth Wallet app">
-        Staking, unstaking, claiming and stake votes are private: your ERTH becomes
-        derth for the validator you choose, worth more ERTH each epoch as rewards compound. derth stays
-        in your wallet: it cannot be sent or traded. Delegations settle at the end of each epoch; unstaking takes {unbondDays} days.
+        Staking, unstaking and stake votes are private: your ERTH becomes derth for the validator
+        you choose, worth more ERTH each epoch as rewards compound. derth stays in your wallet: it
+        cannot be sent or traded. Delegations settle at the end of each epoch. Unstaking takes{" "}
+        {unbondDays} days, and then the ERTH arrives in your wallet by itself, with nothing to claim.
       </MobileCta>
 
       <div className={styles.card}>
