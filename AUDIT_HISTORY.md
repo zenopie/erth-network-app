@@ -283,3 +283,59 @@ Gate: `npm run build` and every `check:*` pass after each step.
 - check:tx 34/0, check:handles 58/0, check:privacy 182/0, check:forms 33/0, check:explorer 13/0, check:staking 8/0.
 - check:dex 10/4: the 4 are the live LCD read (`lcd.erth.network` 530, no chain), unchanged from round 5.
 - Not in scope: L-5, I-1, I-3, X-1.
+
+## 2026-10-04 · Drift from chain c3bf5ef
+
+Chain-orch c3bf5ef (Groundworks weight at Bonded validators since fd79d39;
+Query/Validators since b7e77f8; undelegations paid out automatically; one
+stake note per validator).
+
+### Medium: Groundworks weight outside the active set
+- `allocation.groundworksVoter` reads the account's own validator
+  (`/cosmos/staking/v1beta1/validators/{valoper}`) and returns weight "0"
+  unless it is `BOND_STATUS_BONDED`, whatever the voter record or the raw
+  self-delegation says; it also returns `validatorStatus`. Before, a jailed,
+  unbonding or unbonded operator saw weight and an enabled Save, and the tx
+  failed at deliver with ErrNoWeight, fee spent. An unread status throws
+  rather than passing for weight.
+- AllocationFund: "Your validator isn't in the active set ... so it has no
+  Groundworks weight"; Save is off at zero weight or an unread one.
+- `tx.KNOWN_ERRORS`: allocation 1105 (ErrNoWeight) has its own sentence.
+- check:governance: UNBONDING and UNBONDED give zero weight with a record
+  and without; check:tx: ErrNoWeight explained.
+
+### StakeErth: paged Query/Validators
+- `shieldedStaking.validators()` walks `/earth/shieldedstaking/v1/validators`
+  (200 a page) and compares each page's `height`; a walk that spans a block is
+  repeated (3 tries), then marked partial. The LCD's height header cannot get
+  through the CORS preflight (as for `explorer.supplyAtHeight`).
+  `validator()` and `validatorBooks()` (one query per validator) are gone.
+- The table adds a Delegations column (`delegatable`; the refusal in plain
+  words, the chain's text on hover), a Removed badge and rows for books whose
+  validator x/staking removed. Power, commission and uptime come from the
+  quotes' x/staking records (`explorer.validatorRows`, `signingContext`).
+- check:staking: two pages at one height, refusal, removed book, pages at two
+  heights (re-walked, partial), a failed later page (partial).
+
+### Copy
+- ExplorerShielded, StakeErth and the shieldedStaking.js header no longer
+  speak of unbond claims or claiming: a matured undelegation is paid into the
+  pool by the chain, and derth is one note per owner and validator.
+
+### Protos
+- `CHAIN_REF=c3bf5ef ./scripts/gen-proto.sh ../chain-orch`: signed msgs
+  change only in comments; cosmos/staking is generated because
+  shieldedstaking's query.proto imports it.
+
+### Logos
+- coin/USDC.png and coin/ATOM.png never existed (not in this repo's history
+  or elsewhere under projects/). `tokens.logoOf` gives a token's own logo or
+  the neutral `coin/generic.svg`; Markets (built paths from the symbol) and
+  SwapTokens (fell back to ERTH's logo) use it. check:amounts fails on a logo
+  the app does not ship.
+
+### Final gate
+- `npm run build`: ok.
+- `npm run check`: tx 40/0, amounts 25/0, dex 40/0, handles 50/0, shielded
+  89/0, governance 38/0, personhood 17/0, staking 22/0, explorer 19/0.
+- check:dex-live 10/4: the 4 are the live LCD read (`lcd.erth.network` 530).
