@@ -1,18 +1,19 @@
-// broadcast() after the tx may have reached the node: a transient LCD error
-// is "submitted, status unknown" with the hash, never "failed", and the
-// account cannot send again until that hash resolves. Port of the audit-3
-// PoC (waitfortx.mjs): a 'Failed to fetch' on the first confirmation poll
-// used to reject broadcast() with the tx already in the mempool, and the
-// user's retry paid twice.
+// Signing and broadcasting (src/chain/tx.js), with Keplr and the LCD stubbed
+// and timers run immediately. No chain required.
 //
-// Keplr and the LCD are stubbed; timers run immediately. No chain required.
-import { webcrypto } from "node:crypto";
+// After a tx may have reached the node, a transient LCD error is "submitted,
+// status unknown" with the hash, never "failed", and the account cannot send
+// again until that hash resolves: a 'Failed to fetch' on the first
+// confirmation poll used to reject broadcast() with the tx already in the
+// mempool, and the user's retry paid twice. Also: one pending record per
+// account, redirects refused, an account read failure signs nothing, and the
+// chain's error codes explained.
+import { check, done } from "./lib.mjs";
 import { Secp256k1 } from "@cosmjs/crypto";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { fromBase64, toHex } from "@cosmjs/encoding";
 import { TxBody, TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
 
-globalThis.crypto ??= webcrypto;
 globalThis.setTimeout = (fn) => (queueMicrotask(fn), 0);
 console.warn = () => {};
 console.error = () => {};
@@ -44,7 +45,7 @@ const res530 = { ok: false, status: 530, text: async () => "cf 530" };
 const found = (code = 0, txhash) => (q) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: txhash ?? q, raw_log: "boom" } }) });
 
 let authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "1", sequence: "0" } }) });
-// Every request's redirect mode (audit 5, L6: a 3xx is never followed).
+// Every request's redirect mode (a 3xx is never followed).
 const redirects = [];
 globalThis.fetch = async (url, opts) => {
   url = String(url);
@@ -59,18 +60,13 @@ globalThis.fetch = async (url, opts) => {
   return res530;
 };
 
-const tx = await import("../src/chain/tx.js");
-const sh = await import("../src/chain/shielded.js");
+const tx = await import("../../src/chain/tx.js");
+const sh = await import("../../src/chain/shielded.js");
 await tx.connectKeplr();
 const G = "erthz1qy4m4lwe79wu4p4gs6vqrtdhcngph2phnll9x5t296jdd9m5z4p0gpar0j7pggynezm4thqmzr5xedpxxa9dz64g20kshh7qk2ux68rudaur8p";
 const send = () => tx.broadcast([sh.shieldTo(address, G, "1000000").msg]);
 const hashOf = (b64) => toHex(sha256(fromBase64(b64))).toUpperCase();
 
-let bad = 0;
-const check = (name, cond, detail) => {
-  console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail !== undefined ? " — " + detail : ""}`);
-  if (!cond) bad++;
-};
 const outcome = async (p) => {
   try {
     return { ok: await p };
@@ -79,7 +75,7 @@ const outcome = async (p) => {
   }
 };
 
-// 1. The PoC: a dropped connection, then a proxy 530, then the tx.
+// 1. A dropped connection, then a proxy 530, then the tx.
 {
   let polls = 0;
   posted = [];
@@ -156,8 +152,8 @@ const outcome = async (p) => {
     /failed \(code 11\)/.test(r2.err?.message ?? "") && !(r2.err instanceof tx.TxStatusUnknownError) && tx.pendingTx() === null, r2.err?.message);
 }
 
-// 7. Audit 4 (poc-pending-overwrite): one record per account. Another Keplr
-// account sending in the same browser must not erase A's unresolved hash.
+// 7. One pending record per account. Another Keplr account sending in the
+// same browser must not erase A's unresolved hash.
 {
   const A = address;
   const B = "earth1yyyy";
@@ -198,32 +194,47 @@ const outcome = async (p) => {
   check("a real height past the timeout expires it", (await tx.resolvePendingTx(A))?.status === "expired" && tx.pendingTx(A) === null);
 }
 
-check("L6: every LCD read and the broadcast POST refuse redirects", redirects.length > 0 && redirects.every((r) => r === "error"),
+check("every LCD read and the broadcast POST refuse redirects", redirects.length > 0 && redirects.every((r) => r === "error"),
   `${redirects.filter((r) => r !== "error").length} of ${redirects.length} follow`);
 
-// Audit 6 L-11: only a NotFound account is a new one (0/0); any other read failure refuses to sign.
+// The account read: only a NotFound account is a new one (0/0); any other read failure refuses to sign.
 {
   const prev = authRes;
   authRes = () => ({ ok: false, status: 404, text: async () => '{"code":5,"message":"account earth1x not found"}' });
   const a = await outcome(tx.fetchAccount(address));
-  check("L-11: an account the chain has not seen is 0/0", a.ok?.accountNumber === 0 && a.ok?.sequence === 0, a.err?.message);
+  check("an account the chain has not seen is 0/0", a.ok?.accountNumber === 0 && a.ok?.sequence === 0, a.err?.message);
   authRes = () => res530;
   const b = await outcome(tx.fetchAccount(address));
-  check("L-11: an LCD error refuses, not 0/0", /nothing was signed/.test(b.err?.message ?? ""), b.err?.message ?? JSON.stringify(b.ok));
+  check("an LCD error refuses, not 0/0", /nothing was signed/.test(b.err?.message ?? ""), b.err?.message ?? JSON.stringify(b.ok));
   authRes = () => { throw new TypeError("Failed to fetch"); };
   const c = await outcome(tx.fetchAccount(address));
-  check("L-11: a network error refuses", /nothing was signed/.test(c.err?.message ?? ""), c.err?.message);
+  check("a network error refuses", /nothing was signed/.test(c.err?.message ?? ""), c.err?.message);
   authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "x1", sequence: "0" } }) });
   const d = await outcome(tx.fetchAccount(address));
-  check("L-11: a malformed account refuses", /nothing was signed/.test(d.err?.message ?? ""), d.err?.message);
+  check("a malformed account refuses", /nothing was signed/.test(d.err?.message ?? ""), d.err?.message);
   authRes = () => res530;
   const before = posted.length;
   const e = await outcome(send());
-  check("L-11: broadcast signs nothing when the account read fails", e.err && posted.length === before, e.err?.message);
+  check("broadcast signs nothing when the account read fails", e.err && posted.length === before, e.err?.message);
   authRes = () => ({ ok: true, json: async () => ({ account: { base_account: { account_number: "7", sequence: "3" } } }) });
   const f = await outcome(tx.fetchAccount(address));
-  check("L-11: a wrapped account reads", f.ok?.accountNumber === 7 && f.ok?.sequence === 3);
+  check("a wrapped account reads", f.ok?.accountNumber === 7 && f.ok?.sequence === 3);
   authRes = prev;
 }
 
-process.exit(bad ? 1 : 0);
+// ---- why a tx failed: explainTxError ----------------------------------------
+{
+  const sd = tx.explainTxError("failed", { code: 5, codespace: "bank", raw_log: "uerth: send transactions are disabled" });
+  check("bank send-disabled explained", /switched off/.test(sd), sd);
+  const leg = tx.explainTxError("refused", { code: 1101, codespace: "dex",
+    raw_log: "the uanml leg (300) is above 295147905179352825840, the most one withdrawal pays as notes; withdraw in smaller parts: invalid amount" });
+  check("dex note-leg cap explained", /smaller parts/.test(leg) && /32 notes of 2\^63 - 1/.test(leg), leg);
+  const other = tx.explainTxError("failed", { code: 1101, codespace: "dex", raw_log: "amount must be positive: invalid amount" });
+  check("other dex 1101 not explained as the note-leg cap", !/32 notes of 2\^63 - 1/.test(other), other);
+  const m = tx.explainTxError("failed", { code: 1120, codespace: "dex", raw_log: "amount exceeds the pool cap" });
+  check("dex 1120 explained", /pool's cap/.test(m) && /code 1120, dex/.test(m), m);
+  const p = tx.explainTxError("failed", { code: 1120, codespace: "personhood", raw_log: "identity tree full" });
+  check("personhood 1120 is not the pool cap", !/pool's cap/.test(p), p);
+}
+
+done();

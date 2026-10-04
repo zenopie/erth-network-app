@@ -1,5 +1,16 @@
+// The explorer (src/chain/explorer.js, src/chain/address.js) against stubbed
+// LCD responses. No chain required.
+//
+// What this guards: a jailed validator reporting 100% uptime because
+// x/slashing zeroed its missed-block counter; a proposer that loses its
+// moniker because the RPC names it by hex and the LCD by bech32; an address
+// in another case searched as another account; and a route parameter (an
+// address, height or hash from the URL) reaching a CometBFT query string in
+// any shape but its exact one.
+import { check, done } from "./lib.mjs";
 import { fromBase64, toBech32 } from "@cosmjs/encoding";
 import { sha256 } from "@noble/hashes/sha2.js";
+
 
 // Self-consistent stub: derive each validator's consensus address the same way
 // the chain does, so the staking<->slashing join under test actually resolves.
@@ -46,12 +57,9 @@ globalThis.fetch = async (url) => {
   return { ok: true, json: async () => body };
 };
 
-const ex = await import("../src/chain/explorer.js");
+const ex = await import("../../src/chain/explorer.js");
 const { validators, totalBonded } = await ex.validators();
 const by = Object.fromEntries(validators.map((v) => [v.moniker, v]));
-
-let bad = 0;
-const check = (name, cond, detail) => { console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail ? " — " + detail : ""}`); if (!cond) bad++; };
 
 check("healthy validator reports 100%", by.healthy.uptime === 100, `got ${by.healthy.uptime}`);
 check("degraded validator reports 87%", by.degraded.uptime === 87, `got ${by.degraded.uptime}`);
@@ -76,7 +84,7 @@ check("a non-hex proposer is passed through untouched", ex.valconsFromHex("") ==
 // Canonical lowercase bech32: an all-uppercase spelling of an address is the
 // same bytes, and is searched and queried as the lowercase one; mixed case,
 // a wrong prefix or a bad checksum is not an address.
-const addrMod = await import("../src/chain/address.js");
+const addrMod = await import("../../src/chain/address.js");
 const lower = toBech32("earth", new Uint8Array(20).fill(7));
 check("canonicalAddress keeps a lowercase address", addrMod.canonicalAddress(lower) === lower);
 check("canonicalAddress lowercases an all-uppercase address", addrMod.canonicalAddress(lower.toUpperCase()) === lower);
@@ -87,4 +95,30 @@ check("canonicalAddress refuses mixed case, other prefixes, bad checksums",
 check("search routes an uppercase address to its canonical account",
   ex.classifySearch(lower.toUpperCase())?.value === lower && ex.classifySearch(lower)?.kind === "account");
 
-process.exit(bad ? 1 : 0);
+// Route params reach CometBFT query strings: only their exact shape passes.
+{
+  const asked = [];
+  globalThis.fetch = async (url) => {
+    asked.push(decodeURIComponent(String(url)));
+    return { ok: true, json: async () => ({ tx_responses: [], txs: [] }) };
+  };
+  const acct = toBech32("earth", new Uint8Array(20).fill(8));
+  const inj = `${acct}' OR tx.height>0 AND message.sender='x`;
+  check("txsForAddress refuses a quote-injected address without querying",
+    (await ex.txsForAddress(inj)).length === 0 && asked.length === 0, asked.join(" | "));
+  await ex.txsForAddress(acct.toUpperCase());
+  check("txsForAddress quotes only the canonical address",
+    asked.length === 2 && asked.every((u) => u.includes(`='${acct}'`)), asked.join(" | "));
+  asked.length = 0;
+  check("txsAtHeight refuses junk, signs and > int64",
+    (await ex.txsAtHeight("5 OR tx.height>0")).length === 0 && (await ex.txsAtHeight("-1")).length === 0 &&
+    (await ex.txsAtHeight("9223372036854775808")).length === 0 && asked.length === 0);
+  await ex.txsAtHeight("9223372036854775807");
+  check("txsAtHeight accepts int64 max", asked.length === 1 && asked[0].includes("tx.height=9223372036854775807"));
+  asked.length = 0;
+  check("txByHash refuses a non-hash without querying",
+    (await ex.txByHash("../../bank/v1beta1/supply")) === null && (await ex.txByHash("ab")) === null && asked.length === 0);
+  check("block refuses a non-height", (await ex.block("1/../../x")) === null && asked.length === 0);
+}
+
+done();

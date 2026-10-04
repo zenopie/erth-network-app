@@ -1,18 +1,20 @@
-// Verifies the dex chain layer against a live LCD.
+// The dex chain layer against a live LCD (src/chain/{dex,apr}.js): pools, APR
+// inputs, the liquidity auction, escrowed withdrawals and POL schedules.
+//
+//   VITE_EARTH_LCD=https://lcd.erth.network npm run check:dex-live
+//
+// Defaults to the public LCD when VITE_EARTH_LCD is unset, and fails when no
+// chain answers there. The stubbed dex checks are scripts/checks/dex.mjs.
 //
 // The reads here are the ones whose field names have drifted before: PoolView
 // replaced the stored Pool (volume_erth, not volume), and the auction, escrowed
 // withdrawals and POL schedules were never read by this app at all. A shape
 // mismatch shows up as a plausible-looking zero rather than an error, which is
 // exactly the failure this catches.
-const dex = await import("../src/chain/dex.js");
-const apr = await import("../src/chain/apr.js");
+import { check, done } from "./lib.mjs";
 
-let bad = 0;
-const check = (name, cond, detail) => {
-  console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail ? " — " + detail : ""}`);
-  if (!cond) bad++;
-};
+const dex = await import("../../src/chain/dex.js");
+const apr = await import("../../src/chain/apr.js");
 
 const pools = await dex.pools();
 console.log(`pools: ${pools.length}`);
@@ -80,4 +82,4 @@ check("pol burns parse", burns.every((b) =>
 check("pol remaining never exceeds the schedule's base",
   burns.every((b) => Number(b.sharesRemaining) <= Number(b.totalShares)));
 
-process.exit(bad ? 1 : 0);
+done();

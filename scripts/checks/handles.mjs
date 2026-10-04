@@ -1,39 +1,21 @@
-// The handle directory reader, paying a handle, and deposit legs, stubbed.
+// Handles (src/chain/handles.js): the directory reader, verifying it against
+// the chain, and paying a handle. Stubbed; no chain required.
 //
 // What this guards: a lookup that names one handle (the server learns who
-// pays whom), a directory read that trusts an out-of-order, short or shifting
-// snapshot, a payment to an address the backend says a handle names but the
-// chain does not, a lapsed handle being paid, and a deposit leg rounded down
-// (x/dex pulls each leg rounded up since audit 4, C2).
-import { webcrypto } from "node:crypto";
+// pays whom), a directory read that trusts an out-of-order, short, oversized
+// or shifting snapshot, an address shown, copied or paid that the backend
+// says a handle names but the chain does not, a lapsed handle being paid, and
+// the handle leaking into a URL or a Referer.
+import { check, done, rejects } from "./lib.mjs";
 import { x25519 } from "@noble/curves/ed25519.js";
 import { chacha20poly1305 } from "@noble/ciphers/chacha.js";
-import V from "./fixtures/privacy-vectors.json";
-import D from "./fixtures/dex-deposits.json";
-import W from "./fixtures/dex-swaps.json";
+import V from "../fixtures/privacy-vectors.json";
 
-globalThis.crypto ??= webcrypto;
+const h = await import("../../src/chain/handles.js");
+const shielded = await import("../../src/chain/shielded.js");
+const nc = await import("../../src/chain/noteCipher.js");
+const pv = await import("../../src/chain/privacy.js");
 
-const h = await import("../src/chain/handles.js");
-const dex = await import("../src/chain/dex.js");
-const shielded = await import("../src/chain/shielded.js");
-const nc = await import("../src/chain/noteCipher.js");
-const pv = await import("../src/chain/privacy.js");
-const tx = await import("../src/chain/tx.js");
-
-let bad = 0;
-const check = (name, cond, detail) => {
-  console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail !== undefined ? " — " + detail : ""}`);
-  if (!cond) bad++;
-};
-const rejects = async (p) => {
-  try {
-    await p;
-    return false;
-  } catch {
-    return true;
-  }
-};
 const unhex = (s) => Uint8Array.from(s.match(/../g).map((b) => parseInt(b, 16)));
 
 // ---- handle format -----------------------------------------------------------
@@ -121,22 +103,22 @@ for (const [name, mutate] of [
     check(`stream refused: ${name}`, threw);
   })();
 }
-// Audit 6 L-8 (spec §4g): times no lease has, or more than 1,000,000 rows, refuse the whole directory.
+// Spec §4g: times no lease has, or more than 1,000,000 rows, refuse the whole directory.
 for (const [name, e] of [
   ["expires_at 0", { ...mk("aaa", alice, now), expiresAt: 0 }],
   ["renewal_until before expires_at", { ...mk("aaa", alice, now), renewalUntil: now - 1 }],
   ["renewal_until past now + 10 years", mk("aaa", alice, now + 10 * 365 * 86400)],
 ]) {
-  check(`L-8: stream refused: ${name}`, await rejects(h.readStreamDirectory(async (from) => ({ handles: [e], height: 1, size: 1, fromIndex: from, lastPage: true }), now)));
-  check(`L-8: chain refused: ${name}`, await rejects(h.readChainDirectory(async () => ({ handles: [e], next: "" }), now)));
+  check(`stream refused: ${name}`, await rejects(h.readStreamDirectory(async (from) => ({ handles: [e], height: 1, size: 1, fromIndex: from, lastPage: true }), now)));
+  check(`chain refused: ${name}`, await rejects(h.readChainDirectory(async () => ({ handles: [e], next: "" }), now)));
 }
-check("L-8: renewal_until at exactly now + 10 years is accepted",
+check("renewal_until at exactly now + 10 years is accepted",
   (await h.readChainDirectory(async () => ({ handles: [{ ...mk("aaa", alice, now), renewalUntil: now + 10 * 365 * 86400 }], next: "" }), now)).size === 1);
 {
   let asked = 0;
   const huge = async (from) => { asked++; return { handles: [mk("aaa", alice, now + 9)], height: 1, size: h.MAX_ROWS + 1, fromIndex: from, lastPage: false }; };
-  check("L-8: a stream whose page 0 claims more than 1,000,000 rows is refused before page 1", await rejects(h.readStreamDirectory(huge, now)) && asked === 1);
-  check("L-8: the row cap is 1,000,000", h.MAX_ROWS === 1_000_000);
+  check("a stream whose page 0 claims more than 1,000,000 rows is refused before page 1", await rejects(h.readStreamDirectory(huge, now)) && asked === 1);
+  check("the row cap is 1,000,000", h.MAX_ROWS === 1_000_000);
 }
 check("stream refused: size mismatch", await rejects(h.readStreamDirectory(async (from) => ({ handles: [mk("aaa", alice, 1)], height: 1, size: 2, fromIndex: from, lastPage: true }))));
 check("stream refused: wrong page", await rejects(h.readStreamDirectory(async () => ({ handles: [], height: 1, size: 0, fromIndex: 5, lastPage: true }))));
@@ -158,9 +140,9 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
   check("forged backend entry is not paid", !r.ok && /changed on chain/.test(r.reason), r.reason);
 }
 
-// Audit 5 M1 (scratchpad a5poc): the Handles page and the Shield preview
-// showed and copied the backend's address with no chain check. The display
-// path now goes through verifiedAll(): a forged row is marked, never verified.
+// What the Handles page and the Shield preview show goes through
+// verifiedAll(): a backend row that disagrees with the chain is marked,
+// never verified, so it is never shown as payable or copied.
 {
   const w = world([mk("alice", alice, now + 86400), mk("bob", alice, now + 86400), mk("zed", alice, now + 86400)]);
   const forged = V.android_cipher.address;
@@ -179,16 +161,16 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
   const dir = h.createHandleDirectory({ fetchChainPage: w.chainPage, fetchStreamPage: stream, now: () => now });
   const v = await dir.verifiedAll();
   const a = v.get("alice");
-  check("M1: a forged backend address is never verified (Copy and Pay disabled)", a && a.verified === false && /something else/.test(a.problem), a?.problem);
-  check("M1: a matching entry is verified", v.get("bob")?.verified === true && v.get("bob").address === alice);
-  check("M1: a handle the chain lacks is unverified", v.get("carol")?.verified === false && /no such handle/.test(v.get("carol").problem));
-  check("M1: a handle the copy omits comes from the chain, verified", v.get("zed")?.verified === true && v.get("zed").address === alice);
-  check("M1: an address that does not decode is never verified, chain or not", v.get("dave")?.verified === false && /not a payable/.test(v.get("dave").problem), v.get("dave")?.problem);
-  check("M1: verifiedLookup agrees", (await dir.verifiedLookup("alice")).verified === false && (await dir.verifiedLookup("bob")).verified === true);
-  check("M1: rows in handle order", [...v.keys()].join() === "alice,bob,carol,dave,zed", [...v.keys()].join());
-  check("M1: addressProblem", h.addressProblem(alice) === "" && h.addressProblem("erthz1x") !== "" && h.addressProblem(forged) === "");
+  check("a forged backend address is never verified (Copy and Pay disabled)", a && a.verified === false && /something else/.test(a.problem), a?.problem);
+  check("a matching entry is verified", v.get("bob")?.verified === true && v.get("bob").address === alice);
+  check("a handle the chain lacks is unverified", v.get("carol")?.verified === false && /no such handle/.test(v.get("carol").problem));
+  check("a handle the copy omits comes from the chain, verified", v.get("zed")?.verified === true && v.get("zed").address === alice);
+  check("an address that does not decode is never verified, chain or not", v.get("dave")?.verified === false && /not a payable/.test(v.get("dave").problem), v.get("dave")?.problem);
+  check("verifiedLookup agrees", (await dir.verifiedLookup("alice")).verified === false && (await dir.verifiedLookup("bob")).verified === true);
+  check("rows in handle order", [...v.keys()].join() === "alice,bob,carol,dave,zed", [...v.keys()].join());
+  check("addressProblem", h.addressProblem(alice) === "" && h.addressProblem("erthz1x") !== "" && h.addressProblem(forged) === "");
   const r = await dir.resolveForPayment("@alice");
-  check("M1: the payment path still refuses it", !r.ok && /changed on chain/.test(r.reason), r.reason);
+  check("the payment path still refuses it", !r.ok && /changed on chain/.test(r.reason), r.reason);
 }
 
 // The pages use it: the table's Copy and Pay only for a verified row, the
@@ -197,20 +179,20 @@ check("chain refused: next is not the last handle", await rejects(h.readChainDir
   const { readFileSync } = await import("node:fs");
   const page = readFileSync("src/pages/Handles.jsx", "utf8");
   const shield = readFileSync("src/pages/Shield.jsx", "utf8");
-  check("M1: Handles page reads verifiedAll and gates Copy and Pay on it",
+  check("Handles page reads verifiedAll and gates Copy and Pay on it",
     page.includes("handleDirectory\n      .verifiedAll()") && page.includes("disabled={!ok}") && page.includes("st === LIVE && ok &&") &&
       page.includes("const ok = e.verified === true;"));
-  check("L1: a review counts only for the recipient it was asked for",
+  check("a review counts only for the recipient it was asked for",
     shield.includes("storedReview?.for === recipient") && shield.includes("if (recipientRef.current !== asked) return;"));
   const headers = readFileSync("security-headers.conf", "utf8");
   const html = readFileSync("index.html", "utf8");
-  check("L4: Pay carries the handle in the fragment, Shield reads only the fragment",
+  check("Pay carries the handle in the fragment, Shield reads only the fragment",
     page.includes('hash: `#to=${encodeURIComponent(`@${e.handle}`)}`') && !page.includes("?to=") &&
       !shield.includes("useSearchParams") && shield.includes('new URLSearchParams(hash.replace(/^#/, ""))'));
-  check("L4: Referrer-Policy no-referrer (header and meta)",
+  check("Referrer-Policy no-referrer (header and meta)",
     /add_header Referrer-Policy "no-referrer" always;/.test(headers) && !/strict-origin/.test(headers) &&
       html.includes('<meta name="referrer" content="no-referrer" />'));
-  check("M1: Shield preview is labelled unverified and decoded", shield.includes("(unverified until Review)") && shield.includes("addressProblem(e.address)"));
+  check("Shield preview is labelled unverified and decoded", shield.includes("(unverified until Review)") && shield.includes("addressProblem(e.address)"));
 }
 
 // Lapsed, renewal, unknown: not payable.
@@ -240,58 +222,4 @@ check("validBase", h.validBase("/privacy/earth-1/0123456789abcdef", "earth-1", "
   !h.validBase("https://evil/privacy/earth-1/0123456789abcdef", "earth-1", "0123456789abcdef", "earth-1") &&
   !h.validBase("/privacy/earth-2/0123456789abcdef", "earth-2", "0123456789abcdef", "earth-1"));
 
-// ---- deposits: x/dex's own maths -------------------------------------------
-{
-  let ok = 0;
-  for (const d of D.deposits) {
-    const got = dex.depositPull(d.in_erth, d.in_token, d.reserve_erth, d.reserve_token, d.supply);
-    const want = d.shares === "0" ? null : [d.shares, d.pull_erth, d.pull_token].join();
-    const g = got ? [got.shares, got.erth, got.token].join() : null;
-    if (g === want) ok++;
-    else console.log("  mismatch", JSON.stringify(d), g);
-    // From the ERTH side, the derived token leg buys every share the ERTH buys.
-    const leg = dex.depositLeg(d.in_erth, d.reserve_erth, d.reserve_token);
-    const byE = (BigInt(d.in_erth) * BigInt(d.supply)) / BigInt(d.reserve_erth);
-    if (byE > 0n) {
-      const p = dex.depositPull(d.in_erth, leg, d.reserve_erth, d.reserve_token, d.supply);
-      if (!p || p.shares !== byE || p.erth > BigInt(d.in_erth) || p.token > BigInt(leg)) { ok--; console.log("  leg", JSON.stringify(d), leg); }
-    }
-  }
-  check(`deposits match x/dex (${D.deposits.length})`, ok === D.deposits.length && D.deposits.length === 144, `${ok}`);
-  check("depositLeg rounds up", dex.depositLeg("5", "2", "1") === "3" && dex.depositLeg("4", "2", "1") === "2" &&
-    dex.depositLeg("1", "0", "1") === "0" && dex.depositLeg("x", "1", "1") === "0");
-  check("quoteAddLiquidity agrees with depositPull's shares",
-    dex.quoteAddLiquidity("1000000", "700000", "1000000000000", "500000000000", "700000000000") ===
-      dex.depositPull("1000000", "700000", "1000000000000", "500000000000", "700000000000").shares.toString());
-}
-
-// ---- swaps: x/dex's own maths (chain 203d3b2: the fee rounds up) ---------------
-{
-  let ok = 0;
-  for (const f of W.fees) {
-    const got = dex.exactFee(f.amount, f.fee).toString();
-    if (got === f.fee_of) ok++;
-    else console.log("  fee mismatch", JSON.stringify(f), got);
-  }
-  check(`feeOf matches x/dex (${W.fees.length})`, ok === W.fees.length && W.fees.length > 0, `${ok}`);
-  ok = 0;
-  for (const v of W.hops) {
-    const r = v.dir === "hub_for_token"
-      ? dex.exactHubToToken(v.reserve_erth, v.reserve_token, v.amount_in, v.fee)
-      : dex.exactTokenToHub(v.reserve_erth, v.reserve_token, v.amount_in, v.fee);
-    if ([r.out, r.fee, r.burn].join() === [v.amount_out, v.fee_erth, v.burn].join()) ok++;
-    else console.log("  hop mismatch", JSON.stringify(v), [r.out, r.fee, r.burn].join());
-  }
-  check(`swap hops match x/dex (${W.hops.length})`, ok === W.hops.length && W.hops.length > 0, `${ok}`);
-  check("a 1-unit swap at 0.3% pays a 1-unit fee", dex.exactFee("1", "0.3") === 1n && dex.exactFee("0", "0.3") === 0n);
-}
-
-// ---- ErrPoolCap explained -------------------------------------------------------
-{
-  const m = tx.explainTxError("failed", { code: 1120, codespace: "dex", raw_log: "amount exceeds the pool cap" });
-  check("dex 1120 explained", /pool's cap/.test(m) && /code 1120, dex/.test(m), m);
-  const p = tx.explainTxError("failed", { code: 1120, codespace: "personhood", raw_log: "identity tree full" });
-  check("personhood 1120 is not the pool cap", !/pool's cap/.test(p), p);
-}
-
-process.exit(bad ? 1 : 0);
+done();

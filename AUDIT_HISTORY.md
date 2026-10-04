@@ -5,6 +5,18 @@ from the per-round `*_PROGRESS.md` files on 2026-10-04; the text is as each
 round recorded it, so pass counts, chain commits and check names are as of that
 round.
 
+The checks were later regrouped by feature (README, "Checks"); every case kept
+its name, less the finding id. Where a round's check went:
+
+| Then | Now |
+| --- | --- |
+| `check:tx` | `check:tx` (error explanations from the others joined it) |
+| `check:forms` | `check:dex` (quote floors), `check:amounts`, `check:governance` (L-2, L-7) |
+| `check:handles` | `check:handles`; deposit and swap vectors to `check:dex`; dex 1120 to `check:tx` |
+| `check:privacy` | `check:personhood`, `check:governance`, `check:shielded` (the note vectors), `check:staking`, `check:dex`, `check:amounts`, `check:explorer` |
+| `check:explorer`, `check:staking` | the same names |
+| `check:dex` (live LCD) | `check:dex-live`; `check:dex` is now the stubbed dex |
+
 Formats: mobile-orch `PRIVACY_FORMATS.md`. Chain: chain-orch `ORCHARD_DESIGN.md`.
 
 ## 2026-10-02 · Orchard protocol port

@@ -32,13 +32,17 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean-install": "rm -rf node_modules package-lock.json && npm install",
-    "check:explorer": "./scripts/check-explorer.sh",
-    "check:staking": "./scripts/check-staking.sh",
-    "check:dex": "./scripts/check-dex.sh",
-    "check:privacy": "./scripts/check-privacy.sh",
-    "check:tx": "./scripts/check-tx.sh",
-    "check:forms": "./scripts/check-forms.sh",
-    "check:handles": "./scripts/check-handles.sh"
+    "check": "./scripts/check.sh all",
+    "check:tx": "./scripts/check.sh tx",
+    "check:amounts": "./scripts/check.sh amounts",
+    "check:dex": "./scripts/check.sh dex",
+    "check:handles": "./scripts/check.sh handles",
+    "check:shielded": "./scripts/check.sh shielded",
+    "check:governance": "./scripts/check.sh governance",
+    "check:personhood": "./scripts/check.sh personhood",
+    "check:staking": "./scripts/check.sh staking",
+    "check:explorer": "./scripts/check.sh explorer",
+    "check:dex-live": "./scripts/check.sh dex-live"
   },
   "overrides": {
     "d3-color": "^3.1.0"
