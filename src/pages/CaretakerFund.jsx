@@ -96,12 +96,24 @@ const CaretakerFund = () => {
       </MobileCta>
 
       <div className={page.chart}>
-        <AllocationFund title="Caretaker Fund" stream={allocation.STREAM_CARETAKER} options={options} />
+        <AllocationFund
+          title="Caretaker Fund"
+          stream={allocation.STREAM_CARETAKER}
+          options={options}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
+        />
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Options</h3>
-        <AllocationOptionsTable options={options} address={address} onClaim={claim} />
+        <AllocationOptionsTable
+          options={options}
+          address={address}
+          onClaim={claim}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
+        />
       </div>
     </div>
   );

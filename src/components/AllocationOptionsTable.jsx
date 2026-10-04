@@ -17,12 +17,15 @@ const KIND = {
  * by anyone (or only its claimer, when one is set) and always goes to its
  * recipient — a transparent act, so it is offered here via Keplr.
  */
-const AllocationOptionsTable = ({ options, address, onClaim }) => {
+const AllocationOptionsTable = ({ options, address, onClaim, totalWeight, partial = false }) => {
   if (options === null) return <div className={styles.empty}>Could not load options.</div>;
   if (!options.length) return <div className={styles.empty}>No options yet.</div>;
 
   // Option weights are integer strings past 2^53 (Groundworks: rate x derth).
-  const total = sumBig(options.filter((o) => !o.removed).map((o) => o.amountAllocated));
+  // Shares are of the chain's stream total (every live option), not of the
+  // options loaded, which may be a partial list (audit 6 L-6).
+  const loaded = sumBig(options.filter((o) => !o.removed).map((o) => o.amountAllocated));
+  const total = toBigInt(totalWeight) > loaded ? toBigInt(totalWeight) : loaded;
   const canClaim = (o) =>
     address &&
     onClaim &&
@@ -32,6 +35,12 @@ const AllocationOptionsTable = ({ options, address, onClaim }) => {
     (!o.claimer || o.claimer === address);
 
   return (
+    <>
+    {partial && (
+      <div className={styles.muted}>
+        Partial list: not every option could be read from the chain. Shares are of the whole stream.
+      </div>
+    )}
     <table className={styles.table}>
       <thead>
         <tr>
@@ -74,6 +83,7 @@ const AllocationOptionsTable = ({ options, address, onClaim }) => {
         ))}
       </tbody>
     </table>
+    </>
   );
 };
 

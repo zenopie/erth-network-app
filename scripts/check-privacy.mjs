@@ -330,6 +330,37 @@ const tk = await import("../src/chain/tokens.js");
     dx.swapFloor({ ...sq, out: 0n }, "1000", "uerth", "ufoo", 1, 1_000_000) === "0");
 }
 
+// Audit 6 L-6: allocation options are paged until next_key is empty; a failed
+// later page, a repeated key or the page guard marks the list partial; the
+// stream total is the chain's, not the loaded sum.
+{
+  const al = await import("../src/chain/allocation.js");
+  const P = "/earth/allocation/v1/options/STREAM_ID_GROUNDWORKS";
+  const opt = (i) => ({ id: String(i), description: `o${i}`, amount_allocated: "1", kind: "ALLOCATION_KIND_ADDRESS" });
+  let pages = 30, failAt = -1, loopAt = -1;
+  routes[P] = (q) => {
+    const at = Number(q.get("pagination.key") ? atob(q.get("pagination.key")) : "0");
+    if (at === failAt) return null;
+    const next = at + 1 < pages ? btoa(String(loopAt >= 0 && at >= loopAt ? loopAt : at + 1)) : null;
+    return { options: Array.from({ length: 100 }, (_, i) => opt(at * 100 + i)), total_weight: "999999", epoch: "2", pagination: { next_key: next } };
+  };
+  let v = await al.streamView(al.STREAM_GROUNDWORKS);
+  check("L-6: options past 2000 are read (3000 of 3000)", v.options.length === 3000 && v.partial === false && v.totalWeight === "999999" && v.epoch === 2);
+  failAt = 25;
+  v = await al.streamView(al.STREAM_GROUNDWORKS);
+  check("L-6: a failed later page is partial, not complete", v.partial === true && v.options.length === 2500);
+  failAt = -1; loopAt = 5;
+  v = await al.streamView(al.STREAM_GROUNDWORKS);
+  check("L-6: a repeated page key is partial", v.partial === true);
+  loopAt = -1;
+  v = await al.streamView(al.STREAM_GROUNDWORKS, { maxPages: 10 });
+  check("L-6: the page guard is partial", v.partial === true && v.options.length === 1000);
+  check("L-6: the guard is far above 2000 options", al.MAX_OPTION_PAGES * 100 >= 100000);
+  failAt = 0;
+  check("L-6: a failed first page is null", (await al.streamView(al.STREAM_GROUNDWORKS)) === null);
+  delete routes[P];
+}
+
 // The note layer: Poseidon2, pc/cm, erthz addresses, note ciphertexts, MsgShield.
 const { run: runNotes } = await import("./check-notes.mjs");
 await runNotes(check);

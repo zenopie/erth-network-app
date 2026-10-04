@@ -46,29 +46,46 @@ function streamPath(stream) {
   }
 }
 
+// Pages walked before a stream's option list is called partial: 100 options a
+// page (the chain's MaxOptionsPageSize), so 100 000 options. Adding an
+// ADDRESS option is permissionless (for a fee), so this is a guard against an
+// unbounded read, not a size the list is expected to reach.
+export const MAX_OPTION_PAGES = 1000;
+
 /**
- * A stream's options plus its aggregates: { options, totalWeight, epoch }, or
- * null when the read fails. `kind` is INTEGRATED (resolved every block by a
- * protocol handler, e.g. LP rewards) or ADDRESS (accrues ERTH claimable to a
- * fixed recipient). Options are paged on chain (adding an ADDRESS option is
- * permissionless), so every page is walked.
+ * A stream's options plus its aggregates: { options, totalWeight, epoch,
+ * partial }, or null when the first read fails. `kind` is INTEGRATED
+ * (resolved every block by a protocol handler, e.g. LP rewards) or ADDRESS
+ * (accrues ERTH claimable to a fixed recipient). Options are paged on chain
+ * (adding an ADDRESS option is permissionless), so pages are walked until
+ * next_key is empty. `partial` is true when a later page failed, a page key
+ * repeated, or MAX_OPTION_PAGES was hit: the options are then not all of
+ * them, and shares must be taken against `totalWeight` (the chain's sum over
+ * every live option), never the sum of the options loaded (audit 6 L-6).
  */
-export async function streamView(stream) {
+export async function streamView(stream, { maxPages = MAX_OPTION_PAGES } = {}) {
   const options = [];
   let totalWeight = "0";
   let epoch = 0;
   let key = "";
-  for (let page = 0; page < 20; page++) {
+  const seen = new Set();
+  for (let page = 0; page < maxPages; page++) {
     const q = `?pagination.limit=100${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
     const data = await getOr(seg`/earth/allocation/v1/options/${streamPath(stream)}` + q, null);
-    if (!data) return page === 0 ? null : { options, totalWeight, epoch };
+    if (!data) return page === 0 ? null : { options, totalWeight, epoch, partial: true };
     options.push(...(data.options ?? []).map(toOption));
-    totalWeight = data.total_weight ?? totalWeight;
-    epoch = Number(data.epoch ?? epoch);
+    // The aggregates describe the whole stream; the first page's are kept so
+    // a later page cannot move them under options already read.
+    if (page === 0) {
+      totalWeight = /^\d+$/.test(String(data.total_weight ?? "")) ? String(data.total_weight) : "0";
+      epoch = Number(data.epoch ?? 0);
+    }
     key = data.pagination?.next_key ?? "";
-    if (!key) break;
+    if (!key) return { options, totalWeight, epoch, partial: false };
+    if (seen.has(key)) return { options, totalWeight, epoch, partial: true };
+    seen.add(key);
   }
-  return { options, totalWeight, epoch };
+  return { options, totalWeight, epoch, partial: true };
 }
 
 /** Just the options of a stream ([] when unreadable). */

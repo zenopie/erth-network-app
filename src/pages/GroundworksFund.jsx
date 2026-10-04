@@ -137,12 +137,20 @@ const GroundworksFund = () => {
           options={options}
           streamEpoch={streamEpoch}
           onChanged={load}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
         />
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Options</h3>
-        <AllocationOptionsTable options={options} address={address} onClaim={claim} />
+        <AllocationOptionsTable
+          options={options}
+          address={address}
+          onClaim={claim}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
+        />
       </div>
 
       <div className={styles.card}>

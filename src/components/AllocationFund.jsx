@@ -81,7 +81,7 @@ const getChartDataWithUnallocated = (allocations = []) => {
  * transparent stake and its operator can direct it with MsgSetAllocations.
  * `options` comes from the page so the pie and the page's table agree.
  */
-const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged }) => {
+const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, totalWeight, partial = false }) => {
   const { address, isConnected } = useWallet();
   const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
@@ -100,11 +100,17 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged }) 
   const live = (options ?? []).filter((o) => !o.removed);
   const allocationOptions = live.map((o) => ({ id: o.id, name: labelFor(o) }));
   // The pie takes floats: each option's share of the total in percent, worked
-  // out exactly from the integer weights first (they pass 2^53).
-  const liveTotal = sumBig(live.map((o) => o.amountAllocated));
+  // out exactly from the integer weights first (they pass 2^53). The total is
+  // the chain's stream total, so a partial option list (audit 6 L-6) leaves
+  // its unread weight as its own slice rather than inflating the rest.
+  const loadedTotal = sumBig(live.map((o) => o.amountAllocated));
+  const liveTotal = toBigInt(totalWeight) > loadedTotal ? toBigInt(totalWeight) : loadedTotal;
   const dataActual = live
     .filter((o) => toBigInt(o.amountAllocated) > 0n)
     .map((o) => ({ id: o.id, name: labelFor(o), value: Number(percentString(o.amountAllocated, liveTotal, 4)) }));
+  if (liveTotal > loadedTotal) {
+    dataActual.push({ id: "unread", name: "Options not read", value: Number(percentString(liveTotal - loadedTotal, liveTotal, 4)) });
+  }
 
   const totalPercentage = selectedAllocations.reduce(
     (acc, alloc) => acc + (parseInt(alloc.value) || 0),
@@ -192,6 +198,12 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged }) 
             Validator Split
           </button>
         </div>
+      )}
+
+      {partial && (
+        <p className={styles.allocationFundNote}>
+          Partial list: not every option of this stream could be read from the chain.
+        </p>
       )}
 
       {activeTab === "Actual" && (

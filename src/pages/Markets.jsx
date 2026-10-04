@@ -75,9 +75,9 @@ const Markets = () => {
     (async () => {
       showLoading();
       try {
-        const [ps, options, fee, escrowSeconds, polSchedules] = await Promise.all([
+        const [ps, stream, fee, escrowSeconds, polSchedules] = await Promise.all([
           dex.pools(),
-          allocation.allocationOptions(allocation.STREAM_GROUNDWORKS),
+          allocation.streamView(allocation.STREAM_GROUNDWORKS),
           dex.swapFeePercent(),
           dex.lpUnbondingSeconds(),
           dex.polBurns(),
@@ -88,9 +88,12 @@ const Markets = () => {
         setUnbondSeconds(escrowSeconds);
         setBurns(polSchedules);
 
-        // Integer weights past 2^53: the ratio is taken exactly, then made a float.
-        const totalWeight = sumBig(options.map((o) => o.amountAllocated));
-        const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED");
+        // Integer weights past 2^53: the ratio is taken exactly, then made a
+        // float. The share is of the chain's stream total, not of the options
+        // loaded (a partial list would overstate it, audit 6 L-6).
+        const options = stream?.options ?? [];
+        const totalWeight = stream && BigInt(stream.totalWeight) > 0n ? stream.totalWeight : sumBig(options.map((o) => o.amountAllocated));
+        const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED" && !o.removed);
         setLpRewardShare(lpOption ? ratio(lpOption.amountAllocated, totalWeight) : 0);
 
         const supplies = await Promise.all(ps.map((p) => supplyOrNull(p.lpDenom)));
