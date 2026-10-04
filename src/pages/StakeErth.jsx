@@ -60,6 +60,8 @@ const StakeErth = () => {
   const [epoch, setEpoch] = useState(null);
   const [validators, setValidators] = useState(null);
   const [books, setBooks] = useState({});
+  // The validator list could not all be read, or not at one height.
+  const [partial, setPartial] = useState(false);
   const [gw, setGw] = useState({});
   const [operator, setOperator] = useState(null);
   const [liquid, setLiquid] = useState("0");
@@ -67,27 +69,44 @@ const StakeErth = () => {
   const loadNetwork = useCallback(async () => {
     showLoading();
     try {
-      const [bonded, days, ep, vals] = await Promise.all([
+      const [bonded, days, ep, quotes, signing] = await Promise.all([
         staking.totalBonded(),
         staking.unbondingDays(),
         shieldedStaking.epoch(),
-        explorer.validators().catch(() => null),
+        // Every validator's book and x/staking record in one paged list read
+        // at one height: no read names a single validator.
+        shieldedStaking.validators(),
+        explorer.signingContext().catch(() => null),
       ]);
       setTotalBonded(bonded);
       setUnbondDays(days);
       setEpoch(ep);
-      const list = (vals?.validators ?? [])
-        .filter((v) => v.bonded || Number(v.tokens) > 0)
+      setPartial(Boolean(quotes?.partial));
+      const qs = quotes?.validators ?? [];
+      const bk = Object.fromEntries(qs.map((q) => [q.validator, q]));
+      const live = qs.filter((q) => !q.removed);
+      const rows = explorer.validatorRows(
+        live.map((q) => q.staking),
+        signing ?? { signing: null, params: {} },
+      ).validators;
+      const hasBook = (op) => toBigInt(bk[op]?.supply) > 0n || toBigInt(bk[op]?.backing) > 0n;
+      const list = rows
+        .filter((v) => v.bonded || toBigInt(v.tokens) > 0n || hasBook(v.operator))
         // Smallest first: nudge private stake away from the top validator.
-        .sort((a, b) => a.votingPower - b.votingPower);
-      setValidators(vals ? list : null);
+        .sort((a, b) => a.votingPower - b.votingPower)
+        // Books whose validator x/staking removed, last: their value still
+        // winds down to the stakers holding derth for them.
+        .concat(
+          qs
+            .filter((q) => q.removed)
+            .map((q) => ({ operator: q.validator, moniker: "", removed: true, bonded: false, jailed: false,
+              tokens: "0", votingPower: 0, commission: 0, uptime: null })),
+        );
+      setValidators(quotes ? list : null);
       const ops = list.map((v) => v.operator);
-      const [bk, voters] = await Promise.all([
-        shieldedStaking.validatorBooks(ops),
-        // Each validator's Groundworks positions, as the one weighted voter
-        // the stream counts them as.
-        allocation.validatorVoters(ops),
-      ]);
+      // Each validator's Groundworks positions, as the one weighted voter the
+      // stream counts them as.
+      const voters = await allocation.validatorVoters(ops);
       setBooks(bk);
       setGw(voters);
     } finally {
@@ -180,6 +199,7 @@ const StakeErth = () => {
                 <th>Private stake</th>
                 <th title="Its Groundworks positions, weighed together as one voter">Groundworks</th>
                 <th>Next epoch</th>
+                <th title="Whether a private delegation or redelegation into it is taken now">Delegations</th>
               </tr>
             </thead>
             <tbody>
@@ -191,8 +211,9 @@ const StakeErth = () => {
                   <tr key={v.operator}>
                     <td>
                       {v.moniker || <span className={styles.mono}>{v.operator.slice(0, 20)}…</span>}
+                      {v.removed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Removed</span>}
                       {v.jailed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Jailed</span>}
-                      {!v.bonded && !v.jailed && <span className={styles.badge}>Unbonded</span>}
+                      {!v.bonded && !v.jailed && !v.removed && <span className={styles.badge}>Unbonded</span>}
                       {v.votingPower >= 33 && (
                         <div className={forms.warn} style={{ margin: 0 }}>
                           Over a third of stake: can halt the chain alone
@@ -229,6 +250,11 @@ const StakeErth = () => {
                         "—"
                       )}
                     </td>
+                    <td title={b?.refusal || undefined}>
+                      {!b ? "—" : b.delegatable ? "Open" : (
+                        <span className={styles.muted}>{shieldedStaking.refusalReason(b)}</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -237,10 +263,17 @@ const StakeErth = () => {
         ) : (
           <div className={styles.empty}>No validators.</div>
         )}
+        {partial && (
+          <p className={forms.note} role="status">
+            Partial list: not every validator could be read from the chain at one height.
+          </p>
+        )}
         <p className={forms.note}>
           Rate is ERTH per derth: what one derth of a validator redeems for. It rises as rewards
           compound and falls if the validator is slashed. Next epoch is the private stake queued to
-          be delegated (+) or undelegated (−) when the epoch ends.
+          be delegated (+) or undelegated (−) when the epoch ends. Delegations says whether new
+          private stake can go to a validator now; unstaking from it always works. A removed
+          validator&apos;s stake is still paid out to the stakers holding its derth.
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-import { getOr, seg } from "./rest";
+import { getOr, seg, text as str } from "./rest";
 import { b64ToHex } from "./bytes";
 
 /**
@@ -40,34 +40,108 @@ export async function params() {
   };
 }
 
-/**
- * The module's book for one validator: the live rate (ERTH per derth), the
- * rate as of the last epoch end, derth supply, the ERTH backing it, and what
- * is queued to be delegated or undelegated at the next epoch end. A
- * validator the module has never staked with reads as an empty book; null
- * means the read failed.
- */
-export async function validator(valoper) {
-  const data = await getOr(seg`/earth/shieldedstaking/v1/validators/${valoper}`, null);
-  if (!data) return null;
-  const s = data.state ?? {};
+// Query/Validators' largest page (keeper.MaxValidatorsPage).
+const VALIDATORS_PAGE = 200;
+// Walks of the whole list before giving up on reading it at one height.
+const VALIDATORS_ATTEMPTS = 3;
+
+/** One ValidatorQuote as the page uses it. */
+function toQuote(q) {
+  const s = q.book ?? {};
+  const st = q.staking ?? {};
+  const removed = !st.operator_address;
   return {
-    validator: s.validator ?? valoper,
-    rate: Number(data.rate ?? 0),
+    validator: str(q.validator),
+    // x/staking's record ({} once x/staking removed the validator, while its
+    // book winds down).
+    removed,
+    staking: removed ? null : st,
+    moniker: removed ? "" : str(st.description?.moniker),
+    status: removed ? "" : str(st.status),
+    bonded: !removed && st.status === "BOND_STATUS_BONDED",
+    jailed: !removed && Boolean(st.jailed),
+    tokens: removed ? "0" : intStr(st.tokens),
+    tombstoned: Boolean(q.tombstoned),
+    // Whether a delegation or a redelegation into it would be taken now, and
+    // the chain's reason when not (undelegations, redelegations out and stake
+    // votes do not depend on it).
+    delegatable: Boolean(q.delegatable),
+    refusal: str(q.refusal),
+    rate: Number(q.rate ?? 0),
     epochRate: Number(s.epoch_rate ?? 0),
-    // derth outstanding (stake notes + positions). `supply` is the query's
-    // figure; state.derth_supply is the same book entry.
-    supply: data.supply ?? s.derth_supply ?? "0",
-    backing: data.backing ?? "0",
-    pendingDelegation: s.pending_delegation ?? "0",
-    pendingUndelegation: s.pending_undelegation ?? "0",
+    // derth outstanding (stake notes + positions): the book's figure. derth
+    // is not a coin, so never x/bank's.
+    supply: intStr(q.supply ?? s.derth_supply),
+    backing: intStr(q.backing),
+    pendingDelegation: intStr(s.pending_delegation),
+    pendingUndelegation: intStr(s.pending_undelegation),
   };
 }
 
-/** validator() for each operator, as a { valoper: book|null } map. */
-export async function validatorBooks(valopers) {
-  const books = await Promise.all(valopers.map((v) => validator(v)));
-  return Object.fromEntries(valopers.map((v, i) => [v, books[i]]));
+const intStr = (v) => (/^\d+$/.test(String(v ?? "")) ? String(v) : "0");
+
+/**
+ * Every validator as x/shieldedstaking quotes it (Query/Validators): its
+ * x/staking record, whether it takes private delegations (and why not), and
+ * its book: live rate, rate as of the last epoch end, derth supply, the ERTH
+ * backing it and what is queued for the next epoch end. One paged list, so no
+ * read names the validator someone is about to act on. The last page also
+ * carries books whose validator x/staking removed (`removed`).
+ *
+ * { height, validators, partial } or null when the first page fails. Every
+ * page must be of one state: the LCD takes a height only as the
+ * x-cosmos-block-height request header, which the CORS preflight in front of
+ * it refuses (see explorer.supplyAtHeight), so instead each page's `height`
+ * is compared and the walk starts over when a block landed in between.
+ * `partial` is true when a later page failed, a page key repeated, the page
+ * guard was hit, or no walk read at one height.
+ */
+export async function validators({ maxPages = 100 } = {}) {
+  let last = null;
+  for (let attempt = 0; attempt < VALIDATORS_ATTEMPTS; attempt++) {
+    const walk = await walkValidators(maxPages);
+    if (!walk) return last;
+    if (!walk.mixed) return { height: walk.height, validators: walk.validators, partial: walk.partial };
+    last = { height: walk.height, validators: walk.validators, partial: true };
+  }
+  return last;
+}
+
+async function walkValidators(maxPages) {
+  const out = [];
+  let key = "";
+  let height = null;
+  let mixed = false;
+  const seen = new Set();
+  for (let page = 0; page < maxPages; page++) {
+    const q = `?pagination.limit=${VALIDATORS_PAGE}${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
+    const data = await getOr(`/earth/shieldedstaking/v1/validators${q}`, null);
+    if (!data) return page === 0 ? null : { height, validators: out, partial: true, mixed };
+    const h = Number(data.height ?? 0);
+    if (height === null) height = h;
+    else if (h !== height) mixed = true;
+    out.push(...(data.validators ?? []).map(toQuote));
+    key = data.pagination?.next_key ?? "";
+    if (!key) return { height, validators: out, partial: false, mixed };
+    if (seen.has(key)) return { height, validators: out, partial: true, mixed };
+    seen.add(key);
+  }
+  return { height, validators: out, partial: true, mixed };
+}
+
+/**
+ * Plain words for a quote's refusal (the chain's error text stays available
+ * as `refusal` for a tooltip), "" when it takes delegations.
+ */
+export function refusalReason(q) {
+  if (!q || q.delegatable) return "";
+  const r = q.refusal;
+  if (q.removed || /not.*found|does not exist/i.test(r)) return "Removed from the chain";
+  if (q.tombstoned || /tombstoned/.test(r)) return "Tombstoned (double-signed)";
+  if (q.jailed || /jailed/.test(r)) return "Jailed";
+  if (/slashed to nothing/.test(r)) return "Slashed to nothing";
+  if (/settling/.test(r)) return "Settling until the epoch ends";
+  return "Not taking delegations";
 }
 
 /**

@@ -277,11 +277,28 @@ export async function slashingParams() {
  * decides whether it gets jailed.
  */
 export async function validators() {
-  const [staking, signing, params] = await Promise.all([
+  const [staking, { signing, params }] = await Promise.all([
     getOr("/cosmos/staking/v1beta1/validators?pagination.limit=300", null),
+    signingContext(),
+  ]);
+  return validatorRows(staking?.validators ?? [], { signing, params });
+}
+
+/** What uptime is computed from: every signing record and the slashing params. */
+export async function signingContext() {
+  const [signing, params] = await Promise.all([
     getOr("/cosmos/slashing/v1beta1/signing_infos?pagination.limit=300", null),
     slashingParams(),
   ]);
+  return { signing, params };
+}
+
+/**
+ * x/staking validators (LCD JSON) as ranked rows with voting power and
+ * uptime: { params, totalBonded, validators }. `signing` and `params` are
+ * signingContext()'s.
+ */
+export function validatorRows(stakingValidators, { signing, params }) {
 
   const signingByCons = new Map(
     (signing?.info ?? []).map((s) => [
@@ -295,7 +312,7 @@ export async function validators() {
     ]),
   );
 
-  const list = (staking?.validators ?? []).map((v) => {
+  const list = stakingValidators.map((v) => {
     const consAddress = v.consensus_pubkey?.key ? consensusAddress(v.consensus_pubkey.key) : "";
     const info = signingByCons.get(consAddress) ?? null;
     const window = params.signedBlocksWindow;
