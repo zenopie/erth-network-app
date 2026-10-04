@@ -301,8 +301,8 @@ const tk = await import("../src/chain/tokens.js");
   check("other dex 1101 not explained as the note-leg cap", !/16 notes/.test(other), other);
 
   const dx = await import("../src/chain/dex.js");
-  const cap = ((1n << 64n) - 1n) * 16n;
-  check("note-leg cap is 16 x (2^64-1)", dx.MAX_WITHDRAWAL_NOTE_LEG === cap);
+  const cap = ((1n << 63n) - 1n) * 32n;
+  check("note-leg cap is 32 x (2^63-1)", dx.MAX_WITHDRAWAL_NOTE_LEG === cap);
   check("a leg at the cap starts", dx.withdrawalNoteLegProblem("1", cap.toString(), "1") === null);
   check("a leg past the cap is refused before signing", /smaller parts/.test(dx.withdrawalNoteLegProblem("1", (cap + 1n).toString(), "1") ?? ""));
   check("leg is floor(shares x reserve / supply)", dx.withdrawalNoteLegProblem("2", (cap * 2n + 1n).toString(), "4") === null &&

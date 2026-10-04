@@ -423,8 +423,8 @@ export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(
   };
 }
 
-/** The most one withdrawal pays as notes per leg: 16 notes of 2^64 - 1 (x/dex maxWithdrawalNoteLeg). */
-export const MAX_WITHDRAWAL_NOTE_LEG = ((1n << 64n) - 1n) * 16n;
+/** The most one withdrawal pays as notes per leg: 32 notes of 2^63 - 1 (x/dex maxWithdrawalNoteLeg, MaxSplitNotes / 4). */
+export const MAX_WITHDRAWAL_NOTE_LEG = ((1n << 63n) - 1n) * 32n;
 
 /**
  * Why x/dex would refuse to start a withdrawal of `shares` whose token leg
