@@ -127,6 +127,50 @@ export interface Membership {
   nullifier: Uint8Array;
 }
 
+/**
+ * MoveProof is a move circuit proof (circuits/move, bb v5.0.0 UltraHonk): its
+ * prover knows the identity secrets of an identity and of the identity that
+ * succeeded it under the same passport (the chain's succession leaf
+ * H(TAG_SUCC, idc_old, idc_new) and the successor's live identity leaf are
+ * both in the tree at root), and old_nullifier and new_nullifier are the two
+ * identities' nullifiers in the scope the msg fixes. Public inputs, in order:
+ * root, scope, old_nullifier, new_nullifier, signal (the msg's sighash).
+ */
+export interface MoveProof {
+  proof: Uint8Array;
+  /** root is the identity-tree anchor the proof was made against. */
+  root: Uint8Array;
+  /**
+   * old_nullifier is H(TAG_SN, old_id_secret, scope): what holds the handle
+   * or split now.
+   */
+  oldNullifier: Uint8Array;
+  /**
+   * new_nullifier is H(TAG_SN, new_id_secret, scope): the successor that is
+   * to hold it.
+   */
+  newNullifier: Uint8Array;
+}
+
+/**
+ * Succession is a succession leaf of the identity tree: the passport whose
+ * last registration was to idc_old registered to idc_new.
+ */
+export interface Succession {
+  leafIndex: number;
+  idcOld: Uint8Array;
+  idcNew: Uint8Array;
+}
+
+/**
+ * PassportSeen is a passport ever registered and the identity commitment of
+ * its last registration (a later one appends a succession from it).
+ */
+export interface PassportSeen {
+  nullifier: Uint8Array;
+  lastIdc: Uint8Array;
+}
+
 /** ClaimNullifier records that the holder of nullifier claimed on day. */
 export interface ClaimNullifier {
   day: number;
@@ -744,6 +788,338 @@ export const Membership: MessageFns<Membership> = {
     message.proof = object.proof ?? new Uint8Array(0);
     message.root = object.root ?? new Uint8Array(0);
     message.nullifier = object.nullifier ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseMoveProof(): MoveProof {
+  return {
+    proof: new Uint8Array(0),
+    root: new Uint8Array(0),
+    oldNullifier: new Uint8Array(0),
+    newNullifier: new Uint8Array(0),
+  };
+}
+
+export const MoveProof: MessageFns<MoveProof> = {
+  encode(message: MoveProof, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.proof.length !== 0) {
+      writer.uint32(10).bytes(message.proof);
+    }
+    if (message.root.length !== 0) {
+      writer.uint32(18).bytes(message.root);
+    }
+    if (message.oldNullifier.length !== 0) {
+      writer.uint32(26).bytes(message.oldNullifier);
+    }
+    if (message.newNullifier.length !== 0) {
+      writer.uint32(34).bytes(message.newNullifier);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MoveProof {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMoveProof();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.proof = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.root = reader.bytes();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.oldNullifier = reader.bytes();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.newNullifier = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MoveProof {
+    return {
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      root: isSet(object.root) ? bytesFromBase64(object.root) : new Uint8Array(0),
+      oldNullifier: isSet(object.oldNullifier)
+        ? bytesFromBase64(object.oldNullifier)
+        : isSet(object.old_nullifier)
+        ? bytesFromBase64(object.old_nullifier)
+        : new Uint8Array(0),
+      newNullifier: isSet(object.newNullifier)
+        ? bytesFromBase64(object.newNullifier)
+        : isSet(object.new_nullifier)
+        ? bytesFromBase64(object.new_nullifier)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: MoveProof): unknown {
+    const obj: any = {};
+    if (message.proof.length !== 0) {
+      obj.proof = base64FromBytes(message.proof);
+    }
+    if (message.root.length !== 0) {
+      obj.root = base64FromBytes(message.root);
+    }
+    if (message.oldNullifier.length !== 0) {
+      obj.oldNullifier = base64FromBytes(message.oldNullifier);
+    }
+    if (message.newNullifier.length !== 0) {
+      obj.newNullifier = base64FromBytes(message.newNullifier);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MoveProof>, I>>(base?: I): MoveProof {
+    return MoveProof.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MoveProof>, I>>(object: I): MoveProof {
+    const message = createBaseMoveProof();
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.root = object.root ?? new Uint8Array(0);
+    message.oldNullifier = object.oldNullifier ?? new Uint8Array(0);
+    message.newNullifier = object.newNullifier ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseSuccession(): Succession {
+  return { leafIndex: 0, idcOld: new Uint8Array(0), idcNew: new Uint8Array(0) };
+}
+
+export const Succession: MessageFns<Succession> = {
+  encode(message: Succession, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.leafIndex !== 0) {
+      writer.uint32(8).uint64(message.leafIndex);
+    }
+    if (message.idcOld.length !== 0) {
+      writer.uint32(18).bytes(message.idcOld);
+    }
+    if (message.idcNew.length !== 0) {
+      writer.uint32(26).bytes(message.idcNew);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Succession {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseSuccession();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.leafIndex = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.idcOld = reader.bytes();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.idcNew = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): Succession {
+    return {
+      leafIndex: isSet(object.leafIndex)
+        ? globalThis.Number(object.leafIndex)
+        : isSet(object.leaf_index)
+        ? globalThis.Number(object.leaf_index)
+        : 0,
+      idcOld: isSet(object.idcOld)
+        ? bytesFromBase64(object.idcOld)
+        : isSet(object.idc_old)
+        ? bytesFromBase64(object.idc_old)
+        : new Uint8Array(0),
+      idcNew: isSet(object.idcNew)
+        ? bytesFromBase64(object.idcNew)
+        : isSet(object.idc_new)
+        ? bytesFromBase64(object.idc_new)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: Succession): unknown {
+    const obj: any = {};
+    if (message.leafIndex !== 0) {
+      obj.leafIndex = Math.round(message.leafIndex);
+    }
+    if (message.idcOld.length !== 0) {
+      obj.idcOld = base64FromBytes(message.idcOld);
+    }
+    if (message.idcNew.length !== 0) {
+      obj.idcNew = base64FromBytes(message.idcNew);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Succession>, I>>(base?: I): Succession {
+    return Succession.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Succession>, I>>(object: I): Succession {
+    const message = createBaseSuccession();
+    message.leafIndex = object.leafIndex ?? 0;
+    message.idcOld = object.idcOld ?? new Uint8Array(0);
+    message.idcNew = object.idcNew ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBasePassportSeen(): PassportSeen {
+  return { nullifier: new Uint8Array(0), lastIdc: new Uint8Array(0) };
+}
+
+export const PassportSeen: MessageFns<PassportSeen> = {
+  encode(message: PassportSeen, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.nullifier.length !== 0) {
+      writer.uint32(10).bytes(message.nullifier);
+    }
+    if (message.lastIdc.length !== 0) {
+      writer.uint32(18).bytes(message.lastIdc);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PassportSeen {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBasePassportSeen();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.nullifier = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.lastIdc = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): PassportSeen {
+    return {
+      nullifier: isSet(object.nullifier) ? bytesFromBase64(object.nullifier) : new Uint8Array(0),
+      lastIdc: isSet(object.lastIdc)
+        ? bytesFromBase64(object.lastIdc)
+        : isSet(object.last_idc)
+        ? bytesFromBase64(object.last_idc)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: PassportSeen): unknown {
+    const obj: any = {};
+    if (message.nullifier.length !== 0) {
+      obj.nullifier = base64FromBytes(message.nullifier);
+    }
+    if (message.lastIdc.length !== 0) {
+      obj.lastIdc = base64FromBytes(message.lastIdc);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PassportSeen>, I>>(base?: I): PassportSeen {
+    return PassportSeen.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PassportSeen>, I>>(object: I): PassportSeen {
+    const message = createBasePassportSeen();
+    message.nullifier = object.nullifier ?? new Uint8Array(0);
+    message.lastIdc = object.lastIdc ?? new Uint8Array(0);
     return message;
   },
 };

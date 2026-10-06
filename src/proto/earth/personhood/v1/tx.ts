@@ -9,7 +9,7 @@ import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { AllocationWeight } from "../../allocation/v1/allocation";
 import { Bundle } from "../../shielded/v1/shielded";
 import { Params } from "./params";
-import { Membership } from "./registration";
+import { Membership, MoveProof } from "./registration";
 
 export const protobufPackage = "earth.personhood.v1";
 
@@ -137,8 +137,10 @@ export interface MsgClaimAnmlResponse {
  * lowered it) - 86400 (one day, the largest identity root window). A fresh
  * registrant (predecessor_at 0) casts at once; an identity that replaced
  * another waits until every split its predecessor could have cast has
- * lapsed. The bound applies only to a prover holding no split: refreshing
- * or changing one it holds takes any max_predecessor. The wallet names the
+ * lapsed (a switch that keeps its split moves it: MsgMoveCaretaker). The
+ * bound applies only to a prover holding no split: refreshing or changing
+ * one it holds (cast, or moved to it) takes any max_predecessor. A prover
+ * that moved its split away may never cast again. The wallet names the
  * bound (rounded down, say to the hour, so it
  * says nothing about when the tx was made) because the chain's own changes
  * every block and a proof must be made before its block is known. The split
@@ -164,6 +166,29 @@ export interface MsgSetCaretakerResponse {
 }
 
 /**
+ * MsgMoveCaretaker hands the live caretaker split of an identity,
+ * percentages and expiry unchanged, to the identity that succeeded it under
+ * the same passport (a switch, or a re-entry), with no wait: one split per
+ * passport across the switch.
+ *
+ * move is a move proof (MoveProof) with scope zk/privacy.CaretakerScope():
+ * old_nullifier holds a live split, new_nullifier holds none and never moved
+ * one away. old_nullifier may never cast a split again. The proof binds this
+ * msg's sighash.
+ *
+ * sighash fields: none beyond the fee bundle's.
+ */
+export interface MsgMoveCaretaker {
+  fee: Bundle | undefined;
+  move: MoveProof | undefined;
+}
+
+/** MsgMoveCaretakerResponse reports the moved split's expiry (unix seconds). */
+export interface MsgMoveCaretakerResponse {
+  expiresAt: number;
+}
+
+/**
  * MsgBindHandle claims, renews, changes or releases the prover's handle
  * (types.Handle): a name in the public directory for a shielded address.
  *
@@ -180,8 +205,10 @@ export interface MsgSetCaretakerResponse {
  *   - handle and address set, the prover holding none: claim a free handle.
  *     max_predecessor must be strictly below now - the longest
  *     handle_lease_seconds ever set - 86400: an identity that replaced
- *     another waits until any handle its predecessor held has lapsed. A
- *     fresh registrant claims at once.
+ *     another waits until any handle its predecessor held has lapsed (a
+ *     switch that keeps its handle moves it: MsgMoveHandle). A fresh
+ *     registrant claims at once. A prover that moved its handle away may
+ *     never claim again.
  *   - both empty: release the prover's handle at once.
  *
  * A handle held by another nullifier (live, or in its renewal period) is
@@ -210,6 +237,29 @@ export interface MsgBindHandle {
  */
 export interface MsgBindHandleResponse {
   expiresAt: number;
+}
+
+/**
+ * MsgMoveHandle hands a live handle, lease unchanged, from an identity to
+ * the identity that succeeded it under the same passport (a switch, or a
+ * re-entry): how a passport keeps its one handle across a switch. A handle in
+ * its renewal period must be renewed first.
+ *
+ * move is a move proof (MoveProof) with scope zk/privacy.HandleScope():
+ * old_nullifier holds `handle`, new_nullifier holds no handle and never moved
+ * one away. old_nullifier may never claim a handle again. The proof binds
+ * this msg's sighash, and so the handle.
+ *
+ * sighash fields: Bytes(handle).
+ */
+export interface MsgMoveHandle {
+  fee: Bundle | undefined;
+  move: MoveProof | undefined;
+  handle: string;
+}
+
+/** MsgMoveHandleResponse is empty. */
+export interface MsgMoveHandleResponse {
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -1129,6 +1179,164 @@ export const MsgSetCaretakerResponse: MessageFns<MsgSetCaretakerResponse> = {
   },
 };
 
+function createBaseMsgMoveCaretaker(): MsgMoveCaretaker {
+  return { fee: undefined, move: undefined };
+}
+
+export const MsgMoveCaretaker: MessageFns<MsgMoveCaretaker> = {
+  encode(message: MsgMoveCaretaker, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.fee !== undefined) {
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
+    }
+    if (message.move !== undefined) {
+      MoveProof.encode(message.move, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveCaretaker {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgMoveCaretaker();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.fee = Bundle.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.move = MoveProof.decode(reader, reader.uint32());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgMoveCaretaker {
+    return {
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
+      move: isSet(object.move) ? MoveProof.fromJSON(object.move) : undefined,
+    };
+  },
+
+  toJSON(message: MsgMoveCaretaker): unknown {
+    const obj: any = {};
+    if (message.fee !== undefined) {
+      obj.fee = Bundle.toJSON(message.fee);
+    }
+    if (message.move !== undefined) {
+      obj.move = MoveProof.toJSON(message.move);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgMoveCaretaker>, I>>(base?: I): MsgMoveCaretaker {
+    return MsgMoveCaretaker.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgMoveCaretaker>, I>>(object: I): MsgMoveCaretaker {
+    const message = createBaseMsgMoveCaretaker();
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
+    message.move = (object.move !== undefined && object.move !== null) ? MoveProof.fromPartial(object.move) : undefined;
+    return message;
+  },
+};
+
+function createBaseMsgMoveCaretakerResponse(): MsgMoveCaretakerResponse {
+  return { expiresAt: 0 };
+}
+
+export const MsgMoveCaretakerResponse: MessageFns<MsgMoveCaretakerResponse> = {
+  encode(message: MsgMoveCaretakerResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.expiresAt !== 0) {
+      writer.uint32(8).int64(message.expiresAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveCaretakerResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgMoveCaretakerResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.expiresAt = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgMoveCaretakerResponse {
+    return {
+      expiresAt: isSet(object.expiresAt)
+        ? globalThis.Number(object.expiresAt)
+        : isSet(object.expires_at)
+        ? globalThis.Number(object.expires_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: MsgMoveCaretakerResponse): unknown {
+    const obj: any = {};
+    if (message.expiresAt !== 0) {
+      obj.expiresAt = Math.round(message.expiresAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgMoveCaretakerResponse>, I>>(base?: I): MsgMoveCaretakerResponse {
+    return MsgMoveCaretakerResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgMoveCaretakerResponse>, I>>(object: I): MsgMoveCaretakerResponse {
+    const message = createBaseMsgMoveCaretakerResponse();
+    message.expiresAt = object.expiresAt ?? 0;
+    return message;
+  },
+};
+
 function createBaseMsgBindHandle(): MsgBindHandle {
   return { fee: undefined, membership: undefined, handle: "", address: "", maxPredecessor: 0 };
 }
@@ -1341,10 +1549,164 @@ export const MsgBindHandleResponse: MessageFns<MsgBindHandleResponse> = {
   },
 };
 
+function createBaseMsgMoveHandle(): MsgMoveHandle {
+  return { fee: undefined, move: undefined, handle: "" };
+}
+
+export const MsgMoveHandle: MessageFns<MsgMoveHandle> = {
+  encode(message: MsgMoveHandle, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.fee !== undefined) {
+      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
+    }
+    if (message.move !== undefined) {
+      MoveProof.encode(message.move, writer.uint32(18).fork()).join();
+    }
+    if (message.handle !== "") {
+      writer.uint32(26).string(message.handle);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveHandle {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgMoveHandle();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.fee = Bundle.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.move = MoveProof.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.handle = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgMoveHandle {
+    return {
+      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
+      move: isSet(object.move) ? MoveProof.fromJSON(object.move) : undefined,
+      handle: isSet(object.handle) ? globalThis.String(object.handle) : "",
+    };
+  },
+
+  toJSON(message: MsgMoveHandle): unknown {
+    const obj: any = {};
+    if (message.fee !== undefined) {
+      obj.fee = Bundle.toJSON(message.fee);
+    }
+    if (message.move !== undefined) {
+      obj.move = MoveProof.toJSON(message.move);
+    }
+    if (message.handle !== "") {
+      obj.handle = message.handle;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgMoveHandle>, I>>(base?: I): MsgMoveHandle {
+    return MsgMoveHandle.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgMoveHandle>, I>>(object: I): MsgMoveHandle {
+    const message = createBaseMsgMoveHandle();
+    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
+    message.move = (object.move !== undefined && object.move !== null) ? MoveProof.fromPartial(object.move) : undefined;
+    message.handle = object.handle ?? "";
+    return message;
+  },
+};
+
+function createBaseMsgMoveHandleResponse(): MsgMoveHandleResponse {
+  return {};
+}
+
+export const MsgMoveHandleResponse: MessageFns<MsgMoveHandleResponse> = {
+  encode(_: MsgMoveHandleResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveHandleResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgMoveHandleResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(_: any): MsgMoveHandleResponse {
+    return {};
+  },
+
+  toJSON(_: MsgMoveHandleResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgMoveHandleResponse>, I>>(base?: I): MsgMoveHandleResponse {
+    return MsgMoveHandleResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgMoveHandleResponse>, I>>(_: I): MsgMoveHandleResponse {
+    const message = createBaseMsgMoveHandleResponse();
+    return message;
+  },
+};
+
 /**
  * Msg defines the Msg service.
  *
- * Register, ClaimAnml, SetCaretaker and BindHandle are private msgs:
+ * Register, ClaimAnml, SetCaretaker, MoveCaretaker, BindHandle and MoveHandle are
+ * private msgs:
  * unsigned, carried
  * alone in a tx, their fee paid from the shielded pool by the earth.shielded
  * Bundle each embeds as `fee` (see x/shielded PrivateMsg), whose only balance
@@ -1371,6 +1733,16 @@ export interface Msg {
    * handle: a name in the public directory for a shielded address.
    */
   BindHandle(request: MsgBindHandle): Promise<MsgBindHandleResponse>;
+  /**
+   * MoveHandle hands an identity's handle to the identity that succeeded it
+   * under the same passport (a move proof).
+   */
+  MoveHandle(request: MsgMoveHandle): Promise<MsgMoveHandleResponse>;
+  /**
+   * MoveCaretaker hands an identity's live caretaker split (and its expiry)
+   * to the identity that succeeded it under the same passport.
+   */
+  MoveCaretaker(request: MsgMoveCaretaker): Promise<MsgMoveCaretakerResponse>;
 }
 
 export const MsgServiceName = "earth.personhood.v1.Msg";
@@ -1385,6 +1757,8 @@ export class MsgClientImpl implements Msg {
     this.ClaimAnml = this.ClaimAnml.bind(this);
     this.SetCaretaker = this.SetCaretaker.bind(this);
     this.BindHandle = this.BindHandle.bind(this);
+    this.MoveHandle = this.MoveHandle.bind(this);
+    this.MoveCaretaker = this.MoveCaretaker.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -1414,6 +1788,18 @@ export class MsgClientImpl implements Msg {
     const data = MsgBindHandle.encode(request).finish();
     const promise = this.rpc.request(this.service, "BindHandle", data);
     return promise.then((data) => MsgBindHandleResponse.decode(new BinaryReader(data)));
+  }
+
+  MoveHandle(request: MsgMoveHandle): Promise<MsgMoveHandleResponse> {
+    const data = MsgMoveHandle.encode(request).finish();
+    const promise = this.rpc.request(this.service, "MoveHandle", data);
+    return promise.then((data) => MsgMoveHandleResponse.decode(new BinaryReader(data)));
+  }
+
+  MoveCaretaker(request: MsgMoveCaretaker): Promise<MsgMoveCaretakerResponse> {
+    const data = MsgMoveCaretaker.encode(request).finish();
+    const promise = this.rpc.request(this.service, "MoveCaretaker", data);
+    return promise.then((data) => MsgMoveCaretakerResponse.decode(new BinaryReader(data)));
   }
 }
 
