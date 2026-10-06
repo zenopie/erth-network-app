@@ -75,6 +75,33 @@ export async function getOr(path, fallback) {
 }
 
 /**
+ * Every item of a paged LCD list: walks `pagination.next_key` until it is
+ * empty. Resolves to { items, partial }, or null when the first page fails.
+ * `partial` is true when a later page failed, a page key repeated, or
+ * `maxPages` was hit; the items are then not all of them.
+ *
+ *   await getAllPages("/cosmos/staking/v1beta1/validators", "validators")
+ */
+export async function getAllPages(path, field, { limit = 200, maxPages = 1000 } = {}) {
+  const items = [];
+  const seen = new Set();
+  const sep = path.includes("?") ? "&" : "?";
+  let key = "";
+  for (let page = 0; page < maxPages; page++) {
+    const q = `${sep}pagination.limit=${limit}${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
+    const data = await getOr(path + q, null);
+    if (!data) return page === 0 ? null : { items, partial: true };
+    const got = data[field];
+    if (Array.isArray(got)) items.push(...got);
+    key = data.pagination?.next_key ?? "";
+    if (!key) return { items, partial: false };
+    if (seen.has(key)) return { items, partial: true };
+    seen.add(key);
+  }
+  return { items, partial: true };
+}
+
+/**
  * Reads from the CometBFT RPC instead of the LCD, resolving to null on any
  * failure — including no RPC being configured at all.
  *

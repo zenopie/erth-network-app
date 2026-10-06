@@ -1,7 +1,7 @@
 import { fromBase64, fromBech32, toBech32 } from "@cosmjs/encoding";
 import { canonicalAddress } from "./address";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { get, getOr, rpcOrNull, seg, text as str } from "./rest";
+import { get, getAllPages, getOr, rpcOrNull, seg, text as str } from "./rest";
 import { ADDRESS_PREFIX } from "./config";
 
 /**
@@ -222,13 +222,16 @@ function toTx(res, body) {
  * consensus public key, so the two are joined on it.
  */
 export async function proposerMonikers() {
+  // The CometBFT set is the active set, at most max_validators (100) long, so
+  // one page of 200 holds it. x/staking's list is every validator ever
+  // created and not removed (creation is permissionless), so it is walked.
   const [set, staking] = await Promise.all([
     getOr("/cosmos/base/tendermint/v1beta1/validatorsets/latest?pagination.limit=200", null),
-    getOr("/cosmos/staking/v1beta1/validators?pagination.limit=200", null),
+    getAllPages("/cosmos/staking/v1beta1/validators", "validators"),
   ]);
 
   const monikerByPubkey = new Map(
-    (staking?.validators ?? []).map((v) => [v.consensus_pubkey?.key, v.description?.moniker ?? ""]),
+    (staking?.items ?? []).map((v) => [v.consensus_pubkey?.key, v.description?.moniker ?? ""]),
   );
   return Object.fromEntries(
     (set?.validators ?? [])
@@ -277,20 +280,27 @@ export async function slashingParams() {
  * decides whether it gets jailed.
  */
 export async function validators() {
+  // Every page: validator creation is permissionless (a 1 uerth self-bond
+  // will do), so a single page could be filled with unbonded validators and
+  // push bonded ones, and their stake, out of the totals.
   const [staking, { signing, params }] = await Promise.all([
-    getOr("/cosmos/staking/v1beta1/validators?pagination.limit=300", null),
+    getAllPages("/cosmos/staking/v1beta1/validators", "validators"),
     signingContext(),
   ]);
-  return validatorRows(staking?.validators ?? [], { signing, params });
+  const rows = validatorRows(staking?.items ?? [], { signing, params });
+  return { ...rows, partial: Boolean(staking?.partial || signing?.partial) };
 }
 
-/** What uptime is computed from: every signing record and the slashing params. */
+/**
+ * What uptime is computed from: every signing record ({ info, partial }, every
+ * page) and the slashing params.
+ */
 export async function signingContext() {
-  const [signing, params] = await Promise.all([
-    getOr("/cosmos/slashing/v1beta1/signing_infos?pagination.limit=300", null),
+  const [all, params] = await Promise.all([
+    getAllPages("/cosmos/slashing/v1beta1/signing_infos", "info"),
     slashingParams(),
   ]);
-  return { signing, params };
+  return { signing: all ? { info: all.items, partial: all.partial } : null, params };
 }
 
 /**

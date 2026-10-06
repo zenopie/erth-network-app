@@ -50,16 +50,34 @@ const routes = {
     ],
   },
 };
+// Two pages each for validators and signing infos: the walk must follow
+// next_key (validator creation is permissionless, so one page can be flooded).
+const pageReads = {};
+for (const [path, field] of [["/cosmos/staking/v1beta1/validators", "validators"], ["/cosmos/slashing/v1beta1/signing_infos", "info"]]) {
+  const all = routes[path][field];
+  routes[path] = (q) => {
+    pageReads[path] = (pageReads[path] ?? 0) + 1;
+    return q.has("pagination.key")
+      ? { [field]: all.slice(2), pagination: { next_key: null } }
+      : { [field]: all.slice(0, 2), pagination: { next_key: "cGFnZTI=" } };
+  };
+}
 globalThis.fetch = async (url) => {
-  const path = String(url).replace(/^.*?(\/cosmos)/, "$1").split("?")[0];
-  const body = routes[path];
-  if (!body) throw new Error("unstubbed route " + path);
+  const [rawPath, query = ""] = String(url).replace(/^.*?(\/cosmos)/, "$1").split("?");
+  const route = routes[rawPath];
+  if (!route) throw new Error("unstubbed route " + rawPath);
+  const body = typeof route === "function" ? route(new URLSearchParams(query)) : route;
   return { ok: true, json: async () => body };
 };
 
 const ex = await import("../../src/chain/explorer.js");
-const { validators, totalBonded } = await ex.validators();
+const { validators, totalBonded, partial } = await ex.validators();
 const by = Object.fromEntries(validators.map((v) => [v.moniker, v]));
+
+check("validators and signing infos: every page walked",
+  validators.length === 3 && partial === false &&
+  pageReads["/cosmos/staking/v1beta1/validators"] === 2 && pageReads["/cosmos/slashing/v1beta1/signing_infos"] === 2,
+  JSON.stringify({ n: validators.length, partial, pageReads }));
 
 check("healthy validator reports 100%", by.healthy.uptime === 100, `got ${by.healthy.uptime}`);
 check("degraded validator reports 87%", by.degraded.uptime === 87, `got ${by.degraded.uptime}`);
