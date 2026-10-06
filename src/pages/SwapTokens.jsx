@@ -28,10 +28,8 @@ import AmountNote from "../components/AmountNote";
 /**
  * Token swaps against x/dex.
  *
- * ERTH is the chain's native gas coin, so there is no wrapped-token dance here:
- * the Secret build had to wrap SCRT into sSCRT and route swaps through SNIP-20
- * send-hooks, whereas on earth a swap is a single MsgSwap over bank denoms.
- * ERTH is also the AMM hub, so a token->token swap routes through it on-chain.
+ * A swap is a single MsgSwap over bank denoms. ERTH is the AMM hub, so a
+ * token->token swap routes through it on-chain.
  *
  * ANML is not offered. It exists only as shielded notes, so no Keplr account
  * holds any and the chain refuses ANML on MsgSwap's user leg; buying and

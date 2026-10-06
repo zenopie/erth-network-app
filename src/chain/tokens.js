@@ -1,11 +1,8 @@
 import { UANML, UERTH } from "./config";
 
 /**
- * Token metadata keyed by bank denom.
- *
- * On Secret these were SNIP-20 contracts that had to be looked up in an
- * on-chain registry and unlocked with a viewing key. On earth they are plain
- * bank denoms, so this is static display metadata and nothing more.
+ * Token metadata keyed by bank denom: static display metadata and nothing
+ * more.
  */
 export const TOKENS = {
   [UERTH]: { symbol: "ERTH", decimals: 6, logo: "/images/coin/ERTH.png" },

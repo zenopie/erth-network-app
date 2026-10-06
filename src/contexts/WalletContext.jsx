@@ -4,8 +4,7 @@ import { connectKeplr, disconnect, getAddress } from "../chain/tx";
 /**
  * Wallet state for the earth chain.
  *
- * Connecting is just "which address are we?" for the transparent layer —
- * there are no query permits, viewing keys or contract registry to load, and
+ * Connecting is just "which address are we?" for the transparent layer;
  * public state renders before a wallet is connected. A Keplr account never
  * sees shielded balances; those live in the mobile wallet.
  */
