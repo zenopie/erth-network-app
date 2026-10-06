@@ -362,3 +362,28 @@ Feature freeze; no behavior change.
   imports a `tendermint/` tree that is not generated.
 - `npm run build` ok; `npm run check` all passed; check:dex-live fails only
   on the offline LCD (Cloudflare error page).
+
+## 2026-10-06 · Final audit fixes (final-web-docs.md, chain f3ef15b)
+
+- W-3, W-7: privacy policy rewritten. Each registration publishes country,
+  signing certificate (DSC commitment), time, referrer handle and the passport
+  identifier; the identifier is recomputable by anyone holding issuer,
+  document number and DOB, and guessable where numbers are predictable. Our
+  node and Cloudflare are named with what they receive; the no-logs policy is
+  stated as trust-based, with running your own node (Settings → Network) as
+  the way out. Stale "transparent chain" and referrer-lookup lines gone.
+  /ref/:handle says the referrer handle is published with the registration.
+- W-1: operator rewards/commission withdraw removed (chain always refuses);
+  the panel says the income compounds into the self-bond at epoch end.
+- W-2: validators, signing infos and the moniker list walk every page
+  (`rest.getAllPages`); the validators page flags a partial read.
+- W-5: registration lookup by passport nullifier removed.
+- W-6: Keplr account switch gives a reconnect message and signs nothing;
+  allocation 1105 names both causes; Shield / Buy ANML Max keeps back
+  `MAX_FEE_UERTH` (default gas at Keplr's high gas price, 16,000 uerth).
+- W-8: bare `uusdc` / `uatom` labels dropped; IBC USDC to be added pinned by
+  hash once its channel exists.
+- W-4 (cloudflared in the deploy SDL) is the deploy repo's.
+- `npm run build` ok; `npm run check` all passed (tx 42, amounts 26, dex 40,
+  handles 50, shielded 89, governance 38, personhood 15, staking 22,
+  explorer 20). check:dex-live 10/4: the 4 are the offline LCD.
