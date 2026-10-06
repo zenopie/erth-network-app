@@ -90,8 +90,9 @@ const CaretakerFund = () => {
       <MobileCta title="Cast your caretaker split in the Earth Wallet app">
         One registered human, one vote, cast anonymously with a proof made on your phone. Nobody
         can tell which split is yours. A split counts for {leaseDays ?? "R"} days; renew it in the
-        app before then (it reminds you; nothing renews on its own). Once it has lapsed, casting
-        again is a new split: a passport that replaced another (a switch) waits until anything its
+        app before then (it reminds you; nothing renews on its own). After you switch identity, the
+        old identity&apos;s split keeps counting, unchangeable, until it lapses. Casting again is a
+        new split: a passport that replaced another (a switch) waits until anything its
         predecessor cast could have lapsed{switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 
