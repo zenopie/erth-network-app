@@ -7,7 +7,7 @@ import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
-import { SLIPPAGE_DEFAULT, clampSlippage, formatUnits, minimumReceived, toBigInt, toMicro } from "../chain/tokens";
+import { SLIPPAGE_DEFAULT, clampSlippage, formatUnits, toBigInt, toMicro } from "../chain/tokens";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import StatusModal from "./StatusModal";
