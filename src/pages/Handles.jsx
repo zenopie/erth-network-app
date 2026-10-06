@@ -89,12 +89,16 @@ const Handles = () => {
         A handle lets anyone pay you by name: their wallet looks it up here and sends to your
         shielded address. Who holds a handle is not public. It lasts a year from each renewal and
         never renews on its own; the app reminds you before it ends. It can never be handed to anyone
-        else. After you switch identity, the app can move it to your own new identity, and only
-        there: once the switch has landed, with both recovery phrases on the phone. Without a move
-        (or if the old phrase is lost), the old identity&apos;s handle keeps resolving, unchangeable,
-        until its lease ends. Renew it while it is live: in its renewal period it cannot be moved,
-        and renewing it then counts as a new claim, which a passport that replaced another (a
-        switch) cannot make until its predecessor&apos;s handle could have lapsed
+        else&apos;s identity: every registration proves its identity&apos;s secret, so only your
+        own identities can follow yours. After you switch identity or renew your registration (which
+        uses your wallet&apos;s next identity, from the same recovery phrase), the app can move the
+        handle to your new identity, and only there. Within one wallet the phrase is enough; from
+        another wallet, both must be on the phone. The app suggests a random time to move and never
+        moves on its own. Without a move (or if the old phrase is lost), the old identity&apos;s
+        handle keeps resolving, unchangeable, until its lease ends. Renew it while it is live: in
+        its renewal period it cannot be moved, and renewing it then counts as a new claim, which a
+        passport that replaced another (a switch or renewal) cannot make until its
+        predecessor&apos;s handle could have lapsed
         {switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 

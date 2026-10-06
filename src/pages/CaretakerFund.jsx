@@ -91,11 +91,15 @@ const CaretakerFund = () => {
         One registered human, one vote, cast anonymously with a proof made on your phone. Nobody
         can tell which split is yours. A split counts for {leaseDays ?? "R"} days; renew it in the
         app before then (it reminds you; nothing renews on its own). A split can never be handed to
-        anyone else. After you switch identity, the app can move it to your own new identity, and
-        only there: once the switch has landed, with both recovery phrases on the phone. Without a
-        move (or if the old phrase is lost), the old identity&apos;s split keeps counting,
-        unchangeable, until it lapses, and casting again is a new split: a passport that replaced
-        another (a switch) waits until anything its predecessor cast could have lapsed
+        anyone else&apos;s identity: every registration proves its identity&apos;s secret, so only
+        your own identities can follow yours. After you switch identity or renew your registration
+        (which uses your wallet&apos;s next identity, from the same recovery phrase), the app can
+        move the split to your new identity, and only there. Within one wallet the phrase is
+        enough; from another wallet, both must be on the phone. The app suggests a random time to
+        move and never moves on its own. Without a move (or if the old phrase is lost), the old
+        identity&apos;s split keeps counting, unchangeable, until it lapses, and casting again is a
+        new split: a passport that replaced another (a switch or renewal) waits until anything its
+        predecessor cast could have lapsed
         {switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 
