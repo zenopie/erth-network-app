@@ -82,5 +82,3 @@ export const WalletProvider = ({ children }) => {
     </WalletContext.Provider>
   );
 };
-
-export default WalletContext;
