@@ -95,10 +95,17 @@ export interface RootRecord {
   root: Uint8Array;
   /** height of the block that produced it. */
   height: number;
-  /** time of that block, unix seconds. The window is measured from here. */
+  /** time of that block, unix seconds. */
   time: number;
   /** tree_size is the leaf count at this root. */
   treeSize: number;
+  /**
+   * superseded_at is the time (unix seconds) of the block whose root
+   * replaced this one as the latest, 0 while it is the latest. The anchor
+   * window runs from here: a root stays an anchor for root_window_seconds
+   * after it stopped being the latest, however long it was the latest.
+   */
+  supersededAt: number;
 }
 
 function createBaseAction(): Action {
@@ -640,7 +647,7 @@ export const Turnstile: MessageFns<Turnstile> = {
 };
 
 function createBaseRootRecord(): RootRecord {
-  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0 };
+  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0, supersededAt: 0 };
 }
 
 export const RootRecord: MessageFns<RootRecord> = {
@@ -656,6 +663,9 @@ export const RootRecord: MessageFns<RootRecord> = {
     }
     if (message.treeSize !== 0) {
       writer.uint32(32).uint64(message.treeSize);
+    }
+    if (message.supersededAt !== 0) {
+      writer.uint32(40).int64(message.supersededAt);
     }
     return writer;
   },
@@ -705,6 +715,14 @@ export const RootRecord: MessageFns<RootRecord> = {
             message.treeSize = longToNumber(reader.uint64());
             continue;
           }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.supersededAt = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -727,6 +745,11 @@ export const RootRecord: MessageFns<RootRecord> = {
         : isSet(object.tree_size)
         ? globalThis.Number(object.tree_size)
         : 0,
+      supersededAt: isSet(object.supersededAt)
+        ? globalThis.Number(object.supersededAt)
+        : isSet(object.superseded_at)
+        ? globalThis.Number(object.superseded_at)
+        : 0,
     };
   },
 
@@ -744,6 +767,9 @@ export const RootRecord: MessageFns<RootRecord> = {
     if (message.treeSize !== 0) {
       obj.treeSize = Math.round(message.treeSize);
     }
+    if (message.supersededAt !== 0) {
+      obj.supersededAt = Math.round(message.supersededAt);
+    }
     return obj;
   },
 
@@ -756,6 +782,7 @@ export const RootRecord: MessageFns<RootRecord> = {
     message.height = object.height ?? 0;
     message.time = object.time ?? 0;
     message.treeSize = object.treeSize ?? 0;
+    message.supersededAt = object.supersededAt ?? 0;
     return message;
   },
 };

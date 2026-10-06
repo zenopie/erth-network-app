@@ -65,6 +65,15 @@ export interface Registration {
    * does not.
    */
   predecessorAt: number;
+  /**
+   * proof_date is the registration proof's current_date (unix seconds,
+   * midnight UTC). A switch must be proven on a strictly later date: a proof
+   * can then move a passport's registration forward only once per day (one
+   * holder cannot spend its signer's daily cap on switches), and a proof
+   * that reached a block but failed can never be replayed over a registration
+   * its holder made since.
+   */
+  proofDate: number;
 }
 
 /**
@@ -191,6 +200,7 @@ function createBaseRegistration(): Registration {
     country: "",
     idc: new Uint8Array(0),
     predecessorAt: 0,
+    proofDate: 0,
   };
 }
 
@@ -219,6 +229,9 @@ export const Registration: MessageFns<Registration> = {
     }
     if (message.predecessorAt !== 0) {
       writer.uint32(64).int64(message.predecessorAt);
+    }
+    if (message.proofDate !== 0) {
+      writer.uint32(72).int64(message.proofDate);
     }
     return writer;
   },
@@ -300,6 +313,14 @@ export const Registration: MessageFns<Registration> = {
             message.predecessorAt = longToNumber(reader.int64());
             continue;
           }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.proofDate = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -342,6 +363,11 @@ export const Registration: MessageFns<Registration> = {
         : isSet(object.predecessor_at)
         ? globalThis.Number(object.predecessor_at)
         : 0,
+      proofDate: isSet(object.proofDate)
+        ? globalThis.Number(object.proofDate)
+        : isSet(object.proof_date)
+        ? globalThis.Number(object.proof_date)
+        : 0,
     };
   },
 
@@ -371,6 +397,9 @@ export const Registration: MessageFns<Registration> = {
     if (message.predecessorAt !== 0) {
       obj.predecessorAt = Math.round(message.predecessorAt);
     }
+    if (message.proofDate !== 0) {
+      obj.proofDate = Math.round(message.proofDate);
+    }
     return obj;
   },
 
@@ -387,6 +416,7 @@ export const Registration: MessageFns<Registration> = {
     message.country = object.country ?? "";
     message.idc = object.idc ?? new Uint8Array(0);
     message.predecessorAt = object.predecessorAt ?? 0;
+    message.proofDate = object.proofDate ?? 0;
     return message;
   },
 };

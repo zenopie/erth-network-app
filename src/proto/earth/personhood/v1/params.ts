@@ -241,8 +241,8 @@ export interface Params {
   buybackMaxTradeSeconds: number;
   /**
    * handle_renewal_seconds is how long a handle whose lease has ended
-   * (expires_at, refreshed by its owner's MsgBindHandle every
-   * caretaker_vote_seconds) stays reserved to its owner: it no longer
+   * (expires_at, refreshed by its owner's MsgBindHandle for another
+   * handle_lease_seconds) stays reserved to its owner: it no longer
    * resolves, and only the same nullifier may renew it; after it, the
    * handle is released and anyone may claim it. Zero falls back to the
    * default (30 days); at most a year.

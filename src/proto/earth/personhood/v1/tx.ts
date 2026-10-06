@@ -73,7 +73,7 @@ export interface MsgRegister {
   proof: Uint8Array;
   /** public_signals are the circuit public inputs as decimal strings. */
   publicSignals: string[];
-  /** signature_algorithm selects the verifying key (e.g. "lean_poa"). */
+  /** signature_algorithm selects the verifying key (e.g. "lean_poa_rsa2048_sha256"). */
   signatureAlgorithm: string;
   /** dsc_der is the DER-encoded Document Signer certificate. */
   dscDer: Uint8Array;
@@ -137,10 +137,9 @@ export interface MsgClaimAnmlResponse {
  * lowered it) - 86400 (one day, the largest identity root window). A fresh
  * registrant (predecessor_at 0) casts at once; an identity that replaced
  * another waits until every split its predecessor could have cast has
- * lapsed (a switch that keeps its split moves it: MsgMoveCaretaker). The
- * bound applies only to a prover holding no split: refreshing or changing
- * one it holds (cast, or moved to it) takes any max_predecessor. A prover
- * that moved its split away may never cast again. The wallet names the bound (rounded down, say to the hour, so it
+ * lapsed. The bound applies only to a prover holding no split: refreshing
+ * or changing one it holds takes any max_predecessor. The wallet names the
+ * bound (rounded down, say to the hour, so it
  * says nothing about when the tx was made) because the chain's own changes
  * every block and a proof must be made before its block is known. The split
  * counts until now + caretaker_vote_seconds; the wallet refreshes it before
@@ -165,32 +164,6 @@ export interface MsgSetCaretakerResponse {
 }
 
 /**
- * MsgMoveCaretaker transfers the prover's live caretaker split, percentages
- * and expiry unchanged, to new_owner: the caretaker-scope nullifier of the
- * identity that is to hold it, H(TAG_SN, new_id_secret, Scope("caretaker")),
- * which that identity reveals when it next proves in the caretaker scope (to
- * refresh or change it). How an identity switch keeps its vote with no wait.
- * Nothing ties either nullifier to the passport.
- *
- * membership is proven with scope Scope("caretaker") by the current owner,
- * excluded_dsc and excluded_country 0, max_activation and max_predecessor
- * NoBound (2^63 - 1). new_owner must hold no split and must not have moved
- * one away. The prover may never cast a split again (it moved its one away).
- *
- * sighash fields: new_owner.
- */
-export interface MsgMoveCaretaker {
-  fee: Bundle | undefined;
-  membership: Membership | undefined;
-  newOwner: Uint8Array;
-}
-
-/** MsgMoveCaretakerResponse reports the moved split's expiry (unix seconds). */
-export interface MsgMoveCaretakerResponse {
-  expiresAt: number;
-}
-
-/**
  * MsgBindHandle claims, renews, changes or releases the prover's handle
  * (types.Handle): a name in the public directory for a shielded address.
  *
@@ -207,10 +180,8 @@ export interface MsgMoveCaretakerResponse {
  *   - handle and address set, the prover holding none: claim a free handle.
  *     max_predecessor must be strictly below now - the longest
  *     handle_lease_seconds ever set - 86400: an identity that replaced
- *     another waits until any handle its predecessor held has lapsed (a
- *     switch that keeps its handle moves it: MsgMoveHandle). A fresh
- *     registrant claims at once. A prover that moved its handle away may
- *     never claim again.
+ *     another waits until any handle its predecessor held has lapsed. A
+ *     fresh registrant claims at once.
  *   - both empty: release the prover's handle at once.
  *
  * A handle held by another nullifier (live, or in its renewal period) is
@@ -239,34 +210,6 @@ export interface MsgBindHandle {
  */
 export interface MsgBindHandleResponse {
   expiresAt: number;
-}
-
-/**
- * MsgMoveHandle transfers the prover's live handle (one in its renewal
- * period must be renewed first) to new_owner: the handle-scope nullifier of the identity that is to
- * hold it, H(TAG_SN, new_id_secret, Scope("handle")), which that identity
- * reveals when it next proves in the handle scope (to renew it). The lease
- * is unchanged. It is how an identity switch keeps its handle: the wallet
- * moves it to the new identity's handle nullifier before (or within a root
- * window after) the switch. Nothing ties either nullifier to the passport.
- *
- * membership is proven with scope Scope("handle") by the current owner,
- * excluded_dsc and excluded_country 0, max_activation and max_predecessor
- * NoBound (2^63 - 1). new_owner must hold no handle and must not have moved
- * one away. The prover may never claim a handle again (it moved its one
- * away).
- *
- * sighash fields: Bytes(handle), new_owner.
- */
-export interface MsgMoveHandle {
-  fee: Bundle | undefined;
-  membership: Membership | undefined;
-  handle: string;
-  newOwner: Uint8Array;
-}
-
-/** MsgMoveHandleResponse is empty. */
-export interface MsgMoveHandleResponse {
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -1186,186 +1129,6 @@ export const MsgSetCaretakerResponse: MessageFns<MsgSetCaretakerResponse> = {
   },
 };
 
-function createBaseMsgMoveCaretaker(): MsgMoveCaretaker {
-  return { fee: undefined, membership: undefined, newOwner: new Uint8Array(0) };
-}
-
-export const MsgMoveCaretaker: MessageFns<MsgMoveCaretaker> = {
-  encode(message: MsgMoveCaretaker, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.fee !== undefined) {
-      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
-    }
-    if (message.membership !== undefined) {
-      Membership.encode(message.membership, writer.uint32(18).fork()).join();
-    }
-    if (message.newOwner.length !== 0) {
-      writer.uint32(26).bytes(message.newOwner);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveCaretaker {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgMoveCaretaker();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 10) {
-              break;
-            }
-
-            message.fee = Bundle.decode(reader, reader.uint32());
-            continue;
-          }
-          case 2: {
-            if (tag !== 18) {
-              break;
-            }
-
-            message.membership = Membership.decode(reader, reader.uint32());
-            continue;
-          }
-          case 3: {
-            if (tag !== 26) {
-              break;
-            }
-
-            message.newOwner = reader.bytes();
-            continue;
-          }
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(object: any): MsgMoveCaretaker {
-    return {
-      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
-      membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
-      newOwner: isSet(object.newOwner)
-        ? bytesFromBase64(object.newOwner)
-        : isSet(object.new_owner)
-        ? bytesFromBase64(object.new_owner)
-        : new Uint8Array(0),
-    };
-  },
-
-  toJSON(message: MsgMoveCaretaker): unknown {
-    const obj: any = {};
-    if (message.fee !== undefined) {
-      obj.fee = Bundle.toJSON(message.fee);
-    }
-    if (message.membership !== undefined) {
-      obj.membership = Membership.toJSON(message.membership);
-    }
-    if (message.newOwner.length !== 0) {
-      obj.newOwner = base64FromBytes(message.newOwner);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgMoveCaretaker>, I>>(base?: I): MsgMoveCaretaker {
-    return MsgMoveCaretaker.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgMoveCaretaker>, I>>(object: I): MsgMoveCaretaker {
-    const message = createBaseMsgMoveCaretaker();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
-    message.membership = (object.membership !== undefined && object.membership !== null)
-      ? Membership.fromPartial(object.membership)
-      : undefined;
-    message.newOwner = object.newOwner ?? new Uint8Array(0);
-    return message;
-  },
-};
-
-function createBaseMsgMoveCaretakerResponse(): MsgMoveCaretakerResponse {
-  return { expiresAt: 0 };
-}
-
-export const MsgMoveCaretakerResponse: MessageFns<MsgMoveCaretakerResponse> = {
-  encode(message: MsgMoveCaretakerResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.expiresAt !== 0) {
-      writer.uint32(8).int64(message.expiresAt);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveCaretakerResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgMoveCaretakerResponse();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 8) {
-              break;
-            }
-
-            message.expiresAt = longToNumber(reader.int64());
-            continue;
-          }
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(object: any): MsgMoveCaretakerResponse {
-    return {
-      expiresAt: isSet(object.expiresAt)
-        ? globalThis.Number(object.expiresAt)
-        : isSet(object.expires_at)
-        ? globalThis.Number(object.expires_at)
-        : 0,
-    };
-  },
-
-  toJSON(message: MsgMoveCaretakerResponse): unknown {
-    const obj: any = {};
-    if (message.expiresAt !== 0) {
-      obj.expiresAt = Math.round(message.expiresAt);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgMoveCaretakerResponse>, I>>(base?: I): MsgMoveCaretakerResponse {
-    return MsgMoveCaretakerResponse.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgMoveCaretakerResponse>, I>>(object: I): MsgMoveCaretakerResponse {
-    const message = createBaseMsgMoveCaretakerResponse();
-    message.expiresAt = object.expiresAt ?? 0;
-    return message;
-  },
-};
-
 function createBaseMsgBindHandle(): MsgBindHandle {
   return { fee: undefined, membership: undefined, handle: "", address: "", maxPredecessor: 0 };
 }
@@ -1578,186 +1341,10 @@ export const MsgBindHandleResponse: MessageFns<MsgBindHandleResponse> = {
   },
 };
 
-function createBaseMsgMoveHandle(): MsgMoveHandle {
-  return { fee: undefined, membership: undefined, handle: "", newOwner: new Uint8Array(0) };
-}
-
-export const MsgMoveHandle: MessageFns<MsgMoveHandle> = {
-  encode(message: MsgMoveHandle, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.fee !== undefined) {
-      Bundle.encode(message.fee, writer.uint32(10).fork()).join();
-    }
-    if (message.membership !== undefined) {
-      Membership.encode(message.membership, writer.uint32(18).fork()).join();
-    }
-    if (message.handle !== "") {
-      writer.uint32(26).string(message.handle);
-    }
-    if (message.newOwner.length !== 0) {
-      writer.uint32(34).bytes(message.newOwner);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveHandle {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgMoveHandle();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 10) {
-              break;
-            }
-
-            message.fee = Bundle.decode(reader, reader.uint32());
-            continue;
-          }
-          case 2: {
-            if (tag !== 18) {
-              break;
-            }
-
-            message.membership = Membership.decode(reader, reader.uint32());
-            continue;
-          }
-          case 3: {
-            if (tag !== 26) {
-              break;
-            }
-
-            message.handle = reader.string();
-            continue;
-          }
-          case 4: {
-            if (tag !== 34) {
-              break;
-            }
-
-            message.newOwner = reader.bytes();
-            continue;
-          }
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(object: any): MsgMoveHandle {
-    return {
-      fee: isSet(object.fee) ? Bundle.fromJSON(object.fee) : undefined,
-      membership: isSet(object.membership) ? Membership.fromJSON(object.membership) : undefined,
-      handle: isSet(object.handle) ? globalThis.String(object.handle) : "",
-      newOwner: isSet(object.newOwner)
-        ? bytesFromBase64(object.newOwner)
-        : isSet(object.new_owner)
-        ? bytesFromBase64(object.new_owner)
-        : new Uint8Array(0),
-    };
-  },
-
-  toJSON(message: MsgMoveHandle): unknown {
-    const obj: any = {};
-    if (message.fee !== undefined) {
-      obj.fee = Bundle.toJSON(message.fee);
-    }
-    if (message.membership !== undefined) {
-      obj.membership = Membership.toJSON(message.membership);
-    }
-    if (message.handle !== "") {
-      obj.handle = message.handle;
-    }
-    if (message.newOwner.length !== 0) {
-      obj.newOwner = base64FromBytes(message.newOwner);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgMoveHandle>, I>>(base?: I): MsgMoveHandle {
-    return MsgMoveHandle.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgMoveHandle>, I>>(object: I): MsgMoveHandle {
-    const message = createBaseMsgMoveHandle();
-    message.fee = (object.fee !== undefined && object.fee !== null) ? Bundle.fromPartial(object.fee) : undefined;
-    message.membership = (object.membership !== undefined && object.membership !== null)
-      ? Membership.fromPartial(object.membership)
-      : undefined;
-    message.handle = object.handle ?? "";
-    message.newOwner = object.newOwner ?? new Uint8Array(0);
-    return message;
-  },
-};
-
-function createBaseMsgMoveHandleResponse(): MsgMoveHandleResponse {
-  return {};
-}
-
-export const MsgMoveHandleResponse: MessageFns<MsgMoveHandleResponse> = {
-  encode(_: MsgMoveHandleResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgMoveHandleResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgMoveHandleResponse();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(_: any): MsgMoveHandleResponse {
-    return {};
-  },
-
-  toJSON(_: MsgMoveHandleResponse): unknown {
-    const obj: any = {};
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgMoveHandleResponse>, I>>(base?: I): MsgMoveHandleResponse {
-    return MsgMoveHandleResponse.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgMoveHandleResponse>, I>>(_: I): MsgMoveHandleResponse {
-    const message = createBaseMsgMoveHandleResponse();
-    return message;
-  },
-};
-
 /**
  * Msg defines the Msg service.
  *
- * Register, ClaimAnml, SetCaretaker, MoveCaretaker, BindHandle and MoveHandle are
- * private msgs:
+ * Register, ClaimAnml, SetCaretaker and BindHandle are private msgs:
  * unsigned, carried
  * alone in a tx, their fee paid from the shielded pool by the earth.shielded
  * Bundle each embeds as `fee` (see x/shielded PrivateMsg), whose only balance
@@ -1780,21 +1367,10 @@ export interface Msg {
   /** SetCaretaker casts or refreshes a registered human's caretaker split. */
   SetCaretaker(request: MsgSetCaretaker): Promise<MsgSetCaretakerResponse>;
   /**
-   * BindHandle claims, refreshes, moves or releases a registered human's
+   * BindHandle claims, refreshes, changes or releases a registered human's
    * handle: a name in the public directory for a shielded address.
    */
   BindHandle(request: MsgBindHandle): Promise<MsgBindHandleResponse>;
-  /**
-   * MoveHandle transfers the prover's handle to another owner nullifier: a
-   * switch of identity that keeps its handle.
-   */
-  MoveHandle(request: MsgMoveHandle): Promise<MsgMoveHandleResponse>;
-  /**
-   * MoveCaretaker transfers the prover's live caretaker split (and its
-   * expiry) to another owner nullifier: a switch of identity that keeps its
-   * vote.
-   */
-  MoveCaretaker(request: MsgMoveCaretaker): Promise<MsgMoveCaretakerResponse>;
 }
 
 export const MsgServiceName = "earth.personhood.v1.Msg";
@@ -1809,8 +1385,6 @@ export class MsgClientImpl implements Msg {
     this.ClaimAnml = this.ClaimAnml.bind(this);
     this.SetCaretaker = this.SetCaretaker.bind(this);
     this.BindHandle = this.BindHandle.bind(this);
-    this.MoveHandle = this.MoveHandle.bind(this);
-    this.MoveCaretaker = this.MoveCaretaker.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -1840,18 +1414,6 @@ export class MsgClientImpl implements Msg {
     const data = MsgBindHandle.encode(request).finish();
     const promise = this.rpc.request(this.service, "BindHandle", data);
     return promise.then((data) => MsgBindHandleResponse.decode(new BinaryReader(data)));
-  }
-
-  MoveHandle(request: MsgMoveHandle): Promise<MsgMoveHandleResponse> {
-    const data = MsgMoveHandle.encode(request).finish();
-    const promise = this.rpc.request(this.service, "MoveHandle", data);
-    return promise.then((data) => MsgMoveHandleResponse.decode(new BinaryReader(data)));
-  }
-
-  MoveCaretaker(request: MsgMoveCaretaker): Promise<MsgMoveCaretakerResponse> {
-    const data = MsgMoveCaretaker.encode(request).finish();
-    const promise = this.rpc.request(this.service, "MoveCaretaker", data);
-    return promise.then((data) => MsgMoveCaretakerResponse.decode(new BinaryReader(data)));
   }
 }
 

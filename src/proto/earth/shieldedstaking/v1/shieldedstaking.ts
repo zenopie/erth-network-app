@@ -290,9 +290,15 @@ export interface Position {
 export interface StakeRoot {
   root: Uint8Array;
   height: number;
-  /** time of that block, unix seconds; the window runs from here. */
+  /** time of that block, unix seconds. */
   time: number;
   treeSize: number;
+  /**
+   * superseded_at is the time (unix seconds) of the block whose root
+   * replaced this one as the latest, 0 while it is the latest. The window
+   * runs from here (as x/shielded's RootRecord).
+   */
+  supersededAt: number;
 }
 
 /** ProposalSnapshot is taken when an x/gov proposal enters voting. */
@@ -1878,7 +1884,7 @@ export const Position: MessageFns<Position> = {
 };
 
 function createBaseStakeRoot(): StakeRoot {
-  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0 };
+  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0, supersededAt: 0 };
 }
 
 export const StakeRoot: MessageFns<StakeRoot> = {
@@ -1894,6 +1900,9 @@ export const StakeRoot: MessageFns<StakeRoot> = {
     }
     if (message.treeSize !== 0) {
       writer.uint32(32).uint64(message.treeSize);
+    }
+    if (message.supersededAt !== 0) {
+      writer.uint32(40).int64(message.supersededAt);
     }
     return writer;
   },
@@ -1943,6 +1952,14 @@ export const StakeRoot: MessageFns<StakeRoot> = {
             message.treeSize = longToNumber(reader.uint64());
             continue;
           }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.supersededAt = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1965,6 +1982,11 @@ export const StakeRoot: MessageFns<StakeRoot> = {
         : isSet(object.tree_size)
         ? globalThis.Number(object.tree_size)
         : 0,
+      supersededAt: isSet(object.supersededAt)
+        ? globalThis.Number(object.supersededAt)
+        : isSet(object.superseded_at)
+        ? globalThis.Number(object.superseded_at)
+        : 0,
     };
   },
 
@@ -1982,6 +2004,9 @@ export const StakeRoot: MessageFns<StakeRoot> = {
     if (message.treeSize !== 0) {
       obj.treeSize = Math.round(message.treeSize);
     }
+    if (message.supersededAt !== 0) {
+      obj.supersededAt = Math.round(message.supersededAt);
+    }
     return obj;
   },
 
@@ -1994,6 +2019,7 @@ export const StakeRoot: MessageFns<StakeRoot> = {
     message.height = object.height ?? 0;
     message.time = object.time ?? 0;
     message.treeSize = object.treeSize ?? 0;
+    message.supersededAt = object.supersededAt ?? 0;
     return message;
   },
 };
