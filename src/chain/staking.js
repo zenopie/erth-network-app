@@ -15,8 +15,11 @@ import { ADDRESS_PREFIX, UERTH } from "./config";
  * app (see ./shieldedStaking.js for the public side of that).
  *
  * So the messages here are an operator's: create a validator, bond or unbond
- * its own stake, cancel its own unbonding, and withdraw its rewards and
- * commission.
+ * its own stake and cancel its own unbonding. Its rewards and commission
+ * cannot be withdrawn: the chain refuses an operator's
+ * MsgWithdrawDelegatorReward and every MsgWithdrawValidatorCommission, and
+ * compounds that income into the self-bond at each epoch end (the
+ * validator's reward escrow, x/shieldedstaking keeper/escrow.go).
  */
 
 /** Total uerth bonded network-wide (drives the APR figure). */
@@ -163,21 +166,6 @@ export function msgCancelSelfUnbonding(operatorAccount, entry) {
       creationHeight: BigInt(h),
     },
   };
-}
-
-/** Withdraw the operator's self-bond rewards and its validator's commission. */
-export function msgsWithdrawOperatorRewards(operatorAccount) {
-  const validatorAddress = ownValidator(operatorAccount);
-  return [
-    {
-      typeUrl: "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward",
-      value: { delegatorAddress: operatorAccount, validatorAddress },
-    },
-    {
-      typeUrl: "/cosmos.distribution.v1beta1.MsgWithdrawValidatorCommission",
-      value: { validatorAddress },
-    },
-  ];
 }
 
 /** "0.1" -> LegacyDec atomics ("100000000000000000"), which the proto carries. */

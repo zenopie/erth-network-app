@@ -51,7 +51,8 @@ never built here: the cosmjs registry holds only Keplr-signed msgs.
   handle in the URL fragment, never the query.
 - **Staking** (`/stake-erth`): validators with private-staking rates, the epoch clock,
   positions. Only a validator's operator can delegate transparently, so a connected
-  operator gets self-bond bond/unbond/cancel and reward + commission withdrawal; other
+  operator gets self-bond bond/unbond/cancel and its pending income, which compounds into
+  the self-bond each epoch (the chain refuses reward and commission withdrawals); other
   accounts get a create-validator form. Holders stake privately from the app.
 - **Governance** (`/governance`): proposals with the stake tally (self-bond + private
   derth), the human tally and its bar while voting, the ballot's excluded country /

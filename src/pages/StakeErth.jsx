@@ -301,7 +301,6 @@ const StakeErth = () => {
 const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
   const [bondAmount, setBondAmount] = useState("");
   const [unbondAmount, setUnbondAmount] = useState("");
-  const pending = Number(operator.rewards) + Number(operator.commissionEarned);
 
   return (
     <div className={styles.card}>
@@ -317,18 +316,16 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
         </div>
       </div>
       <div className={styles.kv}>
-        <div className={styles.kvLabel}>Rewards + commission</div>
+        <div className={styles.kvLabel}>Pending rewards + commission</div>
         <div className={styles.kvValue}>
-          {erth(operator.rewards)} + {erth(operator.commissionEarned)}{" "}
-          <button
-            className={forms.ghostButton}
-            disabled={!(pending > 0)}
-            onClick={() => run(() => staking.msgsWithdrawOperatorRewards(address))}
-          >
-            Withdraw
-          </button>
+          {erth(operator.rewards)} + {erth(operator.commissionEarned)}
         </div>
       </div>
+      <p className={styles.muted}>
+        Your validator's income cannot be withdrawn. The chain pays it into the validator's reward escrow and
+        compounds it into your self-bond at each epoch end while the validator is active. It becomes liquid only
+        through the self-bond: unbond it, or, once you retire or the validator is removed, the escrow is paid out.
+      </p>
 
       <div className={forms.section}>
         <div className={forms.formRow}>
