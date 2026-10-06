@@ -51,6 +51,36 @@ const renderCustomLegend = (props, data) => {
   );
 };
 
+// The operator's last live split, remembered per address in this browser:
+// once a lease ends the chain drops the record (the LCD then 404s as for a
+// never-cast split), so this is what tells "lapsed" from "never cast" and
+// what a re-cast is prefilled from. A convenience only: unreadable storage
+// just means no lapsed notice.
+const memoryKey = (address) => `earth.groundworks.split.${address}`;
+const recall = (address) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(memoryKey(address)) ?? "null");
+    return v && Array.isArray(v.splits) && Number.isSafeInteger(v.expiresAt) ? v : null;
+  } catch {
+    return null;
+  }
+};
+const remember = (address, splits, expiresAt) => {
+  try {
+    localStorage.setItem(memoryKey(address), JSON.stringify({ splits, expiresAt }));
+  } catch {
+    // Storage unavailable: nothing to remember with.
+  }
+};
+
+const DAY = 24 * 60 * 60;
+const leaseText = (seconds) =>
+  seconds === allocation.DEFAULT_GROUNDWORKS_LEASE_SECONDS ? "one year" : `${Math.round(seconds / DAY)} days`;
+const dateText = (unix) => new Date(unix * 1000).toLocaleDateString();
+const sameSplit = (a, b) =>
+  a.length === b.length &&
+  a.every((w) => b.some((x) => String(x.optionId) === String(w.optionId) && Number(x.percent) === Number(w.percent)));
+
 const getChartDataWithUnallocated = (allocations = []) => {
   // Only valid shares (1..100) are drawn; an invalid entry is refused below.
   const totalPercentage = allocations.reduce((acc, alloc) => acc + (allocation.splitPercent(alloc.value) ?? 0), 0);
@@ -80,6 +110,10 @@ const getChartDataWithUnallocated = (allocations = []) => {
  * that stream is read-only here. Groundworks is mostly weighted by private
  * positions (also made in the app), but a validator's own self-bond is still
  * transparent stake and its operator can direct it with MsgSetAllocations.
+ * That split is leased (groundworks_lease_seconds, a year by default): the
+ * editor shows when it stops counting, renews it by casting it again, and
+ * says when it has lapsed. Renewal is the operator's own action, never
+ * automatic.
  * `options` comes from the page so the pie and the page's table agree.
  */
 const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, totalWeight, partial = false }) => {
@@ -97,6 +131,10 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   // { epoch } of a split filed before the stream's current epoch: shown, but
   // it no longer counts until set again.
   const [staleSplit, setStaleSplit] = useState(null);
+  // The split's lease: { current: [{optionId, percent}], expiresAt, lapsed }
+  // (null until read, or without a split cast from this account).
+  const [lease, setLease] = useState(null);
+  const [leaseSeconds, setLeaseSeconds] = useState(allocation.DEFAULT_GROUNDWORKS_LEASE_SECONDS);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,12 +168,39 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
   }, [editable]);
 
   useEffect(() => {
+    if (!editable) return;
+    let cancelled = false;
+    allocation.groundworksLeaseSeconds().then((n) => !cancelled && setLeaseSeconds(n));
+    return () => {
+      cancelled = true;
+    };
+  }, [editable]);
+
+  useEffect(() => {
     if (activeTab !== "Split" || !editable || !address) return;
     let cancelled = false;
     allocation
       .groundworksVoter(address, { streamEpoch })
-      .then(({ splits, weight, stale, epoch, validatorStatus: status }) => {
+      .then(({ splits: stored, weight, stale, epoch, exists, expired, expiresAt, validatorStatus: status }) => {
         if (cancelled) return;
+        let splits = stored;
+        const now = Date.now() / 1000;
+        if (exists && expiresAt > 0) {
+          if (!expired && !stale) remember(address, stored, expiresAt);
+          setLease({ current: stored, expiresAt, lapsed: expired });
+        } else if (!exists) {
+          // Dropped at its lease end, or never cast: only a remembered lease
+          // that has ended says which.
+          const mem = recall(address);
+          if (mem && mem.expiresAt <= now) {
+            splits = mem.splits;
+            setLease({ current: mem.splits, expiresAt: mem.expiresAt, lapsed: true });
+          } else {
+            setLease(null);
+          }
+        } else {
+          setLease(null);
+        }
         setVoterWeight(weight);
         setValidatorStatus(status);
         setStaleSplit(stale ? { epoch } : null);
@@ -151,6 +216,7 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
         // Unread is not "has weight": Save stays off until the weight is known.
         setVoterWeight("0");
         setValidatorStatus(null);
+        setLease(null);
         console.error(`Error fetching split for ${title}:`, err);
       });
     return () => {
@@ -198,6 +264,11 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
         percent: allocation.splitPercent(alloc.value),
       }));
       await broadcast([allocation.msgSetAllocations(address, stream, weights)]);
+      // The new lease runs from this block; the next read stores the
+      // chain's exact expires_at.
+      const expiresAt = Math.floor(Date.now() / 1000) + leaseSeconds;
+      remember(address, weights, expiresAt);
+      setLease({ current: weights, expiresAt, lapsed: false });
       onChanged?.();
     });
     setIsSubmitting(false);
@@ -280,6 +351,26 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
               it is back in the active set.
             </p>
           )}
+          <p className={styles.allocationFundNote}>
+            A split counts for {leaseText(leaseSeconds)} from when it is cast or renewed. Casting it
+            again renews it; nothing renews it automatically.
+          </p>
+          {lease && lease.lapsed && (
+            <p className={styles.allocationFundNote} role="status">
+              Lapsed: your split stopped counting on {dateText(lease.expiresAt)}. Re-cast it (prefilled
+              below) to count for another {leaseText(leaseSeconds)}.
+            </p>
+          )}
+          {lease && !lease.lapsed && (() => {
+            const left = lease.expiresAt - Date.now() / 1000;
+            return (
+              <p className={styles.allocationFundNote} role="status">
+                {left <= allocation.RENEW_WARNING_SECONDS && <strong>Renew soon. </strong>}
+                Your split counts until {dateText(lease.expiresAt)} ({Math.max(0, Math.ceil(left / DAY))} days
+                left). Renewing it now makes it count for {leaseText(leaseSeconds)} from today.
+              </p>
+            );
+          })()}
           {staleSplit && (
             <p className={styles.allocationFundNote} role="status">
               Stale split: this was set in epoch {staleSplit.epoch}, and the stream is now in epoch{" "}
@@ -383,7 +474,13 @@ const AllocationFund = ({ title, stream, options, streamEpoch = 0, onChanged, to
               className={styles.allocationFundClaimButton}
               disabled={isSubmitting || Boolean(splitProblem) || toBigInt(voterWeight) <= 0n}
             >
-              {isSubmitting ? "Submitting..." : "Set Allocation"}
+              {isSubmitting
+                ? "Submitting..."
+                : lease?.lapsed
+                  ? "Re-cast Split"
+                  : lease && sameSplit(splitWeights, lease.current)
+                    ? "Renew Split"
+                    : "Set Allocation"}
             </button>
           )}
         </div>

@@ -12,6 +12,7 @@ import * as explorer from "../chain/explorer";
 import * as shieldedStaking from "../chain/shieldedStaking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
+import { RENEW_WARNING_SECONDS } from "../chain/allocation";
 import { byBigDesc, formatMacro, percentString, sumBig, toBigInt } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -20,6 +21,7 @@ import useTransaction from "../hooks/useTransaction";
 // Weights and amounts are integer strings past 2^53; never through Number.
 const erth = (micro) => `${formatMacro(micro, UERTH)} ERTH`;
 const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
+const day = (unix) => new Date(unix * 1000).toLocaleDateString();
 
 /**
  * The Groundworks Fund: x/allocation's stake-weighted stream.
@@ -34,6 +36,11 @@ const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
  * validators' transparent self-bond, which an operator can still direct here
  * with Keplr. The assembly (one human, one vote) can strike an option; its
  * open removal ballots are listed at the bottom.
+ *
+ * Every split is leased: it counts until split_expires_at (a position's) or
+ * expires_at (an operator's), a year after it was cast or last renewed by
+ * default, and then the chain clears it. Owners renew by casting again; the
+ * wallets remind them, and nothing renews automatically.
  */
 const GroundworksFund = () => {
   const { address } = useWallet();
@@ -127,7 +134,8 @@ const GroundworksFund = () => {
       <MobileCta title="Direct Groundworks with a position in the Earth Wallet app">
         Lock privately staked ERTH into a position and split it across these options. The split
         and its weight are public; who owns it is not. The position keeps earning staking rewards
-        while it votes.
+        while it votes. A split lasts one year from when it is cast or renewed; the app reminds you
+        before it expires, and you renew it by voting again.
       </MobileCta>
 
       <div className={page.chart}>
@@ -157,7 +165,8 @@ const GroundworksFund = () => {
         <h3 className={styles.cardTitle}>By validator</h3>
         <p className={styles.muted}>
           The stream weighs positions per validator: all of a validator&apos;s positions are one
-          voter, with weight on each option = its epoch rate × Σ(derth × percent) / 100.
+          voter, with weight on each option = its epoch rate × Σ(derth × percent) / 100. Positions at a
+          jailed or unbonded validator keep their weight until their splits&apos; leases end.
         </p>
         {positions === undefined || voters === undefined ? (
           <div className={styles.empty}>Loading…</div>
@@ -214,6 +223,7 @@ const GroundworksFund = () => {
                 <th>Validator</th>
                 <th>Weight</th>
                 <th>Split</th>
+                <th>Lease ends</th>
               </tr>
             </thead>
             <tbody>
@@ -237,6 +247,20 @@ const GroundworksFund = () => {
                           </div>
                         ))
                       : <span className={styles.muted}>Unallocated</span>}
+                  </td>
+                  <td>
+                    {p.splitExpiresAt ? (
+                      <>
+                        {day(p.splitExpiresAt)}
+                        {p.splitExpiresAt - Date.now() / 1000 <= RENEW_WARNING_SECONDS && (
+                          <div className={styles.muted}>
+                            {p.splitExpiresAt <= Date.now() / 1000 ? "Lapsed; cleared at the next block" : "Due for renewal"}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
                   </td>
                 </tr>
               ))}
