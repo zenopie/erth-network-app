@@ -10,6 +10,7 @@ import * as staking from "../chain/staking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
 import { amountOk, toMacro, toMicro } from "../chain/tokens";
+import { formatErth as erth } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -28,7 +29,6 @@ const STATUS = {
   PROPOSAL_STATUS_FAILED: ["Failed", "badgeFailed"],
 };
 
-const erth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;
 const date = (iso) => (iso && !iso.startsWith("0001") ? new Date(iso).toLocaleString() : "—");
 const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
 

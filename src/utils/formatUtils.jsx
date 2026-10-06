@@ -1,3 +1,22 @@
+import { UERTH } from "../chain/config";
+import { toMacro } from "../chain/tokens";
+
+/**
+ * Format a USD value for display
+ * @param {number} value - The value to format
+ * @param {number} decimals - Number of decimal places (default: 2)
+ * @returns {string} Formatted USD string
+ */
+export function formatUSD(value, decimals = 2) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '$0.00';
+  }
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+}
+
 export const formatPrice = (price) => {
   if (!price) return "$0.00";
   if (price < 0.0001) return `$${price.toFixed(8)}`;
@@ -42,3 +61,10 @@ export const formatDuration = (seconds) => {
   }
   return `${Math.round(s)} seconds`;
 };
+
+/** A base amount in whole units, at most two decimals ("1,234.5"). */
+export const formatAmount = (micro, denom) =>
+  toMacro(micro ?? 0, denom).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+/** A uerth amount as "1,234.567 ERTH". */
+export const formatErth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;

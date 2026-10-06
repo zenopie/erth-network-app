@@ -6,13 +6,12 @@ import * as shielded from "../chain/shielded";
 import * as bank from "../chain/bank";
 import * as shieldedStaking from "../chain/shieldedStaking";
 import { UERTH } from "../chain/config";
-import { symbolOf, toMacro } from "../chain/tokens";
+import { symbolOf } from "../chain/tokens";
+import { formatAmount as fmt } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { SearchBar, short } from "../components/ExplorerBits";
 
 const REFRESH_MS = 10000;
-const fmt = (micro, denom) =>
-  toMacro(micro ?? 0, denom).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 /** "derth/earthvaloper1…" -> "derth · earthvaloper1abc…xyz" for the table. */
 const assetLabel = (denom) => {

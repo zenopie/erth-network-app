@@ -7,6 +7,7 @@ import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
 import { amountOk, formatMacro, formatUnits, toBigInt, toMacro, toMicro } from "../chain/tokens";
+import { formatErth as erth } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -26,8 +27,6 @@ const calculateAPR = (totalStakedMicro) => {
   const total = toMacro(totalStakedMicro ?? 0, UERTH);
   return total ? SECONDS_PER_YEAR / total : 0;
 };
-
-const erth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;
 
 /** "in 5h 12m" until a unix time, or "now" once it has passed. */
 function until(unix) {
