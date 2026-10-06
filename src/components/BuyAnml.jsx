@@ -4,7 +4,7 @@ import styles from "../pages/Explorer.module.css";
 import forms from "../pages/Forms.module.css";
 import * as dex from "../chain/dex";
 import { balance } from "../chain/bank";
-import { broadcast } from "../chain/tx";
+import { MAX_FEE_UERTH, broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
 import { SLIPPAGE_DEFAULT, clampSlippage, formatUnits, toBigInt, toMicro } from "../chain/tokens";
@@ -14,8 +14,9 @@ import StatusModal from "./StatusModal";
 import ShieldedAddressInput from "./ShieldedAddressInput";
 import AmountNote from "./AmountNote";
 
-// broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
-const FEE_HEADROOM = 10_000n;
+// What Max leaves for the fee: broadcast()'s default gas at Keplr's highest
+// gas price, since Keplr may re-price the fee upward.
+const FEE_HEADROOM = MAX_FEE_UERTH;
 
 /**
  * Buy ANML with ERTH from Keplr: MsgBuyAnml swaps transparent ERTH through

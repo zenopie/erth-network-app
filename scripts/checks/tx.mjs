@@ -236,7 +236,21 @@ check("every LCD read and the broadcast POST refuse redirects", redirects.length
   const p = tx.explainTxError("failed", { code: 1120, codespace: "personhood", raw_log: "identity tree full" });
   check("personhood 1120 is not the pool cap", !/pool's cap/.test(p), p);
   const nw = tx.explainTxError("failed", { code: 1105, codespace: "allocation", raw_log: "voter carries no weight in this stream" });
-  check("allocation ErrNoWeight explained", /isn't in the active set/.test(nw) && /code 1105, allocation/.test(nw), nw);
+  check("allocation ErrNoWeight explained", /no Groundworks weight/.test(nw) && /self-bond is zero/.test(nw) && /code 1105, allocation/.test(nw), nw);
+}
+
+// ---- Max keeps back Keplr's highest fee ------------------------------------
+check("MAX_FEE_UERTH covers default gas at Keplr's high gas price", tx.MAX_FEE_UERTH === 16_000n, String(tx.MAX_FEE_UERTH));
+
+// ---- Keplr switched account: a sentence, nothing signed -------------------
+{
+  const connected = address;
+  address = "earth1other";
+  const before = posted.length;
+  const e = await outcome(tx.broadcast([sh.shieldTo(connected, G, "1000000").msg]));
+  check("a Keplr account switch asks to reconnect and signs nothing",
+    /Reconnect/.test(e.err?.message ?? "") && posted.length === before, e.err?.message);
+  address = connected;
 }
 
 done();

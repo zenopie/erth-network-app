@@ -66,6 +66,16 @@ export const registry = new Registry([
 const DEFAULT_GAS = 400_000;
 const GAS_PRICE_UERTH = 0.025;
 
+/**
+ * The most a default-gas transaction can cost: Keplr re-prices the fee from
+ * the chain info's gasPriceStep when the user picks "high", so a Max that
+ * leaves room only for our 0.025/gas fee fails CheckTx with insufficient
+ * funds. What Max buttons keep back.
+ */
+export const MAX_FEE_UERTH = BigInt(
+  Math.ceil(DEFAULT_GAS * Math.max(GAS_PRICE_UERTH, ...earthChainInfo.feeCurrencies.map((c) => c.gasPriceStep?.high ?? 0))),
+);
+
 let wallet = null; // { address, signer }
 
 /** The connected address, or null when no wallet is connected. */
@@ -294,9 +304,13 @@ export async function broadcast(messages, opts = {}) {
   const feeAmount = String(Math.ceil(gas * GAS_PRICE_UERTH));
 
   const { accountNumber, sequence } = await fetchAccount(wallet.address);
-  const { pubkey: pubkeyBytes } = (await wallet.signer.getAccounts()).find(
-    (a) => a.address === wallet.address,
-  );
+  const account = (await wallet.signer.getAccounts()).find((a) => a.address === wallet.address);
+  if (!account) {
+    throw new Error(
+      `Keplr's selected account is no longer ${wallet.address}. Reconnect the wallet to use the account now selected in Keplr.`,
+    );
+  }
+  const pubkeyBytes = account.pubkey;
   const timeoutHeight = (await latestHeight()) + TIMEOUT_BLOCKS;
 
   const txBodyBytes = registry.encode({
@@ -382,8 +396,9 @@ const KNOWN_ERRORS = [
   ["dex", 1120, "That amount is past the pool's cap (2^120 units). Use a smaller amount."],
   ["dex", 1101, "This withdrawal's note-paid leg is worth more than one withdrawal can pay as notes " +
     "(32 notes of 2^63 - 1 units). Withdraw in smaller parts.", /pays as notes/],
-  ["allocation", 1105, "Your validator isn't in the active set (bonded), so it has no Groundworks weight " +
-    "and cannot set a split. Only a validator's self-bond counts, and only while it is bonded."],
+  ["allocation", 1105, "Your validator has no Groundworks weight right now, so it cannot set a split. " +
+    "Weight comes only from a bonded validator's self-bond: a validator outside the active set, or one " +
+    "whose self-bond is zero, has none."],
   ["bank", 5, "Transfers of this token are switched off on the chain, so it cannot be shielded (or sent) now.",
     /send transactions are disabled|is not allowed to be sent|send.*disabled/i],
 ];

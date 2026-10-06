@@ -4,7 +4,7 @@ import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import { balance, sendEnabled } from "../chain/bank";
 import { checkShield, shieldTo } from "../chain/shielded";
-import { broadcast } from "../chain/tx";
+import { MAX_FEE_UERTH, broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
 import { formatUnits, toBigInt, toMicro } from "../chain/tokens";
 import { memoBytes } from "../chain/noteCipher";
@@ -17,8 +17,9 @@ import ShieldedAddressInput from "../components/ShieldedAddressInput";
 import { addressProblem, handleDirectory, looksLikeHandle, parseHandle, truncateAddress } from "../chain/handles";
 import AmountNote from "../components/AmountNote";
 
-// broadcast()'s default gas (400k) at 0.025 uerth: what Max leaves for the fee.
-const FEE_HEADROOM = 10_000n;
+// What Max leaves for the fee: broadcast()'s default gas at Keplr's highest
+// gas price, since Keplr may re-price the fee upward.
+const FEE_HEADROOM = MAX_FEE_UERTH;
 
 /**
  * Shield ERTH: transparent ERTH from the connected Keplr account into a
