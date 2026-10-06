@@ -36,13 +36,13 @@ const shadeFor = (count, max) => {
   return `hsl(122, 45%, ${light}%)`;
 };
 
-const unixDate = (s) => (s ? new Date(s * 1000).toLocaleString() : "—");
-
 /**
  * Registrations: how many humans have registered, and where their passports
  * are from. A registration names no account — it is a passport nullifier and
- * an identity-tree leaf — so the only lookups are by that nullifier or by the
- * Document Signer that issued the passport.
+ * an identity-tree leaf. There is no lookup by passport nullifier: only the
+ * passport's holder (or someone holding its data) knows one, and asking the
+ * LCD for it would tie the asker's IP to that registration. The only lookup
+ * is a Document Signer's count.
  */
 const ExplorerRegistrations = () => {
   const { hideLoading } = useLoading();
@@ -226,26 +226,13 @@ const ExplorerRegistrations = () => {
 };
 
 /**
- * Look a registration up by its passport nullifier, or count a Document
- * Signer's registrations. Both keys are public: the nullifier is the
- * registration's dedup key, and nothing a holder does after registering is
- * keyed by it.
+ * Count a Document Signer's registrations. A signer key is a passport
+ * office's certificate, not a person's.
  */
 const Lookups = () => {
-  const [nf, setNf] = useState("");
-  const [reg, setReg] = useState(null);
   const [dsc, setDsc] = useState("");
   const [dscCount, setDscCount] = useState(null);
   const [err, setErr] = useState("");
-
-  const findReg = async (e) => {
-    e.preventDefault();
-    setErr("");
-    setReg(null);
-    const r = await personhood.registrationByNullifier(nf);
-    if (!r) setErr("Could not look that up. A nullifier is hex.");
-    else setReg(r);
-  };
 
   const countDsc = async (e) => {
     e.preventDefault();
@@ -259,17 +246,6 @@ const Lookups = () => {
   return (
     <div className={styles.card}>
       <h3 className={styles.cardTitle}>Look up</h3>
-      <form className={forms.formRow} onSubmit={findReg}>
-        <input
-          className={`${forms.input} ${forms.field} ${styles.mono}`}
-          placeholder="Passport nullifier (hex)"
-          value={nf}
-          onChange={(e) => setNf(e.target.value)}
-        />
-        <button className={forms.button} type="submit">
-          Find registration
-        </button>
-      </form>
       <form className={forms.formRow} onSubmit={countDsc}>
         <input
           className={`${forms.input} ${forms.field} ${styles.mono}`}
@@ -282,25 +258,6 @@ const Lookups = () => {
         </button>
       </form>
       {err && <div className={styles.searchError}>{err}</div>}
-      {reg && !reg.registered && !reg.expired && (
-        <div className={styles.empty}>No registration with that nullifier.</div>
-      )}
-      {reg && (reg.registered || reg.expired) && (
-        <div>
-          <Row label="Status">
-            <span className={`${styles.badge} ${reg.expired ? styles.badgeFailed : styles.badgeSuccess}`}>
-              {reg.expired ? "Expired" : "Live"}
-            </span>
-          </Row>
-          <Row label="Country">{reg.country ? `${nameOf(reg.country)} (${reg.country})` : "Unknown"}</Row>
-          <Row label="Registered">{unixDate(reg.registeredAt)}</Row>
-          <Row label="Leaf activated">{unixDate(reg.activatedAt)}</Row>
-          <Row label="Leaf index">{reg.leafIndex.toLocaleString()}</Row>
-          <Row label="Document Signer">
-            <span className={styles.mono}>{short(reg.dscKey, 16, 8)}</span>
-          </Row>
-        </div>
-      )}
       {dscCount && (
         <Row label="Signer registrations">
           {dscCount.count.toLocaleString()}{" "}

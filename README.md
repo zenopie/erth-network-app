@@ -26,7 +26,7 @@ never built here: the cosmjs registry holds only Keplr-signed msgs.
 | --- | --- |
 | `x/dex` | Transparent swaps and LP, the liquidity auction; ERTH → ANML (`MsgBuyAnml`) and ANML-pool withdrawals paid as notes to a shielded address. Selling ANML, private LP and adding to the ANML pool are proofs on the phone. |
 | `x/allocation` | Both funds' options and weights; payouts of ADDRESS options; a validator's transparent Groundworks split. |
-| `x/personhood` | Registration counts (by country, by signer, by nullifier), identity tree, caretaker voter count, the handle directory, lease bounds. |
+| `x/personhood` | Registration counts (by country, by signer; no per-nullifier lookup), identity tree, caretaker voter count, the handle directory, lease bounds. |
 | `x/assembly` | Human tallies on proposals while they vote, ballot exclusions, removal ballots. |
 | `x/shielded` | Note tree and per-asset turnstiles; shielding ERTH to an `erthz1…` address or a handle (`MsgShield`). |
 | `x/shieldedstaking` | Epoch, each validator's derth rate / supply / backing, Groundworks positions, proposal snapshots. |
@@ -63,7 +63,7 @@ never built here: the cosmjs registry holds only Keplr-signed msgs.
 - **Groundworks Fund** (`/groundworks-fund`): options, weights by validator, every
   position, open removal ballots; an operator's transparent split.
 - **Explorer** (`/explorer`): blocks, transactions, accounts, validators, burns,
-  registrations (map, lookup by passport nullifier, count by Document Signer, identity
+  registrations (map, count by Document Signer, identity
   tree) and the shielded pool (`/explorer/shielded`: note count, roots, turnstiles).
 - **Referral link** (`/ref/<handle>`): opens Earth Wallet when it is installed (App
   Link / universal link, see `deploy/assetlinks.md`); otherwise this page names the

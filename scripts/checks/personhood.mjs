@@ -12,11 +12,6 @@ const routes = stubLcd({
   "/earth/personhood/v1/registration_count": { count: "12" },
   "/earth/personhood/v1/caretaker_voter_count": { count: "7" },
   "/earth/personhood/v1/identity_tree": { size: "15", latest_root: b64([0xab, 0xcd]), window_seconds: "3600" },
-  "/earth/personhood/v1/registration/0a0b": {
-    registered: true, expired: false,
-    registration: { nullifier: b64([10, 11]), leaf_index: "3", registered_at: "1700000000",
-      activated_at: "1700000100", dsc_key: b64([1, 2, 3]), country: "DE" },
-  },
   "/earth/personhood/v1/params": { params: { caretaker_vote_seconds: "0", identity_root_window_seconds: "0" } },
 });
 console.warn = () => {};
@@ -28,10 +23,8 @@ check("registration count", (await personhood.registrationCount()) === 12);
 check("caretaker voter count", (await personhood.caretakerVoterCount()) === 7);
 const tree = await personhood.identityTree();
 check("identity tree root is hex", tree.size === 15 && tree.latestRoot === "abcd", JSON.stringify(tree));
-const reg = await personhood.registrationByNullifier("0x0A0B");
-check("registration by nullifier", reg.registered && reg.leafIndex === 3 && reg.dscKey === "010203" && reg.country === "DE", JSON.stringify(reg));
-check("malformed nullifier is null", (await personhood.registrationByNullifier("xyz")) === null);
-check("unknown failure reads as null, not unregistered", (await personhood.registrationByNullifier("ff")) === null);
+check("no per-nullifier registration lookup (it would tie the asker's IP to a passport)",
+  !("registrationByNullifier" in personhood));
 check("no referrer lookup left (handles replace it)", !("referrer" in personhood));
 const pp = await personhood.params();
 check("zero params fall back to chain defaults", pp.caretakerVoteSeconds === 365 * 86400 && pp.identityRootWindowSeconds === 3600 &&

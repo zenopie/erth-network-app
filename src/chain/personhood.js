@@ -39,29 +39,11 @@ export async function identityTree() {
   };
 }
 
-/**
- * A registration by its passport nullifier (hex). Resolves to null for a
- * malformed nullifier or a failed read. The chain answers an unknown
- * nullifier with an empty response and an expired one with registered=false,
- * expired=true and the record, so `registered || expired` means it exists.
- */
-export async function registrationByNullifier(nullifierHex) {
-  const nf = normalizeHex(nullifierHex);
-  if (!nf) return null;
-  const data = await getOr(seg`/earth/personhood/v1/registration/${nf}`, null);
-  if (!data) return null;
-  const r = data.registration ?? {};
-  return {
-    registered: Boolean(data.registered),
-    expired: Boolean(data.expired),
-    nullifier: b64ToHex(r.nullifier) || nf,
-    leafIndex: Number(r.leaf_index ?? 0),
-    registeredAt: Number(r.registered_at ?? 0),
-    activatedAt: Number(r.activated_at ?? 0),
-    dscKey: b64ToHex(r.dsc_key),
-    country: r.country ?? "",
-  };
-}
+// No lookup by passport nullifier. Only the passport's holder (or someone
+// holding its data) knows one, so a per-nullifier query would hand the LCD
+// operator and its CDN the asker's IP next to that passport's registration
+// (audit W-5). The wallet checks its own registration; the explorer shows
+// only aggregates.
 
 /**
  * Registrations per issuing country, as [{ country, count }] with country an
