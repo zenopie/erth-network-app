@@ -202,6 +202,13 @@ export interface Voter {
    * one voter, SetWeightedVoter). Never set together with percentages.
    */
   optionWeights: OptionWeight[];
+  /**
+   * expires_at is when an account's Groundworks split stops counting (unix
+   * seconds): cast or renewed + groundworks_lease_seconds. 0 for a split
+   * without a lease (a module's weighted voter, whose own splits carry
+   * theirs, and the caretaker stream, whose leases x/personhood keeps).
+   */
+  expiresAt: number;
 }
 
 /** OptionWeight is one option's absolute weight in a weighted voter. */
@@ -549,7 +556,7 @@ export const AllocationWeight: MessageFns<AllocationWeight> = {
 };
 
 function createBaseVoter(): Voter {
-  return { percentages: [], weight: "", epoch: 0, optionWeights: [] };
+  return { percentages: [], weight: "", epoch: 0, optionWeights: [], expiresAt: 0 };
 }
 
 export const Voter: MessageFns<Voter> = {
@@ -565,6 +572,9 @@ export const Voter: MessageFns<Voter> = {
     }
     for (const v of message.optionWeights) {
       OptionWeight.encode(v!, writer.uint32(34).fork()).join();
+    }
+    if (message.expiresAt !== 0) {
+      writer.uint32(40).int64(message.expiresAt);
     }
     return writer;
   },
@@ -614,6 +624,14 @@ export const Voter: MessageFns<Voter> = {
             message.optionWeights.push(OptionWeight.decode(reader, reader.uint32()));
             continue;
           }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.expiresAt = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -638,6 +656,11 @@ export const Voter: MessageFns<Voter> = {
         : globalThis.Array.isArray(object?.option_weights)
         ? object.option_weights.map((e: any) => OptionWeight.fromJSON(e))
         : [],
+      expiresAt: isSet(object.expiresAt)
+        ? globalThis.Number(object.expiresAt)
+        : isSet(object.expires_at)
+        ? globalThis.Number(object.expires_at)
+        : 0,
     };
   },
 
@@ -655,6 +678,9 @@ export const Voter: MessageFns<Voter> = {
     if (message.optionWeights?.length) {
       obj.optionWeights = message.optionWeights.map((e) => OptionWeight.toJSON(e));
     }
+    if (message.expiresAt !== 0) {
+      obj.expiresAt = Math.round(message.expiresAt);
+    }
     return obj;
   },
 
@@ -667,6 +693,7 @@ export const Voter: MessageFns<Voter> = {
     message.weight = object.weight ?? "";
     message.epoch = object.epoch ?? 0;
     message.optionWeights = object.optionWeights?.map((e) => OptionWeight.fromPartial(e)) || [];
+    message.expiresAt = object.expiresAt ?? 0;
     return message;
   },
 };

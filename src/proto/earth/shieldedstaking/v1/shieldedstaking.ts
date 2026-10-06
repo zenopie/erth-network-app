@@ -281,6 +281,14 @@ export interface Position {
    * one no longer counts (the owner votes again with MsgUpdatePosition).
    */
   splitEpoch: number;
+  /**
+   * split_expires_at is when the split stops counting (unix seconds): cast
+   * or renewed (MsgLockPosition, MsgUpdatePosition) + x/allocation
+   * groundworks_lease_seconds; 0 without a split. At that time the split is
+   * dropped from its validator's totals (the stream settled to the expiry
+   * first), and the owner re-casts with MsgUpdatePosition.
+   */
+  splitExpiresAt: number;
 }
 
 /**
@@ -1689,6 +1697,7 @@ function createBasePosition(): Position {
     weight: "",
     ownerTag: new Uint8Array(0),
     splitEpoch: 0,
+    splitExpiresAt: 0,
   };
 }
 
@@ -1717,6 +1726,9 @@ export const Position: MessageFns<Position> = {
     }
     if (message.splitEpoch !== 0) {
       writer.uint32(80).uint64(message.splitEpoch);
+    }
+    if (message.splitExpiresAt !== 0) {
+      writer.uint32(88).int64(message.splitExpiresAt);
     }
     return writer;
   },
@@ -1798,6 +1810,14 @@ export const Position: MessageFns<Position> = {
             message.splitEpoch = longToNumber(reader.uint64());
             continue;
           }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.splitExpiresAt = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1834,6 +1854,11 @@ export const Position: MessageFns<Position> = {
         : isSet(object.split_epoch)
         ? globalThis.Number(object.split_epoch)
         : 0,
+      splitExpiresAt: isSet(object.splitExpiresAt)
+        ? globalThis.Number(object.splitExpiresAt)
+        : isSet(object.split_expires_at)
+        ? globalThis.Number(object.split_expires_at)
+        : 0,
     };
   },
 
@@ -1863,6 +1888,9 @@ export const Position: MessageFns<Position> = {
     if (message.splitEpoch !== 0) {
       obj.splitEpoch = Math.round(message.splitEpoch);
     }
+    if (message.splitExpiresAt !== 0) {
+      obj.splitExpiresAt = Math.round(message.splitExpiresAt);
+    }
     return obj;
   },
 
@@ -1879,6 +1907,7 @@ export const Position: MessageFns<Position> = {
     message.weight = object.weight ?? "";
     message.ownerTag = object.ownerTag ?? new Uint8Array(0);
     message.splitEpoch = object.splitEpoch ?? 0;
+    message.splitExpiresAt = object.splitExpiresAt ?? 0;
     return message;
   },
 };
