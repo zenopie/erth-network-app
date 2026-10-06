@@ -7,9 +7,11 @@ import { UANML, UERTH } from "./config";
 export const TOKENS = {
   [UERTH]: { symbol: "ERTH", decimals: 6, logo: "/images/coin/ERTH.png" },
   [UANML]: { symbol: "ANML", decimals: 6, logo: "/images/coin/ANML.png" },
-  // No USDC or ATOM artwork ships with the app: they show GENERIC_LOGO.
-  uusdc: { symbol: "USDC", decimals: 6, logo: null },
-  uatom: { symbol: "ATOM", decimals: 6, logo: null },
+  // No bare uusdc / uatom: nothing on earth-1 mints them, and a future native
+  // denom of that name would be labelled USDC / ATOM without being either.
+  // IBC assets arrive as ibc/<hash>; add each one here, pinned by its hash,
+  // with its decimals, once its channel exists (until then the auction page
+  // cannot take bids in it, and says so).
 };
 
 /** A neutral coin, for any denom without a logo of its own. */

@@ -96,6 +96,7 @@ const tk = await import("../../src/chain/tokens.js");
   check("every token's logo is a shipped file", missing.length === 0, missing.join(", "));
   check("a token without artwork gets the neutral coin, not ERTH's",
     tk.logoOf("uusdc") === tk.GENERIC_LOGO && tk.logoOf("ibc/ABC") === tk.GENERIC_LOGO);
+check("a bare uusdc is not labelled USDC", !tk.tokenInfo("uusdc").known && tk.symbolOf("uusdc") === "uusdc");
 }
 
 done();
