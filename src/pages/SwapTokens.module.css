@@ -47,9 +47,8 @@
   color: #555;
 }
 
-/* Buttons for balance/view key (small) */
-.maxButton,
-.vkButton {
+/* Max button (small) */
+.maxButton {
   background-color: #4caf50;
   color: white;
   border: none;
@@ -61,8 +60,7 @@
   margin-left: 8px;
 }
 
-.maxButton:hover,
-.vkButton:hover {
+.maxButton:hover {
   background-color: #45a049;
 }
 
@@ -207,14 +205,6 @@
   background-color: #4caf50;
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-/* Error message */
-.errorMessage {
-  text-align: center;
-  padding: 20px;
-  font-size: 18px;
-  color: #888;
 }
 
 /* Details toggle and info (swap-specific) */

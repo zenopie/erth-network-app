@@ -143,27 +143,6 @@
   background-color: #45a049;
 }
 
-/* Message Styling */
-.allocation-fund-error-message {
-  background-color: #ffebee;
-  color: #d32f2f;
-  padding: 10px;
-  border-radius: 5px;
-  margin-top: 15px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.allocation-fund-success-message {
-  background-color: #e8f5e9;
-  color: #388e3c;
-  padding: 10px;
-  border-radius: 5px;
-  margin-top: 15px;
-  text-align: center;
-  font-size: 14px;
-}
-
 /* Disable button styling */
 .allocation-fund-claim-button:disabled {
   background-color: #cccccc;
