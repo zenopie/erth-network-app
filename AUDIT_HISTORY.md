@@ -339,3 +339,26 @@ stake note per validator).
 - `npm run check`: tx 40/0, amounts 25/0, dex 40/0, handles 50/0, shielded
   89/0, governance 38/0, personhood 17/0, staking 22/0, explorer 19/0.
 - check:dex-live 10/4: the 4 are the live LCD read (`lcd.erth.network` 530).
+
+## 2026-10-06 · Pre-relaunch cleanup (chain-orch 6d3500a)
+
+Feature freeze; no behavior change.
+
+- Removed: an unused import (BuyAnml `minimumReceived`); CSS no component
+  applies (viewing-key buttons, the arb tooltip, Markets' old claim-all /
+  timer / claim button, AllocationFund's message boxes, Forms `.select`,
+  Layout `.layout-loading`); the unlinked Create React App `manifest.json`
+  and its `logo192` / `logo512`; the context objects' unused default exports;
+  comments about the Secret-network port.
+- `utils/apiUtils.jsx` folded into `utils/formatUtils.jsx`, which also takes
+  the identical page helpers (`formatAmount`, `formatErth`).
+- Chain drift c3bf5ef → 6d3500a in `proto/`: one comment in personhood
+  tx.proto; protos not regenerated.
+- `src/proto` left as generated. Not reachable from the three imported tx
+  files (tree-shaken out of the bundle, and recreated by gen-proto.sh):
+  amino, cosmos_proto, gogoproto, google/*, cosmos/{app,msg,gov,staking,
+  base/query}, earth/assembly, earth/personhood, earth/shieldedstaking,
+  earth/dex/{pool,auction,unbonding}. `cosmos/staking/v1beta1/staking.ts`
+  imports a `tendermint/` tree that is not generated.
+- `npm run build` ok; `npm run check` all passed; check:dex-live fails only
+  on the offline LCD (Cloudflare error page).
