@@ -88,11 +88,13 @@ const Handles = () => {
       <MobileCta title="Claim your handle in the Earth Wallet app">
         A handle lets anyone pay you by name: their wallet looks it up here and sends to your
         shielded address. Who holds a handle is not public. It lasts a year from each renewal and
-        never renews on its own; the app reminds you before it ends. It is tied to your passport and
-        cannot be handed to anyone else: after you switch identity, the old identity&apos;s handle
-        keeps resolving, unchangeable, until its lease ends. Renew it while it is live: renewing in
-        its renewal period counts as a new claim, which a passport that replaced another (a switch)
-        cannot make until its predecessor&apos;s handle could have lapsed
+        never renews on its own; the app reminds you before it ends. It can never be handed to anyone
+        else. After you switch identity, the app can move it to your own new identity, and only
+        there: once the switch has landed, with both recovery phrases on the phone. Without a move
+        (or if the old phrase is lost), the old identity&apos;s handle keeps resolving, unchangeable,
+        until its lease ends. Renew it while it is live: in its renewal period it cannot be moved,
+        and renewing it then counts as a new claim, which a passport that replaced another (a
+        switch) cannot make until its predecessor&apos;s handle could have lapsed
         {switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 

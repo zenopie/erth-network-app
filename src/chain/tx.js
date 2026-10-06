@@ -29,7 +29,8 @@ import { MsgShield } from "../proto/earth/shielded/v1/tx";
  * ./scripts/gen-proto.sh.
  *
  * Only messages a Keplr account signs belong here. The private messages
- * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindHandle,
+ * (x/personhood MsgRegister/MsgClaimAnml/MsgSetCaretaker/MsgBindHandle/
+ * MsgMoveHandle/MsgMoveCaretaker,
  * x/assembly votes, x/shielded MsgSend, x/dex MsgNoteSwap /
  * MsgAddLiquidityShielded / MsgRemoveLiquidityShielded, everything in
  * x/shieldedstaking) carry no signer at all: they are authorised by Orchard

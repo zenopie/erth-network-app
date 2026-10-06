@@ -90,10 +90,13 @@ const CaretakerFund = () => {
       <MobileCta title="Cast your caretaker split in the Earth Wallet app">
         One registered human, one vote, cast anonymously with a proof made on your phone. Nobody
         can tell which split is yours. A split counts for {leaseDays ?? "R"} days; renew it in the
-        app before then (it reminds you; nothing renews on its own). After you switch identity, the
-        old identity&apos;s split keeps counting, unchangeable, until it lapses. Casting again is a
-        new split: a passport that replaced another (a switch) waits until anything its
-        predecessor cast could have lapsed{switchDays ? ` (up to ${switchDays} days)` : ""}.
+        app before then (it reminds you; nothing renews on its own). A split can never be handed to
+        anyone else. After you switch identity, the app can move it to your own new identity, and
+        only there: once the switch has landed, with both recovery phrases on the phone. Without a
+        move (or if the old phrase is lost), the old identity&apos;s split keeps counting,
+        unchangeable, until it lapses, and casting again is a new split: a passport that replaced
+        another (a switch) waits until anything its predecessor cast could have lapsed
+        {switchDays ? ` (up to ${switchDays} days)` : ""}.
       </MobileCta>
 
       <div className={page.chart}>
