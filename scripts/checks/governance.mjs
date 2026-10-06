@@ -127,6 +127,27 @@ const al = await import("../../src/chain/allocation.js");
   routes[`/cosmos/staking/v1beta1/validators/${ownVal}`].validator.status = "BOND_STATUS_BONDED";
   const nobody = await al.groundworksVoter(toBech32("earth", new Uint8Array(20).fill(9)));
   check("no voter and no validator: zero", nobody.weight === "0" && !nobody.exists && nobody.validatorStatus === "");
+
+  // The lease (chain 654f698): Voter.expires_at; at or past it the split no
+  // longer counts, and the weight is the self-bond it would be re-cast with.
+  const leased = routes[`/earth/allocation/v1/voter/STREAM_ID_GROUNDWORKS/${acct}`].voter;
+  leased.expires_at = "2000";
+  const live = await al.groundworksVoter(acct, { streamEpoch: 3, now: 1999 });
+  check("leased voter before expires_at: live, its own weight",
+    live.expiresAt === 2000 && !live.expired && live.weight === "4000000", JSON.stringify(live));
+  const ended = await al.groundworksVoter(acct, { streamEpoch: 3, now: 2000 });
+  check("at expires_at: expired, split kept for a re-cast, weight from self-bond",
+    ended.expired && ended.exists && ended.splits[0].optionId === 3 && ended.weight === "5000000", JSON.stringify(ended));
+  delete leased.expires_at;
+  check("no expires_at reads as 0, never expired", (await al.groundworksVoter(acct, { now: 1e12 })).expiresAt === 0 &&
+    !(await al.groundworksVoter(acct, { now: 1e12 })).expired);
+  check("validator voter has no lease of its own", vv.expiresAt === 0);
+  check("lease seconds: 0 or unreadable is the 365-day default",
+    (await al.groundworksLeaseSeconds()) === al.DEFAULT_GROUNDWORKS_LEASE_SECONDS && al.DEFAULT_GROUNDWORKS_LEASE_SECONDS === 31536000);
+  routes["/earth/allocation/v1/params"] = { params: { address_option_fee: "1", groundworks_lease_seconds: "86400" } };
+  check("lease seconds: the chain's param", (await al.groundworksLeaseSeconds()) === 86400);
+  routes["/earth/allocation/v1/params"].params.groundworks_lease_seconds = "0";
+  check("lease seconds: 0 is the default", (await al.groundworksLeaseSeconds()) === 31536000);
 }
 
 // ---- options: paged until next_key is empty; a failed later page, a repeated

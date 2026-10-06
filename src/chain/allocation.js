@@ -23,6 +23,12 @@ import { ADDRESS_PREFIX } from "./config";
  *                 the validator is Bonded (in the active set), which an
  *                 operator can still direct transparently with
  *                 MsgSetAllocations.
+ *                 Every Groundworks split, a position's and an operator's
+ *                 alike, is leased: it counts until groundworks_lease_seconds
+ *                 (default 365 days) after it was cast or last renewed
+ *                 (Voter.expires_at, Position.split_expires_at), then stops
+ *                 counting. Casting it again renews it; nothing renews it
+ *                 automatically.
  */
 
 /**
@@ -109,8 +115,29 @@ function toVoter(v) {
     })),
     weight: v?.weight ?? "0",
     epoch: Number(v?.epoch ?? 0),
+    // When an operator's split stops counting (unix seconds); 0 for a
+    // weighted voter (its positions carry their own leases).
+    expiresAt: Number(v?.expires_at ?? 0),
   };
 }
+
+// x/allocation DefaultGroundworksLeaseSeconds: what groundworks_lease_seconds
+// 0 means.
+export const DEFAULT_GROUNDWORKS_LEASE_SECONDS = 365 * 24 * 60 * 60;
+
+/**
+ * How long a Groundworks split counts after it is cast or renewed (seconds):
+ * the chain's groundworks_lease_seconds, 0 read as the default. The default
+ * when the params cannot be read.
+ */
+export async function groundworksLeaseSeconds() {
+  const data = await getOr("/earth/allocation/v1/params", null);
+  const n = Number(data?.params?.groundworks_lease_seconds ?? 0);
+  return Number.isSafeInteger(n) && n > 0 ? n : DEFAULT_GROUNDWORKS_LEASE_SECONDS;
+}
+
+// A lease ending within this many seconds is shown as due for renewal.
+export const RENEW_WARNING_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * An address's Groundworks split as [{ optionId, percent }] and the weight it
@@ -119,7 +146,7 @@ function toVoter(v) {
  * (BOND_STATUS_BONDED). Caretaker splits are keyed by nullifier and cannot be
  * read this way.
  *
- * { splits, weight, epoch, exists, stale, validatorStatus }:
+ * { splits, weight, epoch, expiresAt, exists, stale, expired, validatorStatus }:
  *   exists — the chain has a voter record. The LCD 404s for an address that
  *            has never voted; that is not zero weight, it is a validator yet to
  *            set its first split, so the weight it would vote with is read
@@ -128,6 +155,10 @@ function toVoter(v) {
  *            (`streamEpoch`, from streamView): its split no longer counts
  *            until set again, so it is shown as stale and the weight is again
  *            the self-bond it would be re-cast with.
+ *   expired — the record's lease ended (expiresAt <= now, unix seconds):
+ *            it no longer counts (the chain drops it at the next settle,
+ *            after which the LCD 404s like a never-cast split), so the weight
+ *            is the self-bond it would be re-cast with.
  *   validatorStatus — x/staking's status of the address's own validator
  *            ("BOND_STATUS_BONDED", ...; "" when it runs none). Outside
  *            BONDED the weight is "0" whatever the record says: x/allocation
@@ -135,7 +166,7 @@ function toVoter(v) {
  *            non-empty split at zero weight (ErrNoWeight) with the fee spent.
  * Any other read failure throws rather than passing for "no weight".
  */
-export async function groundworksVoter(address, { streamEpoch = 0 } = {}) {
+export async function groundworksVoter(address, { streamEpoch = 0, now = Date.now() / 1000 } = {}) {
   let voter = null;
   try {
     const data = await get(seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`);
@@ -146,10 +177,12 @@ export async function groundworksVoter(address, { streamEpoch = 0 } = {}) {
   const v = toVoter(voter);
   const exists = voter !== null;
   const stale = exists && Number(streamEpoch) > 0 && v.epoch < Number(streamEpoch);
+  const expired = exists && v.expiresAt > 0 && v.expiresAt <= now;
   const validatorStatus = await ownValidatorStatus(address);
-  if (validatorStatus !== BONDED) return { ...v, weight: "0", exists, stale, validatorStatus };
-  if (exists && !stale) return { ...v, exists, stale, validatorStatus };
-  return { ...v, weight: await selfBond(address), exists, stale, validatorStatus };
+  const out = { ...v, exists, stale, expired, validatorStatus };
+  if (validatorStatus !== BONDED) return { ...out, weight: "0" };
+  if (exists && !stale && !expired) return out;
+  return { ...out, weight: await selfBond(address) };
 }
 
 const BONDED = "BOND_STATUS_BONDED";

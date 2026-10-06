@@ -94,7 +94,7 @@ const realWarn = console.warn;
           ] };
     },
     "/earth/shieldedstaking/v1/stake_tree": { size: "12", root: b64([0xab, 0xcd]) },
-    "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }], owner_tag: b64([0x0a, 0x0b]), split_epoch: "2" }], pagination: { next_key: null } },
+    "/earth/shieldedstaking/v1/positions": { positions: [{ id: "1", validator: "earthvaloper1v", derth: "10", weight: "11", splits: [{ option_id: "3", percent: "100" }], owner_tag: b64([0x0a, 0x0b]), split_epoch: "2", split_expires_at: "1830470435" }], pagination: { next_key: null } },
   });
   console.warn = () => {};
   const ss = shieldedStaking;
@@ -124,6 +124,7 @@ const realWarn = console.warn;
   const pos = await ss.positions();
   check("positions", pos.length === 1 && pos[0].splits[0].optionId === 3 && pos[0].ownerTag === "0a0b");
   check("position carries its split epoch and the query's live weight", pos[0].splitEpoch === 2 && pos[0].weight === "11");
+  check("position carries its split lease end", pos[0].splitExpiresAt === 1830470435);
   check("params: no max_positions", !("maxPositions" in ((await ss.params()) ?? {})));
   check("no snapshot before voting", (await ss.snapshot(3)) === null);
 }

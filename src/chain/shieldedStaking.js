@@ -183,6 +183,9 @@ export async function positions() {
         })),
         createdHeight: Number(p.created_height ?? 0),
         splitEpoch: Number(p.split_epoch ?? 0),
+        // When the split stops counting (unix seconds; 0 without a split).
+        // At that time the chain clears it; the owner re-casts in the app.
+        splitExpiresAt: Number(p.split_expires_at ?? 0),
         ownerTag: b64ToHex(p.owner_tag),
       });
     }
