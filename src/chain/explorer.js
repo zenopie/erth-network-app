@@ -244,22 +244,13 @@ export const txsAtHeight = (height, limit = TXS_PER_BLOCK) => {
   return h ? searchTxs(`tx.height=${h}`, limit) : Promise.resolve([]);
 };
 
-/**
- * Transactions involving an address — both those it signed and those that paid
- * it. A plain `message.sender` query misses incoming transfers entirely, since
- * those are indexed under the sender, so both are queried and merged.
- */
-export async function txsForAddress(address, limit = 20) {
-  address = routeAddress(address);
-  if (!address) return [];
-  const [sent, received] = await Promise.all([
-    searchTxs(`message.sender='${address}'`, limit),
-    searchTxs(`transfer.recipient='${address}'`, limit),
-  ]);
-  const byHash = new Map();
-  for (const tx of [...sent, ...received]) byHash.set(tx.hash, tx);
-  return [...byHash.values()].sort((a, b) => b.height - a.height).slice(0, limit);
-}
+// No transactions by address. The public LCD serves only `tx.height=N`
+// searches: CometBFT loads every match of a search before it pages and
+// cannot cancel one, so `message.sender='…'` or `transfer.recipient='…'` is
+// a scan of that address's whole history on the validator (the fee
+// collector's is every tx; round-5 R5-E-1), and the validator indexes no
+// address events. An address page shows balances and state; a tx is found
+// by its hash or its block.
 
 /** A single transaction by hash, or null if not found/not indexed. */
 export async function txByHash(hash) {

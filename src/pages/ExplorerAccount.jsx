@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import styles from "./Explorer.module.css";
-import * as explorer from "../chain/explorer";
 import * as staking from "../chain/staking";
 import { canonicalAddress } from "../chain/address";
 import { balances } from "../chain/bank";
 import { UERTH } from "../chain/config";
 import { symbolOf, toMacro } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
-import { Row, SearchBar, TxTable, short } from "../components/ExplorerBits";
+import { Row, SearchBar, short } from "../components/ExplorerBits";
 
-/** Account detail: balances, delegations and transactions signed by this address. */
+/**
+ * Account detail: balances and delegations. No transaction history: Earth's
+ * public node does not search by address (see chain/explorer.js).
+ */
 const ExplorerAccount = () => {
   const { address: param } = useParams();
   // The LCD indexes accounts by the canonical (lowercase) address.
@@ -19,7 +21,6 @@ const ExplorerAccount = () => {
   const [coins, setCoins] = useState({});
   const [delegations, setDelegations] = useState([]);
   const [rewards, setRewards] = useState("0");
-  const [txs, setTxs] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [searchError, setSearchError] = useState("");
 
@@ -30,17 +31,15 @@ const ExplorerAccount = () => {
 
     (async () => {
       try {
-        const [b, d, r, t] = await Promise.all([
+        const [b, d, r] = await Promise.all([
           balances(address),
           staking.delegations(address),
           staking.totalRewards(address),
-          explorer.txsForAddress(address),
         ]);
         if (cancelled) return;
         setCoins(b);
         setDelegations(d);
         setRewards(r);
-        setTxs(t);
       } catch (err) {
         // An address the LCD path builder refuses (a `..`, say) — show it as
         // empty rather than hang on the loading state.
@@ -131,9 +130,12 @@ const ExplorerAccount = () => {
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Transactions</h3>
-        {/* Only transactions *signed* by this address — transfers received are
-            not included, since they are indexed under the sender. */}
-        <TxTable txs={txs} />
+        <div className={styles.empty}>
+          Earth&apos;s public node does not list transactions by address: a search by
+          address scans the chain&apos;s whole history on the validator. Find a
+          transaction by its hash or its block, or run your own node to search by
+          address.
+        </div>
       </div>
     </div>
   );

@@ -120,14 +120,15 @@ check("search routes an uppercase address to its canonical account",
     asked.push(decodeURIComponent(String(url)));
     return { ok: true, json: async () => ({ tx_responses: [], txs: [] }) };
   };
-  const acct = toBech32("earth", new Uint8Array(20).fill(8));
-  const inj = `${acct}' OR tx.height>0 AND message.sender='x`;
-  check("txsForAddress refuses a quote-injected address without querying",
-    (await ex.txsForAddress(inj)).length === 0 && asked.length === 0, asked.join(" | "));
-  await ex.txsForAddress(acct.toUpperCase());
-  check("txsForAddress quotes only the canonical address",
-    asked.length === 2 && asked.every((u) => u.includes(`='${acct}'`)), asked.join(" | "));
-  asked.length = 0;
+  // No address search at all (round-5 R5-E-1): the public LCD refuses one,
+  // and it is a whole-history scan on the validator.
+  check("explorer has no search by address", typeof ex.txsForAddress === "undefined");
+  {
+    const fs = await import("node:fs");
+    const src = ["src/chain/explorer.js", "src/pages/ExplorerAccount.jsx"].map((f) => fs.readFileSync(f, "utf8")).join("\n");
+    check("no message.sender / transfer.recipient query is built",
+      !/(message\.sender|transfer\.recipient)\s*=/.test(src.replace(/^\s*\/\/.*$/gm, "")));
+  }
   check("txsAtHeight refuses junk, signs and > int64",
     (await ex.txsAtHeight("5 OR tx.height>0")).length === 0 && (await ex.txsAtHeight("-1")).length === 0 &&
     (await ex.txsAtHeight("9223372036854775808")).length === 0 && asked.length === 0);
