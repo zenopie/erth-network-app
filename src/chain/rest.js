@@ -105,9 +105,12 @@ export async function getAllPages(path, field, { limit = 200, maxPages = 1000 } 
  * Reads from the CometBFT RPC instead of the LCD, resolving to null on any
  * failure — including no RPC being configured at all.
  *
- * Only the explorer's block-range query uses this. Callers must treat null as
- * "fall back to the LCD" rather than "no data", since a deployment exposing
- * only the REST port is a supported configuration.
+ * Only the explorer uses this: block ranges (/blockchain), a block's events
+ * (/block_results) and a past supply (abci_query). The public RPC serves no
+ * other read the app makes; tx_search and websockets are refused there.
+ * Callers must treat null as "fall back to the LCD" or "figure unavailable"
+ * rather than "no data", since a deployment exposing only the REST port is a
+ * supported configuration.
  */
 export async function rpcOrNull(path) {
   if (!EARTH_RPC_URL) return null;

@@ -12,7 +12,7 @@ const Explorer = () => {
   const { hideLoading } = useLoading();
   const [status, setStatus] = useState(null);
   const [blocks, setBlocks] = useState([]);
-  const [txs, setTxs] = useState([]);
+  const [txs, setTxs] = useState(null);
   const [monikers, setMonikers] = useState({});
   const [error, setError] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -29,11 +29,10 @@ const Explorer = () => {
 
     const load = async () => {
       try {
-        const [s, b, t] = await Promise.all([
-          explorer.status(),
-          explorer.recentBlocks(10),
-          explorer.recentTxs(10),
-        ]);
+        const [s, b] = await Promise.all([explorer.status(), explorer.recentBlocks(10)]);
+        // The transactions are found through the blocks just read (and older
+        // ones only if those hold too few), so they come second.
+        const t = await explorer.recentTxs(10, b);
         if (cancelled) return;
         setStatus(s);
         setBlocks(b);
@@ -133,7 +132,13 @@ const Explorer = () => {
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Latest Transactions</h3>
-        <TxTable txs={txs} />
+        {!txs ? (
+          <div className={styles.empty}>Loading transactions…</div>
+        ) : txs.txs.length ? (
+          <TxTable txs={txs.txs} />
+        ) : (
+          <div className={styles.empty}>No transactions in the last {txs.blocks.toLocaleString()} blocks.</div>
+        )}
       </div>
     </div>
   );

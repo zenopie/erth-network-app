@@ -128,8 +128,82 @@ async function searchTxs(query, limit = 20) {
   return (data.tx_responses ?? []).map((res, i) => toTx(res, data.txs?.[i]));
 }
 
-/** Chain-wide recent transactions. */
-export const recentTxs = (limit = 20) => searchTxs("tx.height>0", limit);
+/**
+ * How far back the overview looks for transactions, and how many block
+ * searches one load may make. A chain-wide "newest first" search
+ * (`tx.height>0`) is a walk of every tx.height entry in the node's index,
+ * unmetered, and the public RPC/LCD refuse it; the list is built instead from
+ * block metas (`num_txs`) and one `tx.height=N` search per block that has
+ * transactions. A committed block's transactions never change, so each
+ * block's are cached once complete and a refresh only searches new blocks.
+ */
+export const RECENT_TX_WINDOW = 60;
+const RECENT_TX_SEARCHES = 5;
+const TX_CACHE_MAX = 256;
+// Height -> its transactions, only once the search returned all of them
+// (the tx index can lag a block that is already in the block store).
+const txsByHeight = new Map();
+
+function cacheTxs(height, txs) {
+  txsByHeight.delete(height);
+  txsByHeight.set(height, txs);
+  while (txsByHeight.size > TX_CACHE_MAX) txsByHeight.delete(txsByHeight.keys().next().value);
+}
+
+/** Block metas in [min, max] over RPC (at most 20), or null. */
+async function blockMetas(min, max) {
+  const data = await rpcOrNull(`/blockchain?minHeight=${min}&maxHeight=${max}`);
+  const metas = data?.result?.block_metas;
+  if (!Array.isArray(metas)) return null;
+  return metas.map((m) => ({ height: Number(m.header?.height ?? 0), txCount: Number(m.num_txs ?? 0) }));
+}
+
+/**
+ * Chain-wide recent transactions, newest first: { txs, blocks }, `blocks`
+ * being how many of the latest blocks were looked through. `recent` is the
+ * caller's own recentBlocks() result, newest first, so the overview does not
+ * read the same metas twice; older ones (back to RECENT_TX_WINDOW blocks) are
+ * read over RPC only while fewer than `limit` transactions have been seen.
+ * At most RECENT_TX_SEARCHES uncached block searches per call, one at a time.
+ */
+export async function recentTxs(limit = 10, recent = null) {
+  const blocks = (recent ?? (await recentBlocks(BLOCKCHAIN_RANGE_LIMIT)))
+    .map((b) => ({ height: b.height, txCount: b.txCount }))
+    .filter((b) => b.height > 0)
+    .sort((a, b) => b.height - a.height);
+  if (!blocks.length) return { txs: [], blocks: 0 };
+  const tip = blocks[0].height;
+  const seen = () => blocks.reduce((n, b) => n + b.txCount, 0);
+
+  let low = blocks[blocks.length - 1].height;
+  while (seen() < limit && low > 1 && tip - low + 1 < RECENT_TX_WINDOW) {
+    const max = low - 1;
+    const min = Math.max(1, max - BLOCKCHAIN_RANGE_LIMIT + 1, tip - RECENT_TX_WINDOW + 1);
+    const metas = await blockMetas(min, max);
+    if (!metas?.length) break;
+    const older = metas.filter((m) => m.height >= min && m.height <= max);
+    if (!older.length) break;
+    blocks.push(...older.sort((a, b) => b.height - a.height));
+    low = Math.min(...older.map((m) => m.height));
+  }
+
+  const out = [];
+  let searches = 0;
+  for (const b of blocks) {
+    if (out.length >= limit) break;
+    if (b.txCount <= 0) continue;
+    let txs = txsByHeight.get(b.height);
+    if (!txs) {
+      if (searches >= RECENT_TX_SEARCHES) break;
+      searches++;
+      const want = Math.min(b.txCount, TXS_PER_BLOCK);
+      txs = await searchTxs(`tx.height=${b.height}`, TXS_PER_BLOCK);
+      if (txs.length >= want) cacheTxs(b.height, txs);
+    }
+    out.push(...txs);
+  }
+  return { txs: out.slice(0, limit), blocks: tip - low + 1 };
+}
 
 // Route parameters (the URL bar) reach CometBFT query strings below. Each is
 // checked against its exact shape first: quoted into a query raw, `x' OR
@@ -163,7 +237,9 @@ export function routeTxHash(v) {
 }
 
 /** Transactions included in a single block. */
-export const txsAtHeight = (height, limit = 50) => {
+const TXS_PER_BLOCK = 50; // the public LCD's largest search page
+
+export const txsAtHeight = (height, limit = TXS_PER_BLOCK) => {
   const h = routeHeight(height);
   return h ? searchTxs(`tx.height=${h}`, limit) : Promise.resolve([]);
 };

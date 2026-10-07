@@ -139,4 +139,67 @@ check("search routes an uppercase address to its canonical account",
   check("block refuses a non-height", (await ex.block("1/../../x")) === null && asked.length === 0);
 }
 
+// Latest transactions: no range search (the public LCD refuses
+// `tx.height>0`), one tx.height=N search per block with txs, older blocks
+// over /blockchain only when the newest hold too few, completed blocks cached,
+// and a bounded number of searches per load.
+{
+  const asked = [];
+  const nTxs = { 100: 2, 98: 1, 80: 1, 79: 1, 60: 1, 45: 9 };
+  const tx = (h, i) => ({ txhash: `${h}`.padStart(4, "0") + `${i}`.padStart(60, "0"), height: String(h), code: 0, timestamp: "" });
+  let indexLag = 0; // the newest block's txs not yet in the index
+  globalThis.fetch = async (url) => {
+    const u = new URL(String(url));
+    asked.push(u.pathname + "?" + decodeURIComponent(u.search.slice(1)));
+    if (u.pathname.endsWith("/blockchain")) {
+      const min = Number(u.searchParams.get("minHeight")), max = Number(u.searchParams.get("maxHeight"));
+      const metas = [];
+      for (let h = max; h >= Math.max(min, max - 19); h--) metas.push({ header: { height: String(h) }, num_txs: String(nTxs[h] ?? 0) });
+      return { ok: true, json: async () => ({ result: { block_metas: metas } }) };
+    }
+    const q = u.searchParams.get("query") ?? "";
+    const m = /^tx\.height=(\d+)$/.exec(q);
+    const h = m ? Number(m[1]) : 0;
+    const n = Math.max(0, (nTxs[h] ?? 0) - (h === 100 ? indexLag : 0));
+    return { ok: true, json: async () => ({ tx_responses: Array.from({ length: n }, (_, i) => tx(h, i)), txs: [] }) };
+  };
+  const recent = [];
+  for (let h = 100; h > 90; h--) recent.push({ height: h, txCount: nTxs[h] ?? 0 });
+
+  indexLag = 1;
+  const first = await ex.recentTxs(10, recent);
+  const searches = asked.filter((a) => a.includes("/cosmos/tx/v1beta1/txs?"));
+  check("recentTxs never asks for a range search",
+    searches.every((a) => /query=tx\.height=\d+&/.test(a)) && !asked.some((a) => a.includes(">")), asked.join(" | "));
+  check("recentTxs reads older metas over /blockchain within the window",
+    asked.some((a) => a.startsWith("/blockchain?minHeight=71&maxHeight=90")) &&
+    asked.some((a) => a.startsWith("/blockchain?minHeight=51&maxHeight=70")) &&
+    asked.some((a) => a.startsWith("/blockchain?minHeight=41&maxHeight=50")) &&
+    asked.filter((a) => a.startsWith("/blockchain")).length === 3, asked.join(" | "));
+  check("recentTxs searches only blocks with txs, newest first, at most 5",
+    searches.map((a) => /tx\.height=(\d+)/.exec(a)[1]).join(",") === "100,98,80,79,60",
+    searches.join(" | "));
+  check("recentTxs returns newest first, capped at the limit, with the window",
+    first.txs.length === 5 && first.txs[0].height === 100 && first.txs.at(-1).height === 60 && first.blocks === 60,
+    JSON.stringify({ n: first.txs.length, blocks: first.blocks }));
+
+  asked.length = 0;
+  indexLag = 0;
+  const second = await ex.recentTxs(10, recent);
+  const again = asked.filter((a) => a.includes("/cosmos/tx/v1beta1/txs?")).map((a) => /tx\.height=(\d+)/.exec(a)[1]);
+  check("a block the index had not caught up with is searched again; complete ones are cached",
+    again.join(",") === "100,45" && second.txs.length === 10 && second.txs.filter((t) => t.height === 100).length === 2 &&
+    second.txs.at(-1).height === 45,
+    again.join(","));
+
+  asked.length = 0;
+  for (const h of [97, 96, 95, 94, 93, 92]) nTxs[h] = 1;
+  const busy = [];
+  for (let h = 100; h > 90; h--) busy.push({ height: h, txCount: nTxs[h] ?? 0 });
+  await ex.recentTxs(10, busy);
+  check("recentTxs makes at most 5 uncached searches per load",
+    asked.filter((a) => a.includes("/cosmos/tx/v1beta1/txs?")).map((a) => /tx\.height=(\d+)/.exec(a)[1]).join(",") === "97,96,95,94,93",
+    asked.join(" | "));
+}
+
 done();
