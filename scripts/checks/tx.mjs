@@ -1,0 +1,256 @@
+// Signing and broadcasting (src/chain/tx.js), with Keplr and the LCD stubbed
+// and timers run immediately. No chain required.
+//
+// After a tx may have reached the node, a transient LCD error is "submitted,
+// status unknown" with the hash, never "failed", and the account cannot send
+// again until that hash resolves: a 'Failed to fetch' on the first
+// confirmation poll used to reject broadcast() with the tx already in the
+// mempool, and the user's retry paid twice. Also: one pending record per
+// account, redirects refused, an account read failure signs nothing, and the
+// chain's error codes explained.
+import { check, done } from "./lib.mjs";
+import { Secp256k1 } from "@cosmjs/crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { fromBase64, toHex } from "@cosmjs/encoding";
+import { TxBody, TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
+
+globalThis.setTimeout = (fn) => (queueMicrotask(fn), 0);
+console.warn = () => {};
+console.error = () => {};
+
+const kp = await Secp256k1.makeKeypair(new Uint8Array(32).fill(7));
+const pub = Secp256k1.compressPubkey(kp.pubkey);
+let address = "earth1xxxx";
+globalThis.window = {
+  keplr: {
+    experimentalSuggestChain: async () => {},
+    enable: async () => {},
+    getOfflineSigner: () => ({
+      getAccounts: async () => [{ address, pubkey: pub, algo: "secp256k1" }],
+      signDirect: async (_a, doc) => ({ signed: doc, signature: { signature: Buffer.alloc(64).toString("base64") } }),
+    }),
+    getKey: async () => ({ name: "t" }),
+  },
+};
+
+// Scenario knobs, reset per case.
+let height = 100;
+let heightRaw = null; // overrides the LCD's height string when set
+let posted = [];
+let post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0, txhash: "IGNORED" } }) });
+let lookup = () => ({ ok: false, status: 404, text: async () => "tx not found" });
+const res404 = { ok: false, status: 404, text: async () => "tx not found" };
+const res530 = { ok: false, status: 530, text: async () => "cf 530" };
+// The LCD answers about the hash asked for (txhash echoed), unless a case says otherwise.
+const found = (code = 0, txhash) => (q) => ({ ok: true, json: async () => ({ tx_response: { code, txhash: txhash ?? q, raw_log: "boom" } }) });
+
+let authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "1", sequence: "0" } }) });
+// Every request's redirect mode (a 3xx is never followed).
+const redirects = [];
+globalThis.fetch = async (url, opts) => {
+  url = String(url);
+  redirects.push(opts?.redirect ?? "follow");
+  if (opts?.method === "POST") {
+    posted.push(JSON.parse(opts.body).tx_bytes);
+    return post();
+  }
+  if (url.includes("/auth/")) return authRes();
+  if (url.includes("/blocks/latest")) return { ok: true, json: async () => ({ block: { header: { height: heightRaw ?? String(height) } } }) };
+  if (url.includes("/cosmos/tx/v1beta1/txs/")) return lookup(url.split("/").pop());
+  return res530;
+};
+
+const tx = await import("../../src/chain/tx.js");
+const sh = await import("../../src/chain/shielded.js");
+await tx.connectKeplr();
+const G = "erthz1qy4m4lwe79wu4p4gs6vqrtdhcngph2phnll9x5t296jdd9m5z4p0gpar0j7pggynezm4thqmzr5xedpxxa9dz64g20kshh7qk2ux68rudaur8p";
+const send = () => tx.broadcast([sh.shieldTo(address, G, "1000000").msg]);
+const hashOf = (b64) => toHex(sha256(fromBase64(b64))).toUpperCase();
+
+const outcome = async (p) => {
+  try {
+    return { ok: await p };
+  } catch (e) {
+    return { err: e };
+  }
+};
+
+// 1. A dropped connection, then a proxy 530, then the tx.
+{
+  let polls = 0;
+  posted = [];
+  lookup = (q) => {
+    polls++;
+    if (polls === 1) throw new TypeError("Failed to fetch");
+    if (polls === 2) return res530;
+    return found(0)(q);
+  };
+  const r = await outcome(send());
+  check("transient poll errors are retried, not reported as failure", r.ok && posted.length === 1 && polls === 3, r.err?.message);
+  check("a landed tx clears the pending hash", tx.pendingTx() === null);
+  const body = TxBody.decode(TxRaw.decode(fromBase64(posted[0])).bodyBytes);
+  check("the signed body carries a timeout height", body.timeoutHeight === 150n, String(body.timeoutHeight));
+}
+
+// 2. The LCD never answers: status unknown, with the hash of what was sent.
+{
+  posted = [];
+  lookup = () => {
+    throw new TypeError("Failed to fetch");
+  };
+  const r = await outcome(send());
+  const h = posted[0] && hashOf(posted[0]);
+  check("an unreadable outcome is TxStatusUnknownError, not a failure",
+    r.err instanceof tx.TxStatusUnknownError && r.err.hash === h && /status unknown/i.test(r.err.message), r.err?.message);
+  check("the hash stays pending", tx.pendingTx()?.hash === h);
+
+  // 3. Resubmission while it is unresolved (LCD still down, then 404 within the timeout).
+  const r2 = await outcome(send());
+  check("resubmission is refused while the LCD cannot say", r2.err instanceof tx.TxStatusUnknownError && posted.length === 1, r2.err?.message);
+  lookup = () => res404;
+  const r3 = await outcome(send());
+  check("resubmission is refused while not indexed and within its timeout",
+    r3.err instanceof tx.TxStatusUnknownError && r3.err.hash === h && posted.length === 1, r3.err?.message);
+  check("resolvePendingTx: pending", (await tx.resolvePendingTx())?.status === "pending");
+
+  // 4. The hash lands: unblocked.
+  lookup = (q) => (q === h ? found(0)(q) : res404);
+  check("resolvePendingTx: confirmed, then cleared", (await tx.resolvePendingTx())?.status === "confirmed" && tx.pendingTx() === null);
+}
+
+// 5. The POST itself is lost: unknown; past the timeout height it expires.
+{
+  posted = [];
+  post = () => {
+    throw new TypeError("Failed to fetch");
+  };
+  lookup = () => res404;
+  const r = await outcome(send());
+  check("a lost broadcast response is status unknown with the precomputed hash",
+    r.err instanceof tx.TxStatusUnknownError && r.err.hash === hashOf(posted[0]), r.err?.message);
+  post = () => res530;
+  const r2 = await outcome(send());
+  check("still blocked before the timeout height", r2.err instanceof tx.TxStatusUnknownError && posted.length === 1);
+  height = 100 + 51;
+  check("resolvePendingTx: expired past the timeout height", (await tx.resolvePendingTx())?.status === "expired" && tx.pendingTx() === null);
+  const r3 = await outcome(send());
+  check("a 5xx on broadcast is status unknown too", r3.err instanceof tx.TxStatusUnknownError && posted.length === 2);
+  height = 1000;
+  await tx.resolvePendingTx();
+}
+
+// 6. Real rejections are still errors and leave nothing pending.
+{
+  posted = [];
+  post = () => ({ ok: true, json: async () => ({ tx_response: { code: 5, raw_log: "insufficient funds" } }) });
+  const r = await outcome(send());
+  check("a CheckTx rejection is a plain error", r.err && !(r.err instanceof tx.TxStatusUnknownError) && tx.pendingTx() === null, r.err?.message);
+  post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0 } }) });
+  lookup = found(11);
+  const r2 = await outcome(send());
+  check("a deliver failure is a plain error and clears the hash",
+    /failed \(code 11\)/.test(r2.err?.message ?? "") && !(r2.err instanceof tx.TxStatusUnknownError) && tx.pendingTx() === null, r2.err?.message);
+}
+
+// 7. One pending record per account. Another Keplr account sending in the
+// same browser must not erase A's unresolved hash.
+{
+  const A = address;
+  const B = "earth1yyyy";
+  posted = [];
+  post = () => res530;
+  lookup = () => res404;
+  height = 2000;
+  const r = await outcome(send());
+  const hA = posted[0] && hashOf(posted[0]);
+  check("A: status unknown, pending", r.err instanceof tx.TxStatusUnknownError && tx.pendingTx(A)?.hash === hA);
+  address = B;
+  await tx.connectKeplr();
+  post = () => ({ ok: true, json: async () => ({ tx_response: { code: 0 } }) });
+  lookup = (q) => (q === hA ? res404 : found(0)(q));
+  const rb = await outcome(send());
+  check("B sends while A is unresolved", rb.ok && posted.length === 2 && tx.pendingTx(B) === null, rb.err?.message);
+  check("A's pending hash survives B's send", tx.pendingTx(A)?.hash === hA);
+  address = A;
+  await tx.connectKeplr();
+  const ra = await outcome(send());
+  check("A's resend is still refused", ra.err instanceof tx.TxStatusUnknownError && ra.err.hash === hA && posted.length === 2, ra.err?.message);
+
+  // 8. A tx_response about another hash neither confirms nor clears A's.
+  lookup = (q) => found(0, "AB".repeat(32))(q);
+  check("resolvePendingTx: a mismatched txhash is unknown", (await tx.resolvePendingTx(A))?.status === "unknown" && tx.pendingTx(A)?.hash === hA);
+  const w = await outcome(tx.waitForTx(hA, { attempts: 3, address: A }));
+  check("waitForTx ignores an answer about another hash", w.err instanceof tx.TxStatusUnknownError && tx.pendingTx(A)?.hash === hA, w.err?.message);
+
+  // 9. latestHeight guard: junk or absurd heights never expire a pending tx.
+  lookup = () => res404;
+  for (const junk of ["99999999999999999999", "1e9", "-5", "0", ""]) {
+    heightRaw = junk;
+    const s = (await tx.resolvePendingTx(A))?.status;
+    check(`height ${JSON.stringify(junk)} does not expire the pending tx`, s === "unknown" && tx.pendingTx(A)?.hash === hA, s);
+  }
+  heightRaw = null;
+  height = 3000;
+  check("a real height past the timeout expires it", (await tx.resolvePendingTx(A))?.status === "expired" && tx.pendingTx(A) === null);
+}
+
+check("every LCD read and the broadcast POST refuse redirects", redirects.length > 0 && redirects.every((r) => r === "error"),
+  `${redirects.filter((r) => r !== "error").length} of ${redirects.length} follow`);
+
+// The account read: only a NotFound account is a new one (0/0); any other read failure refuses to sign.
+{
+  const prev = authRes;
+  authRes = () => ({ ok: false, status: 404, text: async () => '{"code":5,"message":"account earth1x not found"}' });
+  const a = await outcome(tx.fetchAccount(address));
+  check("an account the chain has not seen is 0/0", a.ok?.accountNumber === 0 && a.ok?.sequence === 0, a.err?.message);
+  authRes = () => res530;
+  const b = await outcome(tx.fetchAccount(address));
+  check("an LCD error refuses, not 0/0", /nothing was signed/.test(b.err?.message ?? ""), b.err?.message ?? JSON.stringify(b.ok));
+  authRes = () => { throw new TypeError("Failed to fetch"); };
+  const c = await outcome(tx.fetchAccount(address));
+  check("a network error refuses", /nothing was signed/.test(c.err?.message ?? ""), c.err?.message);
+  authRes = () => ({ ok: true, json: async () => ({ account: { account_number: "x1", sequence: "0" } }) });
+  const d = await outcome(tx.fetchAccount(address));
+  check("a malformed account refuses", /nothing was signed/.test(d.err?.message ?? ""), d.err?.message);
+  authRes = () => res530;
+  const before = posted.length;
+  const e = await outcome(send());
+  check("broadcast signs nothing when the account read fails", e.err && posted.length === before, e.err?.message);
+  authRes = () => ({ ok: true, json: async () => ({ account: { base_account: { account_number: "7", sequence: "3" } } }) });
+  const f = await outcome(tx.fetchAccount(address));
+  check("a wrapped account reads", f.ok?.accountNumber === 7 && f.ok?.sequence === 3);
+  authRes = prev;
+}
+
+// ---- why a tx failed: explainTxError ----------------------------------------
+{
+  const sd = tx.explainTxError("failed", { code: 5, codespace: "bank", raw_log: "uerth: send transactions are disabled" });
+  check("bank send-disabled explained", /switched off/.test(sd), sd);
+  const leg = tx.explainTxError("refused", { code: 1101, codespace: "dex",
+    raw_log: "the uanml leg (300) is above 295147905179352825840, the most one withdrawal pays as notes; withdraw in smaller parts: invalid amount" });
+  check("dex note-leg cap explained", /smaller parts/.test(leg) && /32 notes of 2\^63 - 1/.test(leg), leg);
+  const other = tx.explainTxError("failed", { code: 1101, codespace: "dex", raw_log: "amount must be positive: invalid amount" });
+  check("other dex 1101 not explained as the note-leg cap", !/32 notes of 2\^63 - 1/.test(other), other);
+  const m = tx.explainTxError("failed", { code: 1120, codespace: "dex", raw_log: "amount exceeds the pool cap" });
+  check("dex 1120 explained", /pool's cap/.test(m) && /code 1120, dex/.test(m), m);
+  const p = tx.explainTxError("failed", { code: 1120, codespace: "personhood", raw_log: "identity tree full" });
+  check("personhood 1120 is not the pool cap", !/pool's cap/.test(p), p);
+  const nw = tx.explainTxError("failed", { code: 1105, codespace: "allocation", raw_log: "voter carries no weight in this stream" });
+  check("allocation ErrNoWeight explained", /no Groundworks weight/.test(nw) && /self-bond is zero/.test(nw) && /code 1105, allocation/.test(nw), nw);
+}
+
+// ---- Max keeps back Keplr's highest fee ------------------------------------
+check("MAX_FEE_UERTH covers default gas at Keplr's high gas price", tx.MAX_FEE_UERTH === 16_000n, String(tx.MAX_FEE_UERTH));
+
+// ---- Keplr switched account: a sentence, nothing signed -------------------
+{
+  const connected = address;
+  address = "earth1other";
+  const before = posted.length;
+  const e = await outcome(tx.broadcast([sh.shieldTo(connected, G, "1000000").msg]));
+  check("a Keplr account switch asks to reconnect and signs nothing",
+    /Reconnect/.test(e.err?.message ?? "") && posted.length === before, e.err?.message);
+  address = connected;
+}
+
+done();

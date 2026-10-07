@@ -1,7 +1,7 @@
 // Poseidon2 over BN254 (t=4, d=5, 8 full + 56 partial rounds): the constants of
 // the chain's zk/poseidon2/constants.go (== noir-lang/poseidon v0.3.0,
 // @zkpassport/poseidon2), transcribed to hex. DO NOT EDIT; the golden vectors
-// in scripts/check-notes.mjs fail on any change.
+// in scripts/checks/shielded.mjs fail on any change.
 
 export const MAT_DIAG4 = [
   0x10dc6e9c006ea38b04b1e03b4bd9490c0d03f98929ca1d7fb56821fd19d3b6e7n,

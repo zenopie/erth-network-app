@@ -31,7 +31,7 @@ export const SearchBar = ({ onError }) => {
     }
     onError?.("");
     setTerm("");
-    navigate(`/explorer/${hit.kind}/${hit.value}`);
+    navigate(`/explorer/${hit.kind}/${encodeURIComponent(hit.value)}`);
   };
 
   return (
@@ -96,13 +96,13 @@ export const TxTable = ({ txs, showHeight = true }) => {
         {txs.map((tx) => (
           <tr key={tx.hash}>
             <td>
-              <Link className={`${styles.link} ${styles.mono}`} to={`/explorer/tx/${tx.hash}`}>
+              <Link className={`${styles.link} ${styles.mono}`} to={`/explorer/tx/${encodeURIComponent(tx.hash)}`}>
                 {short(tx.hash)}
               </Link>
             </td>
             {showHeight && (
               <td>
-                <Link className={styles.link} to={`/explorer/block/${tx.height}`}>
+                <Link className={styles.link} to={`/explorer/block/${encodeURIComponent(tx.height)}`}>
                   {tx.height.toLocaleString()}
                 </Link>
               </td>

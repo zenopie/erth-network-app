@@ -13,11 +13,17 @@ export const protobufPackage = "earth.shieldedstaking.v1";
 
 /** UnbondStatus is where an epoch's undelegation for one validator stands. */
 export enum UnbondStatus {
-  /** UNBOND_STATUS_PENDING - UNBOND_STATUS_PENDING: notes minted, SDK undelegation not yet made. */
+  /**
+   * UNBOND_STATUS_PENDING - UNBOND_STATUS_PENDING: undelegations booked, SDK undelegation not yet
+   * made.
+   */
   UNBOND_STATUS_PENDING = 0,
   /** UNBOND_STATUS_UNBONDING - UNBOND_STATUS_UNBONDING: an SDK unbonding entry exists. */
   UNBOND_STATUS_UNBONDING = 1,
-  /** UNBOND_STATUS_MATURED - UNBOND_STATUS_MATURED: the entry paid out; notes can be claimed. */
+  /**
+   * UNBOND_STATUS_MATURED - UNBOND_STATUS_MATURED: the entry paid out; the record's payouts are
+   * minted, a bounded number a block.
+   */
   UNBOND_STATUS_MATURED = 2,
   UNRECOGNIZED = -1,
 }
@@ -57,8 +63,8 @@ export function unbondStatusToJSON(object: UnbondStatus): string {
 /** Epoch is the epoch in progress. */
 export interface Epoch {
   /**
-   * number of the epoch in progress; unbond/<valoper>/<number> notes minted
-   * now are executed at its end.
+   * number of the epoch in progress; undelegations made now are executed at
+   * its end.
    */
   number: number;
   /**
@@ -80,8 +86,8 @@ export interface ValidatorState {
    */
   pendingDelegation: string;
   /**
-   * pending_undelegation is the ERTH value of unbond notes minted and not yet
-   * undelegated (sum of the PENDING records' target).
+   * pending_undelegation is the ERTH value undelegated privately and not yet
+   * undelegated from x/staking (sum of the PENDING records' target).
    */
   pendingUndelegation: string;
   /**
@@ -89,16 +95,117 @@ export interface ValidatorState {
    * Groundworks positions. Conversions use the live rate.
    */
   epochRate: string;
+  /**
+   * derth_supply is S_v: the derth/<validator> outstanding, in stake notes
+   * and positions. derth is never a coin.
+   */
+  derthSupply: string;
+  /**
+   * checkpoint_seq is the latest snapshot sequence for which this book's
+   * derth_supply was checkpointed (SupplyCheckpoint) before it changed.
+   */
+  checkpointSeq: number;
+  /**
+   * supply_height is the height of the block in which derth_supply last
+   * changed, and supply_at_block_start its value before that block's first
+   * change. A snapshot taken in a block pairs the stake roots recorded at
+   * the end of the block before, so the supply it sees is the supply at the
+   * start of its block (audit 4, I1), not after changes earlier in the block.
+   */
+  supplyHeight: number;
+  supplyAtBlockStart: string;
+  /**
+   * slash_debt is the derth taken off derth_supply by slashes of private
+   * redelegations INTO this validator (ORCHARD_DESIGN.md 8.7): what
+   * x/staking burned from the module's delegation here, valued at the rate,
+   * so the rate did not move. The exposed notes pay it as they clear their
+   * labels (their exposure counts at its retained value). Only grows.
+   */
+  slashDebt: string;
 }
 
-/** UnbondRecord backs the unbond/<validator>/<epoch> notes. */
+/**
+ * Move is a private redelegation while a slash of its source can still reach
+ * it (until its x/staking entry matures). Its credited derth/<dst> sits,
+ * labelled with the move, in its owner's note at dst; the label clears once
+ * the window closes, at what the slash debt tree says it is worth.
+ */
+export interface Move {
+  /**
+   * key is the move key: the redelegation's credit nullifier (32 bytes),
+   * which the note's label carries.
+   */
+  key: Uint8Array;
+  srcValidator: string;
+  dstValidator: string;
+  /**
+   * height is the block it ran in; move_time the time its msg named (unix
+   * seconds, at most move_time_slack before the block): the label's.
+   */
+  height: number;
+  moveTime: number;
+  /** credited is the derth/<dst> it credited: the note's exposure. */
+  credited: string;
+  /**
+   * shares are its shares of the module's x/staking redelegation entry
+   * (src, dst, entry_height): what a slash of src takes, pro rata. Always
+   * positive: a move with no entry (nothing bonded moved, or src unbonded)
+   * is not recorded.
+   */
+  shares: string;
+  entryHeight: number;
+  /**
+   * completion is when the entry matures (unix ns); the record is dropped
+   * then (a slashed move keeps its debt row).
+   */
+  completion: number;
+  /**
+   * retained is what the exposure is still worth: credited, less the
+   * slashes so far.
+   */
+  retained: string;
+}
+
+/**
+ * DebtRow is one row of the slash debt tree: a slashed move's key and what
+ * its exposure is still worth.
+ */
+export interface DebtRow {
+  key: Uint8Array;
+  retained: number;
+}
+
+/**
+ * SupplyCheckpoint is a book's derth supply just before its first change
+ * after the snapshot with sequence seq: the supply every snapshot with a
+ * sequence in (the book's previous checkpoint, seq] saw.
+ */
+export interface SupplyCheckpoint {
+  validator: string;
+  seq: number;
+  supply: string;
+}
+
+/**
+ * EpochSweep is the epoch-end processing of validator books, spread over
+ * blocks: active while a sweep is under way, cursor the last book processed.
+ */
+export interface EpochSweep {
+  active: boolean;
+  cursor: string;
+}
+
+/**
+ * UnbondRecord is one epoch's private undelegation from one validator: the
+ * UnbondPayouts queued against it share its payout pro rata.
+ */
 export interface UnbondRecord {
   validator: string;
   epoch: number;
   status: UnbondStatus;
   /**
-   * requested is the total value of the notes minted (= the denom's minted
-   * supply).
+   * requested is the total ERTH value of the undelegations booked (the sum
+   * of its payouts' values).
    */
   requested: string;
   /**
@@ -117,49 +224,119 @@ export interface UnbondRecord {
   completionTime: number;
   /** payout is the ERTH the entry paid for this record at maturity. */
   payout: string;
-  /** outstanding is the note value not yet claimed. */
+  /** outstanding is the value of its payouts not yet paid. */
   outstanding: string;
-  /** paid is the ERTH claimed so far. */
+  /** paid is the ERTH paid out so far. */
   paid: string;
 }
 
 /**
+ * UnbondPayout is one private undelegation's queued payout. At its record's
+ * maturity the chain mints value x record.payout / record.requested ERTH as
+ * notes to pc with ciphertext (several notes of at most 2^63-1 each when it
+ * is above that). A payout that fails is kept and retried, never dropped.
+ */
+export interface UnbondPayout {
+  /** id is unique and increasing (MsgUndelegateResponse.payout_id). */
+  id: number;
+  validator: string;
+  epoch: number;
+  /**
+   * value is the ERTH value booked at undelegation (its share of
+   * record.requested).
+   */
+  value: string;
+  pc: Uint8Array;
+  ciphertext: Uint8Array;
+  /**
+   * payout_attempts is how many times paying it failed; retry_at (unix
+   * seconds) is when it is tried again, 0 until it first fails.
+   */
+  payoutAttempts: number;
+  retryAt: number;
+}
+
+/**
  * Position is a Groundworks position: derth locked in the module, its owner
- * a one-time secp256k1 key.
+ * known only by owner_tag, which its stake proofs must reproduce.
  */
 export interface Position {
   id: number;
   validator: string;
   derth: string;
   splits: AllocationWeight[];
-  /**
-   * pubkey is the compressed secp256k1 key (33 bytes) that signs updates,
-   * unlocks and votes.
-   */
-  pubkey: Uint8Array;
-  /** nonce is bumped by every signed action, so a signature is good once. */
-  nonce: number;
   createdHeight: number;
   /**
-   * weight is what the position currently carries in the Groundworks stream
-   * (derth x epoch rate).
+   * weight is what the position carries in the Groundworks stream (derth x
+   * its validator's epoch rate, 0 without a live split). Not stored: the
+   * stream weighs a validator's positions together (one voter per
+   * validator), and queries fill this in.
    */
   weight: string;
+  /** owner_tag is H(TAG_OTAG, owner_pk, salt), 32 bytes (circuits/stake). */
+  ownerTag: Uint8Array;
+  /**
+   * split_epoch is the Groundworks stream's allocation epoch the split was
+   * cast in. A governance reset bumps that epoch, and a split from an older
+   * one no longer counts (the owner votes again with MsgUpdatePosition).
+   */
+  splitEpoch: number;
+  /**
+   * split_expires_at is when the split stops counting (unix seconds): cast
+   * or renewed (MsgLockPosition, MsgUpdatePosition) + x/allocation
+   * groundworks_lease_seconds; 0 without a split. At that time the split is
+   * dropped from its validator's totals (the stream settled to the expiry
+   * first), and the owner re-casts with MsgUpdatePosition.
+   */
+  splitExpiresAt: number;
+}
+
+/**
+ * StakeRoot is a stake-tree root recorded at the end of a block that changed
+ * the tree.
+ */
+export interface StakeRoot {
+  root: Uint8Array;
+  height: number;
+  /** time of that block, unix seconds. */
+  time: number;
+  treeSize: number;
+  /**
+   * superseded_at is the time (unix seconds) of the block whose root
+   * replaced this one as the latest, 0 while it is the latest. The window
+   * runs from here (as x/shielded's RootRecord).
+   */
+  supersededAt: number;
 }
 
 /** ProposalSnapshot is taken when an x/gov proposal enters voting. */
 export interface ProposalSnapshot {
   proposalId: number;
   /**
-   * root is the note-tree anchor at that moment; stake votes are proven
-   * against it. tree_size is its leaf count.
+   * root is the stake tree's latest root at that moment; stake votes are
+   * proven against it. tree_size is its leaf count.
    */
   root: Uint8Array;
   treeSize: number;
   height: number;
   /** voting_end, unix nanoseconds. Votes are accepted before it. */
   votingEnd: number;
+  /**
+   * validators is the per-validator snapshot of snapshots taken before
+   * seq existed (genesis compatibility); empty for newer ones, whose supplies
+   * are read from the books' SupplyCheckpoints.
+   */
   validators: ValidatorSnapshot[];
+  /** seq is this snapshot's sequence number (1, 2, ...); 0 for the legacy form. */
+  seq: number;
+  /**
+   * nf_root is the stake nullifier tree's latest recorded root at that moment
+   * (the end of the same block as root), nf_size its leaf count (the
+   * sentinel included; 0 = nothing inserted, root indexed.EmptyRoot). A
+   * stake vote proves its note unspent against it (circuits/vote).
+   */
+  nfRoot: Uint8Array;
+  nfSize: number;
 }
 
 /** ValidatorSnapshot is one validator's derth supply and rate at a snapshot. */
@@ -170,20 +347,26 @@ export interface ValidatorSnapshot {
 }
 
 /**
- * StakeVote is one private stake vote: a spent note's (keyed by its
- * transfer's first nullifier) or a position's.
+ * StakeVote is one private stake vote: up to two stake notes' (keyed by
+ * their first vote nullifier) or a position's.
  */
 export interface StakeVote {
   proposalId: number;
   /**
-   * key is 0x00 || the transfer's first nullifier (32 bytes) of a note vote,
-   * or 0x01 || the position id (8 bytes big-endian) of a position vote.
+   * key is 0x00 || the first vote nullifier (32 bytes) of a note vote, or
+   * 0x01 || the position id (8 bytes big-endian) of a position vote.
    */
   key: Uint8Array;
   position: boolean;
   validator: string;
   derth: string;
   options: WeightedVoteOption[];
+  /**
+   * vote_nullifiers are a note vote's two vote nullifiers (a used slot's or
+   * an unused slot's padding, indistinguishable; the first the key's); empty
+   * for a position vote.
+   */
+  voteNullifiers: Uint8Array[];
 }
 
 /**
@@ -308,7 +491,17 @@ export const Epoch: MessageFns<Epoch> = {
 };
 
 function createBaseValidatorState(): ValidatorState {
-  return { validator: "", pendingDelegation: "", pendingUndelegation: "", epochRate: "" };
+  return {
+    validator: "",
+    pendingDelegation: "",
+    pendingUndelegation: "",
+    epochRate: "",
+    derthSupply: "",
+    checkpointSeq: 0,
+    supplyHeight: 0,
+    supplyAtBlockStart: "",
+    slashDebt: "",
+  };
 }
 
 export const ValidatorState: MessageFns<ValidatorState> = {
@@ -324,6 +517,21 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     }
     if (message.epochRate !== "") {
       writer.uint32(34).string(message.epochRate);
+    }
+    if (message.derthSupply !== "") {
+      writer.uint32(42).string(message.derthSupply);
+    }
+    if (message.checkpointSeq !== 0) {
+      writer.uint32(48).uint64(message.checkpointSeq);
+    }
+    if (message.supplyHeight !== 0) {
+      writer.uint32(56).int64(message.supplyHeight);
+    }
+    if (message.supplyAtBlockStart !== "") {
+      writer.uint32(66).string(message.supplyAtBlockStart);
+    }
+    if (message.slashDebt !== "") {
+      writer.uint32(74).string(message.slashDebt);
     }
     return writer;
   },
@@ -373,6 +581,46 @@ export const ValidatorState: MessageFns<ValidatorState> = {
             message.epochRate = reader.string();
             continue;
           }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.derthSupply = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.checkpointSeq = longToNumber(reader.uint64());
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.supplyHeight = longToNumber(reader.int64());
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.supplyAtBlockStart = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.slashDebt = reader.string();
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -403,6 +651,31 @@ export const ValidatorState: MessageFns<ValidatorState> = {
         : isSet(object.epoch_rate)
         ? globalThis.String(object.epoch_rate)
         : "",
+      derthSupply: isSet(object.derthSupply)
+        ? globalThis.String(object.derthSupply)
+        : isSet(object.derth_supply)
+        ? globalThis.String(object.derth_supply)
+        : "",
+      checkpointSeq: isSet(object.checkpointSeq)
+        ? globalThis.Number(object.checkpointSeq)
+        : isSet(object.checkpoint_seq)
+        ? globalThis.Number(object.checkpoint_seq)
+        : 0,
+      supplyHeight: isSet(object.supplyHeight)
+        ? globalThis.Number(object.supplyHeight)
+        : isSet(object.supply_height)
+        ? globalThis.Number(object.supply_height)
+        : 0,
+      supplyAtBlockStart: isSet(object.supplyAtBlockStart)
+        ? globalThis.String(object.supplyAtBlockStart)
+        : isSet(object.supply_at_block_start)
+        ? globalThis.String(object.supply_at_block_start)
+        : "",
+      slashDebt: isSet(object.slashDebt)
+        ? globalThis.String(object.slashDebt)
+        : isSet(object.slash_debt)
+        ? globalThis.String(object.slash_debt)
+        : "",
     };
   },
 
@@ -420,6 +693,21 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     if (message.epochRate !== "") {
       obj.epochRate = message.epochRate;
     }
+    if (message.derthSupply !== "") {
+      obj.derthSupply = message.derthSupply;
+    }
+    if (message.checkpointSeq !== 0) {
+      obj.checkpointSeq = Math.round(message.checkpointSeq);
+    }
+    if (message.supplyHeight !== 0) {
+      obj.supplyHeight = Math.round(message.supplyHeight);
+    }
+    if (message.supplyAtBlockStart !== "") {
+      obj.supplyAtBlockStart = message.supplyAtBlockStart;
+    }
+    if (message.slashDebt !== "") {
+      obj.slashDebt = message.slashDebt;
+    }
     return obj;
   },
 
@@ -432,6 +720,522 @@ export const ValidatorState: MessageFns<ValidatorState> = {
     message.pendingDelegation = object.pendingDelegation ?? "";
     message.pendingUndelegation = object.pendingUndelegation ?? "";
     message.epochRate = object.epochRate ?? "";
+    message.derthSupply = object.derthSupply ?? "";
+    message.checkpointSeq = object.checkpointSeq ?? 0;
+    message.supplyHeight = object.supplyHeight ?? 0;
+    message.supplyAtBlockStart = object.supplyAtBlockStart ?? "";
+    message.slashDebt = object.slashDebt ?? "";
+    return message;
+  },
+};
+
+function createBaseMove(): Move {
+  return {
+    key: new Uint8Array(0),
+    srcValidator: "",
+    dstValidator: "",
+    height: 0,
+    moveTime: 0,
+    credited: "",
+    shares: "",
+    entryHeight: 0,
+    completion: 0,
+    retained: "",
+  };
+}
+
+export const Move: MessageFns<Move> = {
+  encode(message: Move, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.srcValidator !== "") {
+      writer.uint32(18).string(message.srcValidator);
+    }
+    if (message.dstValidator !== "") {
+      writer.uint32(26).string(message.dstValidator);
+    }
+    if (message.height !== 0) {
+      writer.uint32(32).int64(message.height);
+    }
+    if (message.moveTime !== 0) {
+      writer.uint32(40).uint64(message.moveTime);
+    }
+    if (message.credited !== "") {
+      writer.uint32(50).string(message.credited);
+    }
+    if (message.shares !== "") {
+      writer.uint32(58).string(message.shares);
+    }
+    if (message.entryHeight !== 0) {
+      writer.uint32(64).int64(message.entryHeight);
+    }
+    if (message.completion !== 0) {
+      writer.uint32(72).int64(message.completion);
+    }
+    if (message.retained !== "") {
+      writer.uint32(82).string(message.retained);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Move {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMove();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.key = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.srcValidator = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.dstValidator = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.height = longToNumber(reader.int64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.moveTime = longToNumber(reader.uint64());
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.credited = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.shares = reader.string();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.entryHeight = longToNumber(reader.int64());
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.completion = longToNumber(reader.int64());
+            continue;
+          }
+          case 10: {
+            if (tag !== 82) {
+              break;
+            }
+
+            message.retained = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): Move {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
+      srcValidator: isSet(object.srcValidator)
+        ? globalThis.String(object.srcValidator)
+        : isSet(object.src_validator)
+        ? globalThis.String(object.src_validator)
+        : "",
+      dstValidator: isSet(object.dstValidator)
+        ? globalThis.String(object.dstValidator)
+        : isSet(object.dst_validator)
+        ? globalThis.String(object.dst_validator)
+        : "",
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      moveTime: isSet(object.moveTime)
+        ? globalThis.Number(object.moveTime)
+        : isSet(object.move_time)
+        ? globalThis.Number(object.move_time)
+        : 0,
+      credited: isSet(object.credited) ? globalThis.String(object.credited) : "",
+      shares: isSet(object.shares) ? globalThis.String(object.shares) : "",
+      entryHeight: isSet(object.entryHeight)
+        ? globalThis.Number(object.entryHeight)
+        : isSet(object.entry_height)
+        ? globalThis.Number(object.entry_height)
+        : 0,
+      completion: isSet(object.completion) ? globalThis.Number(object.completion) : 0,
+      retained: isSet(object.retained) ? globalThis.String(object.retained) : "",
+    };
+  },
+
+  toJSON(message: Move): unknown {
+    const obj: any = {};
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
+    }
+    if (message.srcValidator !== "") {
+      obj.srcValidator = message.srcValidator;
+    }
+    if (message.dstValidator !== "") {
+      obj.dstValidator = message.dstValidator;
+    }
+    if (message.height !== 0) {
+      obj.height = Math.round(message.height);
+    }
+    if (message.moveTime !== 0) {
+      obj.moveTime = Math.round(message.moveTime);
+    }
+    if (message.credited !== "") {
+      obj.credited = message.credited;
+    }
+    if (message.shares !== "") {
+      obj.shares = message.shares;
+    }
+    if (message.entryHeight !== 0) {
+      obj.entryHeight = Math.round(message.entryHeight);
+    }
+    if (message.completion !== 0) {
+      obj.completion = Math.round(message.completion);
+    }
+    if (message.retained !== "") {
+      obj.retained = message.retained;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Move>, I>>(base?: I): Move {
+    return Move.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Move>, I>>(object: I): Move {
+    const message = createBaseMove();
+    message.key = object.key ?? new Uint8Array(0);
+    message.srcValidator = object.srcValidator ?? "";
+    message.dstValidator = object.dstValidator ?? "";
+    message.height = object.height ?? 0;
+    message.moveTime = object.moveTime ?? 0;
+    message.credited = object.credited ?? "";
+    message.shares = object.shares ?? "";
+    message.entryHeight = object.entryHeight ?? 0;
+    message.completion = object.completion ?? 0;
+    message.retained = object.retained ?? "";
+    return message;
+  },
+};
+
+function createBaseDebtRow(): DebtRow {
+  return { key: new Uint8Array(0), retained: 0 };
+}
+
+export const DebtRow: MessageFns<DebtRow> = {
+  encode(message: DebtRow, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.retained !== 0) {
+      writer.uint32(16).uint64(message.retained);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DebtRow {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseDebtRow();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.key = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.retained = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): DebtRow {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
+      retained: isSet(object.retained) ? globalThis.Number(object.retained) : 0,
+    };
+  },
+
+  toJSON(message: DebtRow): unknown {
+    const obj: any = {};
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
+    }
+    if (message.retained !== 0) {
+      obj.retained = Math.round(message.retained);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DebtRow>, I>>(base?: I): DebtRow {
+    return DebtRow.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DebtRow>, I>>(object: I): DebtRow {
+    const message = createBaseDebtRow();
+    message.key = object.key ?? new Uint8Array(0);
+    message.retained = object.retained ?? 0;
+    return message;
+  },
+};
+
+function createBaseSupplyCheckpoint(): SupplyCheckpoint {
+  return { validator: "", seq: 0, supply: "" };
+}
+
+export const SupplyCheckpoint: MessageFns<SupplyCheckpoint> = {
+  encode(message: SupplyCheckpoint, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.validator !== "") {
+      writer.uint32(10).string(message.validator);
+    }
+    if (message.seq !== 0) {
+      writer.uint32(16).uint64(message.seq);
+    }
+    if (message.supply !== "") {
+      writer.uint32(26).string(message.supply);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SupplyCheckpoint {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseSupplyCheckpoint();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.validator = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.seq = longToNumber(reader.uint64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.supply = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): SupplyCheckpoint {
+    return {
+      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      seq: isSet(object.seq) ? globalThis.Number(object.seq) : 0,
+      supply: isSet(object.supply) ? globalThis.String(object.supply) : "",
+    };
+  },
+
+  toJSON(message: SupplyCheckpoint): unknown {
+    const obj: any = {};
+    if (message.validator !== "") {
+      obj.validator = message.validator;
+    }
+    if (message.seq !== 0) {
+      obj.seq = Math.round(message.seq);
+    }
+    if (message.supply !== "") {
+      obj.supply = message.supply;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SupplyCheckpoint>, I>>(base?: I): SupplyCheckpoint {
+    return SupplyCheckpoint.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SupplyCheckpoint>, I>>(object: I): SupplyCheckpoint {
+    const message = createBaseSupplyCheckpoint();
+    message.validator = object.validator ?? "";
+    message.seq = object.seq ?? 0;
+    message.supply = object.supply ?? "";
+    return message;
+  },
+};
+
+function createBaseEpochSweep(): EpochSweep {
+  return { active: false, cursor: "" };
+}
+
+export const EpochSweep: MessageFns<EpochSweep> = {
+  encode(message: EpochSweep, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.active !== false) {
+      writer.uint32(8).bool(message.active);
+    }
+    if (message.cursor !== "") {
+      writer.uint32(18).string(message.cursor);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EpochSweep {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseEpochSweep();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.active = reader.bool();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.cursor = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): EpochSweep {
+    return {
+      active: isSet(object.active) ? globalThis.Boolean(object.active) : false,
+      cursor: isSet(object.cursor) ? globalThis.String(object.cursor) : "",
+    };
+  },
+
+  toJSON(message: EpochSweep): unknown {
+    const obj: any = {};
+    if (message.active !== false) {
+      obj.active = message.active;
+    }
+    if (message.cursor !== "") {
+      obj.cursor = message.cursor;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EpochSweep>, I>>(base?: I): EpochSweep {
+    return EpochSweep.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<EpochSweep>, I>>(object: I): EpochSweep {
+    const message = createBaseEpochSweep();
+    message.active = object.active ?? false;
+    message.cursor = object.cursor ?? "";
     return message;
   },
 };
@@ -685,16 +1489,215 @@ export const UnbondRecord: MessageFns<UnbondRecord> = {
   },
 };
 
+function createBaseUnbondPayout(): UnbondPayout {
+  return {
+    id: 0,
+    validator: "",
+    epoch: 0,
+    value: "",
+    pc: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+    payoutAttempts: 0,
+    retryAt: 0,
+  };
+}
+
+export const UnbondPayout: MessageFns<UnbondPayout> = {
+  encode(message: UnbondPayout, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    if (message.validator !== "") {
+      writer.uint32(18).string(message.validator);
+    }
+    if (message.epoch !== 0) {
+      writer.uint32(24).uint64(message.epoch);
+    }
+    if (message.value !== "") {
+      writer.uint32(34).string(message.value);
+    }
+    if (message.pc.length !== 0) {
+      writer.uint32(42).bytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(50).bytes(message.ciphertext);
+    }
+    if (message.payoutAttempts !== 0) {
+      writer.uint32(56).uint32(message.payoutAttempts);
+    }
+    if (message.retryAt !== 0) {
+      writer.uint32(64).int64(message.retryAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UnbondPayout {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseUnbondPayout();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.id = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.validator = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.epoch = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.value = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.pc = reader.bytes();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.payoutAttempts = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.retryAt = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): UnbondPayout {
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      epoch: isSet(object.epoch) ? globalThis.Number(object.epoch) : 0,
+      value: isSet(object.value) ? globalThis.String(object.value) : "",
+      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      payoutAttempts: isSet(object.payoutAttempts)
+        ? globalThis.Number(object.payoutAttempts)
+        : isSet(object.payout_attempts)
+        ? globalThis.Number(object.payout_attempts)
+        : 0,
+      retryAt: isSet(object.retryAt)
+        ? globalThis.Number(object.retryAt)
+        : isSet(object.retry_at)
+        ? globalThis.Number(object.retry_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: UnbondPayout): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.validator !== "") {
+      obj.validator = message.validator;
+    }
+    if (message.epoch !== 0) {
+      obj.epoch = Math.round(message.epoch);
+    }
+    if (message.value !== "") {
+      obj.value = message.value;
+    }
+    if (message.pc.length !== 0) {
+      obj.pc = base64FromBytes(message.pc);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
+    if (message.payoutAttempts !== 0) {
+      obj.payoutAttempts = Math.round(message.payoutAttempts);
+    }
+    if (message.retryAt !== 0) {
+      obj.retryAt = Math.round(message.retryAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnbondPayout>, I>>(base?: I): UnbondPayout {
+    return UnbondPayout.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UnbondPayout>, I>>(object: I): UnbondPayout {
+    const message = createBaseUnbondPayout();
+    message.id = object.id ?? 0;
+    message.validator = object.validator ?? "";
+    message.epoch = object.epoch ?? 0;
+    message.value = object.value ?? "";
+    message.pc = object.pc ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.payoutAttempts = object.payoutAttempts ?? 0;
+    message.retryAt = object.retryAt ?? 0;
+    return message;
+  },
+};
+
 function createBasePosition(): Position {
   return {
     id: 0,
     validator: "",
     derth: "",
     splits: [],
-    pubkey: new Uint8Array(0),
-    nonce: 0,
     createdHeight: 0,
     weight: "",
+    ownerTag: new Uint8Array(0),
+    splitEpoch: 0,
+    splitExpiresAt: 0,
   };
 }
 
@@ -712,17 +1715,20 @@ export const Position: MessageFns<Position> = {
     for (const v of message.splits) {
       AllocationWeight.encode(v!, writer.uint32(34).fork()).join();
     }
-    if (message.pubkey.length !== 0) {
-      writer.uint32(42).bytes(message.pubkey);
-    }
-    if (message.nonce !== 0) {
-      writer.uint32(48).uint64(message.nonce);
-    }
     if (message.createdHeight !== 0) {
       writer.uint32(56).int64(message.createdHeight);
     }
     if (message.weight !== "") {
       writer.uint32(66).string(message.weight);
+    }
+    if (message.ownerTag.length !== 0) {
+      writer.uint32(74).bytes(message.ownerTag);
+    }
+    if (message.splitEpoch !== 0) {
+      writer.uint32(80).uint64(message.splitEpoch);
+    }
+    if (message.splitExpiresAt !== 0) {
+      writer.uint32(88).int64(message.splitExpiresAt);
     }
     return writer;
   },
@@ -772,22 +1778,6 @@ export const Position: MessageFns<Position> = {
             message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
             continue;
           }
-          case 5: {
-            if (tag !== 42) {
-              break;
-            }
-
-            message.pubkey = reader.bytes();
-            continue;
-          }
-          case 6: {
-            if (tag !== 48) {
-              break;
-            }
-
-            message.nonce = longToNumber(reader.uint64());
-            continue;
-          }
           case 7: {
             if (tag !== 56) {
               break;
@@ -802,6 +1792,30 @@ export const Position: MessageFns<Position> = {
             }
 
             message.weight = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.ownerTag = reader.bytes();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.splitEpoch = longToNumber(reader.uint64());
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.splitExpiresAt = longToNumber(reader.int64());
             continue;
           }
         }
@@ -824,14 +1838,27 @@ export const Position: MessageFns<Position> = {
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      pubkey: isSet(object.pubkey) ? bytesFromBase64(object.pubkey) : new Uint8Array(0),
-      nonce: isSet(object.nonce) ? globalThis.Number(object.nonce) : 0,
       createdHeight: isSet(object.createdHeight)
         ? globalThis.Number(object.createdHeight)
         : isSet(object.created_height)
         ? globalThis.Number(object.created_height)
         : 0,
       weight: isSet(object.weight) ? globalThis.String(object.weight) : "",
+      ownerTag: isSet(object.ownerTag)
+        ? bytesFromBase64(object.ownerTag)
+        : isSet(object.owner_tag)
+        ? bytesFromBase64(object.owner_tag)
+        : new Uint8Array(0),
+      splitEpoch: isSet(object.splitEpoch)
+        ? globalThis.Number(object.splitEpoch)
+        : isSet(object.split_epoch)
+        ? globalThis.Number(object.split_epoch)
+        : 0,
+      splitExpiresAt: isSet(object.splitExpiresAt)
+        ? globalThis.Number(object.splitExpiresAt)
+        : isSet(object.split_expires_at)
+        ? globalThis.Number(object.split_expires_at)
+        : 0,
     };
   },
 
@@ -849,17 +1876,20 @@ export const Position: MessageFns<Position> = {
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
     }
-    if (message.pubkey.length !== 0) {
-      obj.pubkey = base64FromBytes(message.pubkey);
-    }
-    if (message.nonce !== 0) {
-      obj.nonce = Math.round(message.nonce);
-    }
     if (message.createdHeight !== 0) {
       obj.createdHeight = Math.round(message.createdHeight);
     }
     if (message.weight !== "") {
       obj.weight = message.weight;
+    }
+    if (message.ownerTag.length !== 0) {
+      obj.ownerTag = base64FromBytes(message.ownerTag);
+    }
+    if (message.splitEpoch !== 0) {
+      obj.splitEpoch = Math.round(message.splitEpoch);
+    }
+    if (message.splitExpiresAt !== 0) {
+      obj.splitExpiresAt = Math.round(message.splitExpiresAt);
     }
     return obj;
   },
@@ -873,16 +1903,168 @@ export const Position: MessageFns<Position> = {
     message.validator = object.validator ?? "";
     message.derth = object.derth ?? "";
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.pubkey = object.pubkey ?? new Uint8Array(0);
-    message.nonce = object.nonce ?? 0;
     message.createdHeight = object.createdHeight ?? 0;
     message.weight = object.weight ?? "";
+    message.ownerTag = object.ownerTag ?? new Uint8Array(0);
+    message.splitEpoch = object.splitEpoch ?? 0;
+    message.splitExpiresAt = object.splitExpiresAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseStakeRoot(): StakeRoot {
+  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0, supersededAt: 0 };
+}
+
+export const StakeRoot: MessageFns<StakeRoot> = {
+  encode(message: StakeRoot, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.root.length !== 0) {
+      writer.uint32(10).bytes(message.root);
+    }
+    if (message.height !== 0) {
+      writer.uint32(16).int64(message.height);
+    }
+    if (message.time !== 0) {
+      writer.uint32(24).int64(message.time);
+    }
+    if (message.treeSize !== 0) {
+      writer.uint32(32).uint64(message.treeSize);
+    }
+    if (message.supersededAt !== 0) {
+      writer.uint32(40).int64(message.supersededAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StakeRoot {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseStakeRoot();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.root = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.height = longToNumber(reader.int64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.time = longToNumber(reader.int64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.treeSize = longToNumber(reader.uint64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.supersededAt = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): StakeRoot {
+    return {
+      root: isSet(object.root) ? bytesFromBase64(object.root) : new Uint8Array(0),
+      height: isSet(object.height) ? globalThis.Number(object.height) : 0,
+      time: isSet(object.time) ? globalThis.Number(object.time) : 0,
+      treeSize: isSet(object.treeSize)
+        ? globalThis.Number(object.treeSize)
+        : isSet(object.tree_size)
+        ? globalThis.Number(object.tree_size)
+        : 0,
+      supersededAt: isSet(object.supersededAt)
+        ? globalThis.Number(object.supersededAt)
+        : isSet(object.superseded_at)
+        ? globalThis.Number(object.superseded_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: StakeRoot): unknown {
+    const obj: any = {};
+    if (message.root.length !== 0) {
+      obj.root = base64FromBytes(message.root);
+    }
+    if (message.height !== 0) {
+      obj.height = Math.round(message.height);
+    }
+    if (message.time !== 0) {
+      obj.time = Math.round(message.time);
+    }
+    if (message.treeSize !== 0) {
+      obj.treeSize = Math.round(message.treeSize);
+    }
+    if (message.supersededAt !== 0) {
+      obj.supersededAt = Math.round(message.supersededAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StakeRoot>, I>>(base?: I): StakeRoot {
+    return StakeRoot.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StakeRoot>, I>>(object: I): StakeRoot {
+    const message = createBaseStakeRoot();
+    message.root = object.root ?? new Uint8Array(0);
+    message.height = object.height ?? 0;
+    message.time = object.time ?? 0;
+    message.treeSize = object.treeSize ?? 0;
+    message.supersededAt = object.supersededAt ?? 0;
     return message;
   },
 };
 
 function createBaseProposalSnapshot(): ProposalSnapshot {
-  return { proposalId: 0, root: new Uint8Array(0), treeSize: 0, height: 0, votingEnd: 0, validators: [] };
+  return {
+    proposalId: 0,
+    root: new Uint8Array(0),
+    treeSize: 0,
+    height: 0,
+    votingEnd: 0,
+    validators: [],
+    seq: 0,
+    nfRoot: new Uint8Array(0),
+    nfSize: 0,
+  };
 }
 
 export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
@@ -904,6 +2086,15 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     }
     for (const v of message.validators) {
       ValidatorSnapshot.encode(v!, writer.uint32(50).fork()).join();
+    }
+    if (message.seq !== 0) {
+      writer.uint32(56).uint64(message.seq);
+    }
+    if (message.nfRoot.length !== 0) {
+      writer.uint32(66).bytes(message.nfRoot);
+    }
+    if (message.nfSize !== 0) {
+      writer.uint32(72).uint64(message.nfSize);
     }
     return writer;
   },
@@ -969,6 +2160,30 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
             message.validators.push(ValidatorSnapshot.decode(reader, reader.uint32()));
             continue;
           }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.seq = longToNumber(reader.uint64());
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.nfRoot = reader.bytes();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.nfSize = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1003,6 +2218,17 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
       validators: globalThis.Array.isArray(object?.validators)
         ? object.validators.map((e: any) => ValidatorSnapshot.fromJSON(e))
         : [],
+      seq: isSet(object.seq) ? globalThis.Number(object.seq) : 0,
+      nfRoot: isSet(object.nfRoot)
+        ? bytesFromBase64(object.nfRoot)
+        : isSet(object.nf_root)
+        ? bytesFromBase64(object.nf_root)
+        : new Uint8Array(0),
+      nfSize: isSet(object.nfSize)
+        ? globalThis.Number(object.nfSize)
+        : isSet(object.nf_size)
+        ? globalThis.Number(object.nf_size)
+        : 0,
     };
   },
 
@@ -1026,6 +2252,15 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     if (message.validators?.length) {
       obj.validators = message.validators.map((e) => ValidatorSnapshot.toJSON(e));
     }
+    if (message.seq !== 0) {
+      obj.seq = Math.round(message.seq);
+    }
+    if (message.nfRoot.length !== 0) {
+      obj.nfRoot = base64FromBytes(message.nfRoot);
+    }
+    if (message.nfSize !== 0) {
+      obj.nfSize = Math.round(message.nfSize);
+    }
     return obj;
   },
 
@@ -1040,6 +2275,9 @@ export const ProposalSnapshot: MessageFns<ProposalSnapshot> = {
     message.height = object.height ?? 0;
     message.votingEnd = object.votingEnd ?? 0;
     message.validators = object.validators?.map((e) => ValidatorSnapshot.fromPartial(e)) || [];
+    message.seq = object.seq ?? 0;
+    message.nfRoot = object.nfRoot ?? new Uint8Array(0);
+    message.nfSize = object.nfSize ?? 0;
     return message;
   },
 };
@@ -1146,7 +2384,15 @@ export const ValidatorSnapshot: MessageFns<ValidatorSnapshot> = {
 };
 
 function createBaseStakeVote(): StakeVote {
-  return { proposalId: 0, key: new Uint8Array(0), position: false, validator: "", derth: "", options: [] };
+  return {
+    proposalId: 0,
+    key: new Uint8Array(0),
+    position: false,
+    validator: "",
+    derth: "",
+    options: [],
+    voteNullifiers: [],
+  };
 }
 
 export const StakeVote: MessageFns<StakeVote> = {
@@ -1168,6 +2414,9 @@ export const StakeVote: MessageFns<StakeVote> = {
     }
     for (const v of message.options) {
       WeightedVoteOption.encode(v!, writer.uint32(50).fork()).join();
+    }
+    for (const v of message.voteNullifiers) {
+      writer.uint32(58).bytes(v!);
     }
     return writer;
   },
@@ -1233,6 +2482,14 @@ export const StakeVote: MessageFns<StakeVote> = {
             message.options.push(WeightedVoteOption.decode(reader, reader.uint32()));
             continue;
           }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.voteNullifiers.push(reader.bytes());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1259,6 +2516,11 @@ export const StakeVote: MessageFns<StakeVote> = {
       options: globalThis.Array.isArray(object?.options)
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
+      voteNullifiers: globalThis.Array.isArray(object?.voteNullifiers)
+        ? object.voteNullifiers.map((e: any) => bytesFromBase64(e))
+        : globalThis.Array.isArray(object?.vote_nullifiers)
+        ? object.vote_nullifiers.map((e: any) => bytesFromBase64(e))
+        : [],
     };
   },
 
@@ -1282,6 +2544,9 @@ export const StakeVote: MessageFns<StakeVote> = {
     if (message.options?.length) {
       obj.options = message.options.map((e) => WeightedVoteOption.toJSON(e));
     }
+    if (message.voteNullifiers?.length) {
+      obj.voteNullifiers = message.voteNullifiers.map((e) => base64FromBytes(e));
+    }
     return obj;
   },
 
@@ -1296,6 +2561,7 @@ export const StakeVote: MessageFns<StakeVote> = {
     message.validator = object.validator ?? "";
     message.derth = object.derth ?? "";
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
+    message.voteNullifiers = object.voteNullifiers?.map((e) => e) || [];
     return message;
   },
 };

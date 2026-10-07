@@ -18,16 +18,28 @@ export interface Params {
    * proposal deposit is its brake.
    */
   addressOptionFee: number;
+  /**
+   * groundworks_lease_seconds is how long a Groundworks split counts after
+   * it was cast or last renewed: an operator's (MsgSetAllocations) and a
+   * stake position's (x/shieldedstaking MsgLockPosition, MsgUpdatePosition)
+   * alike, as a caretaker split lapses after caretaker_vote_seconds. Casting
+   * again renews it. Zero falls back to the default (365 days); otherwise one
+   * day to two years. A change applies to splits cast after it.
+   */
+  groundworksLeaseSeconds: number;
 }
 
 function createBaseParams(): Params {
-  return { addressOptionFee: 0 };
+  return { addressOptionFee: 0, groundworksLeaseSeconds: 0 };
 }
 
 export const Params: MessageFns<Params> = {
   encode(message: Params, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.addressOptionFee !== 0) {
       writer.uint32(8).uint64(message.addressOptionFee);
+    }
+    if (message.groundworksLeaseSeconds !== 0) {
+      writer.uint32(16).uint64(message.groundworksLeaseSeconds);
     }
     return writer;
   },
@@ -53,6 +65,14 @@ export const Params: MessageFns<Params> = {
             message.addressOptionFee = longToNumber(reader.uint64());
             continue;
           }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.groundworksLeaseSeconds = longToNumber(reader.uint64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -72,6 +92,11 @@ export const Params: MessageFns<Params> = {
         : isSet(object.address_option_fee)
         ? globalThis.Number(object.address_option_fee)
         : 0,
+      groundworksLeaseSeconds: isSet(object.groundworksLeaseSeconds)
+        ? globalThis.Number(object.groundworksLeaseSeconds)
+        : isSet(object.groundworks_lease_seconds)
+        ? globalThis.Number(object.groundworks_lease_seconds)
+        : 0,
     };
   },
 
@@ -79,6 +104,9 @@ export const Params: MessageFns<Params> = {
     const obj: any = {};
     if (message.addressOptionFee !== 0) {
       obj.addressOptionFee = Math.round(message.addressOptionFee);
+    }
+    if (message.groundworksLeaseSeconds !== 0) {
+      obj.groundworksLeaseSeconds = Math.round(message.groundworksLeaseSeconds);
     }
     return obj;
   },
@@ -89,6 +117,7 @@ export const Params: MessageFns<Params> = {
   fromPartial<I extends Exact<DeepPartial<Params>, I>>(object: I): Params {
     const message = createBaseParams();
     message.addressOptionFee = object.addressOptionFee ?? 0;
+    message.groundworksLeaseSeconds = object.groundworksLeaseSeconds ?? 0;
     return message;
   },
 };

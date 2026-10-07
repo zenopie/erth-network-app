@@ -1,5 +1,5 @@
 /* Small form and tally pieces shared by the read-mostly pages (governance,
-   staking operator panel, referrers). Layout comes from Explorer.module.css. */
+   staking operator panel, handles). Layout comes from Explorer.module.css. */
 
 .formRow {
   display: flex;
@@ -22,7 +22,6 @@
 }
 
 .input,
-.select,
 .textarea {
   width: 100%;
   box-sizing: border-box;
@@ -42,7 +41,6 @@
 }
 
 .input:focus,
-.select:focus,
 .textarea:focus {
   border-color: #4caf50;
 }

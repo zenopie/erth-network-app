@@ -66,6 +66,12 @@ const ExplorerValidators = () => {
         </div>
       )}
 
+      {data?.partial && (
+        <div className={styles.card}>
+          <div className={styles.empty}>Some pages failed to load: the list and totals below are incomplete.</div>
+        </div>
+      )}
+
       <div className={styles.statsRow}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Active</span>

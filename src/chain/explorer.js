@@ -1,6 +1,7 @@
-import { fromBase64, toBech32 } from "@cosmjs/encoding";
+import { fromBase64, fromBech32, toBech32 } from "@cosmjs/encoding";
+import { canonicalAddress } from "./address";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { get, getOr, rpcOrNull, seg } from "./rest";
+import { get, getAllPages, getOr, rpcOrNull, seg, text as str } from "./rest";
 import { ADDRESS_PREFIX } from "./config";
 
 /**
@@ -42,7 +43,9 @@ export async function latestBlock() {
 
 /** A block by height, or null if it does not exist. */
 export async function block(height) {
-  const data = await getOr(seg`/cosmos/base/tendermint/v1beta1/blocks/${height}`, null);
+  const h = routeHeight(height);
+  if (!h) return null;
+  const data = await getOr(seg`/cosmos/base/tendermint/v1beta1/blocks/${h}`, null);
   return data ? toBlock(data) : null;
 }
 
@@ -125,50 +128,155 @@ async function searchTxs(query, limit = 20) {
   return (data.tx_responses ?? []).map((res, i) => toTx(res, data.txs?.[i]));
 }
 
-/** Chain-wide recent transactions. */
-export const recentTxs = (limit = 20) => searchTxs("tx.height>0", limit);
+/**
+ * How far back the overview looks for transactions, and how many block
+ * searches one load may make. A chain-wide "newest first" search
+ * (`tx.height>0`) is a walk of every tx.height entry in the node's index,
+ * unmetered, and the public RPC/LCD refuse it; the list is built instead from
+ * block metas (`num_txs`) and one `tx.height=N` search per block that has
+ * transactions. A committed block's transactions never change, so each
+ * block's are cached once complete and a refresh only searches new blocks.
+ */
+export const RECENT_TX_WINDOW = 60;
+const RECENT_TX_SEARCHES = 5;
+const TX_CACHE_MAX = 256;
+// Height -> its transactions, only once the search returned all of them
+// (the tx index can lag a block that is already in the block store).
+const txsByHeight = new Map();
 
-/** Transactions included in a single block. */
-export const txsAtHeight = (height, limit = 50) => searchTxs(`tx.height=${height}`, limit);
+function cacheTxs(height, txs) {
+  txsByHeight.delete(height);
+  txsByHeight.set(height, txs);
+  while (txsByHeight.size > TX_CACHE_MAX) txsByHeight.delete(txsByHeight.keys().next().value);
+}
+
+/** Block metas in [min, max] over RPC (at most 20), or null. */
+async function blockMetas(min, max) {
+  const data = await rpcOrNull(`/blockchain?minHeight=${min}&maxHeight=${max}`);
+  const metas = data?.result?.block_metas;
+  if (!Array.isArray(metas)) return null;
+  return metas.map((m) => ({ height: Number(m.header?.height ?? 0), txCount: Number(m.num_txs ?? 0) }));
+}
 
 /**
- * Transactions involving an address — both those it signed and those that paid
- * it. A plain `message.sender` query misses incoming transfers entirely, since
- * those are indexed under the sender, so both are queried and merged.
+ * Chain-wide recent transactions, newest first: { txs, blocks }, `blocks`
+ * being how many of the latest blocks were looked through. `recent` is the
+ * caller's own recentBlocks() result, newest first, so the overview does not
+ * read the same metas twice; older ones (back to RECENT_TX_WINDOW blocks) are
+ * read over RPC only while fewer than `limit` transactions have been seen.
+ * At most RECENT_TX_SEARCHES uncached block searches per call, one at a time.
  */
-export async function txsForAddress(address, limit = 20) {
-  const [sent, received] = await Promise.all([
-    searchTxs(`message.sender='${address}'`, limit),
-    searchTxs(`transfer.recipient='${address}'`, limit),
-  ]);
-  const byHash = new Map();
-  for (const tx of [...sent, ...received]) byHash.set(tx.hash, tx);
-  return [...byHash.values()].sort((a, b) => b.height - a.height).slice(0, limit);
+export async function recentTxs(limit = 10, recent = null) {
+  const blocks = (recent ?? (await recentBlocks(BLOCKCHAIN_RANGE_LIMIT)))
+    .map((b) => ({ height: b.height, txCount: b.txCount }))
+    .filter((b) => b.height > 0)
+    .sort((a, b) => b.height - a.height);
+  if (!blocks.length) return { txs: [], blocks: 0 };
+  const tip = blocks[0].height;
+  const seen = () => blocks.reduce((n, b) => n + b.txCount, 0);
+
+  let low = blocks[blocks.length - 1].height;
+  while (seen() < limit && low > 1 && tip - low + 1 < RECENT_TX_WINDOW) {
+    const max = low - 1;
+    const min = Math.max(1, max - BLOCKCHAIN_RANGE_LIMIT + 1, tip - RECENT_TX_WINDOW + 1);
+    const metas = await blockMetas(min, max);
+    if (!metas?.length) break;
+    const older = metas.filter((m) => m.height >= min && m.height <= max);
+    if (!older.length) break;
+    blocks.push(...older.sort((a, b) => b.height - a.height));
+    low = Math.min(...older.map((m) => m.height));
+  }
+
+  const out = [];
+  let searches = 0;
+  for (const b of blocks) {
+    if (out.length >= limit) break;
+    if (b.txCount <= 0) continue;
+    let txs = txsByHeight.get(b.height);
+    if (!txs) {
+      if (searches >= RECENT_TX_SEARCHES) break;
+      searches++;
+      const want = Math.min(b.txCount, TXS_PER_BLOCK);
+      txs = await searchTxs(`tx.height=${b.height}`, TXS_PER_BLOCK);
+      if (txs.length >= want) cacheTxs(b.height, txs);
+    }
+    out.push(...txs);
+  }
+  return { txs: out.slice(0, limit), blocks: tip - low + 1 };
 }
+
+// Route parameters (the URL bar) reach CometBFT query strings below. Each is
+// checked against its exact shape first: quoted into a query raw, `x' OR
+// tx.height>0 AND message.sender='y` rewrites the search, and the page shows
+// some other account's transactions under this one's address.
+const MAX_INT64 = (1n << 63n) - 1n;
+
+/** A block height from a route: a decimal int64 >= 1, else null. */
+export function routeHeight(v) {
+  const s = String(v ?? "");
+  if (!/^[1-9]\d{0,18}$/.test(s) || BigInt(s) > MAX_INT64) return null;
+  return s;
+}
+
+/** A bech32 address from a route, lowercased; null if it is not one. */
+export function routeAddress(v) {
+  const s = String(v ?? "").trim();
+  try {
+    const { prefix, data } = fromBech32(s, 90);
+    const canon = toBech32(prefix, data, 90);
+    return /^[a-z0-9]+$/.test(canon) ? canon : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A tx hash from a route (64 hex), upper-cased; null if it is not one. */
+export function routeTxHash(v) {
+  const s = String(v ?? "").trim();
+  return /^[0-9a-fA-F]{64}$/.test(s) ? s.toUpperCase() : null;
+}
+
+/** Transactions included in a single block. */
+const TXS_PER_BLOCK = 50; // the public LCD's largest search page
+
+export const txsAtHeight = (height, limit = TXS_PER_BLOCK) => {
+  const h = routeHeight(height);
+  return h ? searchTxs(`tx.height=${h}`, limit) : Promise.resolve([]);
+};
+
+// No transactions by address. The public LCD serves only `tx.height=N`
+// searches: CometBFT loads every match of a search before it pages and
+// cannot cancel one, so `message.sender='…'` or `transfer.recipient='…'` is
+// a scan of that address's whole history on the validator (the fee
+// collector's is every tx; round-5 R5-E-1), and the validator indexes no
+// address events. An address page shows balances and state; a tx is found
+// by its hash or its block.
 
 /** A single transaction by hash, or null if not found/not indexed. */
 export async function txByHash(hash) {
-  const data = await getOr(seg`/cosmos/tx/v1beta1/txs/${hash.toUpperCase()}`, null);
+  const h = routeTxHash(hash);
+  if (!h) return null;
+  const data = await getOr(seg`/cosmos/tx/v1beta1/txs/${h}`, null);
   return data?.tx_response ? toTx(data.tx_response, data.tx) : null;
 }
 
 function toTx(res, body) {
-  const messages = body?.body?.messages ?? [];
+  const messages = Array.isArray(body?.body?.messages) ? body.body.messages : [];
   return {
-    hash: res.txhash,
+    hash: str(res.txhash),
     height: Number(res.height),
     // A non-zero code means the transaction was included but failed.
     success: Number(res.code) === 0,
     code: Number(res.code),
-    rawLog: res.raw_log ?? "",
+    rawLog: str(res.raw_log),
     gasUsed: Number(res.gas_used ?? 0),
     gasWanted: Number(res.gas_wanted ?? 0),
-    timestamp: res.timestamp,
-    memo: body?.body?.memo ?? "",
+    timestamp: str(res.timestamp),
+    memo: str(body?.body?.memo),
     fee: body?.auth_info?.fee?.amount ?? [],
     messages,
     // "/earth.dex.v1.MsgSwap" -> "MsgSwap"
-    types: messages.map((m) => (m["@type"] ?? "").split(".").pop()).filter(Boolean),
+    types: messages.map((m) => str(m?.["@type"]).split(".").pop()).filter(Boolean),
     events: res.events ?? [],
   };
 }
@@ -181,13 +289,16 @@ function toTx(res, body) {
  * consensus public key, so the two are joined on it.
  */
 export async function proposerMonikers() {
+  // The CometBFT set is the active set, at most max_validators (100) long, so
+  // one page of 200 holds it. x/staking's list is every validator ever
+  // created and not removed (creation is permissionless), so it is walked.
   const [set, staking] = await Promise.all([
     getOr("/cosmos/base/tendermint/v1beta1/validatorsets/latest?pagination.limit=200", null),
-    getOr("/cosmos/staking/v1beta1/validators?pagination.limit=200", null),
+    getAllPages("/cosmos/staking/v1beta1/validators", "validators"),
   ]);
 
   const monikerByPubkey = new Map(
-    (staking?.validators ?? []).map((v) => [v.consensus_pubkey?.key, v.description?.moniker ?? ""]),
+    (staking?.items ?? []).map((v) => [v.consensus_pubkey?.key, v.description?.moniker ?? ""]),
   );
   return Object.fromEntries(
     (set?.validators ?? [])
@@ -236,11 +347,35 @@ export async function slashingParams() {
  * decides whether it gets jailed.
  */
 export async function validators() {
-  const [staking, signing, params] = await Promise.all([
-    getOr("/cosmos/staking/v1beta1/validators?pagination.limit=300", null),
-    getOr("/cosmos/slashing/v1beta1/signing_infos?pagination.limit=300", null),
+  // Every page: validator creation is permissionless (a 1 uerth self-bond
+  // will do), so a single page could be filled with unbonded validators and
+  // push bonded ones, and their stake, out of the totals.
+  const [staking, { signing, params }] = await Promise.all([
+    getAllPages("/cosmos/staking/v1beta1/validators", "validators"),
+    signingContext(),
+  ]);
+  const rows = validatorRows(staking?.items ?? [], { signing, params });
+  return { ...rows, partial: Boolean(staking?.partial || signing?.partial) };
+}
+
+/**
+ * What uptime is computed from: every signing record ({ info, partial }, every
+ * page) and the slashing params.
+ */
+export async function signingContext() {
+  const [all, params] = await Promise.all([
+    getAllPages("/cosmos/slashing/v1beta1/signing_infos", "info"),
     slashingParams(),
   ]);
+  return { signing: all ? { info: all.items, partial: all.partial } : null, params };
+}
+
+/**
+ * x/staking validators (LCD JSON) as ranked rows with voting power and
+ * uptime: { params, totalBonded, validators }. `signing` and `params` are
+ * signingContext()'s.
+ */
+export function validatorRows(stakingValidators, { signing, params }) {
 
   const signingByCons = new Map(
     (signing?.info ?? []).map((s) => [
@@ -254,7 +389,7 @@ export async function validators() {
     ]),
   );
 
-  const list = (staking?.validators ?? []).map((v) => {
+  const list = stakingValidators.map((v) => {
     const consAddress = v.consensus_pubkey?.key ? consensusAddress(v.consensus_pubkey.key) : "";
     const info = signingByCons.get(consAddress) ?? null;
     const window = params.signedBlocksWindow;
@@ -321,7 +456,8 @@ export function classifySearch(term) {
   if (!t) return null;
   if (/^\d+$/.test(t)) return { kind: "block", value: t };
   if (/^[0-9a-fA-F]{64}$/.test(t)) return { kind: "tx", value: t.toUpperCase() };
-  if (/^earth[0-9a-z]{6,}$/.test(t)) return { kind: "account", value: t };
+  const account = canonicalAddress(t) ?? canonicalAddress(t, `${ADDRESS_PREFIX}valoper`);
+  if (account) return { kind: "account", value: account };
   return null;
 }
 
@@ -436,7 +572,9 @@ export async function blockFlows(height) {
   // encoded — `height` reaches here straight from useParams(), so it is
   // whatever is in the URL bar, and unencoded it can append parameters of its
   // own to the RPC call.
-  const data = await rpcOrNull(`/block_results?height=${encodeURIComponent(height)}`);
+  const h = routeHeight(height);
+  if (!h) return null;
+  const data = await rpcOrNull(`/block_results?height=${encodeURIComponent(h)}`);
   if (!data?.result) return null;
 
   const minted = {};

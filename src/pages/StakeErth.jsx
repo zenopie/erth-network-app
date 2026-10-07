@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import * as staking from "../chain/staking";
 import * as shieldedStaking from "../chain/shieldedStaking";
+import * as allocation from "../chain/allocation";
 import * as explorer from "../chain/explorer";
 import { balance } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { formatUnits, toMacro, toMicro } from "../chain/tokens";
+import { amountOk, formatMacro, formatUnits, toBigInt, toMacro, toMicro } from "../chain/tokens";
+import { formatErth as erth } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
@@ -14,6 +16,7 @@ import forms from "./Forms.module.css";
 import head from "./StakeErth.module.css";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
+import AmountNote from "../components/AmountNote";
 
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
@@ -24,8 +27,6 @@ const calculateAPR = (totalStakedMicro) => {
   const total = toMacro(totalStakedMicro ?? 0, UERTH);
   return total ? SECONDS_PER_YEAR / total : 0;
 };
-
-const erth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;
 
 /** "in 5h 12m" until a unix time, or "now" once it has passed. */
 function until(unix) {
@@ -41,43 +42,74 @@ function until(unix) {
  *
  * x/shieldedstaking is the only delegator on this chain besides validators'
  * own operators. Holders stake privately from the mobile app: they spend ERTH
- * notes for derth/<validator> notes, the module delegates the batch at the end
- * of each epoch, and rewards compound into each validator's rate instead of
- * being paid out. This page shows that public side — the validators, each
+ * notes and the chain credits derth/<validator> into the holder's one stake
+ * note for that validator (owner-locked, non-transferable, in the module's
+ * own stake tree; derth is not a coin). The module delegates the batch at the
+ * end of each epoch, rewards compound into each validator's rate instead of
+ * being paid out, and a matured undelegation is paid to the holder's
+ * shielded address by the chain itself. This page shows that public side — the validators, each
  * one's rate and derth supply, the epoch clock — and gives a validator's
  * operator the transparent self-bond operations Keplr can still sign.
  */
 const StakeErth = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [totalBonded, setTotalBonded] = useState(null);
   const [unbondDays, setUnbondDays] = useState(21);
   const [epoch, setEpoch] = useState(null);
   const [validators, setValidators] = useState(null);
   const [books, setBooks] = useState({});
+  // The validator list could not all be read, or not at one height.
+  const [partial, setPartial] = useState(false);
+  const [gw, setGw] = useState({});
   const [operator, setOperator] = useState(null);
   const [liquid, setLiquid] = useState("0");
 
   const loadNetwork = useCallback(async () => {
     showLoading();
     try {
-      const [bonded, days, ep, vals] = await Promise.all([
+      const [bonded, days, ep, quotes, signing] = await Promise.all([
         staking.totalBonded(),
         staking.unbondingDays(),
         shieldedStaking.epoch(),
-        explorer.validators().catch(() => null),
+        // Every validator's book and x/staking record in one paged list read
+        // at one height: no read names a single validator.
+        shieldedStaking.validators(),
+        explorer.signingContext().catch(() => null),
       ]);
       setTotalBonded(bonded);
       setUnbondDays(days);
       setEpoch(ep);
-      const list = (vals?.validators ?? [])
-        .filter((v) => v.bonded || Number(v.tokens) > 0)
+      setPartial(Boolean(quotes?.partial));
+      const qs = quotes?.validators ?? [];
+      const bk = Object.fromEntries(qs.map((q) => [q.validator, q]));
+      const live = qs.filter((q) => !q.removed);
+      const rows = explorer.validatorRows(
+        live.map((q) => q.staking),
+        signing ?? { signing: null, params: {} },
+      ).validators;
+      const hasBook = (op) => toBigInt(bk[op]?.supply) > 0n || toBigInt(bk[op]?.backing) > 0n;
+      const list = rows
+        .filter((v) => v.bonded || toBigInt(v.tokens) > 0n || hasBook(v.operator))
         // Smallest first: nudge private stake away from the top validator.
-        .sort((a, b) => a.votingPower - b.votingPower);
-      setValidators(vals ? list : null);
-      setBooks(await shieldedStaking.validatorBooks(list.map((v) => v.operator)));
+        .sort((a, b) => a.votingPower - b.votingPower)
+        // Books whose validator x/staking removed, last: their value still
+        // winds down to the stakers holding derth for them.
+        .concat(
+          qs
+            .filter((q) => q.removed)
+            .map((q) => ({ operator: q.validator, moniker: "", removed: true, bonded: false, jailed: false,
+              tokens: "0", votingPower: 0, commission: 0, uptime: null })),
+        );
+      setValidators(quotes ? list : null);
+      const ops = list.map((v) => v.operator);
+      // Each validator's Groundworks positions, as the one weighted voter the
+      // stream counts them as.
+      const voters = await allocation.validatorVoters(ops);
+      setBooks(bk);
+      setGw(voters);
     } finally {
       hideLoading();
     }
@@ -116,7 +148,7 @@ const StakeErth = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={head.header}>
         <div className={head.headerLeft}>
@@ -147,9 +179,10 @@ const StakeErth = () => {
       </div>
 
       <MobileCta title="Stake privately in the Earth Wallet app">
-        Staking, unstaking, claiming and stake votes are private: your ERTH becomes
-        derth for the validator you choose, worth more ERTH each epoch as rewards compound.
-        Delegations settle at the end of each epoch; unstaking takes {unbondDays} days.
+        Staking, unstaking and stake votes are private: your ERTH becomes derth for the validator
+        you choose, worth more ERTH each epoch as rewards compound. derth stays in your wallet: it
+        cannot be sent or traded. Delegations settle at the end of each epoch. Unstaking takes{" "}
+        {unbondDays} days, and then the ERTH arrives in your wallet by itself, with nothing to claim.
       </MobileCta>
 
       <div className={styles.card}>
@@ -166,7 +199,9 @@ const StakeErth = () => {
                 <th>Uptime</th>
                 <th>Rate</th>
                 <th>Private stake</th>
+                <th title="Its Groundworks positions, weighed together as one voter">Groundworks</th>
                 <th>Next epoch</th>
+                <th title="Whether a private delegation or redelegation into it is taken now">Delegations</th>
               </tr>
             </thead>
             <tbody>
@@ -178,8 +213,9 @@ const StakeErth = () => {
                   <tr key={v.operator}>
                     <td>
                       {v.moniker || <span className={styles.mono}>{v.operator.slice(0, 20)}…</span>}
+                      {v.removed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Removed</span>}
                       {v.jailed && <span className={`${styles.badge} ${styles.badgeFailed}`}>Jailed</span>}
-                      {!v.bonded && !v.jailed && <span className={styles.badge}>Unbonded</span>}
+                      {!v.bonded && !v.jailed && !v.removed && <span className={styles.badge}>Unbonded</span>}
                       {v.votingPower >= 33 && (
                         <div className={forms.warn} style={{ margin: 0 }}>
                           Over a third of stake: can halt the chain alone
@@ -201,6 +237,11 @@ const StakeErth = () => {
                         </div>
                       )}
                     </td>
+                    <td title="rate × Σ(derth × percent) / 100 over its live positions">
+                      {gw[v.operator] && toBigInt(gw[v.operator].weight) > 0n
+                        ? `${formatMacro(gw[v.operator].weight, UERTH)} ERTH`
+                        : "—"}
+                    </td>
                     <td className={styles.muted}>
                       {pendIn || pendOut ? (
                         <>
@@ -211,6 +252,11 @@ const StakeErth = () => {
                         "—"
                       )}
                     </td>
+                    <td title={b?.refusal || undefined}>
+                      {!b ? "—" : b.delegatable ? "Open" : (
+                        <span className={styles.muted}>{shieldedStaking.refusalReason(b)}</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -219,10 +265,17 @@ const StakeErth = () => {
         ) : (
           <div className={styles.empty}>No validators.</div>
         )}
+        {partial && (
+          <p className={forms.note} role="status">
+            Partial list: not every validator could be read from the chain at one height.
+          </p>
+        )}
         <p className={forms.note}>
           Rate is ERTH per derth: what one derth of a validator redeems for. It rises as rewards
           compound and falls if the validator is slashed. Next epoch is the private stake queued to
-          be delegated (+) or undelegated (−) when the epoch ends.
+          be delegated (+) or undelegated (−) when the epoch ends. Delegations says whether new
+          private stake can go to a validator now; unstaking from it always works. A removed
+          validator&apos;s stake is still paid out to the stakers holding its derth.
         </p>
       </div>
 
@@ -248,7 +301,6 @@ const StakeErth = () => {
 const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
   const [bondAmount, setBondAmount] = useState("");
   const [unbondAmount, setUnbondAmount] = useState("");
-  const pending = Number(operator.rewards) + Number(operator.commissionEarned);
 
   return (
     <div className={styles.card}>
@@ -264,18 +316,16 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
         </div>
       </div>
       <div className={styles.kv}>
-        <div className={styles.kvLabel}>Rewards + commission</div>
+        <div className={styles.kvLabel}>Pending rewards + commission</div>
         <div className={styles.kvValue}>
-          {erth(operator.rewards)} + {erth(operator.commissionEarned)}{" "}
-          <button
-            className={forms.ghostButton}
-            disabled={!(pending > 0)}
-            onClick={() => run(() => staking.msgsWithdrawOperatorRewards(address))}
-          >
-            Withdraw
-          </button>
+          {erth(operator.rewards)} + {erth(operator.commissionEarned)}
         </div>
       </div>
+      <p className={styles.muted}>
+        Your validator's income cannot be withdrawn. The chain pays it into the validator's reward escrow and
+        compounds it into your self-bond at each epoch end while the validator is active. It becomes liquid only
+        through the self-bond: unbond it, or, once you retire or the validator is removed, the escrow is paid out.
+      </p>
 
       <div className={forms.section}>
         <div className={forms.formRow}>
@@ -285,16 +335,17 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             </label>
             <input
               className={forms.input}
-              type="number"
+              inputMode="decimal"
               placeholder="0.0"
               value={bondAmount}
               onChange={(e) => setBondAmount(e.target.value)}
             />
           </div>
+          <AmountNote value={bondAmount} denom={UERTH} />
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
-            disabled={!(parseFloat(bondAmount) > 0) || BigInt(toMicro(bondAmount, UERTH)) > BigInt(liquid)}
+            disabled={!amountOk(bondAmount, UERTH, liquid)}
             onClick={() =>
               run(() => [staking.msgSelfBond(address, toMicro(bondAmount, UERTH))]).then(() =>
                 setBondAmount(""),
@@ -317,18 +368,18 @@ const OperatorPanel = ({ operator, liquid, unbondDays, address, run }) => {
             </label>
             <input
               className={forms.input}
-              type="number"
+              inputMode="decimal"
               placeholder="0.0"
               value={unbondAmount}
               onChange={(e) => setUnbondAmount(e.target.value)}
             />
           </div>
+          <AmountNote value={unbondAmount} denom={UERTH} />
           <button
             className={forms.button}
             style={{ alignSelf: "flex-end" }}
             disabled={
-              !(parseFloat(unbondAmount) > 0) ||
-              BigInt(toMicro(unbondAmount, UERTH)) > BigInt(operator.selfBond)
+              !amountOk(unbondAmount, UERTH, operator.selfBond)
             }
             onClick={() =>
               run(() => [staking.msgSelfUnbond(address, toMicro(unbondAmount, UERTH))]).then(() =>
@@ -427,8 +478,9 @@ const CreateValidator = ({ address, liquid, run }) => {
               <label className={forms.label}>
                 Self-bond (balance {toMacro(liquid, UERTH).toLocaleString()} ERTH)
               </label>
-              <input className={forms.input} type="number" value={form.selfBond} onChange={set("selfBond")} />
+              <input className={forms.input} inputMode="decimal" placeholder="0.0" value={form.selfBond} onChange={set("selfBond")} />
             </div>
+            <AmountNote value={form.selfBond} denom={UERTH} />
             <div className={forms.field}>
               <label className={forms.label}>Commission / max / max daily change</label>
               <div className={forms.formRow} style={{ margin: 0 }}>
@@ -446,7 +498,7 @@ const CreateValidator = ({ address, liquid, run }) => {
           </div>
           <button
             className={forms.button}
-            disabled={!form.moniker || !form.consensusPubkey || !(parseFloat(form.selfBond) > 0)}
+            disabled={!form.moniker || !form.consensusPubkey || !amountOk(form.selfBond, UERTH, liquid)}
             onClick={() =>
               run(() => [
                 staking.msgCreateValidator(address, {

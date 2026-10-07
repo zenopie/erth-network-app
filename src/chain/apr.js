@@ -13,10 +13,6 @@
  *  - **Emissions.** The Groundworks stream routes some of its ERTH to LP
  *    rewards, split across pools by volume. This is zero until voters allocate
  *    weight to that option.
- *
- * The web app previously modelled only the second, which is why it showed "--"
- * on a pool that was visibly earning: the emission share was genuinely zero,
- * and the fee income it was ignoring was not.
  */
 
 /** One stream's emission, in uerth per second. Mirrors types.EmissionPerSecondPerPillar. */

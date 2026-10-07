@@ -24,7 +24,10 @@ services:
           - service: cloudflared
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    # Pinned by digest, the same build as the validator's and backend's SDLs
+    # (final audit W-4/BD-4). This container holds TUNNEL_TOKEN; `latest` meant
+    # whatever was pushed last got it on the next lease. Bump deliberately.
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
     # `cloudflared` first: Akash's `command` maps to Kubernetes `command`, which
     # REPLACES the image entrypoint rather than appending to it. Without the
     # binary name the container tries to exec something called `tunnel` and the
@@ -33,16 +36,23 @@ services:
       - cloudflared
       - tunnel
       - --no-autoupdate
-      # Akash rejects a manifest with "zero global services", so something has
-      # to be published. Publishing the connector's metrics rather than the app
-      # keeps the site reachable only through the tunnel, and /ready gives a
-      # health check without the Cloudflare dashboard — which matters because
-      # the Console API has no logs endpoint and a connector that fails to
-      # start is otherwise silent.
+      # Metrics on loopback only (final audit W-4). The metrics server also
+      # mounts Go's /debug/pprof, /config (the ingress) and /diag/*; published
+      # on 0.0.0.0, anyone could read them or slow the 0.1-CPU connector.
+      # Check connector health in the lease logs or the Cloudflare dashboard.
       - --metrics
-      - 0.0.0.0:2000
+      - 127.0.0.1:2000
+      # No-logs policy (deploy repo NO_LOGS.md): info logs connector state
+      # only. At debug cloudflared logs each request's headers, including
+      # CF-Connecting-IP.
+      - --loglevel
+      - info
       - run
 
+    # Akash rejects a manifest with "zero global services", so something must
+    # be published. This port is: nothing listens on it outside the
+    # container's loopback, so it answers nothing, and the site stays
+    # reachable only through the tunnel.
     expose:
       - port: 2000
         as: 2000

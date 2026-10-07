@@ -22,6 +22,16 @@ export async function proposalTally(proposalId) {
   };
 }
 
+const NO_BOUND = (1n << 63n) - 1n;
+
+/** A membership bound as unix seconds; null for no bound, absent or junk. */
+export function boundOf(v) {
+  if (v === undefined || v === null || !/^\d{1,20}$/.test(String(v))) return null;
+  const b = BigInt(v);
+  if (b >= NO_BOUND || b > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return Number(b);
+}
+
 /**
  * The public inputs a human vote on this proposal (or removal ballot) is
  * proven against — in particular who is excluded from voting on it. Pass
@@ -38,7 +48,12 @@ export async function ballotInputs({ proposalId, optionId }) {
   return {
     ballotId: Number(data.ballot_id ?? 0),
     round: Number(data.round ?? 0),
-    maxActivation: Number(data.max_activation ?? 0),
+    // Both bounds are unix seconds, null for "no bound" (2^63 - 1) or none
+    // served. Since 4a663d5 ballots bound the predecessor (an identity that
+    // replaced another after the ballot opened, less a day, may not vote)
+    // and not the activation.
+    maxActivation: boundOf(data.max_activation),
+    maxPredecessor: boundOf(data.max_predecessor),
     excludedDsc: isZeroB64(data.excluded_dsc) ? "" : b64ToHex(data.excluded_dsc),
     excludedCountry: countryFromField(data.excluded_country),
   };

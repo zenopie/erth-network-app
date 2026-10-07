@@ -4,14 +4,15 @@ import { balances } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
 import {
-  TOKENS,
   clampSlippage,
+  amountOk,
   formatUnits,
-  minimumReceived,
+  isKnownDenom,
+  logoOf,
   symbolOf,
   toMacro,
   toMicro,
-  tokenInfo,
+  typedFloat,
 } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -22,14 +23,13 @@ import MobileCta from "../components/MobileCta";
 import Amount from "../components/Amount";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 import styles from "./SwapTokens.module.css";
+import AmountNote from "../components/AmountNote";
 
 /**
  * Token swaps against x/dex.
  *
- * ERTH is the chain's native gas coin, so there is no wrapped-token dance here:
- * the Secret build had to wrap SCRT into sSCRT and route swaps through SNIP-20
- * send-hooks, whereas on earth a swap is a single MsgSwap over bank denoms.
- * ERTH is also the AMM hub, so a token->token swap routes through it on-chain.
+ * A swap is a single MsgSwap over bank denoms. ERTH is the AMM hub, so a
+ * token->token swap routes through it on-chain.
  *
  * ANML is not offered. It exists only as shielded notes, so no Keplr account
  * holds any and the chain refuses ANML on MsgSwap's user leg; buying and
@@ -41,15 +41,17 @@ import styles from "./SwapTokens.module.css";
 const SwapTokens = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [fromDenom, setFromDenom] = useState(UERTH);
   const [toDenom, setToDenom] = useState("");
   const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
-  // The quote behind toAmount, in whole base units. The swap's floor is taken
-  // from this, not from the six-decimal display string.
-  const [quoteMicro, setQuoteMicro] = useState("0");
+  // { micro, from, to, out (BigInt), at } from dex.boundSwapQuote, or null.
+  // The swap's floor is taken from this (dex.swapFloor), never from the
+  // display string, and only while it is for this exact amount and pair and
+  // younger than QUOTE_TTL_MS; it is re-asked on an interval.
+  const [quote, setQuote] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   // Bumped by every edit that invalidates a quote in flight. A quote that
   // comes back to a different number than it left with is dropped: quotes
   // are async, and a slow one for an old amount used to land after a newer
@@ -70,7 +72,9 @@ const SwapTokens = () => {
 
   // Swappable denoms: ERTH (the hub) plus every spoke token that has a pool,
   // except ANML, which only trades note-to-note.
-  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom).filter((d) => d !== UANML)];
+  // A token whose decimals the app does not know is not offered: an amount of
+  // it could not be entered or shown in its own units.
+  const denomOptions = [UERTH, ...pools.map((p) => p.tokenDenom).filter((d) => d !== UANML && isKnownDenom(d))];
 
   const fromBalance = toMacro(walletBalances[fromDenom] ?? 0, fromDenom);
   const toBalance = toMacro(walletBalances[toDenom] ?? 0, toDenom);
@@ -83,7 +87,7 @@ const SwapTokens = () => {
         const ps = await dex.pools();
         setPools(ps);
         // Default the output to the first transparent spoke, if there is one.
-        const first = ps.find((p) => p.tokenDenom !== UANML);
+        const first = ps.find((p) => p.tokenDenom !== UANML && isKnownDenom(p.tokenDenom));
         setToDenom((cur) => cur || (first?.tokenDenom ?? ""));
       } finally {
         hideLoading();
@@ -130,11 +134,12 @@ const SwapTokens = () => {
    */
   const displayValue = useCallback(
     (denom, amount) => {
-      if (!(parseFloat(amount) > 0)) return null;
+      const typed = typedFloat(amount, denom);
+      if (!(typed > 0)) return null;
       const rate = spotRateInErth(denom);
       if (!rate) return null;
 
-      const inErth = parseFloat(amount) * rate;
+      const inErth = typed * rate;
       if (currency === "ERTH") return inErth;
       return erthPrice ? inErth * erthPrice : null;
     },
@@ -170,46 +175,63 @@ const SwapTokens = () => {
   );
 
   useEffect(() => {
-    if (parseFloat(fromAmount) > 0) {
+    if (amountOk(fromAmount, fromDenom)) {
       setFromValue(displayValue(fromDenom, fromAmount));
       setPriceImpact(calcPriceImpact(fromAmount));
     } else {
       setFromValue(null);
       setPriceImpact(null);
     }
-    setToValue(parseFloat(toAmount) > 0 ? displayValue(toDenom, toAmount) : null);
+    setToValue(amountOk(toAmount, toDenom) ? displayValue(toDenom, toAmount) : null);
   }, [fromAmount, toAmount, fromDenom, toDenom, displayValue, calcPriceImpact]);
 
   const clearAmounts = () => {
     quoteSeq.current += 1;
     setFromAmount("");
-    setToAmount("");
-    setQuoteMicro("0");
+    setQuote(null);
   };
 
-  const handleFromAmountChange = async (val) => {
-    const seq = ++quoteSeq.current;
+  const handleFromAmountChange = (val) => {
+    quoteSeq.current += 1;
     setFromAmount(val);
-    setToAmount("");
-    setQuoteMicro("0");
-    if (!(parseFloat(val) > 0)) return;
-    const outMicro = await dex.quoteSwap(toMicro(val, fromDenom), fromDenom, toDenom);
-    if (seq !== quoteSeq.current) return;
-    // quoteHop is floating point; floor it so the floor is never above the
-    // pool's integer payout.
-    const whole = outMicro > 0 ? BigInt(Math.floor(outMicro)).toString() : "0";
-    setQuoteMicro(whole);
-    setToAmount(whole !== "0" ? formatUnits(whole, toDenom) : "");
+    setQuote(null);
   };
 
-  const minOut = minimumReceived(quoteMicro, slippage);
+  const micro = amountOk(fromAmount, fromDenom) ? toMicro(fromAmount, fromDenom) : "0";
+
+  useEffect(() => {
+    const id = ++quoteSeq.current;
+    setQuote(null);
+    if (micro === "0" || !toDenom) return undefined;
+    const ask = () =>
+      dex
+        .boundSwapQuote(micro, fromDenom, toDenom)
+        .then((q) => id === quoteSeq.current && setQuote(q))
+        .catch(() => id === quoteSeq.current && setQuote(null));
+    ask();
+    // Re-ask before the quote ages out, and tick `now` so an expired quote
+    // disables Swap even when no answer comes back.
+    const t = setInterval(() => {
+      setNow(Date.now());
+      ask();
+    }, dex.QUOTE_TTL_MS / 2);
+    return () => clearInterval(t);
+  }, [micro, fromDenom, toDenom]);
+
+  const current = quote && quote.micro === micro && quote.from === fromDenom && quote.to === toDenom ? quote : null;
+  const toAmount = current && current.out > 0n ? formatUnits(current.out.toString(), toDenom) : "";
+  const minOut = dex.swapFloor(quote, micro, fromDenom, toDenom, slippage, Math.max(now, quote?.at ?? 0));
 
   const handleSwap = async () => {
-    if (!isConnected || !(parseFloat(fromAmount) > 0) || minOut === "0") return;
+    if (!isConnected || micro === "0") return;
+    // What was shown is what is signed: the amount, pair and floor read at
+    // the same render, the floor non-zero only for a fresh quote of them.
+    const signedMicro = micro;
+    const [signedFrom, signedTo] = [fromDenom, toDenom];
+    const signedMin = dex.swapFloor(quote, signedMicro, signedFrom, signedTo, slippage);
+    if (signedMin === "0") return;
     execute(async () => {
-      await broadcast([
-        dex.msgSwap(address, fromDenom, toMicro(fromAmount, fromDenom), toDenom, minOut),
-      ]);
+      await broadcast([dex.msgSwap(address, signedFrom, signedMicro, signedTo, signedMin)]);
       clearAmounts();
       fetchBalances();
     });
@@ -237,7 +259,7 @@ const SwapTokens = () => {
 
   return (
     <div className={styles.container}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.titleContainer}>
         <h2 className={styles.title}>Swap Tokens</h2>
@@ -266,7 +288,7 @@ const SwapTokens = () => {
 
           <div className={styles.inputWrapper}>
             <img
-              src={tokenInfo(fromDenom).logo ?? TOKENS[UERTH].logo}
+              src={logoOf(fromDenom)}
               alt={`${symbolOf(fromDenom)} logo`}
               className={styles.inputLogo}
             />
@@ -279,12 +301,13 @@ const SwapTokens = () => {
             </select>
             <div className={styles.amountContainer}>
               <input
-                type="number"
+                inputMode="decimal"
                 className={styles.tokenInput}
                 placeholder="0.0"
                 value={fromAmount}
                 onChange={(e) => handleFromAmountChange(e.target.value)}
               />
+              <AmountNote value={fromAmount} denom={fromDenom} />
               {/* Nothing at all when the unit on display has no price, rather
                   than a zero that reads as "this is worthless". */}
               <div className={styles.quoteValue}>
@@ -307,7 +330,7 @@ const SwapTokens = () => {
 
           <div className={styles.inputWrapper}>
             <img
-              src={tokenInfo(toDenom).logo ?? TOKENS[UERTH].logo}
+              src={logoOf(toDenom)}
               alt={`${symbolOf(toDenom)} logo`}
               className={styles.inputLogo}
             />
@@ -321,7 +344,7 @@ const SwapTokens = () => {
             </select>
             <div className={styles.amountContainer}>
               <input
-                type="number"
+                inputMode="decimal"
                 className={styles.tokenInput}
                 placeholder="0.0"
                 value={toAmount}
@@ -339,7 +362,7 @@ const SwapTokens = () => {
       <button
         className={styles.primaryButton}
         onClick={handleSwap}
-        disabled={!isConnected || !toDenom || !fromAmount || parseFloat(fromAmount) <= 0 || minOut === "0"}
+        disabled={!isConnected || !toDenom || !amountOk(fromAmount, fromDenom) || minOut === "0"}
       >
         {isConnected ? "Swap" : "Connect Wallet to Swap"}
       </button>
@@ -355,7 +378,7 @@ const SwapTokens = () => {
             <p>
               <span>Rate:</span>
               <span>
-                1 {symbolOf(fromDenom)} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)}{" "}
+                1 {symbolOf(fromDenom)} = {(typedFloat(toAmount, toDenom) / typedFloat(fromAmount, fromDenom)).toFixed(6)}{" "}
                 {symbolOf(toDenom)}
               </span>
             </p>

@@ -1,16 +1,19 @@
 node_modules
 npm-debug.log*
 .npm
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Any env file (secrets, local endpoints) stays out of the build context.
+.env
+.env.*
+*.env
 .git
 .gitignore
-README.md
+.github
 .DS_Store
 .vscode
-coverage
-.nyc_output
-build/static/js/*.map
-build/static/css/*.map
+# Local build output: the image builds its own from a fresh npm ci.
+build
+build-check
+# Not part of the image: docs, the deploy SDL and scripts, the checks.
+*.md
+deploy
+scripts

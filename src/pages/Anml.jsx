@@ -9,6 +9,7 @@ import * as personhood from "../chain/personhood";
 import * as shielded from "../chain/shielded";
 import { UANML, UERTH } from "../chain/config";
 import { toMacro } from "../chain/tokens";
+import { formatAmount as fmt } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import MobileCta from "../components/MobileCta";
 import BuyAnml from "../components/BuyAnml";
@@ -17,7 +18,6 @@ import useErthPrice from "../hooks/useErthPrice";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
 
 const amountOf = (coins, denom) => coins?.find((c) => c.denom === denom)?.amount ?? "0";
-const fmt = (micro, denom) => toMacro(micro ?? 0, denom).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 /**
  * ANML, the proof-of-personhood coin.

@@ -36,13 +36,24 @@ function segment(value) {
 }
 
 /**
+ * An LCD field that will be rendered as text: the string itself, a number as
+ * its digits, and "" for anything else. LCD JSON is not trusted to be the
+ * shape it should be, and an object handed to React as a child crashes the
+ * render.
+ */
+export function text(v) {
+  return typeof v === "string" ? v : typeof v === "number" || typeof v === "bigint" ? String(v) : "";
+}
+
+/**
  * Minimal REST client for the earth LCD (cosmos gRPC-gateway).
  *
  * All chain reads go through here. `path` is relative to EARTH_LCD_URL, e.g.
  * "/cosmos/bank/v1beta1/balances/earth1...".
  */
 export async function get(path) {
-  const res = await fetch(EARTH_LCD_URL + path);
+  // A 3xx is never followed (spec §4a): the LCD answers here or not at all.
+  const res = await fetch(EARTH_LCD_URL + path, { redirect: "error" });
   if (!res.ok) {
     throw new Error(`LCD ${res.status} on ${path}: ${await res.text()}`);
   }
@@ -64,17 +75,47 @@ export async function getOr(path, fallback) {
 }
 
 /**
+ * Every item of a paged LCD list: walks `pagination.next_key` until it is
+ * empty. Resolves to { items, partial }, or null when the first page fails.
+ * `partial` is true when a later page failed, a page key repeated, or
+ * `maxPages` was hit; the items are then not all of them.
+ *
+ *   await getAllPages("/cosmos/staking/v1beta1/validators", "validators")
+ */
+export async function getAllPages(path, field, { limit = 200, maxPages = 1000 } = {}) {
+  const items = [];
+  const seen = new Set();
+  const sep = path.includes("?") ? "&" : "?";
+  let key = "";
+  for (let page = 0; page < maxPages; page++) {
+    const q = `${sep}pagination.limit=${limit}${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
+    const data = await getOr(path + q, null);
+    if (!data) return page === 0 ? null : { items, partial: true };
+    const got = data[field];
+    if (Array.isArray(got)) items.push(...got);
+    key = data.pagination?.next_key ?? "";
+    if (!key) return { items, partial: false };
+    if (seen.has(key)) return { items, partial: true };
+    seen.add(key);
+  }
+  return { items, partial: true };
+}
+
+/**
  * Reads from the CometBFT RPC instead of the LCD, resolving to null on any
  * failure — including no RPC being configured at all.
  *
- * Only the explorer's block-range query uses this. Callers must treat null as
- * "fall back to the LCD" rather than "no data", since a deployment exposing
- * only the REST port is a supported configuration.
+ * Only the explorer uses this: block ranges (/blockchain), a block's events
+ * (/block_results) and a past supply (abci_query). The public RPC serves no
+ * other read the app makes; tx_search and websockets are refused there.
+ * Callers must treat null as "fall back to the LCD" or "figure unavailable"
+ * rather than "no data", since a deployment exposing only the REST port is a
+ * supported configuration.
  */
 export async function rpcOrNull(path) {
   if (!EARTH_RPC_URL) return null;
   try {
-    const res = await fetch(EARTH_RPC_URL + path);
+    const res = await fetch(EARTH_RPC_URL + path, { redirect: "error" });
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {

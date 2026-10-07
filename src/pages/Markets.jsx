@@ -5,20 +5,20 @@ import * as allocation from "../chain/allocation";
 import { balances, supplyOrNull } from "../chain/bank";
 import { broadcast } from "../chain/tx";
 import { UANML, UERTH } from "../chain/config";
-import { symbolOf, toMacro, toMicro } from "../chain/tokens";
+import { amountOk, formatUnits, isKnownDenom, logoOf, ratio, sumBig, symbolOf, toMacro, toMicro, typedFloat } from "../chain/tokens";
 import StatusModal from "../components/StatusModal";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
-import { formatUSD } from "../utils/apiUtils";
 import useErthPrice from "../hooks/useErthPrice";
-import { formatPrice, formatApr, formatDuration } from "../utils/formatUtils";
+import { formatUSD, formatPrice, formatApr, formatDuration } from "../utils/formatUtils";
 import Amount from "../components/Amount";
 import MobileCta from "../components/MobileCta";
 import ShieldedAddressInput from "../components/ShieldedAddressInput";
 import { decodeShieldedAddress } from "../chain/shieldedAddress";
 import { aprFor } from "../chain/apr";
 import { useDisplayCurrency } from "../contexts/DisplayCurrencyContext";
+import AmountNote from "../components/AmountNote";
 
 // Slippage tolerance for a liquidity deposit, in percent.
 //
@@ -37,7 +37,7 @@ const LP_SLIPPAGE_PERCENT = 1;
 const Markets = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
 
   const [pools, setPools] = useState([]);
   const [lpSupplies, setLpSupplies] = useState({}); // lpDenom -> total shares, null if unread
@@ -75,9 +75,9 @@ const Markets = () => {
     (async () => {
       showLoading();
       try {
-        const [ps, options, fee, escrowSeconds, polSchedules] = await Promise.all([
+        const [ps, stream, fee, escrowSeconds, polSchedules] = await Promise.all([
           dex.pools(),
-          allocation.allocationOptions(allocation.STREAM_GROUNDWORKS),
+          allocation.streamView(allocation.STREAM_GROUNDWORKS),
           dex.swapFeePercent(),
           dex.lpUnbondingSeconds(),
           dex.polBurns(),
@@ -88,11 +88,13 @@ const Markets = () => {
         setUnbondSeconds(escrowSeconds);
         setBurns(polSchedules);
 
-        const totalWeight = options.reduce((s, o) => s + Number(o.amountAllocated), 0);
-        const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED");
-        setLpRewardShare(
-          totalWeight > 0 && lpOption ? Number(lpOption.amountAllocated) / totalWeight : 0,
-        );
+        // Integer weights past 2^53: the ratio is taken exactly, then made a
+        // float. The share is of the chain's stream total, not of the options
+        // loaded (a partial list would overstate it).
+        const options = stream?.options ?? [];
+        const totalWeight = stream && BigInt(stream.totalWeight) > 0n ? stream.totalWeight : sumBig(options.map((o) => o.amountAllocated));
+        const lpOption = options.find((o) => o.kind === "ALLOCATION_KIND_INTEGRATED" && !o.removed);
+        setLpRewardShare(lpOption ? ratio(lpOption.amountAllocated, totalWeight) : 0);
 
         const supplies = await Promise.all(ps.map((p) => supplyOrNull(p.lpDenom)));
         if (cancelled) return;
@@ -192,6 +194,7 @@ const Markets = () => {
           erthReserve,
           tokenReserve,
           userShares,
+          userSharesBase: String(walletBalances[p.lpDenom] ?? "0"),
           totalShares,
           totalSharesBase,
           ownership,
@@ -243,54 +246,46 @@ const Markets = () => {
     setRemoveAmount("");
   };
 
-  // Deposits must match the current pool ratio, so editing one side sets the other.
+  // Deposits must match the current pool ratio, so editing one side sets the
+  // other: in base units, rounded UP as x/dex pulls each leg (dex.depositLeg),
+  // so the typed side buys every share it can and at most a unit comes back.
+  const derivedLeg = (val, typedDenom, from, to, otherDenom) => {
+    const micro = toMicro(val, typedDenom);
+    const leg = dex.depositLeg(micro, from, to);
+    return leg === "0" ? "" : formatUnits(leg, otherDenom);
+  };
+
   const handleErthChange = (val, row) => {
     setErthAmount(val);
-    const p = parseFloat(val);
-    setTokenBAmount(
-      Number.isFinite(p) && row.erthReserve > 0
-        ? ((p * row.tokenReserve) / row.erthReserve).toFixed(6)
-        : "",
-    );
+    setTokenBAmount(derivedLeg(val, UERTH, row.pool.erthReserve, row.pool.tokenReserve, row.pool.tokenDenom));
   };
 
   const handleTokenBChange = (val, row) => {
     setTokenBAmount(val);
-    const p = parseFloat(val);
-    setErthAmount(
-      Number.isFinite(p) && row.tokenReserve > 0
-        ? ((p * row.erthReserve) / row.tokenReserve).toFixed(6)
-        : "",
-    );
+    setErthAmount(derivedLeg(val, row.pool.tokenDenom, row.pool.tokenReserve, row.pool.erthReserve, UERTH));
   };
 
   const handleAddLiquidity = (row) => {
     if (!isConnected) return;
     execute(async () => {
-      // Price the deposit against the reserves the page is showing, then accept
-      // anything within LP_SLIPPAGE_PERCENT of it. Without a floor the deposit
-      // mints whatever ratio it lands on, and moving the ratio either side of
-      // it is the standard sandwich.
+      // Price the deposit against the pool's reserves and share supply read
+      // NOW, then accept anything within LP_SLIPPAGE_PERCENT of it. The rows
+      // on the page may be minutes old; a floor priced on them is a floor on
+      // a ratio that no longer exists. Without a floor the deposit mints
+      // whatever ratio it lands on, and moving the ratio either side of it is
+      // the standard sandwich.
       //
-      // All of it in base units on integers. A quote of zero means there was
-      // nothing to price against — most often the share supply failing to load —
-      // and it used to become a floor of zero, i.e. the unprotected deposit the
-      // floor exists to prevent. Refuse instead.
+      // All of it in base units on integers. A floor of zero means there was
+      // nothing to price against (a read failed): refuse rather than send the
+      // unprotected deposit the floor exists to prevent.
       const erthMicro = toMicro(erthAmount, UERTH);
       const tokenMicro = toMicro(tokenBAmount, row.pool.tokenDenom);
-      const expected = BigInt(
-        dex.quoteAddLiquidity(
-          erthMicro,
-          tokenMicro,
-          row.pool.erthReserve,
-          row.pool.tokenReserve,
-          row.totalSharesBase,
-        ),
+      const minShares = BigInt(
+        await dex.addLiquidityFloor(row.pool.id, erthMicro, tokenMicro, LP_SLIPPAGE_PERCENT),
       );
-      const minShares = (expected * BigInt(100 - LP_SLIPPAGE_PERCENT)) / 100n;
       if (minShares <= 0n) {
         throw new Error(
-          "Couldn't read this pool's share supply, so the deposit can't be protected " +
+          "Couldn't read this pool's reserves and share supply, so the deposit can't be protected " +
             "against price movement. Refresh and try again.",
         );
       }
@@ -328,11 +323,15 @@ const Markets = () => {
   const handleRemoveAnmlLiquidity = (row) => {
     if (!isConnected) return;
     execute(async () => {
+      const shares = toMicro(removeAmount, row.pool.lpDenom);
+      // Reserve and supply read together now; a failed read refuses.
+      const problem = await dex.withdrawalNoteLegProblemNow(row.pool.id, shares);
+      if (problem) throw new Error(problem);
       await broadcast([
         dex.removeLiquidityToShielded(
           address,
           row.pool.id,
-          toMicro(removeAmount, row.pool.lpDenom),
+          shares,
           anmlRecipient,
         ),
       ]);
@@ -353,7 +352,7 @@ const Markets = () => {
 
   return (
     <div className={styles.marketsPage}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       {/* Header */}
       <div className={styles.marketsHeader}>
@@ -425,7 +424,7 @@ const Markets = () => {
             <div className={styles.poolRowTop}>
               <div className={styles.poolRowPair}>
                 <img
-                  src={`/images/coin/${row.symbol}.png`}
+                  src={logoOf(row.pool.tokenDenom)}
                   alt={row.symbol}
                   className={styles.poolRowLogo}
                 />
@@ -531,8 +530,11 @@ const Markets = () => {
 
                   {row.pool.tokenDenom === UANML ? (
                     /* ANML exists only as notes. Adding is
-                       MsgAddLiquidityShielded (both legs from notes, proven
-                       on the phone). Withdrawing is a signed
+                       MsgAddLiquidityShielded (one bundle, both legs from
+                       notes, proven on the phone), which mints the shares as
+                       a private note: they never show here and are withdrawn
+                       in the app (MsgRemoveLiquidityShielded). Withdrawing
+                       transparent shares (e.g. auction-era) is a signed
                        MsgRemoveLiquidity whose ANML leg is minted as a note
                        to a shielded address (pc + value-blind ciphertext),
                        so a Keplr account holding these LP shares can leave
@@ -540,7 +542,8 @@ const Markets = () => {
                     <div className={styles.poolExpandActions}>
                       <MobileCta title="Provide ANML liquidity in the Earth Wallet app">
                         ANML is always private, so adding to this pool is done from your
-                        shielded balance on your phone. LP shares themselves are public.
+                        shielded balance on your phone. Those LP shares are private notes too: they are
+                        shown and withdrawn only in the app.
                       </MobileCta>
                       {row.userShares > 0 && (
                         <div className={styles.lpContent}>
@@ -557,7 +560,7 @@ const Markets = () => {
                                 Bal: {row.userShares.toLocaleString()}{" "}
                                 <button
                                   className={styles.lpMaxBtn}
-                                  onClick={() => setRemoveAmount(String(row.userShares))}
+                                  onClick={() => setRemoveAmount(formatUnits(row.userSharesBase, row.pool.lpDenom))}
                                 >
                                   Max
                                 </button>
@@ -566,13 +569,14 @@ const Markets = () => {
                             <div className={styles.lpInputWrapper}>
                               <div className={styles.lpInputInner} style={{ paddingLeft: 16 }}>
                                 <input
-                                  type="number"
+                                  inputMode="decimal"
                                   placeholder="0.0"
                                   value={removeAmount}
                                   onChange={(e) => setRemoveAmount(e.target.value)}
                                   className={styles.lpInput}
                                 />
                               </div>
+                              <AmountNote value={removeAmount} denom={row.pool.lpDenom} />
                             </div>
                           </div>
                           <button
@@ -581,8 +585,7 @@ const Markets = () => {
                             disabled={
                               !isConnected ||
                               !anmlRecipientOk ||
-                              !parseFloat(removeAmount) ||
-                              parseFloat(removeAmount) > row.userShares
+                              !amountOk(removeAmount, row.pool.lpDenom, row.userSharesBase)
                             }
                           >
                             Remove Liquidity
@@ -629,6 +632,12 @@ const Markets = () => {
 
                     {lpTab === "Add" && (
                       <div className={styles.lpContent}>
+                        {!isKnownDenom(row.pool.tokenDenom) && (
+                          <p className={styles.lpNote}>
+                            This app does not know how many decimals {row.symbol} has, so it cannot
+                            enter a deposit of it. Its amounts are shown in base units.
+                          </p>
+                        )}
                         <div className={styles.lpInputGroup}>
                           <div className={styles.lpInputHeader}>
                             <label>{row.symbol}</label>
@@ -636,7 +645,7 @@ const Markets = () => {
                               Bal: {tokenBalance.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => handleTokenBChange(String(tokenBalance), row)}
+                                onClick={() => handleTokenBChange(formatUnits(walletBalances[row.pool.tokenDenom] ?? "0", row.pool.tokenDenom), row)}
                               >
                                 Max
                               </button>
@@ -644,21 +653,22 @@ const Markets = () => {
                           </div>
                           <div className={styles.lpInputWrapper}>
                             <img
-                              src={`/images/coin/${row.symbol}.png`}
+                              src={logoOf(row.pool.tokenDenom)}
                               alt={row.symbol}
                               className={styles.lpInputLogo}
                             />
                             <div className={styles.lpInputInner}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={tokenBAmount}
                                 onChange={(e) => handleTokenBChange(e.target.value, row)}
                                 className={styles.lpInput}
                               />
+                              <AmountNote value={tokenBAmount} denom={row.pool.tokenDenom} />
                               <span className={styles.lpInputUsd}>
                                 {tokenBAmount && row.price ? (
-                                  <Amount value={parseFloat(tokenBAmount) * row.price} mode="price" />
+                                  <Amount value={typedFloat(tokenBAmount, row.pool.tokenDenom) * row.price} mode="price" />
                                 ) : (
                                   ""
                                 )}
@@ -673,7 +683,7 @@ const Markets = () => {
                               Bal: {erthBalance.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => handleErthChange(String(erthBalance), row)}
+                                onClick={() => handleErthChange(formatUnits(walletBalances[UERTH] ?? "0", UERTH), row)}
                               >
                                 Max
                               </button>
@@ -683,15 +693,16 @@ const Markets = () => {
                             <img src="/images/coin/ERTH.png" alt="ERTH" className={styles.lpInputLogo} />
                             <div className={styles.lpInputInner}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={erthAmount}
                                 onChange={(e) => handleErthChange(e.target.value, row)}
                                 className={styles.lpInput}
                               />
+                              <AmountNote value={erthAmount} denom={UERTH} />
                               <span className={styles.lpInputUsd}>
                                 {currency === "USD" && erthAmount && erthPrice
-                                  ? formatUSD(parseFloat(erthAmount) * erthPrice)
+                                  ? formatUSD(typedFloat(erthAmount, UERTH) * erthPrice)
                                   : ""}
                               </span>
                             </div>
@@ -703,9 +714,8 @@ const Markets = () => {
                           disabled={
                             !isConnected ||
                             row.totalSharesBase === null ||
-                            !(parseFloat(erthAmount) > 0 && parseFloat(tokenBAmount) > 0) ||
-                            parseFloat(erthAmount) > erthBalance ||
-                            parseFloat(tokenBAmount) > tokenBalance
+                            !amountOk(erthAmount, UERTH, walletBalances[UERTH] ?? "0") ||
+                            !amountOk(tokenBAmount, row.pool.tokenDenom, walletBalances[row.pool.tokenDenom] ?? "0")
                           }
                         >
                           Add Liquidity
@@ -722,7 +732,7 @@ const Markets = () => {
                               Bal: {row.userShares.toLocaleString()}{" "}
                               <button
                                 className={styles.lpMaxBtn}
-                                onClick={() => setRemoveAmount(String(row.userShares))}
+                                onClick={() => setRemoveAmount(formatUnits(row.userSharesBase, row.pool.lpDenom))}
                               >
                                 Max
                               </button>
@@ -731,13 +741,14 @@ const Markets = () => {
                           <div className={styles.lpInputWrapper}>
                             <div className={styles.lpInputInner} style={{ paddingLeft: 16 }}>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 placeholder="0.0"
                                 value={removeAmount}
                                 onChange={(e) => setRemoveAmount(e.target.value)}
                                 className={styles.lpInput}
                               />
                             </div>
+                            <AmountNote value={removeAmount} denom={row.pool.lpDenom} />
                           </div>
                         </div>
                         <button
@@ -745,8 +756,7 @@ const Markets = () => {
                           onClick={() => handleRemoveLiquidity(row)}
                           disabled={
                             !isConnected ||
-                            !parseFloat(removeAmount) ||
-                            parseFloat(removeAmount) > row.userShares
+                            !amountOk(removeAmount, row.pool.lpDenom, row.userSharesBase)
                           }
                         >
                           Remove Liquidity

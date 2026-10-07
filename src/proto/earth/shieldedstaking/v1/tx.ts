@@ -8,7 +8,7 @@
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { WeightedVoteOption } from "../../../cosmos/gov/v1/gov";
 import { AllocationWeight } from "../../allocation/v1/allocation";
-import { Transfer } from "../../shielded/v1/shielded";
+import { Bundle } from "../../shielded/v1/shielded";
 import { Params } from "./params";
 
 export const protobufPackage = "earth.shieldedstaking.v1";
@@ -24,135 +24,269 @@ export interface MsgUpdateParamsResponse {
 }
 
 /**
- * MsgDelegate spends transfer.value_out uerth into the module for validator
- * and mints a derth/<validator> note to pc at the live rate. The ERTH is
- * delegated at the epoch's end.
+ * StakeProof is a stake circuit proof (circuits/stake) and its public values.
+ * The circuit has two lanes, each of one stake asset:
  *
- * signal = SpendSignal("/earth.shieldedstaking.v1.MsgDelegate", chain_id,
- * ciphertexts, Bytes(validator), pc, Bytes(ciphertext)).
+ *   lane A (asset):     in_0 + in_1 + v_in == out + v_out   (unexposed value)
+ *   lane B (cr_asset):  cr_in + cr_v_in    == cr_out      (the credit lane)
+ *
+ * Slash labels (ORCHARD_DESIGN.md 8.7): a redelegation's credit is
+ * labelled (move key = the credit nullifier, move_time, exposed = cr_v_in);
+ * the exposure never leaves its note until the label clears (lane A, once
+ * move_time < clear_before, at what the debt tree under debt_root says).
+ *
+ * The chain supplies asset (the msg's stake asset id, 0 for a position
+ * update or vote), v_in (derth it credits), v_out (derth leaving), cr_asset,
+ * cr_v_in, cr_move_time (0, 0 and 0 unless the msg credits a second asset:
+ * a redelegation's derth/<dst> and its move_time) and the sighash. Public
+ * input order: anchor, asset, nf_0, nf_1, cm_out, v_in, v_out, clear_before,
+ * debt_root, cr_asset, cr_nf, cr_cm, cr_v_in, cr_move_time, owner_tag,
+ * sighash.
+ *
+ * An input of amount 0 publishes 0 (none) or its own would-be nullifier
+ * H(TAG_SNF, nk, rho, position) (padding: indistinguishable from a real
+ * spend). An output of amount 0 publishes 0 (none) or the commitment of a
+ * zero note of the owner (padding). The chain requires, per msg, which slots
+ * are non-zero, so that every msg of a kind has the same shape.
  */
-export interface MsgDelegate {
-  transfer: Transfer | undefined;
-  validator: string;
-  /** pc owns the derth note. */
-  pc: Uint8Array;
-  /** ciphertext is the derth note encrypted to its owner (optional). */
+export interface StakeProof {
+  /** proof is the bb v5.0.0 UltraHonk proof of circuits/stake. */
+  proof: Uint8Array;
+  /**
+   * anchor is a stake-tree root (32 bytes) recorded within
+   * stake_root_window_seconds (or the latest). Checked whenever the proof
+   * publishes a nullifier, padding included.
+   */
+  anchor: Uint8Array;
+  /** nullifiers: exactly two (lane A), 32 bytes each; zero for no input. */
+  nullifiers: Uint8Array[];
+  /**
+   * owner_tag is H(TAG_OTAG, owner_pk, salt) (32 bytes): stored by
+   * LockPosition, compared by a position's later msgs. Every proof publishes
+   * it, so the salt is a fresh random field element on every proof that does
+   * not act on a position (MsgDelegate, MsgUndelegate, MsgRedelegate,
+   * MsgRestake): a salt used twice links the two txs to one owner. A
+   * MsgLockPosition's salt is fresh too and stays that position's; the
+   * position's later msgs (update, vote, unlock) reuse it, as they must.
+   */
+  ownerTag: Uint8Array;
+  /**
+   * commitment is lane A's output (32 bytes): the owner's merged note, change
+   * or a padding zero note; zero for none. Appended to the stake tree first.
+   */
+  commitment: Uint8Array;
+  /**
+   * ciphertext is the wallet stake ciphertext of commitment (exactly 201
+   * bytes, zk/privacy.WalletStakeCiphertextBytes, label fields included) when
+   * it is non-zero, else empty; emitted for the owner's other devices.
+   */
   ciphertext: Uint8Array;
+  /**
+   * credit_nullifier is lane B's input (32 bytes): the owner's existing note
+   * of the credited asset merged into credit_commitment, or a padding
+   * nullifier; zero when the msg credits no second asset.
+   */
+  creditNullifier: Uint8Array;
+  /**
+   * credit_commitment is lane B's output (32 bytes); zero when the msg
+   * credits no second asset. Appended after commitment.
+   */
+  creditCommitment: Uint8Array;
+  /**
+   * credit_ciphertext is credit_commitment's wallet stake ciphertext when it
+   * is non-zero, else empty.
+   */
+  creditCiphertext: Uint8Array;
+  /**
+   * clear_before lets lane A clear a slash label whose move_time is below it
+   * (the circuit's clear_before). Every stake proof names it, whether or not
+   * it clears a label, so that one which does looks like every other: the
+   * label window's current clear_before (Query/DebtTree's clear_before: the
+   * block time less window_seconds) as of a recent block, within
+   * ClearBeforeSlackSeconds (3600) below the including block's.
+   */
+  clearBefore: number;
+  /**
+   * debt_root is the slash debt tree's root (32 bytes, Query/DebtTree's
+   * root): the current one on every proof. It changes only when a slash
+   * reaches a redelegation, at the start of a block.
+   */
+  debtRoot: Uint8Array;
 }
 
-/** MsgDelegateResponse returns the derth minted and the note's position. */
+/**
+ * MsgDelegate: bundle releases amount uerth into the module for validator
+ * (the rest of its uerth balance is the fee) and the owner's derth/<validator>
+ * note grows by derth: the stake proof (asset derth/<validator>, v_in =
+ * derth, v_out = 0) spends the owner's existing derth/<validator> note (or a
+ * padding input) and creates the merged note. The wallet names derth; the
+ * chain refuses it unless amount buys it at the live rate:
+ * derth <= floor(amount x S / B) (= amount while S is 0), and derth >=
+ * min_delegation. Whatever amount buys beyond derth stays in the validator's
+ * book (every holder's rate, the delegator's included). The ERTH is delegated
+ * at the epoch's end.
+ *
+ * sighash fields: StakeFields(stake), Bytes(validator), amount, derth.
+ */
+export interface MsgDelegate {
+  bundle: Bundle | undefined;
+  validator: string;
+  stake:
+    | StakeProof
+    | undefined;
+  /** amount is the uerth delegated. */
+  amount: number;
+  /** derth is the derth/<validator> credited to the owner's note (v_in). */
+  derth: number;
+}
+
+/**
+ * MsgDelegateResponse returns the derth credited and the merged stake note's
+ * position.
+ */
 export interface MsgDelegateResponse {
   derth: number;
   position: number;
 }
 
 /**
- * MsgUndelegate spends transfer.value_out of derth/<validator> and mints an
- * unbond/<validator>/<epoch> note of its ERTH value to pc.
+ * MsgRestake merges stake notes: the proof spends one or two of the owner's
+ * derth/<validator> notes and creates one of the same owner, the amounts
+ * balancing (hidden). Needed only for an owner holding more than one note at
+ * a validator (notes made before a wallet adopted the one-note rule, or by
+ * two devices at once); every other msg merges as it goes. bundle pays the
+ * fee only.
  *
- * signal = SpendSignal("/earth.shieldedstaking.v1.MsgUndelegate", chain_id,
- * ciphertexts, Bytes(validator), pc, Bytes(ciphertext)).
+ * sighash fields: StakeFields(stake), Bytes(validator).
+ */
+export interface MsgRestake {
+  bundle: Bundle | undefined;
+  validator: string;
+  stake: StakeProof | undefined;
+}
+
+/** MsgRestakeResponse returns the merged note's position (one entry). */
+export interface MsgRestakeResponse {
+  positions: number[];
+}
+
+/**
+ * MsgUndelegate: the proof spends derth/<validator> notes, amount of them
+ * leaving (v_out), any change back to the owner. The chain books the derth's
+ * live ERTH value u into this epoch's undelegation for validator and queues
+ * a payout of it to pc: once the epoch's SDK unbonding entry has matured
+ * (about unbonding_time after the epoch end), the chain mints
+ * u x payout / requested ERTH (the record's slash-adjusted payout, pro rata)
+ * as ordinary transferable notes to pc in the shielded pool, with
+ * ciphertext, by itself: no claim msg, no fee. A payout above 2^63-1 is
+ * minted as several notes to the same pc and ciphertext. bundle pays the fee
+ * only. The proof always creates lane A's output: the change, or a padding
+ * zero note when nothing is left.
+ *
+ * sighash fields: StakeFields(stake), Bytes(validator), amount, pc,
+ * Bytes(ciphertext).
  */
 export interface MsgUndelegate {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   validator: string;
-  pc: Uint8Array;
-  ciphertext: Uint8Array;
-}
-
-/** MsgUndelegateResponse returns the unbond note's denom, value and position. */
-export interface MsgUndelegateResponse {
-  denom: string;
-  value: number;
-  position: number;
-}
-
-/**
- * MsgClaimUnbonding spends transfer.value_out of unbond/<validator>/<epoch>
- * once that record has matured and mints ERTH = value x payout / requested to
- * pc (less fee_from_output).
- *
- * The claim runs in the private ante, atomically with the spend (see
- * x/shielded/types.PrivateActionExecutor).
- *
- * signal = SpendSignal("/earth.shieldedstaking.v1.MsgClaimUnbonding",
- * chain_id, ciphertexts, Bytes(validator), epoch, pc, Bytes(ciphertext),
- * fee_from_output).
- */
-export interface MsgClaimUnbonding {
-  transfer: Transfer | undefined;
-  validator: string;
-  epoch: number;
-  pc: Uint8Array;
-  ciphertext: Uint8Array;
-  /**
-   * fee_from_output pays the tx fee out of the claimed ERTH instead of from a
-   * fee note: transfer.fee must be 0, and the claim must pay more than it.
-   * The note minted to pc holds the rest. 0: the fee is transfer.fee.
-   */
-  feeFromOutput: number;
-}
-
-/**
- * MsgClaimUnbondingResponse returns the ERTH minted to pc (the claim less
- * fee_from_output; 0 if slashed away) and the note's position.
- */
-export interface MsgClaimUnbondingResponse {
   amount: number;
-  position: number;
+  stake:
+    | StakeProof
+    | undefined;
+  /**
+   * pc is the payout notes' owner commitment (32 bytes, a field element):
+   * PC(owner_pk, rho, rcm) of the wallet's own pool address, or anyone's.
+   */
+  pc: Uint8Array;
+  /**
+   * ciphertext is the payout notes' amount-blind v2 ciphertext (zk/privacy
+   * EncryptBlindNote, exactly 177 bytes), emitted with every payout note.
+   */
+  ciphertext: Uint8Array;
 }
 
 /**
- * MsgStakeVote votes derth/<validator> on proposal_id by spending it
- * (spend-to-vote). transfer is proven against the proposal's snapshot root
- * (ProposalSnapshot.root; the ante accepts it for this msg even once it has
- * left the pool's root window) and releases value_out of
- * derth/<validator> (asset public) to this module: that value is the vote's
- * weight. Its fee is 0 and its slot 2 a dummy. The handler records the vote
- * and mints the same value back to pc as a new note. The spent nullifier
- * stops the note voting again, and the new note is not in the snapshot root,
- * so it cannot vote on this proposal either. Final: a stake vote is not
- * replaced. Any change the transfer keeps (a wallet should release the whole
- * note) is likewise a new note outside the snapshot, and cannot vote.
+ * MsgUndelegateResponse returns the ERTH value booked and the payout's id
+ * (UnbondPayout.id; the shieldedstaking_unbond_payout event names it).
+ */
+export interface MsgUndelegateResponse {
+  value: number;
+  payoutId: number;
+}
+
+/**
+ * MsgStakeVote votes up to two derth/<validator> stake notes of one owner
+ * on proposal_id with ONE public weight, without spending them. proof
+ * (circuits/vote) shows, against the proposal's snapshot
+ * (ProposalSnapshot.root and .nf_root), that every used slot's note was in
+ * the stake tree and unspent when voting began, that its vote nullifier is
+ * H(TAG_VNF, nk, rho, position, proposal_id) under the one nk, that an unused
+ * slot's is the padding nullifier H(TAG_VPAD, nk, r, proposal_id) (r fresh
+ * random; it looks like a real one and never equals one), and that 0 <
+ * weight <= the notes' sum. Every vote carries two non-zero vote nullifiers:
+ * the number of notes voted is hidden. The
+ * wallet votes the sum rounded down to three significant digits (weight must
+ * have at most three; RoundVoteWeight). The chain refuses a vote nullifier
+ * repeated in the msg or already used on the proposal (final: no re-vote)
+ * and records weight at the validator once. Nothing is spent or minted: the
+ * notes can vote on every other open proposal and be spent as usual. bundle
+ * pays the fee against the shielded pool's current roots.
  *
- * fee_transfer pays the fee: a transfer of ERTH proven against a current root
- * (the pool's ordinary window), releasing nothing (value_out 0), so the fee
- * note need not predate the snapshot.
+ * With one note per validator (ORCHARD_DESIGN.md 8.1) a vote uses one
+ * slot: the note the owner held at the snapshot, even if it has since been
+ * merged into a newer note (its nullifier entered the tree after nf_root).
+ * An owner with more than two notes at a validator merges them first
+ * (MsgRestake), or votes the rest in a second MsgStakeVote (its own weight).
  *
- * Both proofs bind one signal = MultiSpendSignal(
- * "/earth.shieldedstaking.v1.MsgStakeVote", chain_id, [transfer.ciphertexts,
- * fee_transfer.ciphertexts], [transfer.nullifiers, fee_transfer.nullifiers],
- * proposal_id, Bytes(validator), Bytes(options), pc, Bytes(ciphertext)).
+ * Public inputs (the chain supplies all but the proof, vote_nullifiers and
+ * debt_root): note_root, nf_root, debt_root, asset =
+ * AssetID(derth/<validator>), weight, proposal_id, vote_nullifiers[0..1],
+ * sighash.
+ *
+ * sighash fields: proposal_id, Bytes(validator), Bytes(OptionsBytes(options)),
+ * weight, vote_nullifiers[0..1], debt_root.
  */
 export interface MsgStakeVote {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   proposalId: number;
   validator: string;
   options: WeightedVoteOption[];
-  /** pc receives the re-minted derth note. */
-  pc: Uint8Array;
-  ciphertext: Uint8Array;
-  feeTransfer: Transfer | undefined;
+  weight: number;
+  /** proof is the bb v5.0.0 UltraHonk proof of circuits/vote. */
+  proof: Uint8Array;
+  /**
+   * vote_nullifiers: exactly two, 32 bytes each, non-zero and distinct: a
+   * used slot's vote nullifier or an unused slot's padding nullifier, in
+   * the proof's slot order (wallets put the padding in a random slot).
+   */
+  voteNullifiers: Uint8Array[];
+  /**
+   * debt_root is the current slash debt tree root (32 bytes): a labelled
+   * note votes its amount less what slashes have cut from its exposure.
+   */
+  debtRoot: Uint8Array;
 }
 
-/** MsgStakeVoteResponse returns the re-minted note's position. */
+/** MsgStakeVoteResponse is empty (nothing is minted). */
 export interface MsgStakeVoteResponse {
-  position: number;
 }
 
 /**
- * MsgLockPosition spends transfer.value_out of derth/<validator> into the
- * module as a new Groundworks position splitting its weight by splits,
- * controlled by pubkey.
+ * MsgLockPosition: the proof spends the owner's derth/<validator> notes,
+ * amount of them leaving (v_out) into a new Groundworks position splitting
+ * its weight by splits, the change (or a padding zero note) back to the
+ * owner. The position stores stake.owner_tag: only its owner can update,
+ * unlock or vote it. bundle pays the fee only.
  *
- * signal = SpendSignal("/earth.shieldedstaking.v1.MsgLockPosition", chain_id,
- * ciphertexts, Bytes(validator), Bytes(pubkey), Bytes(splits)).
+ * sighash fields: StakeFields(stake), Bytes(validator), amount,
+ * Bytes(SplitsBytes(splits)).
  */
 export interface MsgLockPosition {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   validator: string;
+  amount: number;
   splits: AllocationWeight[];
-  pubkey: Uint8Array;
+  stake: StakeProof | undefined;
 }
 
 /** MsgLockPositionResponse returns the position id. */
@@ -161,48 +295,128 @@ export interface MsgLockPositionResponse {
 }
 
 /**
- * MsgUpdatePosition replaces a position's split. signature is the position
- * key's over PositionSignBytes (see types).
+ * MsgUpdatePosition replaces a position's split. The proof spends and creates
+ * nothing; its owner_tag must be the position's. bundle pays the fee only.
+ *
+ * sighash fields: StakeFields(stake), position_id, Bytes(SplitsBytes(splits)).
  */
 export interface MsgUpdatePosition {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   positionId: number;
   splits: AllocationWeight[];
-  signature: Uint8Array;
+  stake: StakeProof | undefined;
 }
 
 /** MsgUpdatePositionResponse is empty. */
 export interface MsgUpdatePositionResponse {
 }
 
-/** MsgUnlockPosition closes a position and mints its derth as a note to pc. */
+/**
+ * MsgUnlockPosition closes a position and credits its derth to its owner's
+ * derth/<validator> note: the stake proof (asset derth/<position's
+ * validator>, v_in = the position's derth, v_out = 0) spends the owner's
+ * existing note (or a padding input) and creates the merged note; its
+ * owner_tag must be the position's. bundle pays the fee only.
+ *
+ * sighash fields: StakeFields(stake), position_id.
+ */
 export interface MsgUnlockPosition {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   positionId: number;
-  pc: Uint8Array;
-  ciphertext: Uint8Array;
-  signature: Uint8Array;
+  stake: StakeProof | undefined;
 }
 
-/** MsgUnlockPositionResponse returns the note's position. */
+/** MsgUnlockPositionResponse returns the merged stake note's position. */
 export interface MsgUnlockPositionResponse {
   position: number;
 }
 
 /**
  * MsgPositionVote votes a position (created before the proposal entered
- * voting) on an x/gov proposal; a later vote replaces it.
+ * voting) on an x/gov proposal; a later vote replaces it. The proof spends and
+ * creates nothing; its owner_tag must be the position's. bundle pays the fee
+ * only.
+ *
+ * sighash fields: StakeFields(stake), position_id, proposal_id,
+ * Bytes(OptionsBytes(options)).
  */
 export interface MsgPositionVote {
-  transfer: Transfer | undefined;
+  bundle: Bundle | undefined;
   positionId: number;
   proposalId: number;
   options: WeightedVoteOption[];
-  signature: Uint8Array;
+  stake: StakeProof | undefined;
 }
 
 /** MsgPositionVoteResponse is empty. */
 export interface MsgPositionVoteResponse {
+}
+
+/**
+ * MsgRedelegate moves amount of the owner's derth/<src_validator> to
+ * dst_validator with no unbonding gap. The proof's lane A (asset
+ * derth/<src>, v_out = amount) spends derth/<src> notes, the change (or a
+ * padding zero note) back to the owner; its credit lane (asset derth/<dst>,
+ * cr_v_in = dst_derth) spends the owner's existing derth/<dst> note (or a
+ * padding input) and creates the merged derth/<dst> note, which must be
+ * unlabelled. The chain moves the spent derth's live ERTH value u from src's
+ * book to dst's (pro rata to the book's queue and bonded part, queue first
+ * only when no slash can reach src: src unbonded, or nothing bonded; the
+ * bonded part unbonded at src and bonded at dst at once, with a redelegation
+ * entry the module records itself) and refuses dst_derth unless what arrived
+ * buys it at dst's live rate: dst_derth <= floor(arrived x S_dst / B_dst) (=
+ * arrived while S_dst is 0), and dst_derth >= min_delegation. What arrived
+ * beyond dst_derth stays in dst's book. bundle pays the fee only.
+ *
+ * It runs in the private ante, atomically with the spend: a redelegation
+ * whose dst_derth the arrival does not cover, or whose move_time is out of
+ * range, fails the tx before anything is spent or paid. A validator's
+ * operator cannot redelegate its self-bond.
+ *
+ * The credited derth is labelled with the move: until the move's x/staking
+ * entry matures (the label window), a slash of src_validator for an
+ * infraction before the move cuts it (the slash debt tree), and it cannot
+ * leave the note (no undelegating, locking or redelegating it on; the rest
+ * of the note moves freely). x/staking's transitive and max_entries limits
+ * do not apply: the module moves its stake with x/staking's primitives and
+ * records the entry itself.
+ *
+ * sighash fields: StakeFields(stake), Bytes(src_validator),
+ * Bytes(dst_validator), amount, dst_derth, move_time.
+ */
+export interface MsgRedelegate {
+  bundle: Bundle | undefined;
+  srcValidator: string;
+  dstValidator: string;
+  /** amount is the derth/<src_validator> leaving the notes (v_out). */
+  amount: number;
+  stake:
+    | StakeProof
+    | undefined;
+  /**
+   * dst_derth is the derth/<dst_validator> credited to the owner's note
+   * (the credit lane's cr_v_in).
+   */
+  dstDerth: number;
+  /**
+   * move_time labels the credited derth (unix seconds; cr_move_time): the
+   * block time must be in [move_time, move_time + move_time_slack]. The
+   * label's window closes at move_time + the label window (Query/DebtTree).
+   */
+  moveTime: number;
+}
+
+/**
+ * MsgRedelegateResponse: the ERTH value moved, the derth/<dst_validator>
+ * credited and the merged stake note's position, and when x/staking's
+ * redelegation entry completes (unix ns; 0 when none was made: nothing
+ * bonded moved, or the source was unbonded).
+ */
+export interface MsgRedelegateResponse {
+  value: number;
+  derth: number;
+  position: number;
+  completionTime: number;
 }
 
 function createBaseMsgUpdateParams(): MsgUpdateParams {
@@ -344,23 +558,293 @@ export const MsgUpdateParamsResponse: MessageFns<MsgUpdateParamsResponse> = {
   },
 };
 
+function createBaseStakeProof(): StakeProof {
+  return {
+    proof: new Uint8Array(0),
+    anchor: new Uint8Array(0),
+    nullifiers: [],
+    ownerTag: new Uint8Array(0),
+    commitment: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+    creditNullifier: new Uint8Array(0),
+    creditCommitment: new Uint8Array(0),
+    creditCiphertext: new Uint8Array(0),
+    clearBefore: 0,
+    debtRoot: new Uint8Array(0),
+  };
+}
+
+export const StakeProof: MessageFns<StakeProof> = {
+  encode(message: StakeProof, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.proof.length !== 0) {
+      writer.uint32(10).bytes(message.proof);
+    }
+    if (message.anchor.length !== 0) {
+      writer.uint32(18).bytes(message.anchor);
+    }
+    for (const v of message.nullifiers) {
+      writer.uint32(26).bytes(v!);
+    }
+    if (message.ownerTag.length !== 0) {
+      writer.uint32(58).bytes(message.ownerTag);
+    }
+    if (message.commitment.length !== 0) {
+      writer.uint32(74).bytes(message.commitment);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(82).bytes(message.ciphertext);
+    }
+    if (message.creditNullifier.length !== 0) {
+      writer.uint32(90).bytes(message.creditNullifier);
+    }
+    if (message.creditCommitment.length !== 0) {
+      writer.uint32(98).bytes(message.creditCommitment);
+    }
+    if (message.creditCiphertext.length !== 0) {
+      writer.uint32(106).bytes(message.creditCiphertext);
+    }
+    if (message.clearBefore !== 0) {
+      writer.uint32(112).uint64(message.clearBefore);
+    }
+    if (message.debtRoot.length !== 0) {
+      writer.uint32(122).bytes(message.debtRoot);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): StakeProof {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseStakeProof();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.proof = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.anchor = reader.bytes();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.nullifiers.push(reader.bytes());
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.ownerTag = reader.bytes();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.commitment = reader.bytes();
+            continue;
+          }
+          case 10: {
+            if (tag !== 82) {
+              break;
+            }
+
+            message.ciphertext = reader.bytes();
+            continue;
+          }
+          case 11: {
+            if (tag !== 90) {
+              break;
+            }
+
+            message.creditNullifier = reader.bytes();
+            continue;
+          }
+          case 12: {
+            if (tag !== 98) {
+              break;
+            }
+
+            message.creditCommitment = reader.bytes();
+            continue;
+          }
+          case 13: {
+            if (tag !== 106) {
+              break;
+            }
+
+            message.creditCiphertext = reader.bytes();
+            continue;
+          }
+          case 14: {
+            if (tag !== 112) {
+              break;
+            }
+
+            message.clearBefore = longToNumber(reader.uint64());
+            continue;
+          }
+          case 15: {
+            if (tag !== 122) {
+              break;
+            }
+
+            message.debtRoot = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): StakeProof {
+    return {
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      anchor: isSet(object.anchor) ? bytesFromBase64(object.anchor) : new Uint8Array(0),
+      nullifiers: globalThis.Array.isArray(object?.nullifiers)
+        ? object.nullifiers.map((e: any) => bytesFromBase64(e))
+        : [],
+      ownerTag: isSet(object.ownerTag)
+        ? bytesFromBase64(object.ownerTag)
+        : isSet(object.owner_tag)
+        ? bytesFromBase64(object.owner_tag)
+        : new Uint8Array(0),
+      commitment: isSet(object.commitment) ? bytesFromBase64(object.commitment) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      creditNullifier: isSet(object.creditNullifier)
+        ? bytesFromBase64(object.creditNullifier)
+        : isSet(object.credit_nullifier)
+        ? bytesFromBase64(object.credit_nullifier)
+        : new Uint8Array(0),
+      creditCommitment: isSet(object.creditCommitment)
+        ? bytesFromBase64(object.creditCommitment)
+        : isSet(object.credit_commitment)
+        ? bytesFromBase64(object.credit_commitment)
+        : new Uint8Array(0),
+      creditCiphertext: isSet(object.creditCiphertext)
+        ? bytesFromBase64(object.creditCiphertext)
+        : isSet(object.credit_ciphertext)
+        ? bytesFromBase64(object.credit_ciphertext)
+        : new Uint8Array(0),
+      clearBefore: isSet(object.clearBefore)
+        ? globalThis.Number(object.clearBefore)
+        : isSet(object.clear_before)
+        ? globalThis.Number(object.clear_before)
+        : 0,
+      debtRoot: isSet(object.debtRoot)
+        ? bytesFromBase64(object.debtRoot)
+        : isSet(object.debt_root)
+        ? bytesFromBase64(object.debt_root)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: StakeProof): unknown {
+    const obj: any = {};
+    if (message.proof.length !== 0) {
+      obj.proof = base64FromBytes(message.proof);
+    }
+    if (message.anchor.length !== 0) {
+      obj.anchor = base64FromBytes(message.anchor);
+    }
+    if (message.nullifiers?.length) {
+      obj.nullifiers = message.nullifiers.map((e) => base64FromBytes(e));
+    }
+    if (message.ownerTag.length !== 0) {
+      obj.ownerTag = base64FromBytes(message.ownerTag);
+    }
+    if (message.commitment.length !== 0) {
+      obj.commitment = base64FromBytes(message.commitment);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
+    if (message.creditNullifier.length !== 0) {
+      obj.creditNullifier = base64FromBytes(message.creditNullifier);
+    }
+    if (message.creditCommitment.length !== 0) {
+      obj.creditCommitment = base64FromBytes(message.creditCommitment);
+    }
+    if (message.creditCiphertext.length !== 0) {
+      obj.creditCiphertext = base64FromBytes(message.creditCiphertext);
+    }
+    if (message.clearBefore !== 0) {
+      obj.clearBefore = Math.round(message.clearBefore);
+    }
+    if (message.debtRoot.length !== 0) {
+      obj.debtRoot = base64FromBytes(message.debtRoot);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StakeProof>, I>>(base?: I): StakeProof {
+    return StakeProof.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<StakeProof>, I>>(object: I): StakeProof {
+    const message = createBaseStakeProof();
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.anchor = object.anchor ?? new Uint8Array(0);
+    message.nullifiers = object.nullifiers?.map((e) => e) || [];
+    message.ownerTag = object.ownerTag ?? new Uint8Array(0);
+    message.commitment = object.commitment ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.creditNullifier = object.creditNullifier ?? new Uint8Array(0);
+    message.creditCommitment = object.creditCommitment ?? new Uint8Array(0);
+    message.creditCiphertext = object.creditCiphertext ?? new Uint8Array(0);
+    message.clearBefore = object.clearBefore ?? 0;
+    message.debtRoot = object.debtRoot ?? new Uint8Array(0);
+    return message;
+  },
+};
+
 function createBaseMsgDelegate(): MsgDelegate {
-  return { transfer: undefined, validator: "", pc: new Uint8Array(0), ciphertext: new Uint8Array(0) };
+  return { bundle: undefined, validator: "", stake: undefined, amount: 0, derth: 0 };
 }
 
 export const MsgDelegate: MessageFns<MsgDelegate> = {
   encode(message: MsgDelegate, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.validator !== "") {
       writer.uint32(18).string(message.validator);
     }
-    if (message.pc.length !== 0) {
-      writer.uint32(26).bytes(message.pc);
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
     }
-    if (message.ciphertext.length !== 0) {
-      writer.uint32(34).bytes(message.ciphertext);
+    if (message.amount !== 0) {
+      writer.uint32(40).uint64(message.amount);
+    }
+    if (message.derth !== 0) {
+      writer.uint32(48).uint64(message.derth);
     }
     return writer;
   },
@@ -383,7 +867,7 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -394,20 +878,28 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
             message.validator = reader.string();
             continue;
           }
-          case 3: {
-            if (tag !== 26) {
-              break;
-            }
-
-            message.pc = reader.bytes();
-            continue;
-          }
           case 4: {
             if (tag !== 34) {
               break;
             }
 
-            message.ciphertext = reader.bytes();
+            message.stake = StakeProof.decode(reader, reader.uint32());
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.amount = longToNumber(reader.uint64());
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.derth = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -424,26 +916,30 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
 
   fromJSON(object: any): MsgDelegate {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
-      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
-      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
+      derth: isSet(object.derth) ? globalThis.Number(object.derth) : 0,
     };
   },
 
   toJSON(message: MsgDelegate): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.validator !== "") {
       obj.validator = message.validator;
     }
-    if (message.pc.length !== 0) {
-      obj.pc = base64FromBytes(message.pc);
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
-    if (message.ciphertext.length !== 0) {
-      obj.ciphertext = base64FromBytes(message.ciphertext);
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
+    }
+    if (message.derth !== 0) {
+      obj.derth = Math.round(message.derth);
     }
     return obj;
   },
@@ -453,12 +949,15 @@ export const MsgDelegate: MessageFns<MsgDelegate> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgDelegate>, I>>(object: I): MsgDelegate {
     const message = createBaseMsgDelegate();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.validator = object.validator ?? "";
-    message.pc = object.pc ?? new Uint8Array(0);
-    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
+    message.amount = object.amount ?? 0;
+    message.derth = object.derth ?? 0;
     return message;
   },
 };
@@ -548,23 +1047,224 @@ export const MsgDelegateResponse: MessageFns<MsgDelegateResponse> = {
   },
 };
 
-function createBaseMsgUndelegate(): MsgUndelegate {
-  return { transfer: undefined, validator: "", pc: new Uint8Array(0), ciphertext: new Uint8Array(0) };
+function createBaseMsgRestake(): MsgRestake {
+  return { bundle: undefined, validator: "", stake: undefined };
 }
 
-export const MsgUndelegate: MessageFns<MsgUndelegate> = {
-  encode(message: MsgUndelegate, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+export const MsgRestake: MessageFns<MsgRestake> = {
+  encode(message: MsgRestake, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.validator !== "") {
       writer.uint32(18).string(message.validator);
     }
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRestake {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRestake();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.bundle = Bundle.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.validator = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.stake = StakeProof.decode(reader, reader.uint32());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRestake {
+    return {
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
+      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
+    };
+  },
+
+  toJSON(message: MsgRestake): unknown {
+    const obj: any = {};
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
+    }
+    if (message.validator !== "") {
+      obj.validator = message.validator;
+    }
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRestake>, I>>(base?: I): MsgRestake {
+    return MsgRestake.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRestake>, I>>(object: I): MsgRestake {
+    const message = createBaseMsgRestake();
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
+      : undefined;
+    message.validator = object.validator ?? "";
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseMsgRestakeResponse(): MsgRestakeResponse {
+  return { positions: [] };
+}
+
+export const MsgRestakeResponse: MessageFns<MsgRestakeResponse> = {
+  encode(message: MsgRestakeResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    writer.uint32(10).fork();
+    for (const v of message.positions) {
+      writer.uint64(v);
+    }
+    writer.join();
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRestakeResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRestakeResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag === 8) {
+              message.positions.push(longToNumber(reader.uint64()));
+
+              continue;
+            }
+
+            if (tag === 10) {
+              const end2 = reader.uint32() + reader.pos;
+              while (reader.pos < end2) {
+                message.positions.push(longToNumber(reader.uint64()));
+              }
+
+              continue;
+            }
+
+            break;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRestakeResponse {
+    return {
+      positions: globalThis.Array.isArray(object?.positions)
+        ? object.positions.map((e: any) => globalThis.Number(e))
+        : [],
+    };
+  },
+
+  toJSON(message: MsgRestakeResponse): unknown {
+    const obj: any = {};
+    if (message.positions?.length) {
+      obj.positions = message.positions.map((e) => Math.round(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRestakeResponse>, I>>(base?: I): MsgRestakeResponse {
+    return MsgRestakeResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRestakeResponse>, I>>(object: I): MsgRestakeResponse {
+    const message = createBaseMsgRestakeResponse();
+    message.positions = object.positions?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseMsgUndelegate(): MsgUndelegate {
+  return {
+    bundle: undefined,
+    validator: "",
+    amount: 0,
+    stake: undefined,
+    pc: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
+  };
+}
+
+export const MsgUndelegate: MessageFns<MsgUndelegate> = {
+  encode(message: MsgUndelegate, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
+    }
+    if (message.validator !== "") {
+      writer.uint32(18).string(message.validator);
+    }
+    if (message.amount !== 0) {
+      writer.uint32(24).uint64(message.amount);
+    }
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(42).fork()).join();
+    }
     if (message.pc.length !== 0) {
-      writer.uint32(26).bytes(message.pc);
+      writer.uint32(50).bytes(message.pc);
     }
     if (message.ciphertext.length !== 0) {
-      writer.uint32(34).bytes(message.ciphertext);
+      writer.uint32(58).bytes(message.ciphertext);
     }
     return writer;
   },
@@ -587,7 +1287,7 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -599,15 +1299,31 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
             continue;
           }
           case 3: {
-            if (tag !== 26) {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.amount = longToNumber(reader.uint64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.stake = StakeProof.decode(reader, reader.uint32());
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
               break;
             }
 
             message.pc = reader.bytes();
             continue;
           }
-          case 4: {
-            if (tag !== 34) {
+          case 7: {
+            if (tag !== 58) {
               break;
             }
 
@@ -628,8 +1344,10 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
 
   fromJSON(object: any): MsgUndelegate {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
       pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
       ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
     };
@@ -637,11 +1355,17 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
 
   toJSON(message: MsgUndelegate): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.validator !== "") {
       obj.validator = message.validator;
+    }
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
+    }
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
     if (message.pc.length !== 0) {
       obj.pc = base64FromBytes(message.pc);
@@ -657,10 +1381,14 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgUndelegate>, I>>(object: I): MsgUndelegate {
     const message = createBaseMsgUndelegate();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.validator = object.validator ?? "";
+    message.amount = object.amount ?? 0;
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
     message.pc = object.pc ?? new Uint8Array(0);
     message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     return message;
@@ -668,19 +1396,16 @@ export const MsgUndelegate: MessageFns<MsgUndelegate> = {
 };
 
 function createBaseMsgUndelegateResponse(): MsgUndelegateResponse {
-  return { denom: "", value: 0, position: 0 };
+  return { value: 0, payoutId: 0 };
 }
 
 export const MsgUndelegateResponse: MessageFns<MsgUndelegateResponse> = {
   encode(message: MsgUndelegateResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.denom !== "") {
-      writer.uint32(10).string(message.denom);
-    }
     if (message.value !== 0) {
       writer.uint32(16).uint64(message.value);
     }
-    if (message.position !== 0) {
-      writer.uint32(24).uint64(message.position);
+    if (message.payoutId !== 0) {
+      writer.uint32(32).uint64(message.payoutId);
     }
     return writer;
   },
@@ -698,14 +1423,6 @@ export const MsgUndelegateResponse: MessageFns<MsgUndelegateResponse> = {
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 10) {
-              break;
-            }
-
-            message.denom = reader.string();
-            continue;
-          }
           case 2: {
             if (tag !== 16) {
               break;
@@ -714,12 +1431,12 @@ export const MsgUndelegateResponse: MessageFns<MsgUndelegateResponse> = {
             message.value = longToNumber(reader.uint64());
             continue;
           }
-          case 3: {
-            if (tag !== 24) {
+          case 4: {
+            if (tag !== 32) {
               break;
             }
 
-            message.position = longToNumber(reader.uint64());
+            message.payoutId = longToNumber(reader.uint64());
             continue;
           }
         }
@@ -736,22 +1453,22 @@ export const MsgUndelegateResponse: MessageFns<MsgUndelegateResponse> = {
 
   fromJSON(object: any): MsgUndelegateResponse {
     return {
-      denom: isSet(object.denom) ? globalThis.String(object.denom) : "",
       value: isSet(object.value) ? globalThis.Number(object.value) : 0,
-      position: isSet(object.position) ? globalThis.Number(object.position) : 0,
+      payoutId: isSet(object.payoutId)
+        ? globalThis.Number(object.payoutId)
+        : isSet(object.payout_id)
+        ? globalThis.Number(object.payout_id)
+        : 0,
     };
   },
 
   toJSON(message: MsgUndelegateResponse): unknown {
     const obj: any = {};
-    if (message.denom !== "") {
-      obj.denom = message.denom;
-    }
     if (message.value !== 0) {
       obj.value = Math.round(message.value);
     }
-    if (message.position !== 0) {
-      obj.position = Math.round(message.position);
+    if (message.payoutId !== 0) {
+      obj.payoutId = Math.round(message.payoutId);
     }
     return obj;
   },
@@ -761,276 +1478,29 @@ export const MsgUndelegateResponse: MessageFns<MsgUndelegateResponse> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgUndelegateResponse>, I>>(object: I): MsgUndelegateResponse {
     const message = createBaseMsgUndelegateResponse();
-    message.denom = object.denom ?? "";
     message.value = object.value ?? 0;
-    message.position = object.position ?? 0;
-    return message;
-  },
-};
-
-function createBaseMsgClaimUnbonding(): MsgClaimUnbonding {
-  return {
-    transfer: undefined,
-    validator: "",
-    epoch: 0,
-    pc: new Uint8Array(0),
-    ciphertext: new Uint8Array(0),
-    feeFromOutput: 0,
-  };
-}
-
-export const MsgClaimUnbonding: MessageFns<MsgClaimUnbonding> = {
-  encode(message: MsgClaimUnbonding, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
-    }
-    if (message.validator !== "") {
-      writer.uint32(18).string(message.validator);
-    }
-    if (message.epoch !== 0) {
-      writer.uint32(24).uint64(message.epoch);
-    }
-    if (message.pc.length !== 0) {
-      writer.uint32(34).bytes(message.pc);
-    }
-    if (message.ciphertext.length !== 0) {
-      writer.uint32(42).bytes(message.ciphertext);
-    }
-    if (message.feeFromOutput !== 0) {
-      writer.uint32(48).uint64(message.feeFromOutput);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgClaimUnbonding {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgClaimUnbonding();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 10) {
-              break;
-            }
-
-            message.transfer = Transfer.decode(reader, reader.uint32());
-            continue;
-          }
-          case 2: {
-            if (tag !== 18) {
-              break;
-            }
-
-            message.validator = reader.string();
-            continue;
-          }
-          case 3: {
-            if (tag !== 24) {
-              break;
-            }
-
-            message.epoch = longToNumber(reader.uint64());
-            continue;
-          }
-          case 4: {
-            if (tag !== 34) {
-              break;
-            }
-
-            message.pc = reader.bytes();
-            continue;
-          }
-          case 5: {
-            if (tag !== 42) {
-              break;
-            }
-
-            message.ciphertext = reader.bytes();
-            continue;
-          }
-          case 6: {
-            if (tag !== 48) {
-              break;
-            }
-
-            message.feeFromOutput = longToNumber(reader.uint64());
-            continue;
-          }
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(object: any): MsgClaimUnbonding {
-    return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
-      validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
-      epoch: isSet(object.epoch) ? globalThis.Number(object.epoch) : 0,
-      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
-      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
-      feeFromOutput: isSet(object.feeFromOutput)
-        ? globalThis.Number(object.feeFromOutput)
-        : isSet(object.fee_from_output)
-        ? globalThis.Number(object.fee_from_output)
-        : 0,
-    };
-  },
-
-  toJSON(message: MsgClaimUnbonding): unknown {
-    const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
-    }
-    if (message.validator !== "") {
-      obj.validator = message.validator;
-    }
-    if (message.epoch !== 0) {
-      obj.epoch = Math.round(message.epoch);
-    }
-    if (message.pc.length !== 0) {
-      obj.pc = base64FromBytes(message.pc);
-    }
-    if (message.ciphertext.length !== 0) {
-      obj.ciphertext = base64FromBytes(message.ciphertext);
-    }
-    if (message.feeFromOutput !== 0) {
-      obj.feeFromOutput = Math.round(message.feeFromOutput);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgClaimUnbonding>, I>>(base?: I): MsgClaimUnbonding {
-    return MsgClaimUnbonding.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgClaimUnbonding>, I>>(object: I): MsgClaimUnbonding {
-    const message = createBaseMsgClaimUnbonding();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
-      : undefined;
-    message.validator = object.validator ?? "";
-    message.epoch = object.epoch ?? 0;
-    message.pc = object.pc ?? new Uint8Array(0);
-    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
-    message.feeFromOutput = object.feeFromOutput ?? 0;
-    return message;
-  },
-};
-
-function createBaseMsgClaimUnbondingResponse(): MsgClaimUnbondingResponse {
-  return { amount: 0, position: 0 };
-}
-
-export const MsgClaimUnbondingResponse: MessageFns<MsgClaimUnbondingResponse> = {
-  encode(message: MsgClaimUnbondingResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.amount !== 0) {
-      writer.uint32(8).uint64(message.amount);
-    }
-    if (message.position !== 0) {
-      writer.uint32(16).uint64(message.position);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): MsgClaimUnbondingResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
-    if (previousRecursionDepth >= 100) {
-      throw new globalThis.Error("protobuf decode recursion limit exceeded");
-    }
-    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
-    try {
-      const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseMsgClaimUnbondingResponse();
-      while (reader.pos < end) {
-        const tag = reader.uint32();
-        switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 8) {
-              break;
-            }
-
-            message.amount = longToNumber(reader.uint64());
-            continue;
-          }
-          case 2: {
-            if (tag !== 16) {
-              break;
-            }
-
-            message.position = longToNumber(reader.uint64());
-            continue;
-          }
-        }
-        if ((tag & 7) === 4 || tag === 0) {
-          break;
-        }
-        reader.skip(tag & 7);
-      }
-      return message;
-    } finally {
-      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
-    }
-  },
-
-  fromJSON(object: any): MsgClaimUnbondingResponse {
-    return {
-      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
-      position: isSet(object.position) ? globalThis.Number(object.position) : 0,
-    };
-  },
-
-  toJSON(message: MsgClaimUnbondingResponse): unknown {
-    const obj: any = {};
-    if (message.amount !== 0) {
-      obj.amount = Math.round(message.amount);
-    }
-    if (message.position !== 0) {
-      obj.position = Math.round(message.position);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<MsgClaimUnbondingResponse>, I>>(base?: I): MsgClaimUnbondingResponse {
-    return MsgClaimUnbondingResponse.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<MsgClaimUnbondingResponse>, I>>(object: I): MsgClaimUnbondingResponse {
-    const message = createBaseMsgClaimUnbondingResponse();
-    message.amount = object.amount ?? 0;
-    message.position = object.position ?? 0;
+    message.payoutId = object.payoutId ?? 0;
     return message;
   },
 };
 
 function createBaseMsgStakeVote(): MsgStakeVote {
   return {
-    transfer: undefined,
+    bundle: undefined,
     proposalId: 0,
     validator: "",
     options: [],
-    pc: new Uint8Array(0),
-    ciphertext: new Uint8Array(0),
-    feeTransfer: undefined,
+    weight: 0,
+    proof: new Uint8Array(0),
+    voteNullifiers: [],
+    debtRoot: new Uint8Array(0),
   };
 }
 
 export const MsgStakeVote: MessageFns<MsgStakeVote> = {
   encode(message: MsgStakeVote, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.proposalId !== 0) {
       writer.uint32(16).uint64(message.proposalId);
@@ -1039,16 +1509,19 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
       writer.uint32(26).string(message.validator);
     }
     for (const v of message.options) {
-      WeightedVoteOption.encode(v!, writer.uint32(58).fork()).join();
+      WeightedVoteOption.encode(v!, writer.uint32(34).fork()).join();
     }
-    if (message.pc.length !== 0) {
-      writer.uint32(74).bytes(message.pc);
+    if (message.weight !== 0) {
+      writer.uint32(40).uint64(message.weight);
     }
-    if (message.ciphertext.length !== 0) {
-      writer.uint32(82).bytes(message.ciphertext);
+    if (message.proof.length !== 0) {
+      writer.uint32(66).bytes(message.proof);
     }
-    if (message.feeTransfer !== undefined) {
-      Transfer.encode(message.feeTransfer, writer.uint32(90).fork()).join();
+    for (const v of message.voteNullifiers) {
+      writer.uint32(82).bytes(v!);
+    }
+    if (message.debtRoot.length !== 0) {
+      writer.uint32(90).bytes(message.debtRoot);
     }
     return writer;
   },
@@ -1071,7 +1544,7 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1090,20 +1563,28 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
             message.validator = reader.string();
             continue;
           }
-          case 7: {
-            if (tag !== 58) {
+          case 4: {
+            if (tag !== 34) {
               break;
             }
 
             message.options.push(WeightedVoteOption.decode(reader, reader.uint32()));
             continue;
           }
-          case 9: {
-            if (tag !== 74) {
+          case 5: {
+            if (tag !== 40) {
               break;
             }
 
-            message.pc = reader.bytes();
+            message.weight = longToNumber(reader.uint64());
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.proof = reader.bytes();
             continue;
           }
           case 10: {
@@ -1111,7 +1592,7 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
               break;
             }
 
-            message.ciphertext = reader.bytes();
+            message.voteNullifiers.push(reader.bytes());
             continue;
           }
           case 11: {
@@ -1119,7 +1600,7 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
               break;
             }
 
-            message.feeTransfer = Transfer.decode(reader, reader.uint32());
+            message.debtRoot = reader.bytes();
             continue;
           }
         }
@@ -1136,7 +1617,7 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
 
   fromJSON(object: any): MsgStakeVote {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       proposalId: isSet(object.proposalId)
         ? globalThis.Number(object.proposalId)
         : isSet(object.proposal_id)
@@ -1146,20 +1627,25 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
       options: globalThis.Array.isArray(object?.options)
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
-      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
-      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
-      feeTransfer: isSet(object.feeTransfer)
-        ? Transfer.fromJSON(object.feeTransfer)
-        : isSet(object.fee_transfer)
-        ? Transfer.fromJSON(object.fee_transfer)
-        : undefined,
+      weight: isSet(object.weight) ? globalThis.Number(object.weight) : 0,
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      voteNullifiers: globalThis.Array.isArray(object?.voteNullifiers)
+        ? object.voteNullifiers.map((e: any) => bytesFromBase64(e))
+        : globalThis.Array.isArray(object?.vote_nullifiers)
+        ? object.vote_nullifiers.map((e: any) => bytesFromBase64(e))
+        : [],
+      debtRoot: isSet(object.debtRoot)
+        ? bytesFromBase64(object.debtRoot)
+        : isSet(object.debt_root)
+        ? bytesFromBase64(object.debt_root)
+        : new Uint8Array(0),
     };
   },
 
   toJSON(message: MsgStakeVote): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.proposalId !== 0) {
       obj.proposalId = Math.round(message.proposalId);
@@ -1170,14 +1656,17 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
     if (message.options?.length) {
       obj.options = message.options.map((e) => WeightedVoteOption.toJSON(e));
     }
-    if (message.pc.length !== 0) {
-      obj.pc = base64FromBytes(message.pc);
+    if (message.weight !== 0) {
+      obj.weight = Math.round(message.weight);
     }
-    if (message.ciphertext.length !== 0) {
-      obj.ciphertext = base64FromBytes(message.ciphertext);
+    if (message.proof.length !== 0) {
+      obj.proof = base64FromBytes(message.proof);
     }
-    if (message.feeTransfer !== undefined) {
-      obj.feeTransfer = Transfer.toJSON(message.feeTransfer);
+    if (message.voteNullifiers?.length) {
+      obj.voteNullifiers = message.voteNullifiers.map((e) => base64FromBytes(e));
+    }
+    if (message.debtRoot.length !== 0) {
+      obj.debtRoot = base64FromBytes(message.debtRoot);
     }
     return obj;
   },
@@ -1187,30 +1676,26 @@ export const MsgStakeVote: MessageFns<MsgStakeVote> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgStakeVote>, I>>(object: I): MsgStakeVote {
     const message = createBaseMsgStakeVote();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.proposalId = object.proposalId ?? 0;
     message.validator = object.validator ?? "";
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
-    message.pc = object.pc ?? new Uint8Array(0);
-    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
-    message.feeTransfer = (object.feeTransfer !== undefined && object.feeTransfer !== null)
-      ? Transfer.fromPartial(object.feeTransfer)
-      : undefined;
+    message.weight = object.weight ?? 0;
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.voteNullifiers = object.voteNullifiers?.map((e) => e) || [];
+    message.debtRoot = object.debtRoot ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseMsgStakeVoteResponse(): MsgStakeVoteResponse {
-  return { position: 0 };
+  return {};
 }
 
 export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
-  encode(message: MsgStakeVoteResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.position !== 0) {
-      writer.uint32(8).uint64(message.position);
-    }
+  encode(_: MsgStakeVoteResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     return writer;
   },
 
@@ -1227,14 +1712,6 @@ export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
-          case 1: {
-            if (tag !== 8) {
-              break;
-            }
-
-            message.position = longToNumber(reader.uint64());
-            continue;
-          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -1247,45 +1724,44 @@ export const MsgStakeVoteResponse: MessageFns<MsgStakeVoteResponse> = {
     }
   },
 
-  fromJSON(object: any): MsgStakeVoteResponse {
-    return { position: isSet(object.position) ? globalThis.Number(object.position) : 0 };
+  fromJSON(_: any): MsgStakeVoteResponse {
+    return {};
   },
 
-  toJSON(message: MsgStakeVoteResponse): unknown {
+  toJSON(_: MsgStakeVoteResponse): unknown {
     const obj: any = {};
-    if (message.position !== 0) {
-      obj.position = Math.round(message.position);
-    }
     return obj;
   },
 
   create<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(base?: I): MsgStakeVoteResponse {
     return MsgStakeVoteResponse.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(object: I): MsgStakeVoteResponse {
+  fromPartial<I extends Exact<DeepPartial<MsgStakeVoteResponse>, I>>(_: I): MsgStakeVoteResponse {
     const message = createBaseMsgStakeVoteResponse();
-    message.position = object.position ?? 0;
     return message;
   },
 };
 
 function createBaseMsgLockPosition(): MsgLockPosition {
-  return { transfer: undefined, validator: "", splits: [], pubkey: new Uint8Array(0) };
+  return { bundle: undefined, validator: "", amount: 0, splits: [], stake: undefined };
 }
 
 export const MsgLockPosition: MessageFns<MsgLockPosition> = {
   encode(message: MsgLockPosition, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.validator !== "") {
       writer.uint32(18).string(message.validator);
     }
-    for (const v of message.splits) {
-      AllocationWeight.encode(v!, writer.uint32(26).fork()).join();
+    if (message.amount !== 0) {
+      writer.uint32(24).uint64(message.amount);
     }
-    if (message.pubkey.length !== 0) {
-      writer.uint32(34).bytes(message.pubkey);
+    for (const v of message.splits) {
+      AllocationWeight.encode(v!, writer.uint32(34).fork()).join();
+    }
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(50).fork()).join();
     }
     return writer;
   },
@@ -1308,7 +1784,7 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1320,11 +1796,11 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
             continue;
           }
           case 3: {
-            if (tag !== 26) {
+            if (tag !== 24) {
               break;
             }
 
-            message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
+            message.amount = longToNumber(reader.uint64());
             continue;
           }
           case 4: {
@@ -1332,7 +1808,15 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
               break;
             }
 
-            message.pubkey = reader.bytes();
+            message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.stake = StakeProof.decode(reader, reader.uint32());
             continue;
           }
         }
@@ -1349,28 +1833,32 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
 
   fromJSON(object: any): MsgLockPosition {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       validator: isSet(object.validator) ? globalThis.String(object.validator) : "",
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      pubkey: isSet(object.pubkey) ? bytesFromBase64(object.pubkey) : new Uint8Array(0),
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
 
   toJSON(message: MsgLockPosition): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.validator !== "") {
       obj.validator = message.validator;
     }
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
+    }
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
     }
-    if (message.pubkey.length !== 0) {
-      obj.pubkey = base64FromBytes(message.pubkey);
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
     return obj;
   },
@@ -1380,12 +1868,15 @@ export const MsgLockPosition: MessageFns<MsgLockPosition> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgLockPosition>, I>>(object: I): MsgLockPosition {
     const message = createBaseMsgLockPosition();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.validator = object.validator ?? "";
+    message.amount = object.amount ?? 0;
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.pubkey = object.pubkey ?? new Uint8Array(0);
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
     return message;
   },
 };
@@ -1464,13 +1955,13 @@ export const MsgLockPositionResponse: MessageFns<MsgLockPositionResponse> = {
 };
 
 function createBaseMsgUpdatePosition(): MsgUpdatePosition {
-  return { transfer: undefined, positionId: 0, splits: [], signature: new Uint8Array(0) };
+  return { bundle: undefined, positionId: 0, splits: [], stake: undefined };
 }
 
 export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
   encode(message: MsgUpdatePosition, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.positionId !== 0) {
       writer.uint32(16).uint64(message.positionId);
@@ -1478,8 +1969,8 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
     for (const v of message.splits) {
       AllocationWeight.encode(v!, writer.uint32(26).fork()).join();
     }
-    if (message.signature.length !== 0) {
-      writer.uint32(34).bytes(message.signature);
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(42).fork()).join();
     }
     return writer;
   },
@@ -1502,7 +1993,7 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1521,12 +2012,12 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
             message.splits.push(AllocationWeight.decode(reader, reader.uint32()));
             continue;
           }
-          case 4: {
-            if (tag !== 34) {
+          case 5: {
+            if (tag !== 42) {
               break;
             }
 
-            message.signature = reader.bytes();
+            message.stake = StakeProof.decode(reader, reader.uint32());
             continue;
           }
         }
@@ -1543,7 +2034,7 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
 
   fromJSON(object: any): MsgUpdatePosition {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       positionId: isSet(object.positionId)
         ? globalThis.Number(object.positionId)
         : isSet(object.position_id)
@@ -1552,14 +2043,14 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
       splits: globalThis.Array.isArray(object?.splits)
         ? object.splits.map((e: any) => AllocationWeight.fromJSON(e))
         : [],
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
 
   toJSON(message: MsgUpdatePosition): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.positionId !== 0) {
       obj.positionId = Math.round(message.positionId);
@@ -1567,8 +2058,8 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
     if (message.splits?.length) {
       obj.splits = message.splits.map((e) => AllocationWeight.toJSON(e));
     }
-    if (message.signature.length !== 0) {
-      obj.signature = base64FromBytes(message.signature);
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
     return obj;
   },
@@ -1578,12 +2069,14 @@ export const MsgUpdatePosition: MessageFns<MsgUpdatePosition> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgUpdatePosition>, I>>(object: I): MsgUpdatePosition {
     const message = createBaseMsgUpdatePosition();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.positionId = object.positionId ?? 0;
     message.splits = object.splits?.map((e) => AllocationWeight.fromPartial(e)) || [];
-    message.signature = object.signature ?? new Uint8Array(0);
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
     return message;
   },
 };
@@ -1641,31 +2134,19 @@ export const MsgUpdatePositionResponse: MessageFns<MsgUpdatePositionResponse> = 
 };
 
 function createBaseMsgUnlockPosition(): MsgUnlockPosition {
-  return {
-    transfer: undefined,
-    positionId: 0,
-    pc: new Uint8Array(0),
-    ciphertext: new Uint8Array(0),
-    signature: new Uint8Array(0),
-  };
+  return { bundle: undefined, positionId: 0, stake: undefined };
 }
 
 export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
   encode(message: MsgUnlockPosition, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.positionId !== 0) {
       writer.uint32(16).uint64(message.positionId);
     }
-    if (message.pc.length !== 0) {
-      writer.uint32(26).bytes(message.pc);
-    }
-    if (message.ciphertext.length !== 0) {
-      writer.uint32(34).bytes(message.ciphertext);
-    }
-    if (message.signature.length !== 0) {
-      writer.uint32(42).bytes(message.signature);
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(34).fork()).join();
     }
     return writer;
   },
@@ -1688,7 +2169,7 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1699,28 +2180,12 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
             message.positionId = longToNumber(reader.uint64());
             continue;
           }
-          case 3: {
-            if (tag !== 26) {
-              break;
-            }
-
-            message.pc = reader.bytes();
-            continue;
-          }
           case 4: {
             if (tag !== 34) {
               break;
             }
 
-            message.ciphertext = reader.bytes();
-            continue;
-          }
-          case 5: {
-            if (tag !== 42) {
-              break;
-            }
-
-            message.signature = reader.bytes();
+            message.stake = StakeProof.decode(reader, reader.uint32());
             continue;
           }
         }
@@ -1737,34 +2202,26 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
 
   fromJSON(object: any): MsgUnlockPosition {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       positionId: isSet(object.positionId)
         ? globalThis.Number(object.positionId)
         : isSet(object.position_id)
         ? globalThis.Number(object.position_id)
         : 0,
-      pc: isSet(object.pc) ? bytesFromBase64(object.pc) : new Uint8Array(0),
-      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
 
   toJSON(message: MsgUnlockPosition): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.positionId !== 0) {
       obj.positionId = Math.round(message.positionId);
     }
-    if (message.pc.length !== 0) {
-      obj.pc = base64FromBytes(message.pc);
-    }
-    if (message.ciphertext.length !== 0) {
-      obj.ciphertext = base64FromBytes(message.ciphertext);
-    }
-    if (message.signature.length !== 0) {
-      obj.signature = base64FromBytes(message.signature);
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
     return obj;
   },
@@ -1774,13 +2231,13 @@ export const MsgUnlockPosition: MessageFns<MsgUnlockPosition> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgUnlockPosition>, I>>(object: I): MsgUnlockPosition {
     const message = createBaseMsgUnlockPosition();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.positionId = object.positionId ?? 0;
-    message.pc = object.pc ?? new Uint8Array(0);
-    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
-    message.signature = object.signature ?? new Uint8Array(0);
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
     return message;
   },
 };
@@ -1853,13 +2310,13 @@ export const MsgUnlockPositionResponse: MessageFns<MsgUnlockPositionResponse> = 
 };
 
 function createBaseMsgPositionVote(): MsgPositionVote {
-  return { transfer: undefined, positionId: 0, proposalId: 0, options: [], signature: new Uint8Array(0) };
+  return { bundle: undefined, positionId: 0, proposalId: 0, options: [], stake: undefined };
 }
 
 export const MsgPositionVote: MessageFns<MsgPositionVote> = {
   encode(message: MsgPositionVote, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.transfer !== undefined) {
-      Transfer.encode(message.transfer, writer.uint32(10).fork()).join();
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
     }
     if (message.positionId !== 0) {
       writer.uint32(16).uint64(message.positionId);
@@ -1870,8 +2327,8 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
     for (const v of message.options) {
       WeightedVoteOption.encode(v!, writer.uint32(34).fork()).join();
     }
-    if (message.signature.length !== 0) {
-      writer.uint32(42).bytes(message.signature);
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(50).fork()).join();
     }
     return writer;
   },
@@ -1894,7 +2351,7 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
               break;
             }
 
-            message.transfer = Transfer.decode(reader, reader.uint32());
+            message.bundle = Bundle.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -1921,12 +2378,12 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
             message.options.push(WeightedVoteOption.decode(reader, reader.uint32()));
             continue;
           }
-          case 5: {
-            if (tag !== 42) {
+          case 6: {
+            if (tag !== 50) {
               break;
             }
 
-            message.signature = reader.bytes();
+            message.stake = StakeProof.decode(reader, reader.uint32());
             continue;
           }
         }
@@ -1943,7 +2400,7 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
 
   fromJSON(object: any): MsgPositionVote {
     return {
-      transfer: isSet(object.transfer) ? Transfer.fromJSON(object.transfer) : undefined,
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
       positionId: isSet(object.positionId)
         ? globalThis.Number(object.positionId)
         : isSet(object.position_id)
@@ -1957,14 +2414,14 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
       options: globalThis.Array.isArray(object?.options)
         ? object.options.map((e: any) => WeightedVoteOption.fromJSON(e))
         : [],
-      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0),
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
     };
   },
 
   toJSON(message: MsgPositionVote): unknown {
     const obj: any = {};
-    if (message.transfer !== undefined) {
-      obj.transfer = Transfer.toJSON(message.transfer);
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
     }
     if (message.positionId !== 0) {
       obj.positionId = Math.round(message.positionId);
@@ -1975,8 +2432,8 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
     if (message.options?.length) {
       obj.options = message.options.map((e) => WeightedVoteOption.toJSON(e));
     }
-    if (message.signature.length !== 0) {
-      obj.signature = base64FromBytes(message.signature);
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
     }
     return obj;
   },
@@ -1986,13 +2443,15 @@ export const MsgPositionVote: MessageFns<MsgPositionVote> = {
   },
   fromPartial<I extends Exact<DeepPartial<MsgPositionVote>, I>>(object: I): MsgPositionVote {
     const message = createBaseMsgPositionVote();
-    message.transfer = (object.transfer !== undefined && object.transfer !== null)
-      ? Transfer.fromPartial(object.transfer)
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
       : undefined;
     message.positionId = object.positionId ?? 0;
     message.proposalId = object.proposalId ?? 0;
     message.options = object.options?.map((e) => WeightedVoteOption.fromPartial(e)) || [];
-    message.signature = object.signature ?? new Uint8Array(0);
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
     return message;
   },
 };
@@ -2049,33 +2508,377 @@ export const MsgPositionVoteResponse: MessageFns<MsgPositionVoteResponse> = {
   },
 };
 
+function createBaseMsgRedelegate(): MsgRedelegate {
+  return {
+    bundle: undefined,
+    srcValidator: "",
+    dstValidator: "",
+    amount: 0,
+    stake: undefined,
+    dstDerth: 0,
+    moveTime: 0,
+  };
+}
+
+export const MsgRedelegate: MessageFns<MsgRedelegate> = {
+  encode(message: MsgRedelegate, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.bundle !== undefined) {
+      Bundle.encode(message.bundle, writer.uint32(10).fork()).join();
+    }
+    if (message.srcValidator !== "") {
+      writer.uint32(18).string(message.srcValidator);
+    }
+    if (message.dstValidator !== "") {
+      writer.uint32(26).string(message.dstValidator);
+    }
+    if (message.amount !== 0) {
+      writer.uint32(32).uint64(message.amount);
+    }
+    if (message.stake !== undefined) {
+      StakeProof.encode(message.stake, writer.uint32(42).fork()).join();
+    }
+    if (message.dstDerth !== 0) {
+      writer.uint32(48).uint64(message.dstDerth);
+    }
+    if (message.moveTime !== 0) {
+      writer.uint32(56).uint64(message.moveTime);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRedelegate {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRedelegate();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.bundle = Bundle.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.srcValidator = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.dstValidator = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.amount = longToNumber(reader.uint64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.stake = StakeProof.decode(reader, reader.uint32());
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.dstDerth = longToNumber(reader.uint64());
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.moveTime = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRedelegate {
+    return {
+      bundle: isSet(object.bundle) ? Bundle.fromJSON(object.bundle) : undefined,
+      srcValidator: isSet(object.srcValidator)
+        ? globalThis.String(object.srcValidator)
+        : isSet(object.src_validator)
+        ? globalThis.String(object.src_validator)
+        : "",
+      dstValidator: isSet(object.dstValidator)
+        ? globalThis.String(object.dstValidator)
+        : isSet(object.dst_validator)
+        ? globalThis.String(object.dst_validator)
+        : "",
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
+      stake: isSet(object.stake) ? StakeProof.fromJSON(object.stake) : undefined,
+      dstDerth: isSet(object.dstDerth)
+        ? globalThis.Number(object.dstDerth)
+        : isSet(object.dst_derth)
+        ? globalThis.Number(object.dst_derth)
+        : 0,
+      moveTime: isSet(object.moveTime)
+        ? globalThis.Number(object.moveTime)
+        : isSet(object.move_time)
+        ? globalThis.Number(object.move_time)
+        : 0,
+    };
+  },
+
+  toJSON(message: MsgRedelegate): unknown {
+    const obj: any = {};
+    if (message.bundle !== undefined) {
+      obj.bundle = Bundle.toJSON(message.bundle);
+    }
+    if (message.srcValidator !== "") {
+      obj.srcValidator = message.srcValidator;
+    }
+    if (message.dstValidator !== "") {
+      obj.dstValidator = message.dstValidator;
+    }
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
+    }
+    if (message.stake !== undefined) {
+      obj.stake = StakeProof.toJSON(message.stake);
+    }
+    if (message.dstDerth !== 0) {
+      obj.dstDerth = Math.round(message.dstDerth);
+    }
+    if (message.moveTime !== 0) {
+      obj.moveTime = Math.round(message.moveTime);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRedelegate>, I>>(base?: I): MsgRedelegate {
+    return MsgRedelegate.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRedelegate>, I>>(object: I): MsgRedelegate {
+    const message = createBaseMsgRedelegate();
+    message.bundle = (object.bundle !== undefined && object.bundle !== null)
+      ? Bundle.fromPartial(object.bundle)
+      : undefined;
+    message.srcValidator = object.srcValidator ?? "";
+    message.dstValidator = object.dstValidator ?? "";
+    message.amount = object.amount ?? 0;
+    message.stake = (object.stake !== undefined && object.stake !== null)
+      ? StakeProof.fromPartial(object.stake)
+      : undefined;
+    message.dstDerth = object.dstDerth ?? 0;
+    message.moveTime = object.moveTime ?? 0;
+    return message;
+  },
+};
+
+function createBaseMsgRedelegateResponse(): MsgRedelegateResponse {
+  return { value: 0, derth: 0, position: 0, completionTime: 0 };
+}
+
+export const MsgRedelegateResponse: MessageFns<MsgRedelegateResponse> = {
+  encode(message: MsgRedelegateResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.value !== 0) {
+      writer.uint32(8).uint64(message.value);
+    }
+    if (message.derth !== 0) {
+      writer.uint32(16).uint64(message.derth);
+    }
+    if (message.position !== 0) {
+      writer.uint32(24).uint64(message.position);
+    }
+    if (message.completionTime !== 0) {
+      writer.uint32(32).int64(message.completionTime);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgRedelegateResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMsgRedelegateResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.value = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.derth = longToNumber(reader.uint64());
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.position = longToNumber(reader.uint64());
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.completionTime = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MsgRedelegateResponse {
+    return {
+      value: isSet(object.value) ? globalThis.Number(object.value) : 0,
+      derth: isSet(object.derth) ? globalThis.Number(object.derth) : 0,
+      position: isSet(object.position) ? globalThis.Number(object.position) : 0,
+      completionTime: isSet(object.completionTime)
+        ? globalThis.Number(object.completionTime)
+        : isSet(object.completion_time)
+        ? globalThis.Number(object.completion_time)
+        : 0,
+    };
+  },
+
+  toJSON(message: MsgRedelegateResponse): unknown {
+    const obj: any = {};
+    if (message.value !== 0) {
+      obj.value = Math.round(message.value);
+    }
+    if (message.derth !== 0) {
+      obj.derth = Math.round(message.derth);
+    }
+    if (message.position !== 0) {
+      obj.position = Math.round(message.position);
+    }
+    if (message.completionTime !== 0) {
+      obj.completionTime = Math.round(message.completionTime);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgRedelegateResponse>, I>>(base?: I): MsgRedelegateResponse {
+    return MsgRedelegateResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgRedelegateResponse>, I>>(object: I): MsgRedelegateResponse {
+    const message = createBaseMsgRedelegateResponse();
+    message.value = object.value ?? 0;
+    message.derth = object.derth ?? 0;
+    message.position = object.position ?? 0;
+    message.completionTime = object.completionTime ?? 0;
+    return message;
+  },
+};
+
 /**
  * Msg is private staking. Every msg but UpdateParams is a private msg: no
- * signer, a shielded transfer that pays its fee (and carries any value it
- * moves), and a signal binding every other field. See x/shielded/ante.
+ * signer, an ordinary shielded bundle paying its fee (its uerth balance; a
+ * delegation's bundle also releases the amount it stakes), a stake proof
+ * (circuits/stake) over the module's own owner-locked stake note tree, and a
+ * sighash, zk/orchard.Sighash(type URL, chain id, tx fields, K, bundle
+ * digests, fields), binding every other field: the stake proof's public
+ * values (StakeProof fields, see StakeFields), then the msg's own fields.
+ * See x/shielded/ante and ORCHARD_DESIGN.md sections 5 and 8.
+ *
+ * Delegated stake (derth/<valoper>) exists only as stake notes, never in the
+ * shielded pool or an account, and never changes owner: every stake note a
+ * msg spends or creates belongs to the one owner_pk its stake proof knows nk
+ * for. One stake note per (owner, validator): the chain never mints a stake
+ * note; value it credits (a delegation's derth, an unlocked position's, a
+ * redelegation's arrival) is merged by the proof into the owner's existing
+ * note (ORCHARD_DESIGN.md 8.1). An undelegation is paid out by the
+ * chain itself at maturity, as ERTH notes in the shielded pool (no claim
+ * msg).
  */
 export interface Msg {
   /** UpdateParams updates the module parameters (governance). */
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse>;
-  /** Delegate stakes ERTH privately. */
+  /**
+   * Delegate stakes ERTH privately: the derth is merged into the owner's
+   * derth stake note.
+   */
   Delegate(request: MsgDelegate): Promise<MsgDelegateResponse>;
-  /** Undelegate turns derth into an unbonding claim. */
+  /** Restake merges stake notes of one owner. */
+  Restake(request: MsgRestake): Promise<MsgRestakeResponse>;
+  /**
+   * Undelegate unbonds derth; the chain pays its ERTH value out as notes
+   * at maturity.
+   */
   Undelegate(request: MsgUndelegate): Promise<MsgUndelegateResponse>;
-  /** ClaimUnbonding turns a matured unbonding claim into ERTH. */
-  ClaimUnbonding(request: MsgClaimUnbonding): Promise<MsgClaimUnbondingResponse>;
-  /** StakeVote votes a derth note on an x/gov proposal. */
+  /**
+   * StakeVote votes up to two stake notes of one owner at one validator on
+   * an x/gov proposal, with one weight.
+   */
   StakeVote(request: MsgStakeVote): Promise<MsgStakeVoteResponse>;
   /** LockPosition locks derth into a Groundworks position. */
   LockPosition(request: MsgLockPosition): Promise<MsgLockPositionResponse>;
-  /** UpdatePosition changes a position's split (signed by its key). */
+  /** UpdatePosition changes a position's split (its owner proves it). */
   UpdatePosition(request: MsgUpdatePosition): Promise<MsgUpdatePositionResponse>;
-  /** UnlockPosition returns a position's derth as a note (signed by its key). */
+  /** UnlockPosition returns a position's derth into its owner's stake note. */
   UnlockPosition(request: MsgUnlockPosition): Promise<MsgUnlockPositionResponse>;
   /**
-   * PositionVote votes a position's derth on an x/gov proposal (signed by its
-   * key).
+   * PositionVote votes a position's derth on an x/gov proposal (its owner
+   * proves it).
    */
   PositionVote(request: MsgPositionVote): Promise<MsgPositionVoteResponse>;
+  /**
+   * Redelegate moves derth from one validator to another with no unbonding
+   * gap: derth/<src> notes are spent, derth/<dst> is merged into their
+   * owner's derth/<dst> note.
+   */
+  Redelegate(request: MsgRedelegate): Promise<MsgRedelegateResponse>;
 }
 
 export const MsgServiceName = "earth.shieldedstaking.v1.Msg";
@@ -2087,13 +2890,14 @@ export class MsgClientImpl implements Msg {
     this.rpc = rpc;
     this.UpdateParams = this.UpdateParams.bind(this);
     this.Delegate = this.Delegate.bind(this);
+    this.Restake = this.Restake.bind(this);
     this.Undelegate = this.Undelegate.bind(this);
-    this.ClaimUnbonding = this.ClaimUnbonding.bind(this);
     this.StakeVote = this.StakeVote.bind(this);
     this.LockPosition = this.LockPosition.bind(this);
     this.UpdatePosition = this.UpdatePosition.bind(this);
     this.UnlockPosition = this.UnlockPosition.bind(this);
     this.PositionVote = this.PositionVote.bind(this);
+    this.Redelegate = this.Redelegate.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -2107,16 +2911,16 @@ export class MsgClientImpl implements Msg {
     return promise.then((data) => MsgDelegateResponse.decode(new BinaryReader(data)));
   }
 
+  Restake(request: MsgRestake): Promise<MsgRestakeResponse> {
+    const data = MsgRestake.encode(request).finish();
+    const promise = this.rpc.request(this.service, "Restake", data);
+    return promise.then((data) => MsgRestakeResponse.decode(new BinaryReader(data)));
+  }
+
   Undelegate(request: MsgUndelegate): Promise<MsgUndelegateResponse> {
     const data = MsgUndelegate.encode(request).finish();
     const promise = this.rpc.request(this.service, "Undelegate", data);
     return promise.then((data) => MsgUndelegateResponse.decode(new BinaryReader(data)));
-  }
-
-  ClaimUnbonding(request: MsgClaimUnbonding): Promise<MsgClaimUnbondingResponse> {
-    const data = MsgClaimUnbonding.encode(request).finish();
-    const promise = this.rpc.request(this.service, "ClaimUnbonding", data);
-    return promise.then((data) => MsgClaimUnbondingResponse.decode(new BinaryReader(data)));
   }
 
   StakeVote(request: MsgStakeVote): Promise<MsgStakeVoteResponse> {
@@ -2147,6 +2951,12 @@ export class MsgClientImpl implements Msg {
     const data = MsgPositionVote.encode(request).finish();
     const promise = this.rpc.request(this.service, "PositionVote", data);
     return promise.then((data) => MsgPositionVoteResponse.decode(new BinaryReader(data)));
+  }
+
+  Redelegate(request: MsgRedelegate): Promise<MsgRedelegateResponse> {
+    const data = MsgRedelegate.encode(request).finish();
+    const promise = this.rpc.request(this.service, "Redelegate", data);
+    return promise.then((data) => MsgRedelegateResponse.decode(new BinaryReader(data)));
   }
 }
 

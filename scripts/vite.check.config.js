@@ -1,11 +1,15 @@
 import { defineConfig } from 'vite';
 
-// Bundles scripts/check-explorer.mjs with all deps inlined so it can run under
-// plain node, giving the chain layer a runnable check without a test framework.
+// Bundles one check file, scripts/checks/$CHECK.mjs, with every dependency
+// inlined so it runs under plain node: the chain layer gets runnable checks
+// without a test framework. See scripts/check.sh.
+const name = process.env.CHECK;
+if (!name || !/^[a-z-]+$/.test(name)) throw new Error('set CHECK to a scripts/checks/<name>.mjs name');
+
 export default defineConfig({
   build: {
-    ssr: 'scripts/check-explorer.mjs',
-    outDir: 'build-check',
+    ssr: `scripts/checks/${name}.mjs`,
+    outDir: `build-check/${name}`,
     emptyOutDir: true,
     target: 'node18',
   },

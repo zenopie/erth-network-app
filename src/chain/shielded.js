@@ -1,7 +1,8 @@
 import { getOr } from "./rest";
 import { b64ToHex } from "./bytes";
 import { UERTH } from "./config";
-import { memoBytes, notePayment } from "./noteCipher";
+import { blindNotePayment, checkBlindCiphertext, memoBytes } from "./noteCipher";
+import { assetId, cm as noteCm, fieldFromBytes, fieldToBytes } from "./privacy";
 import { decodeShieldedAddress } from "./shieldedAddress";
 
 /**
@@ -74,42 +75,50 @@ export async function params() {
  * MsgShield: transparent coins from `sender` into a new note.
  *
  * pc = H(TAG_PC, owner_pk, rho, rcm) hides the recipient's owner key behind
- * fresh randomness, and `ciphertext` is the note encrypted to the
- * recipient's X25519 key so their wallet can find it (chain/noteCipher.js).
- * Use shieldTo to build both from a shielded address.
+ * fresh randomness, and `ciphertext` is the note's amount-blind v2
+ * ciphertext to the recipient's X25519 key (exactly 177 bytes, required by
+ * the chain) so their wallet can find it (chain/noteCipher.js). Use shieldTo
+ * to build both from a shielded address.
  */
-export function msgShield(sender, denom, amount, pc, ciphertext = new Uint8Array(0)) {
+export function msgShield(sender, denom, amount, pc, ciphertext) {
+  checkBlindCiphertext(ciphertext);
   return {
     typeUrl: "/earth.shielded.v1.MsgShield",
     value: { sender, amount: { denom, amount: String(amount) }, pc, ciphertext },
   };
 }
 
-const U64_MAX = (1n << 64n) - 1n;
+// One note's value stays below 2^63: the chain's shielded path refuses
+// anything at or above it, so a u64 above that would pass here and only fail
+// after the user had signed.
+const AMOUNT_LIMIT = 1n << 63n;
 
 /**
  * What shieldTo checks before it draws any randomness: the address decodes,
- * the amount is a positive u64 integer string, the memo fits. Cheap enough to
+ * the amount is a positive integer string below 2^63, the memo fits. Cheap enough to
  * run on every keystroke; throws a message fit to show.
  */
 export function checkShield(address, amount, memo = "") {
   decodeShieldedAddress(address);
   const s = String(amount ?? "");
   if (!/^\d+$/.test(s) || BigInt(s) <= 0n) throw new Error("Enter a positive amount.");
-  if (BigInt(s) > U64_MAX) throw new Error("Amount is too large for one note.");
+  if (BigInt(s) >= AMOUNT_LIMIT) throw new Error("Amount is too large for one note.");
   memoBytes(memo);
 }
 
 /**
  * Shields `amount` uerth (a base-unit integer string) from `sender` to the
- * shielded `address` (erthz1…). The value is fixed at signing, so the note
- * carries the canonical ciphertext and the recipient's wallet finds it on its
- * next sync. Returns { msg, cm } (cm hex, the note's public commitment).
- * Throws on a bad address or amount with a message fit to show.
+ * shielded `address` (erthz1…). Like every note the chain mints, it carries
+ * the amount-blind v2 ciphertext; the recipient's wallet opens it on its next
+ * sync and completes cm from the shield's public amount. Returns { msg, cm }
+ * (cm hex, the note's public commitment). Throws on a bad address or amount
+ * with a message fit to show.
  */
 export function shieldTo(sender, address, amount, { memo = "", denom = UERTH } = {}) {
   checkShield(address, amount, memo);
   const s = String(amount);
-  const { pc, ciphertext, cm } = notePayment(address, denom, BigInt(s), { memo });
+  const { pc, ciphertext } = blindNotePayment(address, { memo });
+  const cmBytes = fieldToBytes(noteCm(assetId(denom), BigInt(s), fieldFromBytes(pc)));
+  const cm = Array.from(cmBytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return { msg: msgShield(sender, denom, s, pc, ciphertext), cm };
 }

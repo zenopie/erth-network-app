@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useLoading } from "../contexts/LoadingContext";
+import { TxStatusUnknownError } from "../chain/tx";
 
 const useTransaction = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -8,12 +9,16 @@ const useTransaction = () => {
   // console only, so a rejected or failed transaction was a red cross with no
   // reason — indistinguishable from a wallet popup being dismissed.
   const [error, setError] = useState(null);
+  // Set when the tx was sent but its outcome could not be read: the modal
+  // says "submitted, status unknown" and links the hash, never "failed".
+  const [txHash, setTxHash] = useState(null);
   const { suppressLoading } = useLoading();
 
   const execute = useCallback(async (fn) => {
     setIsModalOpen(true);
     setAnimationState("loading");
     setError(null);
+    setTxHash(null);
     suppressLoading(true);
     try {
       await fn();
@@ -21,7 +26,12 @@ const useTransaction = () => {
     } catch (err) {
       console.error("Transaction error:", err);
       setError(err?.message || String(err));
-      setAnimationState("error");
+      if (err instanceof TxStatusUnknownError) {
+        setTxHash(err.hash);
+        setAnimationState("unknown");
+      } else {
+        setAnimationState("error");
+      }
     }
   }, [suppressLoading]);
 
@@ -32,7 +42,7 @@ const useTransaction = () => {
     setTimeout(() => suppressLoading(false), 500);
   }, [suppressLoading]);
 
-  return { isModalOpen, animationState, error, execute, closeModal };
+  return { isModalOpen, animationState, error, txHash, execute, closeModal };
 };
 
 export default useTransaction;

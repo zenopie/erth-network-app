@@ -14,10 +14,9 @@
     "@noble/hashes": "^2.3.0",
     "@scure/base": "2.3.0",
     "boxicons": "^2.1.4",
-    "chart.js": "^4.4.7",
+    "cosmjs-types": "0.11.0",
     "i18n-iso-countries": "^7.14.0",
     "react": "^18.3.1",
-    "react-chartjs-2": "^5.3.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.3",
     "react-simple-maps": "^3.0.0",
@@ -26,17 +25,24 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
-    "vite": "^6.4.1"
+    "vite": "^6.4.3"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "clean-install": "rm -rf node_modules package-lock.json && npm install",
-    "check:explorer": "./scripts/check-explorer.sh",
-    "check:staking": "./scripts/check-staking.sh",
-    "check:dex": "./scripts/check-dex.sh",
-    "check:privacy": "./scripts/check-privacy.sh"
+    "check": "./scripts/check.sh all",
+    "check:tx": "./scripts/check.sh tx",
+    "check:amounts": "./scripts/check.sh amounts",
+    "check:dex": "./scripts/check.sh dex",
+    "check:handles": "./scripts/check.sh handles",
+    "check:shielded": "./scripts/check.sh shielded",
+    "check:governance": "./scripts/check.sh governance",
+    "check:personhood": "./scripts/check.sh personhood",
+    "check:staking": "./scripts/check.sh staking",
+    "check:explorer": "./scripts/check.sh explorer",
+    "check:dex-live": "./scripts/check.sh dex-live"
   },
   "overrides": {
     "d3-color": "^3.1.0"

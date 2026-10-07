@@ -1,4 +1,5 @@
 import { bech32m } from "@scure/base";
+import { x25519 } from "@noble/curves/ed25519.js";
 import { fieldFromBytes, fieldToBytes } from "./privacy";
 
 /**
@@ -31,8 +32,8 @@ export function encodeShieldedAddress({ ownerPk, ekPub }) {
 /**
  * Parses a shielded address: hrp "erthz", a valid bech32m checksum (a
  * bech32/BIP-173 checksum is refused), one case, version 0x01, exactly 65
- * payload bytes with zero padding bits, and owner_pk below the BN254
- * modulus. Surrounding whitespace is ignored. Throws an Error whose message
+ * payload bytes with zero padding bits, owner_pk below the BN254
+ * modulus, and an ek_pub that is not a low-order X25519 point. Surrounding whitespace is ignored. Throws an Error whose message
  * is fit to show.
  */
 export function decodeShieldedAddress(input) {
@@ -67,7 +68,25 @@ export function decodeShieldedAddress(input) {
   } catch {
     throw new Error("Not a valid shielded address (owner key out of range).");
   }
-  return { ownerPk, ekPub: payload.slice(33, 65) };
+  const ekPub = payload.slice(33, 65);
+  if (!isUsableEkPub(ekPub)) {
+    throw new Error("Not a valid shielded address (its encryption key is a low-order point; nothing sent to it could be read).");
+  }
+  return { ownerPk, ekPub };
+}
+
+// A clamped X25519 scalar is a multiple of the cofactor 8, so ANY such scalar
+// times a small-order point (all-zero, u=1, and the other members of the
+// order-8 subgroup, canonical or not) is the all-zero shared secret. One fixed
+// scalar therefore decides it: an address whose ek_pub fails this is refused
+// at decode, before a payment to it is even offered (seal() refuses it again).
+const PROBE_SCALAR = new Uint8Array(32).map((_, i) => i + 1);
+function isUsableEkPub(ekPub) {
+  try {
+    return !x25519.getSharedSecret(PROBE_SCALAR, ekPub).every((b) => b === 0);
+  } catch {
+    return false;
+  }
 }
 
 /** True iff `s` decodes. */

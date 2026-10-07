@@ -4,14 +4,14 @@ import styles from "./Explorer.module.css";
 import forms from "./Forms.module.css";
 import * as shielded from "../chain/shielded";
 import * as bank from "../chain/bank";
+import * as shieldedStaking from "../chain/shieldedStaking";
 import { UERTH } from "../chain/config";
-import { symbolOf, toMacro } from "../chain/tokens";
+import { symbolOf } from "../chain/tokens";
+import { formatAmount as fmt } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { SearchBar, short } from "../components/ExplorerBits";
 
 const REFRESH_MS = 10000;
-const fmt = (micro, denom) =>
-  toMacro(micro ?? 0, denom).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 /** "derth/earthvaloper1…" -> "derth · earthvaloper1abc…xyz" for the table. */
 const assetLabel = (denom) => {
@@ -24,14 +24,18 @@ const assetLabel = (denom) => {
  * The shielded pool: how many notes exist, and per asset what has entered
  * and left it. Every owner, value and transfer inside it is private; the
  * turnstiles are the public boundary, and `in - out` is exactly what the pool
- * module holds. derth and unbond assets are delegation claims backed by the
- * module's stake rather than its bank balance.
+ * module holds. derth is not a pool asset: it is held in stake notes (one per
+ * owner and validator) in x/shieldedstaking's own tree, shown here by size
+ * only. An undelegation is paid into this pool by the chain when it matures. LP shares
+ * (dexlp/*) can be pool assets: shielded deposits mint them as notes, and they
+ * leave only through a private withdrawal.
  */
 const ExplorerShielded = () => {
   const { hideLoading } = useLoading();
   const [tree, setTree] = useState(null);
   const [rows, setRows] = useState(null);
   const [params, setParams] = useState(null);
+  const [stakeTree, setStakeTree] = useState(null);
   const [error, setError] = useState("");
   const [searchError, setSearchError] = useState("");
 
@@ -39,6 +43,8 @@ const ExplorerShielded = () => {
     hideLoading();
     let cancelled = false;
     const load = async () => {
+      // Separate tree, separate module: never let it hold up the pool's figures.
+      shieldedStaking.stakeTree().then((st) => !cancelled && setStakeTree(st));
       const [t, ts, as, p] = await Promise.all([
         shielded.tree(),
         shielded.turnstiles(),
@@ -56,9 +62,11 @@ const ExplorerShielded = () => {
         if (!byDenom.has(a.denom)) byDenom.set(a.denom, { denom: a.denom, in: "0", out: "0", held: "0" });
       }
       const list = [...byDenom.values()];
-      // Bank supply only means something for native and IBC denoms.
+      // Bank supply only means something for native, IBC and LP-share denoms
+      // (shares are bank coins; the pool holds the shielded ones).
+      const hasSupply = (d) => !d.includes("/") || d.startsWith("ibc/") || d.startsWith("dexlp/");
       const supplies = await Promise.all(
-        list.map((x) => (x.denom.includes("/") && !x.denom.startsWith("ibc/") ? null : bank.supplyOrNull(x.denom))),
+        list.map((x) => (hasSupply(x.denom) ? bank.supplyOrNull(x.denom) : null)),
       );
       if (cancelled) return;
       setRows(
@@ -132,6 +140,13 @@ const ExplorerShielded = () => {
             {params ? `${Math.round(params.rootWindowSeconds / 86400)} days` : "—"}
           </div>
         </div>
+        <div className={styles.kv}>
+          <div className={styles.kvLabel}>Stake notes</div>
+          <div className={styles.kvValue}>
+            {stakeTree ? stakeTree.size.toLocaleString() : "—"}
+            <span className={styles.muted}> (derth, one note per owner and validator, in x/shieldedstaking&apos;s own tree)</span>
+          </div>
+        </div>
       </div>
 
       <div className={styles.card}>
@@ -170,9 +185,10 @@ const ExplorerShielded = () => {
         )}
         <p className={forms.note}>
           Shielded is entered minus left, which the chain keeps equal to the pool&apos;s own
-          balance. Notes minted inside the pool — registration rewards, ANML claims, staking —
-          count as entering it. derth and unbond assets are private staking claims, backed by the
-          module&apos;s delegations; see <Link className={styles.link} to="/stake-erth">staking</Link>.
+          balance. Notes minted inside the pool — registration rewards, ANML claims, undelegation
+          payouts — count as entering it. LP shares held here are private: their owners are not
+          public. derth is not in this pool: it is held in owner-locked stake notes in the staking
+          module&apos;s own tree; see <Link className={styles.link} to="/stake-erth">staking</Link>.
         </p>
       </div>
     </div>

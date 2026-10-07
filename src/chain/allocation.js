@@ -1,4 +1,7 @@
-import { getOr, seg } from "./rest";
+import { fromBech32, toBech32 } from "@cosmjs/encoding";
+import { get, getOr, seg, text as str } from "./rest";
+import { valoperOf } from "./staking";
+import { ADDRESS_PREFIX } from "./config";
 
 /**
  * x/allocation — both vote-directed emission streams, over one engine.
@@ -10,11 +13,22 @@ import { getOr, seg } from "./rest";
  *                 mobile app (x/personhood MsgSetCaretaker, a membership
  *                 proof) and filed under a nullifier, not an address, so
  *                 there is no per-voter read here; each split lapses after
- *                 R days unless the app refreshes it.
+ *                 R days unless its owner refreshes it (manual).
  *   GROUNDWORKS — weighted by stake. Most of that weight is Groundworks
- *                 positions (locked private derth, see ./shieldedStaking.js);
- *                 the rest is validators' own self-bond, which an operator can
- *                 still direct transparently with MsgSetAllocations.
+ *                 positions (locked private derth, see ./shieldedStaking.js),
+ *                 weighed per validator: all of one validator's positions are
+ *                 ONE weighted voter (validatorVoter) carrying an absolute
+ *                 weight per option, trunc(rate x sum(derth x percent) / 100).
+ *                 The rest is validators' own self-bond, counted only while
+ *                 the validator is Bonded (in the active set), which an
+ *                 operator can still direct transparently with
+ *                 MsgSetAllocations.
+ *                 Every Groundworks split, a position's and an operator's
+ *                 alike, is leased: it counts until groundworks_lease_seconds
+ *                 (default 365 days) after it was cast or last renewed
+ *                 (Voter.expires_at, Position.split_expires_at), then stops
+ *                 counting. Casting it again renews it; nothing renews it
+ *                 automatically.
  */
 
 /**
@@ -40,29 +54,46 @@ function streamPath(stream) {
   }
 }
 
+// Pages walked before a stream's option list is called partial: 100 options a
+// page (the chain's MaxOptionsPageSize), so 100 000 options. Adding an
+// ADDRESS option is permissionless (for a fee), so this is a guard against an
+// unbounded read, not a size the list is expected to reach.
+export const MAX_OPTION_PAGES = 1000;
+
 /**
- * A stream's options plus its aggregates: { options, totalWeight, epoch }, or
- * null when the read fails. `kind` is INTEGRATED (resolved every block by a
- * protocol handler, e.g. LP rewards) or ADDRESS (accrues ERTH claimable to a
- * fixed recipient). Options are paged on chain (adding an ADDRESS option is
- * permissionless), so every page is walked.
+ * A stream's options plus its aggregates: { options, totalWeight, epoch,
+ * partial }, or null when the first read fails. `kind` is INTEGRATED
+ * (resolved every block by a protocol handler, e.g. LP rewards) or ADDRESS
+ * (accrues ERTH claimable to a fixed recipient). Options are paged on chain
+ * (adding an ADDRESS option is permissionless), so pages are walked until
+ * next_key is empty. `partial` is true when a later page failed, a page key
+ * repeated, or MAX_OPTION_PAGES was hit: the options are then not all of
+ * them, and shares must be taken against `totalWeight` (the chain's sum over
+ * every live option), never the sum of the options loaded.
  */
-export async function streamView(stream) {
+export async function streamView(stream, { maxPages = MAX_OPTION_PAGES } = {}) {
   const options = [];
   let totalWeight = "0";
   let epoch = 0;
   let key = "";
-  for (let page = 0; page < 20; page++) {
+  const seen = new Set();
+  for (let page = 0; page < maxPages; page++) {
     const q = `?pagination.limit=100${key ? `&pagination.key=${encodeURIComponent(key)}` : ""}`;
     const data = await getOr(seg`/earth/allocation/v1/options/${streamPath(stream)}` + q, null);
-    if (!data) return page === 0 ? null : { options, totalWeight, epoch };
+    if (!data) return page === 0 ? null : { options, totalWeight, epoch, partial: true };
     options.push(...(data.options ?? []).map(toOption));
-    totalWeight = data.total_weight ?? totalWeight;
-    epoch = Number(data.epoch ?? epoch);
+    // The aggregates describe the whole stream; the first page's are kept so
+    // a later page cannot move them under options already read.
+    if (page === 0) {
+      totalWeight = /^\d+$/.test(String(data.total_weight ?? "")) ? String(data.total_weight) : "0";
+      epoch = Number(data.epoch ?? 0);
+    }
     key = data.pagination?.next_key ?? "";
-    if (!key) break;
+    if (!key) return { options, totalWeight, epoch, partial: false };
+    if (seen.has(key)) return { options, totalWeight, epoch, partial: true };
+    seen.add(key);
   }
-  return { options, totalWeight, epoch };
+  return { options, totalWeight, epoch, partial: true };
 }
 
 /** Just the options of a stream ([] when unreadable). */
@@ -70,24 +101,160 @@ export async function allocationOptions(stream) {
   return (await streamView(stream))?.options ?? [];
 }
 
-/**
- * An address's Groundworks split as [{ optionId, percent }] and the weight it
- * carries (its bonded stake — on this chain, a validator's self-bond). The
- * LCD 404s for an address that has never voted. Caretaker splits are keyed by
- * nullifier and cannot be read this way.
- */
-export async function groundworksVoter(address) {
-  const data = await getOr(
-    seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`,
-    null,
-  );
+function toVoter(v) {
   return {
-    splits: (data?.voter?.percentages ?? []).map((w) => ({
+    splits: (v?.percentages ?? []).map((w) => ({
       optionId: Number(w.option_id),
       percent: Number(w.percent),
     })),
-    weight: data?.voter?.weight ?? "0",
+    // A weighted voter (a validator's positions) puts an absolute weight on
+    // each option instead of a percentage split; weight is their sum.
+    optionWeights: (v?.option_weights ?? []).map((w) => ({
+      optionId: Number(w.option_id),
+      weight: w.weight ?? "0",
+    })),
+    weight: v?.weight ?? "0",
+    epoch: Number(v?.epoch ?? 0),
+    // When an operator's split stops counting (unix seconds); 0 for a
+    // weighted voter (its positions carry their own leases).
+    expiresAt: Number(v?.expires_at ?? 0),
   };
+}
+
+// x/allocation DefaultGroundworksLeaseSeconds: what groundworks_lease_seconds
+// 0 means.
+export const DEFAULT_GROUNDWORKS_LEASE_SECONDS = 365 * 24 * 60 * 60;
+
+/**
+ * How long a Groundworks split counts after it is cast or renewed (seconds):
+ * the chain's groundworks_lease_seconds, 0 read as the default. The default
+ * when the params cannot be read.
+ */
+export async function groundworksLeaseSeconds() {
+  const data = await getOr("/earth/allocation/v1/params", null);
+  const n = Number(data?.params?.groundworks_lease_seconds ?? 0);
+  return Number.isSafeInteger(n) && n > 0 ? n : DEFAULT_GROUNDWORKS_LEASE_SECONDS;
+}
+
+// A lease ending within this many seconds is shown as due for renewal.
+export const RENEW_WARNING_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * An address's Groundworks split as [{ optionId, percent }] and the weight it
+ * carries: its stake at Bonded validators, which on this chain is a
+ * validator's self-bond while that validator is in the active set
+ * (BOND_STATUS_BONDED). Caretaker splits are keyed by nullifier and cannot be
+ * read this way.
+ *
+ * { splits, weight, epoch, expiresAt, exists, stale, expired, validatorStatus }:
+ *   exists — the chain has a voter record. The LCD 404s for an address that
+ *            has never voted; that is not zero weight, it is a validator yet to
+ *            set its first split, so the weight it would vote with is read
+ *            from its self-bond.
+ *   stale  — the record was filed before the stream's current epoch
+ *            (`streamEpoch`, from streamView): its split no longer counts
+ *            until set again, so it is shown as stale and the weight is again
+ *            the self-bond it would be re-cast with.
+ *   expired — the record's lease ended (expiresAt <= now, unix seconds):
+ *            it no longer counts (the chain drops it at the next settle,
+ *            after which the LCD 404s like a never-cast split), so the weight
+ *            is the self-bond it would be re-cast with.
+ *   validatorStatus — x/staking's status of the address's own validator
+ *            ("BOND_STATUS_BONDED", ...; "" when it runs none). Outside
+ *            BONDED the weight is "0" whatever the record says: x/allocation
+ *            weighs only stake at Bonded validators, and ApplySplit refuses a
+ *            non-empty split at zero weight (ErrNoWeight) with the fee spent.
+ * Any other read failure throws rather than passing for "no weight".
+ */
+export async function groundworksVoter(address, { streamEpoch = 0, now = Date.now() / 1000 } = {}) {
+  let voter = null;
+  try {
+    const data = await get(seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${address}`);
+    voter = data?.voter ?? null;
+  } catch (err) {
+    if (!/LCD 404/.test(err?.message ?? "")) throw err;
+  }
+  const v = toVoter(voter);
+  const exists = voter !== null;
+  const stale = exists && Number(streamEpoch) > 0 && v.epoch < Number(streamEpoch);
+  const expired = exists && v.expiresAt > 0 && v.expiresAt <= now;
+  const validatorStatus = await ownValidatorStatus(address);
+  const out = { ...v, exists, stale, expired, validatorStatus };
+  if (validatorStatus !== BONDED) return { ...out, weight: "0" };
+  if (exists && !stale && !expired) return out;
+  return { ...out, weight: await selfBond(address) };
+}
+
+const BONDED = "BOND_STATUS_BONDED";
+
+/** Is a groundworksVoter() result's validator in the active set? */
+export const validatorBonded = (gv) => gv?.validatorStatus === BONDED;
+
+/**
+ * x/staking's status of the account's own validator, "" when it runs none
+ * (the LCD 404s). Any other failure throws: an unread status is not "no
+ * validator".
+ */
+async function ownValidatorStatus(address) {
+  const valoper = valoperOf(address);
+  if (!valoper) return "";
+  try {
+    const data = await get(seg`/cosmos/staking/v1beta1/validators/${valoper}`);
+    return str(data?.validator?.status);
+  } catch (err) {
+    if (/LCD 404/.test(err?.message ?? "")) return "";
+    throw err;
+  }
+}
+
+/**
+ * The account's bond to its own validator (uerth string), "0" when it runs
+ * none. Its Groundworks weight only while that validator is Bonded: the
+ * caller (groundworksVoter) checks the status first.
+ */
+async function selfBond(address) {
+  const valoper = valoperOf(address);
+  if (!valoper) return "0";
+  const d = await getOr(seg`/cosmos/staking/v1beta1/validators/${valoper}/delegations/${address}`, null);
+  const amt = String(d?.delegation_response?.balance?.amount ?? "0").split(".")[0];
+  return /^\d+$/.test(amt) ? amt : "0";
+}
+
+/** x/shieldedstaking's voter key prefix (types.ValidatorVoterPrefix). */
+const VALIDATOR_VOTER_PREFIX = new TextEncoder().encode("gwpos/");
+
+/**
+ * The voter key, as the bech32 string the Voter query takes, under which
+ * x/allocation weighs all of `valoper`'s Groundworks positions together:
+ * "gwpos/" || the validator's address bytes (26 or 38 bytes, never an
+ * account's 20 or 32).
+ */
+export function validatorVoterAddress(valoper) {
+  const { data } = fromBech32(valoper, 90);
+  const key = new Uint8Array(VALIDATOR_VOTER_PREFIX.length + data.length);
+  key.set(VALIDATOR_VOTER_PREFIX, 0);
+  key.set(data, VALIDATOR_VOTER_PREFIX.length);
+  return toBech32(ADDRESS_PREFIX, key, 90);
+}
+
+/**
+ * One validator's positions as the Groundworks stream weighs them: the
+ * weighted voter's absolute weight per option ([{ optionId, weight }]), their
+ * sum and the stream epoch it was filed in. Zero weights when the validator
+ * has no live positions (the LCD 404s, as it does for any unknown voter).
+ */
+export async function validatorVoter(valoper) {
+  const data = await getOr(
+    seg`/earth/allocation/v1/voter/${streamPath(STREAM_GROUNDWORKS)}/${validatorVoterAddress(valoper)}`,
+    null,
+  );
+  return { validator: valoper, ...toVoter(data?.voter) };
+}
+
+/** validatorVoter() for each operator, as a { valoper: voter } map. */
+export async function validatorVoters(valopers) {
+  const vs = await Promise.all(valopers.map((v) => validatorVoter(v).catch(() => null)));
+  return Object.fromEntries(valopers.map((v, i) => [v, vs[i]]));
 }
 
 // --- messages ---
@@ -96,11 +263,45 @@ export async function groundworksVoter(address) {
  * ts-proto emits `number` for uint64, not bigint — passing BigInt breaks
  * encoding. Everything numeric here goes through Number().
  */
+// x/allocation MaxVoterOptions: the most options one split may name.
+export const MAX_SPLIT_OPTIONS = 20;
+
+/** A split entry's percent as typed: an integer 1..100, else null. */
+export function splitPercent(v) {
+  const s = String(v ?? "").trim();
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 100 ? n : null;
+}
+
+/**
+ * Why x/allocation ValidateSplit would refuse this non-empty split, or null:
+ * each entry an integer share of 1..100 % (no zero, no negative), distinct
+ * options, at most MAX_SPLIT_OPTIONS of them, summing to exactly 100.
+ * Refused before signing rather than for a fee.
+ */
+export function splitProblem(weights) {
+  if (!weights.length) return "Add at least one option.";
+  if (weights.length > MAX_SPLIT_OPTIONS) return `A split names at most ${MAX_SPLIT_OPTIONS} options.`;
+  const ids = new Set();
+  let sum = 0;
+  for (const w of weights) {
+    const p = splitPercent(w.percent);
+    if (p === null) return "Each option's share must be a whole percent from 1 to 100.";
+    if (ids.has(String(w.optionId))) return "An option appears twice.";
+    ids.add(String(w.optionId));
+    sum += p;
+  }
+  return sum === 100 ? null : "Total allocation must equal 100%.";
+}
+
 // Groundworks only: the chain refuses a caretaker split from an address.
 export function msgSetAllocations(creator, stream, weights) {
   if (Number(stream) !== STREAM_GROUNDWORKS) {
     throw new Error("Caretaker splits are cast privately from the mobile app.");
   }
+  const problem = splitProblem(weights);
+  if (problem) throw new Error(problem);
   return {
     typeUrl: "/earth.allocation.v1.MsgSetAllocations",
     value: {
@@ -124,12 +325,12 @@ export function msgClaimAllocation(creator, stream, optionId) {
 function toOption(o) {
   return {
     id: Number(o.id),
-    stream: o.stream ?? "",
-    description: o.description ?? "",
-    kind: o.kind ?? "",
-    recipient: o.recipient ?? "",
-    handler: o.handler ?? "",
-    claimer: o.claimer ?? "",
+    stream: str(o.stream),
+    description: str(o.description),
+    kind: str(o.kind),
+    recipient: str(o.recipient),
+    handler: str(o.handler),
+    claimer: str(o.claimer),
     removed: Boolean(o.removed),
     amountAllocated: o.amount_allocated ?? "0",
     accumulated: o.accumulated ?? "0",

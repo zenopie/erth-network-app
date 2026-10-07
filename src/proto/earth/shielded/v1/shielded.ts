@@ -10,47 +10,61 @@ import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 export const protobufPackage = "earth.shielded.v1";
 
 /**
- * Transfer is one 3-in/3-out transfer proof (circuits/transfer) and its public
- * inputs, as carried by every private msg that spends notes. Public input
- * order: root, nf[3], cm_out[3], fee, v_pub_out, asset_pub, signal. The chain
- * computes asset_pub from denom_out (0 when value_out is 0) and signal from
- * the enclosing msg (see zk/privacy.SpendSignal); neither is carried.
+ * Action is one spend and one output of a shielded bundle (circuits/action),
+ * either of which may be a dummy, and the proof of it. Public input order:
+ * anchor, nullifier, commitment, cv_x, cv_y, sighash; the chain computes the
+ * sighash from the enclosing msg (zk/orchard.Sighash), so it is not carried.
  */
-export interface Transfer {
-  /** proof is the bb v5.0.0 UltraHonk proof. */
+export interface Action {
+  /**
+   * anchor is the note-tree root the spend is proven against: 32 bytes, a
+   * root recorded within root_window_seconds, the same for every action of
+   * the bundle. Required of dummy spends too.
+   */
+  anchor: Uint8Array;
+  /**
+   * nullifier of the spent note, 32 bytes, distinct across the msg. A dummy
+   * (value-0) spend still publishes, and spends, a fresh nullifier.
+   */
+  nullifier: Uint8Array;
+  /** commitment of the output note, 32 bytes, appended to the tree. */
+  commitment: Uint8Array;
+  /**
+   * cv is the action's value commitment on Grumpkin, x || y, 64 bytes:
+   * cv = v_spend*G(asset_spend) - v_out*G(asset_out) + rcv*R.
+   */
+  cv: Uint8Array;
+  /**
+   * ciphertext is the output note encrypted to its owner, emitted for
+   * wallets to trial-decrypt. Bound by the sighash.
+   */
+  ciphertext: Uint8Array;
+  /** proof is the bb v5.0.0 UltraHonk proof of the action circuit. */
   proof: Uint8Array;
-  /**
-   * root is the note-tree root the inputs are proven against: 32 bytes, a
-   * root recorded within root_window_seconds.
-   */
-  root: Uint8Array;
-  /**
-   * nullifiers of the three inputs, 32 bytes each, pairwise distinct. A
-   * value-0 dummy input still publishes (and spends) a fresh nullifier.
-   */
-  nullifiers: Uint8Array[];
-  /**
-   * commitments of the three outputs, 32 bytes each, appended to the tree in
-   * order. Slots 0-1 hold the hidden asset, slot 2 ERTH change.
-   */
-  commitments: Uint8Array[];
-  /**
-   * ciphertexts are the three output notes encrypted to their owners, one per
-   * commitment, emitted for wallets to trial-decrypt. Bound by the signal.
-   */
-  ciphertexts: Uint8Array[];
-  /**
-   * fee is the uerth the transfer releases to fee_collector. It must equal
-   * the tx fee.
-   */
-  fee: number;
-  /** value_out is the amount of the hidden asset leaving the pool (v_pub_out). */
-  valueOut: number;
-  /**
-   * denom_out names the asset leaving the pool: required when value_out > 0,
-   * empty otherwise. The chain maps it to asset_pub through the registry.
-   */
-  denomOut: string;
+}
+
+/**
+ * ValueBalance is value of one denom leaving the pool through a bundle: its
+ * spends exceed its outputs by amount. Only positive balances exist.
+ */
+export interface ValueBalance {
+  denom: string;
+  amount: number;
+}
+
+/**
+ * Bundle is an Orchard-style shielded bundle: at least two actions, the
+ * public value balance per denom, and the binding signature (Schnorr over
+ * Grumpkin, zk/orchard) proving the actions' value commitments sum to the
+ * balances. The enclosing msg says where each balance goes (the fee, an
+ * unshield receiver, a module); the private ante checks it is spent exactly.
+ */
+export interface Bundle {
+  actions: Action[];
+  /** balances, one per denom, each positive. */
+  balances: ValueBalance[];
+  /** binding_sig is Rn.x || Rn.y || s, 96 bytes, over the msg's sighash. */
+  bindingSig: Uint8Array;
 }
 
 /**
@@ -81,55 +95,54 @@ export interface RootRecord {
   root: Uint8Array;
   /** height of the block that produced it. */
   height: number;
-  /** time of that block, unix seconds. The window is measured from here. */
+  /** time of that block, unix seconds. */
   time: number;
   /** tree_size is the leaf count at this root. */
   treeSize: number;
+  /**
+   * superseded_at is the time (unix seconds) of the block whose root
+   * replaced this one as the latest, 0 while it is the latest. The anchor
+   * window runs from here: a root stays an anchor for root_window_seconds
+   * after it stopped being the latest, however long it was the latest.
+   */
+  supersededAt: number;
 }
 
-function createBaseTransfer(): Transfer {
+function createBaseAction(): Action {
   return {
+    anchor: new Uint8Array(0),
+    nullifier: new Uint8Array(0),
+    commitment: new Uint8Array(0),
+    cv: new Uint8Array(0),
+    ciphertext: new Uint8Array(0),
     proof: new Uint8Array(0),
-    root: new Uint8Array(0),
-    nullifiers: [],
-    commitments: [],
-    ciphertexts: [],
-    fee: 0,
-    valueOut: 0,
-    denomOut: "",
   };
 }
 
-export const Transfer: MessageFns<Transfer> = {
-  encode(message: Transfer, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+export const Action: MessageFns<Action> = {
+  encode(message: Action, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.anchor.length !== 0) {
+      writer.uint32(10).bytes(message.anchor);
+    }
+    if (message.nullifier.length !== 0) {
+      writer.uint32(18).bytes(message.nullifier);
+    }
+    if (message.commitment.length !== 0) {
+      writer.uint32(26).bytes(message.commitment);
+    }
+    if (message.cv.length !== 0) {
+      writer.uint32(34).bytes(message.cv);
+    }
+    if (message.ciphertext.length !== 0) {
+      writer.uint32(42).bytes(message.ciphertext);
+    }
     if (message.proof.length !== 0) {
-      writer.uint32(10).bytes(message.proof);
-    }
-    if (message.root.length !== 0) {
-      writer.uint32(18).bytes(message.root);
-    }
-    for (const v of message.nullifiers) {
-      writer.uint32(26).bytes(v!);
-    }
-    for (const v of message.commitments) {
-      writer.uint32(34).bytes(v!);
-    }
-    for (const v of message.ciphertexts) {
-      writer.uint32(42).bytes(v!);
-    }
-    if (message.fee !== 0) {
-      writer.uint32(48).uint64(message.fee);
-    }
-    if (message.valueOut !== 0) {
-      writer.uint32(56).uint64(message.valueOut);
-    }
-    if (message.denomOut !== "") {
-      writer.uint32(66).string(message.denomOut);
+      writer.uint32(50).bytes(message.proof);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): Transfer {
+  decode(input: BinaryReader | Uint8Array, length?: number): Action {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
     if (previousRecursionDepth >= 100) {
@@ -138,7 +151,7 @@ export const Transfer: MessageFns<Transfer> = {
     (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
     try {
       const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseTransfer();
+      const message = createBaseAction();
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
@@ -147,7 +160,7 @@ export const Transfer: MessageFns<Transfer> = {
               break;
             }
 
-            message.proof = reader.bytes();
+            message.anchor = reader.bytes();
             continue;
           }
           case 2: {
@@ -155,7 +168,7 @@ export const Transfer: MessageFns<Transfer> = {
               break;
             }
 
-            message.root = reader.bytes();
+            message.nullifier = reader.bytes();
             continue;
           }
           case 3: {
@@ -163,7 +176,7 @@ export const Transfer: MessageFns<Transfer> = {
               break;
             }
 
-            message.nullifiers.push(reader.bytes());
+            message.commitment = reader.bytes();
             continue;
           }
           case 4: {
@@ -171,7 +184,7 @@ export const Transfer: MessageFns<Transfer> = {
               break;
             }
 
-            message.commitments.push(reader.bytes());
+            message.cv = reader.bytes();
             continue;
           }
           case 5: {
@@ -179,31 +192,15 @@ export const Transfer: MessageFns<Transfer> = {
               break;
             }
 
-            message.ciphertexts.push(reader.bytes());
+            message.ciphertext = reader.bytes();
             continue;
           }
           case 6: {
-            if (tag !== 48) {
+            if (tag !== 50) {
               break;
             }
 
-            message.fee = longToNumber(reader.uint64());
-            continue;
-          }
-          case 7: {
-            if (tag !== 56) {
-              break;
-            }
-
-            message.valueOut = longToNumber(reader.uint64());
-            continue;
-          }
-          case 8: {
-            if (tag !== 66) {
-              break;
-            }
-
-            message.denomOut = reader.string();
+            message.proof = reader.bytes();
             continue;
           }
         }
@@ -218,75 +215,243 @@ export const Transfer: MessageFns<Transfer> = {
     }
   },
 
-  fromJSON(object: any): Transfer {
+  fromJSON(object: any): Action {
     return {
+      anchor: isSet(object.anchor) ? bytesFromBase64(object.anchor) : new Uint8Array(0),
+      nullifier: isSet(object.nullifier) ? bytesFromBase64(object.nullifier) : new Uint8Array(0),
+      commitment: isSet(object.commitment) ? bytesFromBase64(object.commitment) : new Uint8Array(0),
+      cv: isSet(object.cv) ? bytesFromBase64(object.cv) : new Uint8Array(0),
+      ciphertext: isSet(object.ciphertext) ? bytesFromBase64(object.ciphertext) : new Uint8Array(0),
       proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
-      root: isSet(object.root) ? bytesFromBase64(object.root) : new Uint8Array(0),
-      nullifiers: globalThis.Array.isArray(object?.nullifiers)
-        ? object.nullifiers.map((e: any) => bytesFromBase64(e))
-        : [],
-      commitments: globalThis.Array.isArray(object?.commitments)
-        ? object.commitments.map((e: any) => bytesFromBase64(e))
-        : [],
-      ciphertexts: globalThis.Array.isArray(object?.ciphertexts)
-        ? object.ciphertexts.map((e: any) => bytesFromBase64(e))
-        : [],
-      fee: isSet(object.fee) ? globalThis.Number(object.fee) : 0,
-      valueOut: isSet(object.valueOut)
-        ? globalThis.Number(object.valueOut)
-        : isSet(object.value_out)
-        ? globalThis.Number(object.value_out)
-        : 0,
-      denomOut: isSet(object.denomOut)
-        ? globalThis.String(object.denomOut)
-        : isSet(object.denom_out)
-        ? globalThis.String(object.denom_out)
-        : "",
     };
   },
 
-  toJSON(message: Transfer): unknown {
+  toJSON(message: Action): unknown {
     const obj: any = {};
+    if (message.anchor.length !== 0) {
+      obj.anchor = base64FromBytes(message.anchor);
+    }
+    if (message.nullifier.length !== 0) {
+      obj.nullifier = base64FromBytes(message.nullifier);
+    }
+    if (message.commitment.length !== 0) {
+      obj.commitment = base64FromBytes(message.commitment);
+    }
+    if (message.cv.length !== 0) {
+      obj.cv = base64FromBytes(message.cv);
+    }
+    if (message.ciphertext.length !== 0) {
+      obj.ciphertext = base64FromBytes(message.ciphertext);
+    }
     if (message.proof.length !== 0) {
       obj.proof = base64FromBytes(message.proof);
-    }
-    if (message.root.length !== 0) {
-      obj.root = base64FromBytes(message.root);
-    }
-    if (message.nullifiers?.length) {
-      obj.nullifiers = message.nullifiers.map((e) => base64FromBytes(e));
-    }
-    if (message.commitments?.length) {
-      obj.commitments = message.commitments.map((e) => base64FromBytes(e));
-    }
-    if (message.ciphertexts?.length) {
-      obj.ciphertexts = message.ciphertexts.map((e) => base64FromBytes(e));
-    }
-    if (message.fee !== 0) {
-      obj.fee = Math.round(message.fee);
-    }
-    if (message.valueOut !== 0) {
-      obj.valueOut = Math.round(message.valueOut);
-    }
-    if (message.denomOut !== "") {
-      obj.denomOut = message.denomOut;
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<Transfer>, I>>(base?: I): Transfer {
-    return Transfer.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<Action>, I>>(base?: I): Action {
+    return Action.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<Transfer>, I>>(object: I): Transfer {
-    const message = createBaseTransfer();
+  fromPartial<I extends Exact<DeepPartial<Action>, I>>(object: I): Action {
+    const message = createBaseAction();
+    message.anchor = object.anchor ?? new Uint8Array(0);
+    message.nullifier = object.nullifier ?? new Uint8Array(0);
+    message.commitment = object.commitment ?? new Uint8Array(0);
+    message.cv = object.cv ?? new Uint8Array(0);
+    message.ciphertext = object.ciphertext ?? new Uint8Array(0);
     message.proof = object.proof ?? new Uint8Array(0);
-    message.root = object.root ?? new Uint8Array(0);
-    message.nullifiers = object.nullifiers?.map((e) => e) || [];
-    message.commitments = object.commitments?.map((e) => e) || [];
-    message.ciphertexts = object.ciphertexts?.map((e) => e) || [];
-    message.fee = object.fee ?? 0;
-    message.valueOut = object.valueOut ?? 0;
-    message.denomOut = object.denomOut ?? "";
+    return message;
+  },
+};
+
+function createBaseValueBalance(): ValueBalance {
+  return { denom: "", amount: 0 };
+}
+
+export const ValueBalance: MessageFns<ValueBalance> = {
+  encode(message: ValueBalance, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.denom !== "") {
+      writer.uint32(10).string(message.denom);
+    }
+    if (message.amount !== 0) {
+      writer.uint32(16).uint64(message.amount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ValueBalance {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseValueBalance();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.denom = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.amount = longToNumber(reader.uint64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ValueBalance {
+    return {
+      denom: isSet(object.denom) ? globalThis.String(object.denom) : "",
+      amount: isSet(object.amount) ? globalThis.Number(object.amount) : 0,
+    };
+  },
+
+  toJSON(message: ValueBalance): unknown {
+    const obj: any = {};
+    if (message.denom !== "") {
+      obj.denom = message.denom;
+    }
+    if (message.amount !== 0) {
+      obj.amount = Math.round(message.amount);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ValueBalance>, I>>(base?: I): ValueBalance {
+    return ValueBalance.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ValueBalance>, I>>(object: I): ValueBalance {
+    const message = createBaseValueBalance();
+    message.denom = object.denom ?? "";
+    message.amount = object.amount ?? 0;
+    return message;
+  },
+};
+
+function createBaseBundle(): Bundle {
+  return { actions: [], balances: [], bindingSig: new Uint8Array(0) };
+}
+
+export const Bundle: MessageFns<Bundle> = {
+  encode(message: Bundle, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.actions) {
+      Action.encode(v!, writer.uint32(10).fork()).join();
+    }
+    for (const v of message.balances) {
+      ValueBalance.encode(v!, writer.uint32(18).fork()).join();
+    }
+    if (message.bindingSig.length !== 0) {
+      writer.uint32(26).bytes(message.bindingSig);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Bundle {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseBundle();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.actions.push(Action.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.balances.push(ValueBalance.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.bindingSig = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): Bundle {
+    return {
+      actions: globalThis.Array.isArray(object?.actions) ? object.actions.map((e: any) => Action.fromJSON(e)) : [],
+      balances: globalThis.Array.isArray(object?.balances)
+        ? object.balances.map((e: any) => ValueBalance.fromJSON(e))
+        : [],
+      bindingSig: isSet(object.bindingSig)
+        ? bytesFromBase64(object.bindingSig)
+        : isSet(object.binding_sig)
+        ? bytesFromBase64(object.binding_sig)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: Bundle): unknown {
+    const obj: any = {};
+    if (message.actions?.length) {
+      obj.actions = message.actions.map((e) => Action.toJSON(e));
+    }
+    if (message.balances?.length) {
+      obj.balances = message.balances.map((e) => ValueBalance.toJSON(e));
+    }
+    if (message.bindingSig.length !== 0) {
+      obj.bindingSig = base64FromBytes(message.bindingSig);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Bundle>, I>>(base?: I): Bundle {
+    return Bundle.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Bundle>, I>>(object: I): Bundle {
+    const message = createBaseBundle();
+    message.actions = object.actions?.map((e) => Action.fromPartial(e)) || [];
+    message.balances = object.balances?.map((e) => ValueBalance.fromPartial(e)) || [];
+    message.bindingSig = object.bindingSig ?? new Uint8Array(0);
     return message;
   },
 };
@@ -482,7 +647,7 @@ export const Turnstile: MessageFns<Turnstile> = {
 };
 
 function createBaseRootRecord(): RootRecord {
-  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0 };
+  return { root: new Uint8Array(0), height: 0, time: 0, treeSize: 0, supersededAt: 0 };
 }
 
 export const RootRecord: MessageFns<RootRecord> = {
@@ -498,6 +663,9 @@ export const RootRecord: MessageFns<RootRecord> = {
     }
     if (message.treeSize !== 0) {
       writer.uint32(32).uint64(message.treeSize);
+    }
+    if (message.supersededAt !== 0) {
+      writer.uint32(40).int64(message.supersededAt);
     }
     return writer;
   },
@@ -547,6 +715,14 @@ export const RootRecord: MessageFns<RootRecord> = {
             message.treeSize = longToNumber(reader.uint64());
             continue;
           }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.supersededAt = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -569,6 +745,11 @@ export const RootRecord: MessageFns<RootRecord> = {
         : isSet(object.tree_size)
         ? globalThis.Number(object.tree_size)
         : 0,
+      supersededAt: isSet(object.supersededAt)
+        ? globalThis.Number(object.supersededAt)
+        : isSet(object.superseded_at)
+        ? globalThis.Number(object.superseded_at)
+        : 0,
     };
   },
 
@@ -586,6 +767,9 @@ export const RootRecord: MessageFns<RootRecord> = {
     if (message.treeSize !== 0) {
       obj.treeSize = Math.round(message.treeSize);
     }
+    if (message.supersededAt !== 0) {
+      obj.supersededAt = Math.round(message.supersededAt);
+    }
     return obj;
   },
 
@@ -598,6 +782,7 @@ export const RootRecord: MessageFns<RootRecord> = {
     message.height = object.height ?? 0;
     message.time = object.time ?? 0;
     message.treeSize = object.treeSize ?? 0;
+    message.supersededAt = object.supersededAt ?? 0;
     return message;
   },
 };

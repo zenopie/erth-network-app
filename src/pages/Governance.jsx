@@ -9,13 +9,15 @@ import * as shieldedStaking from "../chain/shieldedStaking";
 import * as staking from "../chain/staking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { toMacro, toMicro } from "../chain/tokens";
+import { amountOk, toMacro, toMicro } from "../chain/tokens";
+import { formatErth as erth } from "../utils/formatUtils";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 import StatusModal from "../components/StatusModal";
 import MobileCta from "../components/MobileCta";
 import { short } from "../components/ExplorerBits";
+import AmountNote from "../components/AmountNote";
 
 countries.registerLocale(enLocale);
 
@@ -27,7 +29,6 @@ const STATUS = {
   PROPOSAL_STATUS_FAILED: ["Failed", "badgeFailed"],
 };
 
-const erth = (micro) => `${toMacro(micro ?? 0, UERTH).toLocaleString()} ERTH`;
 const date = (iso) => (iso && !iso.startsWith("0001") ? new Date(iso).toLocaleString() : "—");
 const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
 
@@ -35,8 +36,8 @@ const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
  * Governance: x/gov proposals and both of the chambers that decide them.
  *
  * A proposal passes only if the stake chamber (x/gov's tally: validators'
- * self-bond plus private derth, voted by spending a note against the
- * proposal's snapshot) AND the human chamber (x/assembly: two thirds of the
+ * self-bond plus private derth, voted with a stake-note proof against the
+ * proposal's snapshot stake root) AND the human chamber (x/assembly: two thirds of the
  * human votes cast, three quarters when expedited, no quorum) approve it.
  * Human votes and private stake votes are proofs made on the phone; what a
  * Keplr account can still do is deposit, submit a text proposal, and — for a
@@ -46,7 +47,7 @@ const pct = (n, d) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—");
 const Governance = () => {
   const { address, isConnected } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
   const [list, setList] = useState(undefined);
   const [params, setParams] = useState(null);
   const [isOperator, setIsOperator] = useState(false);
@@ -88,7 +89,7 @@ const Governance = () => {
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.header}>
         <h2 className={styles.title}>Governance</h2>
@@ -160,7 +161,11 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
     (async () => {
       const [stake, human, inputs, snap, mine] = await Promise.all([
         isVoting ? gov.tally(p.id) : Promise.resolve(p.finalTally),
-        isDeposit ? Promise.resolve(null) : assembly.proposalTally(p.id),
+        // The chain keeps the human tally only while the round is open: the
+        // round's end removes its ballot, after which the query answers a
+        // zero tally (approved=false) whatever the outcome. No result is
+        // kept in state, so a closed round shows no tally at all.
+        isVoting ? assembly.proposalTally(p.id) : Promise.resolve(null),
         isVoting ? assembly.ballotInputs({ proposalId: p.id }) : Promise.resolve(null),
         isDeposit ? Promise.resolve(null) : shieldedStaking.snapshot(p.id),
         address && !isDeposit ? gov.vote(p.id, address) : Promise.resolve(null),
@@ -210,7 +215,11 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
           {!isDeposit && (
             <>
               <StakeTally tally={detail?.stake} final={!isVoting} />
-              <HumanTally tally={detail?.human} expedited={p.expedited} />
+              {isVoting ? (
+                <HumanTally tally={detail?.human} expedited={p.expedited} />
+              ) : (
+                <ClosedHumanTally />
+              )}
               {isVoting && <Exclusions inputs={detail?.inputs} />}
               <Snapshot snap={detail?.snap} />
             </>
@@ -252,15 +261,17 @@ const ProposalCard = ({ proposal: p, open, onToggle, address, isConnected, isOpe
                   <label className={forms.label}>Add to the deposit (ERTH)</label>
                   <input
                     className={forms.input}
-                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.0"
                     value={deposit}
                     onChange={(e) => setDeposit(e.target.value)}
                   />
                 </div>
+                <AmountNote value={deposit} denom={UERTH} />
                 <button
                   className={forms.button}
                   style={{ alignSelf: "flex-end" }}
-                  disabled={!(parseFloat(deposit) > 0)}
+                  disabled={!amountOk(deposit, UERTH)}
                   onClick={() => run(() => [gov.msgDeposit(address, p.id, toMicro(deposit, UERTH))])}
                 >
                   Deposit
@@ -297,6 +308,18 @@ const StakeTally = ({ tally, final }) => {
   );
 };
 
+/** A closed round: the chain does not keep its human tally, so none is shown. */
+const ClosedHumanTally = () => (
+  <div className={forms.section}>
+    <h4 className={forms.sectionTitle}>Human chamber</h4>
+    <p className={forms.note}>
+      The chain keeps the human tally only while voting is open, so a finished proposal's human votes are not shown.
+      The proposal's status above is the outcome of both chambers.
+    </p>
+  </div>
+);
+
+/** The live human tally of a proposal in voting. */
 const HumanTally = ({ tally, expedited }) => {
   if (tally === undefined) return null;
   if (tally === null) {
@@ -363,10 +386,19 @@ const Exclusions = ({ inputs }) => {
             </div>
           </div>
           <div className={styles.kv}>
-            <div className={styles.kvLabel}>Eligible if registered by</div>
+            <div className={styles.kvLabel}>Eligible</div>
             <div className={styles.kvValue}>
-              {inputs.maxActivation ? new Date(inputs.maxActivation * 1000).toLocaleString() : "—"}
-              {inputs.round > 0 && <span className={styles.muted}> · round {inputs.round + 1}</span>}
+              {inputs.maxActivation !== null && <>Registered by {new Date(inputs.maxActivation * 1000).toLocaleString()}. </>}
+              {inputs.maxPredecessor !== null
+                ? <>An identity that replaced another (a switch or re-entry) after {new Date(inputs.maxPredecessor * 1000).toLocaleString()} cannot vote on it.</>
+                : inputs.maxActivation === null && "Every live registration."}
+              {inputs.round > 0 && (
+                <span className={styles.muted}>
+                  {" "}
+                  · round {inputs.round + 1}: a new ballot (its own vote scope) after the expedited
+                  round, so votes cast before do not carry over; vote again in the app.
+                </span>
+              )}
             </div>
           </div>
         </>
@@ -441,12 +473,13 @@ const NewProposal = ({ address, minDeposit, run }) => {
           <div className={forms.formRow}>
             <div className={forms.field}>
               <label className={forms.label}>Initial deposit (ERTH)</label>
-              <input className={forms.input} type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
+              <input className={forms.input} inputMode="decimal" placeholder="0.0" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
             </div>
+            <AmountNote value={deposit} denom={UERTH} />
             <button
               className={forms.button}
               style={{ alignSelf: "flex-end" }}
-              disabled={!title.trim() || !summary.trim() || !(parseFloat(deposit) > 0)}
+              disabled={!title.trim() || !summary.trim() || !amountOk(deposit, UERTH)}
               onClick={() =>
                 run(() => [
                   gov.msgSubmitTextProposal(address, title.trim(), summary.trim(), toMicro(deposit, UERTH)),

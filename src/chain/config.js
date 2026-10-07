@@ -10,7 +10,7 @@
 const isDev = import.meta.env.DEV;
 
 // In dev, vite proxies /lcd -> http://localhost:1317 (see vite.config.js) so a
-// local `ignite chain serve` works without CORS. In production these default to
+// local node (the chain repo's scripts/testnet-3val.sh) works without CORS. In production these default to
 // the public endpoints, which the deployed bundle relies on: the image is built
 // without VITE_ vars, so whatever is written here is what ships.
 export const EARTH_LCD_URL = isDev
@@ -33,6 +33,14 @@ export const EARTH_RPC_URL = isDev
   ? "/rpc"
   : (import.meta.env.VITE_EARTH_RPC ?? "https://rpc.erth.network");
 
+// The privacy backend (api.erth.network): the web app reads one stream from
+// it, the whole handle directory (chain/handles.js), and falls back to the
+// chain's own Query/Handles pages whenever it cannot (in dev, vite proxies
+// /api -> localhost:8000). "" turns the backend off: the LCD alone.
+export const EARTH_API_URL = isDev
+  ? "/api"
+  : (import.meta.env.VITE_EARTH_API ?? "https://api.erth.network");
+
 export const ADDRESS_PREFIX = "earth";
 
 // ERTH is the staking/hub coin; ANML is the proof-of-personhood coin. ANML
@@ -43,9 +51,6 @@ export const UANML = "uanml";
 
 // LP shares for a dex pool are an ordinary bank denom.
 export const lpDenom = (poolId) => `dexlp/${poolId}`;
-
-// Gas price paid in ERTH. Earth has no separate fee token.
-export const GAS_PRICE = `0.025${UERTH}`;
 
 /**
  * Where the private actions live. Registration, ANML claims, caretaker splits,

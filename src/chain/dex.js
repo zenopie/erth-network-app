@@ -1,11 +1,19 @@
 import { getOr, seg } from "./rest";
 import { UANML, UERTH, lpDenom } from "./config";
-import { blindNotePayment } from "./noteCipher";
+import { blindNotePayment, checkBlindCiphertext } from "./noteCipher";
+import { supplyOrNull } from "./bank";
+import { minimumReceived } from "./tokens";
 
 /**
  * x/dex — a spoke-and-wheel AMM hubbed on ERTH. Every pool pairs ERTH (the hub)
  * with one spoke token, so any token can be routed to any other through ERTH.
- * LP shares are the ordinary bank denom `dexlp/{poolId}`.
+ * LP shares are the bank denom `dexlp/{poolId}`. A transparent deposit
+ * (MsgAddLiquidity) pays them to the signer's account; a shielded deposit
+ * (MsgAddLiquidityShielded, phone only) mints them as a private note, so no
+ * holder of those is visible and they leave only through
+ * MsgRemoveLiquidityShielded. Pool-level figures (reserves, total shares =
+ * bank supply) stay public; per-holder shares here are this account's
+ * transparent balance only.
  */
 
 /** All pools: { id, erthReserve, tokenDenom, tokenReserve, volumeErth }. */
@@ -62,6 +70,8 @@ export async function lpUnbondingSeconds() {
 /**
  * Withdrawals this address has waiting, as [{ poolId, shares, completionTime }]
  * with `shares` in base units and `completionTime` in unix seconds.
+ * Transparent ones only: a private withdrawal is keyed by a nullifier, not an
+ * address, and never shows here.
  *
  * Between submitting a withdrawal and it landing there is nothing in the balance
  * to show for it — the shares have left and the assets have not arrived — so
@@ -154,19 +164,6 @@ export async function polBurns() {
 }
 
 /**
- * Constant-product output for one hop, net of the swap fee.
- * Mirrors the chain's AMM so the UI can quote before broadcasting.
- */
-export function quoteHop(amountIn, reserveIn, reserveOut, feePercent) {
-  const aIn = Number(amountIn);
-  const rIn = Number(reserveIn);
-  const rOut = Number(reserveOut);
-  if (!aIn || !rIn || !rOut) return 0;
-  const afterFee = aIn * (1 - feePercent / 100);
-  return (afterFee * rOut) / (rIn + afterFee);
-}
-
-/**
  * x/dex SimulateSwapExactIn: what swapping `amountIn` (base units) of
  * `denomIn` for `denomOut` pays at the current state, computed by the chain's
  * own swap (ERTH-hub routing, each pool's pending LP rewards settled into its
@@ -196,36 +193,42 @@ export async function simulateSwapExactIn(amountIn, denomIn, denomOut) {
 
 /**
  * Quotes a swap of `amountIn` of `denomIn` into `denomOut` (base units): the
- * chain's SimulateSwapExactIn when the node serves it, else constant-product
- * maths over the pools' reserves. ERTH is the hub, so a token->token swap is
- * two hops through ERTH.
+ * chain's SimulateSwapExactIn when the node serves it, else the chain's
+ * integer constant-product maths over the pools' reserves. ERTH is the hub,
+ * so a token->token swap is two hops through ERTH. Resolves to a BigInt (0n:
+ * no quote).
  */
 export async function quoteSwap(amountIn, denomIn, denomOut) {
   const sim = await simulateSwapExactIn(amountIn, denomIn, denomOut);
-  if (sim) return Number(sim.out);
-  const fee = await swapFeePercent();
-  const all = await pools();
-
-  if (denomIn === UERTH) {
-    const p = all.find((x) => x.tokenDenom === denomOut);
-    return p ? quoteHop(amountIn, p.erthReserve, p.tokenReserve, fee) : 0;
+  if (sim) return sim.out;
+  // The chain's own integer maths over the reserves (fee rounded up, taken
+  // from the ERTH side of each hop), not a floating-point estimate.
+  let a;
+  try {
+    a = toBig(amountIn);
+  } catch {
+    return 0n;
   }
-  if (denomOut === UERTH) {
-    const p = all.find((x) => x.tokenDenom === denomIn);
-    return p ? quoteHop(amountIn, p.tokenReserve, p.erthReserve, fee) : 0;
-  }
+  if (a <= 0n) return 0n;
+  const [fee, all] = await Promise.all([swapFeeDec(), pools()]);
+  if (fee == null) return 0n;
+  const live = (p) => p && BigInt(p.erthReserve) > 0n && BigInt(p.tokenReserve) > 0n;
   const pIn = all.find((x) => x.tokenDenom === denomIn);
   const pOut = all.find((x) => x.tokenDenom === denomOut);
-  if (!pIn || !pOut) return 0;
-  const erthOut = quoteHop(amountIn, pIn.tokenReserve, pIn.erthReserve, fee);
-  return quoteHop(erthOut, pOut.erthReserve, pOut.tokenReserve, fee);
+  let erth = a;
+  if (denomIn !== UERTH) {
+    if (!live(pIn)) return 0n;
+    erth = exactTokenToHub(pIn.erthReserve, pIn.tokenReserve, a, fee).out;
+  }
+  if (denomOut === UERTH) return erth;
+  if (!live(pOut) || erth <= 0n) return 0n;
+  return exactHubToToken(pOut.erthReserve, pOut.tokenReserve, erth, fee).out;
 }
 
 // --- exact AMM maths (x/dex keeper/amm.go) ---
 //
-// quoteHop above is floating point, fine for a display and for a floor taken
-// with slippage. These reproduce the chain's integer arithmetic exactly, for
-// anything that must name the very amount the chain will pay.
+// These reproduce the chain's integer arithmetic exactly (BigInt, never a
+// float), for quotes and for the floors taken from them.
 //
 // They price against the reserves the LCD shows. The chain first compounds
 // any pending LP rewards into the ERTH reserve (settlePoolRewards, at every
@@ -246,8 +249,10 @@ const toBig = (v) => {
 };
 
 /**
- * feeOf: LegacyDec(amount).Mul(fee).Quo(100).TruncateInt(). Mul is exact for
- * an integer amount; Quo rounds half to even at 18 decimals; then truncate.
+ * feeOf: LegacyDec(amount).Mul(fee).Quo(100).Ceil().TruncateInt() (rounded
+ * up, so a small swap cannot pay nothing).
+ * Mul is exact for an integer amount; Quo rounds half to even at 18
+ * decimals; then any fraction left rounds the fee up.
  */
 export function exactFee(amount, swapFee) {
   const f = typeof swapFee === "bigint" ? swapFee : parseDec18(swapFee);
@@ -255,7 +260,8 @@ export function exactFee(amount, swapFee) {
   let q = num / 100n;
   const r = num % 100n;
   if (2n * r > 100n || (2n * r === 100n && q % 2n === 1n)) q += 1n;
-  return q / 10n ** 18n;
+  const one = 10n ** 18n;
+  return (q + one - 1n) / one;
 }
 
 /** splitFee: the burn takes the odd unit. */
@@ -322,6 +328,52 @@ export function quoteAddLiquidity(erthIn, tokenIn, erthReserve, tokenReserve, to
 }
 
 /**
+ * A deposit's other leg for `amount` of one side, against that side's reserve
+ * `from` and the other's `to`: ceil(amount * to / from), as an integer string.
+ *
+ * x/dex mints shares = min(floor(in_e * S / R_e), floor(in_t * S / R_t)) and
+ * pulls each leg rounded UP, ceil(shares * R / S). A leg rounded
+ * up here never makes the other side the binding one, so the typed side buys
+ * every share it can and the pull never exceeds either leg. "0" for an empty
+ * pool or anything that is not an integer.
+ */
+export function depositLeg(amount, from, to) {
+  let a, f, t;
+  try {
+    [a, f, t] = [amount, from, to].map((v) => BigInt(String(v ?? "")));
+  } catch {
+    return "0";
+  }
+  if (a <= 0n || f <= 0n || t < 0n) return "0";
+  return ((a * t + f - 1n) / f).toString();
+}
+
+/**
+ * What x/dex mints and pulls for a deposit of `erthIn` and `tokenIn` into
+ * reserves (`re`, `rt`) with `supply` shares out: { shares, erth, token } as
+ * BigInt, each leg ceil(shares * R / S); null when it mints nothing
+ * (ErrZeroShares) or the pool cannot price it.
+ */
+export function depositPull(erthIn, tokenIn, re, rt, supply) {
+  let e, t, rE, rT, s;
+  try {
+    [e, t, rE, rT, s] = [erthIn, tokenIn, re, rt, supply].map((v) => BigInt(String(v ?? "")));
+  } catch {
+    return null;
+  }
+  if (s <= 0n || rE <= 0n || rT <= 0n || e < 0n || t < 0n) return null;
+  const byE = (e * s) / rE;
+  const byT = (t * s) / rT;
+  const shares = byE < byT ? byE : byT;
+  if (shares <= 0n) return null;
+  const up = (r) => (shares * r + s - 1n) / s;
+  const erth = up(rE);
+  const token = up(rT);
+  if (erth > e || token > t) return null;
+  return { shares, erth, token };
+}
+
+/**
  * @param minShares base-unit floor on the shares minted, as a string. Sending
  *   "" is no floor — which is what this did before the field existed, and what
  *   left every deposit open to being sandwiched: a trade landing between
@@ -348,6 +400,14 @@ export function msgAddLiquidity(creator, poolId, denomA, amountA, denomB, amount
  * on any other pool); use removeLiquidityToShielded there.
  */
 export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(0), ciphertext = new Uint8Array(0)) {
+  // With pc (the ANML pool) the chain requires a 32-byte pc and the 177-byte
+  // v2 ciphertext; without, neither. A pc of any other length is refused
+  // here rather than signed into a tx the chain rejects.
+  if (!(pc instanceof Uint8Array)) throw new TypeError("pc must be bytes");
+  if (pc.length) {
+    if (pc.length !== 32) throw new RangeError("pc must be 32 bytes");
+    checkBlindCiphertext(ciphertext);
+  } else if (ciphertext.length) throw new RangeError("a ciphertext without a pc");
   return {
     typeUrl: "/earth.dex.v1.MsgRemoveLiquidity",
     value: {
@@ -360,12 +420,51 @@ export function msgRemoveLiquidity(creator, poolId, shares, pc = new Uint8Array(
   };
 }
 
+/** The most one withdrawal pays as notes per leg: 32 notes of 2^63 - 1 (x/dex maxWithdrawalNoteLeg, MaxSplitNotes / 4). */
+export const MAX_WITHDRAWAL_NOTE_LEG = ((1n << 63n) - 1n) * 32n;
+
+/**
+ * Why x/dex would refuse to start a withdrawal of `shares` whose token leg
+ * is paid as notes (the ANML pool), or null: at the pool as it stands, a
+ * leg of floor(shares * reserve / supply) above MAX_WITHDRAWAL_NOTE_LEG is
+ * refused at start (x/dex checkWithdrawalNoteLegs). A leg above
+ * one note's 2^63 - 1 is otherwise paid as several notes at maturity.
+ */
+export function withdrawalNoteLegProblem(shares, tokenReserve, totalShares) {
+  let s, r, t;
+  try {
+    [s, r, t] = [shares, tokenReserve, totalShares].map((v) => BigInt(String(v)));
+  } catch {
+    return null;
+  }
+  if (t <= 0n || s < 0n || r < 0n) return null;
+  return (s * r) / t > MAX_WITHDRAWAL_NOTE_LEG
+    ? "This withdrawal's ANML leg is more than one withdrawal can pay as notes (32 notes of 2^63 - 1 units). Withdraw in smaller parts."
+    : null;
+}
+
+/**
+ * withdrawalNoteLegProblem against the pool's reserve and share supply read
+ * together now, at sign time, not the reserve a page loaded earlier. Either
+ * read failing is itself a reason to refuse: the leg cannot be
+ * checked. The chain checks the leg folded with any earlier withdrawal from
+ * this pool in the same block, which a client cannot see; that one still
+ * fails at deliver.
+ */
+export async function withdrawalNoteLegProblemNow(poolId, shares) {
+  const [p, total] = await Promise.all([pool(poolId), supplyOrNull(lpDenom(poolId))]);
+  if (!p || total === null) return "Could not read the pool from the chain, so this withdrawal cannot be checked. Try again.";
+  return withdrawalNoteLegProblem(shares, p.tokenReserve, total);
+}
+
 /**
  * MsgRemoveLiquidity for the ANML pool: the ERTH leg is paid to `creator`,
  * the ANML leg as a note to the shielded `address`. The payout is priced
  * when the escrow matures, so the note carries the value-blind (v2)
  * ciphertext; the owner's wallet completes it from the amount the chain
- * publishes then. Note: a second withdrawal from the same pool in the same
+ * publishes then. A leg above one note's 2^63 - 1 is paid as several notes
+ * (up to 128 per withdrawal), all to this one pc and ciphertext at their own
+ * positions, each with its own public amount (x/dex MintNoteSplit). Note: a second withdrawal from the same pool in the same
  * block must name the same pc, so it is refused — submit them apart.
  */
 export function removeLiquidityToShielded(creator, poolId, shares, address, { memo = "" } = {}) {
@@ -379,7 +478,8 @@ export function removeLiquidityToShielded(creator, poolId, shares, address, { me
  * `pc`. ANML never sits in an account, so this is how an ERTH holder buys it.
  * Use buyAnmlTo to pay a shielded address.
  */
-export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext = new Uint8Array(0)) {
+export function msgBuyAnml(creator, denomIn, amountIn, minAmountOut, pc, ciphertext) {
+  checkBlindCiphertext(ciphertext);
   return {
     typeUrl: "/earth.dex.v1.MsgBuyAnml",
     value: {
@@ -417,6 +517,68 @@ export async function quoteBuyAnml(erthIn) {
   const [p, fee] = await Promise.all([poolForToken(UANML), swapFeeDec()]);
   if (!p || fee === null) return 0n;
   return exactHubToToken(p.erthReserve, p.tokenReserve, erthIn, fee).out;
+}
+
+// How long a quote (buy-ANML or swap) may back a signature. Older, it is re-asked.
+export const QUOTE_TTL_MS = 20_000;
+
+/**
+ * A buy-ANML quote bound to what it was computed for: { micro, out, at }.
+ * Built only from quoteBuyAnml's answer for exactly `micro`.
+ */
+export async function boundBuyAnmlQuote(micro, now = Date.now) {
+  const out = await quoteBuyAnml(micro);
+  return { micro: String(micro), out, at: now() };
+}
+
+/**
+ * The minimum ANML a purchase of `micro` uerth may sign for, from `quote`:
+ * "0" (nothing may be signed) unless the quote was computed for exactly this
+ * amount, is positive, and is younger than QUOTE_TTL_MS. A quote for an
+ * earlier amount (a slow or hung quote request after the amount changed)
+ * never becomes another amount's floor.
+ */
+export function buyAnmlFloor(quote, micro, slippage, now = Date.now()) {
+  if (!quote || quote.micro !== String(micro) || typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
+  if (!(now - quote.at >= 0 && now - quote.at <= QUOTE_TTL_MS)) return "0";
+  return minimumReceived(quote.out.toString(), slippage);
+}
+
+/**
+ * A swap quote bound to what it was computed for: { micro, from, to, out, at }.
+ * Built only from quoteSwap's answer for exactly `micro` of `from` into `to`.
+ */
+export async function boundSwapQuote(micro, from, to, now = Date.now) {
+  const out = await quoteSwap(micro, from, to);
+  return { micro: String(micro), from, to, out, at: now() };
+}
+
+/**
+ * The min_amount_out a swap of `micro` `from` into `to` may sign for, from
+ * `quote`: "0" (nothing may be signed) unless the quote was computed for
+ * exactly this amount and pair, is positive, and is younger than
+ * QUOTE_TTL_MS. A page left open does not sign a floor priced at an old
+ * reserve.
+ */
+export function swapFloor(quote, micro, from, to, slippage, now = Date.now()) {
+  if (!quote || quote.micro !== String(micro) || quote.from !== from || quote.to !== to) return "0";
+  if (typeof quote.out !== "bigint" || quote.out <= 0n) return "0";
+  if (!(now - quote.at >= 0 && now - quote.at <= QUOTE_TTL_MS)) return "0";
+  return minimumReceived(quote.out.toString(), slippage);
+}
+
+/**
+ * The min_shares floor for depositing (erthMicro, tokenMicro) into `poolId`,
+ * priced against reserves and share supply read now, not the ones a page
+ * loaded earlier (which a trade, a compounding or another deposit has since
+ * moved). "0" when either read fails: the caller refuses rather than send an
+ * unprotected deposit.
+ */
+export async function addLiquidityFloor(poolId, erthMicro, tokenMicro, slippagePercent) {
+  const [p, total] = await Promise.all([pool(poolId), supplyOrNull(lpDenom(poolId))]);
+  if (!p || total === null) return "0";
+  const expected = BigInt(quoteAddLiquidity(erthMicro, tokenMicro, p.erthReserve, p.tokenReserve, total));
+  return ((expected * BigInt(100 - slippagePercent)) / 100n).toString();
 }
 
 /** Bids are additive and cannot be withdrawn — this adds to any earlier bid. */

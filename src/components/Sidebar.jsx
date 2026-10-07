@@ -86,6 +86,12 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <span className="link_name">Shield ERTH</span>
             </Link>
           </li>
+          <li className={location.pathname === "/handles" ? "active" : ""}>
+            <Link to="/handles" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+              <i className="bx bx-at"></i>
+              <span className="link_name">Handles</span>
+            </Link>
+          </li>
           <li className={location.pathname === "/stake-erth" ? "active" : ""}>
             <Link to="/stake-erth" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
               <i className="bx bxs-bank"></i>
@@ -123,11 +129,6 @@ const Sidebar = ({ walletName, address, isConnected, isConnecting, connectError,
               <li className={location.pathname === "/groundworks-fund" ? "active" : ""}>
                 <Link to="/groundworks-fund" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   Groundworks Fund
-                </Link>
-              </li>
-              <li className={location.pathname === "/referrers" ? "active" : ""}>
-                <Link to="/referrers" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  Referrers
                 </Link>
               </li>
             </ul>

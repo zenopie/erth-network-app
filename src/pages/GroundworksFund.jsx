@@ -12,32 +12,45 @@ import * as explorer from "../chain/explorer";
 import * as shieldedStaking from "../chain/shieldedStaking";
 import { broadcast } from "../chain/tx";
 import { UERTH } from "../chain/config";
-import { toMacro } from "../chain/tokens";
+import { RENEW_WARNING_SECONDS } from "../chain/allocation";
+import { byBigDesc, formatMacro, percentString, sumBig, toBigInt } from "../chain/tokens";
 import { useLoading } from "../contexts/LoadingContext";
 import { useWallet } from "../contexts/WalletContext";
 import useTransaction from "../hooks/useTransaction";
 
-const erth = (micro) => `${toMacro(micro, UERTH).toLocaleString()} ERTH`;
+// Weights and amounts are integer strings past 2^53; never through Number.
+const erth = (micro) => `${formatMacro(micro, UERTH)} ERTH`;
 const when = (unix) => (unix ? new Date(unix * 1000).toLocaleString() : "—");
+const day = (unix) => new Date(unix * 1000).toLocaleDateString();
 
 /**
  * The Groundworks Fund: x/allocation's stake-weighted stream.
  *
  * Its weight is almost all Groundworks positions — private derth locked in
- * x/shieldedstaking and split across options by a one-time key, so each
- * position's split and weight are public and its owner is not. The rest is
+ * x/shieldedstaking and split across options. Its owner is known only by an
+ * owner tag its stake proofs reproduce, so each position's split and weight
+ * are public and its owner is not. The stream weighs positions per
+ * validator: each validator's positions are one weighted voter with an
+ * absolute weight per option (allocation.validatorVoter), shown in "By
+ * validator". The rest is
  * validators' transparent self-bond, which an operator can still direct here
  * with Keplr. The assembly (one human, one vote) can strike an option; its
  * open removal ballots are listed at the bottom.
+ *
+ * Every split is leased: it counts until split_expires_at (a position's) or
+ * expires_at (an operator's), a year after it was cast or last renewed by
+ * default, and then the chain clears it. Owners renew by casting again; the
+ * wallets remind them, and nothing renews automatically.
  */
 const GroundworksFund = () => {
   const { address } = useWallet();
   const { showLoading, hideLoading } = useLoading();
-  const { isModalOpen, animationState, error: txError, execute, closeModal } = useTransaction();
+  const { isModalOpen, animationState, error: txError, txHash, execute, closeModal } = useTransaction();
   const [view, setView] = useState(undefined);
   const [positions, setPositions] = useState(undefined);
   const [ballots, setBallots] = useState(undefined);
   const [monikers, setMonikers] = useState({});
+  const [voters, setVoters] = useState(undefined);
 
   const load = useCallback(async () => {
     showLoading();
@@ -50,6 +63,10 @@ const GroundworksFund = () => {
       ]);
       setView(v);
       setPositions(p);
+      // One weighted voter per validator with positions: what the stream
+      // actually counts.
+      const withPositions = [...new Set((p ?? []).map((x) => x.validator))];
+      setVoters(p ? await allocation.validatorVoters(withPositions) : null);
       setBallots(b);
       setMonikers(
         Object.fromEntries((vals?.validators ?? []).map((x) => [x.operator, x.moniker])),
@@ -74,12 +91,26 @@ const GroundworksFund = () => {
     const o = (options ?? []).find((x) => x.id === id);
     return o ? `#${id} ${o.description}` : `#${id}`;
   };
-  const positionWeight = (positions ?? []).reduce((s, p) => s + Number(p.weight), 0);
-  const totalWeight = Number(view?.totalWeight ?? 0);
+  // The stream counts each validator's voter, not the positions one by one.
+  const positionWeight = sumBig(Object.values(voters ?? {}).map((v) => v?.weight));
+  const totalWeight = toBigInt(view?.totalWeight);
+  const streamEpoch = Number(view?.epoch ?? 0);
+  // A split cast before a Groundworks reset no longer counts (weight 0) until
+  // its owner votes again.
+  const lapsed = (p) => p.splits.length > 0 && p.splitEpoch < streamEpoch;
+  const byValidator = Object.entries(
+    (positions ?? []).reduce((acc, p) => {
+      const a = (acc[p.validator] ??= { count: 0, derth: 0n });
+      a.count += 1;
+      a.derth += toBigInt(p.derth);
+      return acc;
+    }, {}),
+  ).map(([validator, a]) => ({ validator, ...a, voter: voters?.[validator] ?? null }))
+    .sort((x, y) => byBigDesc(x.voter?.weight, y.voter?.weight));
 
   return (
     <div className={styles.page}>
-      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} />
+      <StatusModal isOpen={isModalOpen} onClose={closeModal} animationState={animationState} error={txError} txHash={txHash} />
 
       <div className={styles.statsRow}>
         <div className={styles.stat}>
@@ -93,8 +124,8 @@ const GroundworksFund = () => {
         <div className={styles.stat}>
           <span className={styles.statLabel}>From positions</span>
           <span className={styles.statValue}>
-            {positions && totalWeight > 0
-              ? `${Math.min(100, (positionWeight / totalWeight) * 100).toFixed(1)}%`
+            {positions && voters && totalWeight > 0n
+              ? `${percentString(positionWeight > totalWeight ? totalWeight : positionWeight, totalWeight)}%`
               : "—"}
           </span>
         </div>
@@ -103,7 +134,8 @@ const GroundworksFund = () => {
       <MobileCta title="Direct Groundworks with a position in the Earth Wallet app">
         Lock privately staked ERTH into a position and split it across these options. The split
         and its weight are public; who owns it is not. The position keeps earning staking rewards
-        while it votes.
+        while it votes. A split lasts one year from when it is cast or renewed; the app reminds you
+        before it expires, and you renew it by voting again.
       </MobileCta>
 
       <div className={page.chart}>
@@ -111,13 +143,70 @@ const GroundworksFund = () => {
           title="Groundworks Fund"
           stream={allocation.STREAM_GROUNDWORKS}
           options={options}
+          streamEpoch={streamEpoch}
           onChanged={load}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
         />
       </div>
 
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>Options</h3>
-        <AllocationOptionsTable options={options} address={address} onClaim={claim} />
+        <AllocationOptionsTable
+          options={options}
+          address={address}
+          onClaim={claim}
+          totalWeight={view?.totalWeight}
+          partial={Boolean(view?.partial)}
+        />
+      </div>
+
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>By validator</h3>
+        <p className={styles.muted}>
+          The stream weighs positions per validator: all of a validator&apos;s positions are one
+          voter, with weight on each option = its epoch rate × Σ(derth × percent) / 100. Positions at a
+          jailed or unbonded validator keep their weight until their splits&apos; leases end.
+        </p>
+        {positions === undefined || voters === undefined ? (
+          <div className={styles.empty}>Loading…</div>
+        ) : positions === null || voters === null ? (
+          <div className={styles.empty}>Could not load positions.</div>
+        ) : byValidator.length ? (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Validator</th>
+                <th>Positions</th>
+                <th>Weight</th>
+                <th>Per option</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byValidator.map((r) => (
+                <tr key={r.validator}>
+                  <td className={styles.mono}>{monikers[r.validator] || short(r.validator, 14, 6)}</td>
+                  <td>
+                    {r.count.toLocaleString()}
+                    <div className={styles.muted}>{formatMacro(r.derth, UERTH)} derth</div>
+                  </td>
+                  <td>{r.voter ? erth(r.voter.weight) : "—"}</td>
+                  <td>
+                    {r.voter?.optionWeights.length
+                      ? r.voter.optionWeights.map((w) => (
+                          <div key={w.optionId}>
+                            {erth(w.weight)} {optionName(w.optionId)}
+                          </div>
+                        ))
+                      : <span className={styles.muted}>No live split</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className={styles.empty}>No positions yet.</div>
+        )}
       </div>
 
       <div className={styles.card}>
@@ -134,6 +223,7 @@ const GroundworksFund = () => {
                 <th>Validator</th>
                 <th>Weight</th>
                 <th>Split</th>
+                <th>Lease ends</th>
               </tr>
             </thead>
             <tbody>
@@ -142,8 +232,12 @@ const GroundworksFund = () => {
                   <td>{p.id}</td>
                   <td className={styles.mono}>{monikers[p.validator] || short(p.validator, 14, 6)}</td>
                   <td>
+                    {/* Filled in by the query: derth x epoch rate while the split is live. */}
                     {erth(p.weight)}
-                    <div className={styles.muted}>{toMacro(p.derth, UERTH).toLocaleString()} derth</div>
+                    <div className={styles.muted}>{formatMacro(p.derth, UERTH)} derth</div>
+                    {lapsed(p) && (
+                      <div className={styles.muted}>Lapsed at a reset; the owner votes again in the app</div>
+                    )}
                   </td>
                   <td>
                     {p.splits.length
@@ -153,6 +247,20 @@ const GroundworksFund = () => {
                           </div>
                         ))
                       : <span className={styles.muted}>Unallocated</span>}
+                  </td>
+                  <td>
+                    {p.splitExpiresAt ? (
+                      <>
+                        {day(p.splitExpiresAt)}
+                        {p.splitExpiresAt - Date.now() / 1000 <= RENEW_WARNING_SECONDS && (
+                          <div className={styles.muted}>
+                            {p.splitExpiresAt <= Date.now() / 1000 ? "Lapsed; cleared at the next block" : "Due for renewal"}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -56,6 +56,24 @@ export interface Registration {
    * from. Public in MsgRegister already; kept so genesis can rebuild the tree.
    */
   idc: Uint8Array;
+  /**
+   * predecessor_at is the time of the switch or re-entry that created this
+   * registration's leaf (unix seconds), 0 for a passport never registered
+   * before. The leaf commits to it, and a membership proof bounds it
+   * (max_predecessor): an identity that replaced another waits, per scope,
+   * until anything its predecessor could hold there has lapsed; a fresh one
+   * does not.
+   */
+  predecessorAt: number;
+  /**
+   * proof_date is the registration proof's current_date (unix seconds,
+   * midnight UTC). A switch must be proven on a strictly later date: a proof
+   * can then move a passport's registration forward only once per day (one
+   * holder cannot spend its signer's daily cap on switches), and a proof
+   * that reached a block but failed can never be replayed over a registration
+   * its holder made since.
+   */
+  proofDate: number;
 }
 
 /**
@@ -109,6 +127,50 @@ export interface Membership {
   nullifier: Uint8Array;
 }
 
+/**
+ * MoveProof is a move circuit proof (circuits/move, bb v5.0.0 UltraHonk): its
+ * prover knows the identity secrets of an identity and of the identity that
+ * succeeded it under the same passport (the chain's succession leaf
+ * H(TAG_SUCC, idc_old, idc_new) and the successor's live identity leaf are
+ * both in the tree at root), and old_nullifier and new_nullifier are the two
+ * identities' nullifiers in the scope the msg fixes. Public inputs, in order:
+ * root, scope, old_nullifier, new_nullifier, signal (the msg's sighash).
+ */
+export interface MoveProof {
+  proof: Uint8Array;
+  /** root is the identity-tree anchor the proof was made against. */
+  root: Uint8Array;
+  /**
+   * old_nullifier is H(TAG_SN, old_id_secret, scope): what holds the handle
+   * or split now.
+   */
+  oldNullifier: Uint8Array;
+  /**
+   * new_nullifier is H(TAG_SN, new_id_secret, scope): the successor that is
+   * to hold it.
+   */
+  newNullifier: Uint8Array;
+}
+
+/**
+ * Succession is a succession leaf of the identity tree: the passport whose
+ * last registration was to idc_old registered to idc_new.
+ */
+export interface Succession {
+  leafIndex: number;
+  idcOld: Uint8Array;
+  idcNew: Uint8Array;
+}
+
+/**
+ * PassportSeen is a passport ever registered and the identity commitment of
+ * its last registration (a later one appends a succession from it).
+ */
+export interface PassportSeen {
+  nullifier: Uint8Array;
+  lastIdc: Uint8Array;
+}
+
 /** ClaimNullifier records that the holder of nullifier claimed on day. */
 export interface ClaimNullifier {
   day: number;
@@ -125,14 +187,51 @@ export interface CaretakerVote {
 }
 
 /**
- * ReferrerBinding is a live referral address: registrations naming address
- * pay the referrer's half there until expires_at. Keyed by the binder's
- * referrer-scope nullifier, which says nothing about who bound it.
+ * Handle is a registered human's name in the public handle directory: the
+ * shielded address it resolves to, the handle's binding nullifier (scope
+ * "handle": one per human), and its lease. Live (it resolves) while
+ * expires_at is in the future; then, for handle_renewal_seconds, reserved to
+ * the same nullifier (only its owner may renew it; it does not resolve);
+ * then released (swept, free for anyone). A change to another handle or an
+ * explicit release frees it at once.
  */
-export interface ReferrerBinding {
+export interface Handle {
+  handle: string;
+  /**
+   * owner_pk (32 bytes, canonical BN254 scalar) and ek_pub (32 bytes,
+   * X25519): the shielded address (zk/privacy.ShieldedAddress).
+   */
+  ownerPk: Uint8Array;
+  ekPub: Uint8Array;
   nullifier: Uint8Array;
-  address: string;
   expiresAt: number;
+}
+
+/**
+ * UsedRegistrationBinding is a registration binding (the proof's address
+ * input: Poseidon2 of idc, the reward notes, their ciphertexts and the
+ * affiliate) that has been registered, refused for reuse until expires_at.
+ * A passport proof is public once it lands; without this record anyone could
+ * replay a holder's earlier registration (A -> B -> A) as a switch back to A
+ * while its current_date is still inside the skew. expires_at is the proof's
+ * current_date plus the largest skew governance may set (a year) plus a day,
+ * past which the date check refuses the proof anyway, whatever the skew.
+ */
+export interface UsedRegistrationBinding {
+  binding: Uint8Array;
+  expiresAt: number;
+}
+
+/**
+ * LeaseHold is the lease length (caretaker_vote_seconds) the activation bound
+ * of MsgSetCaretaker and MsgBindHandle keeps using until `until`, after
+ * governance lowered it: a lease cast under the old length runs that long,
+ * and a switched-to identity must not cast one beside its predecessor's.
+ * Zero when no hold is in force.
+ */
+export interface LeaseHold {
+  seconds: number;
+  until: number;
 }
 
 function createBaseRegistration(): Registration {
@@ -144,6 +243,8 @@ function createBaseRegistration(): Registration {
     dscKey: new Uint8Array(0),
     country: "",
     idc: new Uint8Array(0),
+    predecessorAt: 0,
+    proofDate: 0,
   };
 }
 
@@ -169,6 +270,12 @@ export const Registration: MessageFns<Registration> = {
     }
     if (message.idc.length !== 0) {
       writer.uint32(58).bytes(message.idc);
+    }
+    if (message.predecessorAt !== 0) {
+      writer.uint32(64).int64(message.predecessorAt);
+    }
+    if (message.proofDate !== 0) {
+      writer.uint32(72).int64(message.proofDate);
     }
     return writer;
   },
@@ -242,6 +349,22 @@ export const Registration: MessageFns<Registration> = {
             message.idc = reader.bytes();
             continue;
           }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.predecessorAt = longToNumber(reader.int64());
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.proofDate = longToNumber(reader.int64());
+            continue;
+          }
         }
         if ((tag & 7) === 4 || tag === 0) {
           break;
@@ -279,6 +402,16 @@ export const Registration: MessageFns<Registration> = {
         : new Uint8Array(0),
       country: isSet(object.country) ? globalThis.String(object.country) : "",
       idc: isSet(object.idc) ? bytesFromBase64(object.idc) : new Uint8Array(0),
+      predecessorAt: isSet(object.predecessorAt)
+        ? globalThis.Number(object.predecessorAt)
+        : isSet(object.predecessor_at)
+        ? globalThis.Number(object.predecessor_at)
+        : 0,
+      proofDate: isSet(object.proofDate)
+        ? globalThis.Number(object.proofDate)
+        : isSet(object.proof_date)
+        ? globalThis.Number(object.proof_date)
+        : 0,
     };
   },
 
@@ -305,6 +438,12 @@ export const Registration: MessageFns<Registration> = {
     if (message.idc.length !== 0) {
       obj.idc = base64FromBytes(message.idc);
     }
+    if (message.predecessorAt !== 0) {
+      obj.predecessorAt = Math.round(message.predecessorAt);
+    }
+    if (message.proofDate !== 0) {
+      obj.proofDate = Math.round(message.proofDate);
+    }
     return obj;
   },
 
@@ -320,6 +459,8 @@ export const Registration: MessageFns<Registration> = {
     message.dscKey = object.dscKey ?? new Uint8Array(0);
     message.country = object.country ?? "";
     message.idc = object.idc ?? new Uint8Array(0);
+    message.predecessorAt = object.predecessorAt ?? 0;
+    message.proofDate = object.proofDate ?? 0;
     return message;
   },
 };
@@ -651,6 +792,338 @@ export const Membership: MessageFns<Membership> = {
   },
 };
 
+function createBaseMoveProof(): MoveProof {
+  return {
+    proof: new Uint8Array(0),
+    root: new Uint8Array(0),
+    oldNullifier: new Uint8Array(0),
+    newNullifier: new Uint8Array(0),
+  };
+}
+
+export const MoveProof: MessageFns<MoveProof> = {
+  encode(message: MoveProof, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.proof.length !== 0) {
+      writer.uint32(10).bytes(message.proof);
+    }
+    if (message.root.length !== 0) {
+      writer.uint32(18).bytes(message.root);
+    }
+    if (message.oldNullifier.length !== 0) {
+      writer.uint32(26).bytes(message.oldNullifier);
+    }
+    if (message.newNullifier.length !== 0) {
+      writer.uint32(34).bytes(message.newNullifier);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MoveProof {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseMoveProof();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.proof = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.root = reader.bytes();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.oldNullifier = reader.bytes();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.newNullifier = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): MoveProof {
+    return {
+      proof: isSet(object.proof) ? bytesFromBase64(object.proof) : new Uint8Array(0),
+      root: isSet(object.root) ? bytesFromBase64(object.root) : new Uint8Array(0),
+      oldNullifier: isSet(object.oldNullifier)
+        ? bytesFromBase64(object.oldNullifier)
+        : isSet(object.old_nullifier)
+        ? bytesFromBase64(object.old_nullifier)
+        : new Uint8Array(0),
+      newNullifier: isSet(object.newNullifier)
+        ? bytesFromBase64(object.newNullifier)
+        : isSet(object.new_nullifier)
+        ? bytesFromBase64(object.new_nullifier)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: MoveProof): unknown {
+    const obj: any = {};
+    if (message.proof.length !== 0) {
+      obj.proof = base64FromBytes(message.proof);
+    }
+    if (message.root.length !== 0) {
+      obj.root = base64FromBytes(message.root);
+    }
+    if (message.oldNullifier.length !== 0) {
+      obj.oldNullifier = base64FromBytes(message.oldNullifier);
+    }
+    if (message.newNullifier.length !== 0) {
+      obj.newNullifier = base64FromBytes(message.newNullifier);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MoveProof>, I>>(base?: I): MoveProof {
+    return MoveProof.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MoveProof>, I>>(object: I): MoveProof {
+    const message = createBaseMoveProof();
+    message.proof = object.proof ?? new Uint8Array(0);
+    message.root = object.root ?? new Uint8Array(0);
+    message.oldNullifier = object.oldNullifier ?? new Uint8Array(0);
+    message.newNullifier = object.newNullifier ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseSuccession(): Succession {
+  return { leafIndex: 0, idcOld: new Uint8Array(0), idcNew: new Uint8Array(0) };
+}
+
+export const Succession: MessageFns<Succession> = {
+  encode(message: Succession, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.leafIndex !== 0) {
+      writer.uint32(8).uint64(message.leafIndex);
+    }
+    if (message.idcOld.length !== 0) {
+      writer.uint32(18).bytes(message.idcOld);
+    }
+    if (message.idcNew.length !== 0) {
+      writer.uint32(26).bytes(message.idcNew);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Succession {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseSuccession();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.leafIndex = longToNumber(reader.uint64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.idcOld = reader.bytes();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.idcNew = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): Succession {
+    return {
+      leafIndex: isSet(object.leafIndex)
+        ? globalThis.Number(object.leafIndex)
+        : isSet(object.leaf_index)
+        ? globalThis.Number(object.leaf_index)
+        : 0,
+      idcOld: isSet(object.idcOld)
+        ? bytesFromBase64(object.idcOld)
+        : isSet(object.idc_old)
+        ? bytesFromBase64(object.idc_old)
+        : new Uint8Array(0),
+      idcNew: isSet(object.idcNew)
+        ? bytesFromBase64(object.idcNew)
+        : isSet(object.idc_new)
+        ? bytesFromBase64(object.idc_new)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: Succession): unknown {
+    const obj: any = {};
+    if (message.leafIndex !== 0) {
+      obj.leafIndex = Math.round(message.leafIndex);
+    }
+    if (message.idcOld.length !== 0) {
+      obj.idcOld = base64FromBytes(message.idcOld);
+    }
+    if (message.idcNew.length !== 0) {
+      obj.idcNew = base64FromBytes(message.idcNew);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Succession>, I>>(base?: I): Succession {
+    return Succession.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Succession>, I>>(object: I): Succession {
+    const message = createBaseSuccession();
+    message.leafIndex = object.leafIndex ?? 0;
+    message.idcOld = object.idcOld ?? new Uint8Array(0);
+    message.idcNew = object.idcNew ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBasePassportSeen(): PassportSeen {
+  return { nullifier: new Uint8Array(0), lastIdc: new Uint8Array(0) };
+}
+
+export const PassportSeen: MessageFns<PassportSeen> = {
+  encode(message: PassportSeen, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.nullifier.length !== 0) {
+      writer.uint32(10).bytes(message.nullifier);
+    }
+    if (message.lastIdc.length !== 0) {
+      writer.uint32(18).bytes(message.lastIdc);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PassportSeen {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBasePassportSeen();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.nullifier = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.lastIdc = reader.bytes();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): PassportSeen {
+    return {
+      nullifier: isSet(object.nullifier) ? bytesFromBase64(object.nullifier) : new Uint8Array(0),
+      lastIdc: isSet(object.lastIdc)
+        ? bytesFromBase64(object.lastIdc)
+        : isSet(object.last_idc)
+        ? bytesFromBase64(object.last_idc)
+        : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: PassportSeen): unknown {
+    const obj: any = {};
+    if (message.nullifier.length !== 0) {
+      obj.nullifier = base64FromBytes(message.nullifier);
+    }
+    if (message.lastIdc.length !== 0) {
+      obj.lastIdc = base64FromBytes(message.lastIdc);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PassportSeen>, I>>(base?: I): PassportSeen {
+    return PassportSeen.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PassportSeen>, I>>(object: I): PassportSeen {
+    const message = createBasePassportSeen();
+    message.nullifier = object.nullifier ?? new Uint8Array(0);
+    message.lastIdc = object.lastIdc ?? new Uint8Array(0);
+    return message;
+  },
+};
+
 function createBaseClaimNullifier(): ClaimNullifier {
   return { day: 0, nullifier: new Uint8Array(0) };
 }
@@ -825,25 +1298,37 @@ export const CaretakerVote: MessageFns<CaretakerVote> = {
   },
 };
 
-function createBaseReferrerBinding(): ReferrerBinding {
-  return { nullifier: new Uint8Array(0), address: "", expiresAt: 0 };
+function createBaseHandle(): Handle {
+  return {
+    handle: "",
+    ownerPk: new Uint8Array(0),
+    ekPub: new Uint8Array(0),
+    nullifier: new Uint8Array(0),
+    expiresAt: 0,
+  };
 }
 
-export const ReferrerBinding: MessageFns<ReferrerBinding> = {
-  encode(message: ReferrerBinding, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.nullifier.length !== 0) {
-      writer.uint32(10).bytes(message.nullifier);
+export const Handle: MessageFns<Handle> = {
+  encode(message: Handle, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.handle !== "") {
+      writer.uint32(10).string(message.handle);
     }
-    if (message.address !== "") {
-      writer.uint32(18).string(message.address);
+    if (message.ownerPk.length !== 0) {
+      writer.uint32(18).bytes(message.ownerPk);
+    }
+    if (message.ekPub.length !== 0) {
+      writer.uint32(26).bytes(message.ekPub);
+    }
+    if (message.nullifier.length !== 0) {
+      writer.uint32(34).bytes(message.nullifier);
     }
     if (message.expiresAt !== 0) {
-      writer.uint32(24).int64(message.expiresAt);
+      writer.uint32(40).int64(message.expiresAt);
     }
     return writer;
   },
 
-  decode(input: BinaryReader | Uint8Array, length?: number): ReferrerBinding {
+  decode(input: BinaryReader | Uint8Array, length?: number): Handle {
     const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
     const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
     if (previousRecursionDepth >= 100) {
@@ -852,7 +1337,7 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
     (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
     try {
       const end = length === undefined ? reader.len : reader.pos + length;
-      const message = createBaseReferrerBinding();
+      const message = createBaseHandle();
       while (reader.pos < end) {
         const tag = reader.uint32();
         switch (tag >>> 3) {
@@ -861,7 +1346,7 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
               break;
             }
 
-            message.nullifier = reader.bytes();
+            message.handle = reader.string();
             continue;
           }
           case 2: {
@@ -869,11 +1354,27 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
               break;
             }
 
-            message.address = reader.string();
+            message.ownerPk = reader.bytes();
             continue;
           }
           case 3: {
-            if (tag !== 24) {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.ekPub = reader.bytes();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.nullifier = reader.bytes();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
               break;
             }
 
@@ -892,10 +1393,20 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
     }
   },
 
-  fromJSON(object: any): ReferrerBinding {
+  fromJSON(object: any): Handle {
     return {
+      handle: isSet(object.handle) ? globalThis.String(object.handle) : "",
+      ownerPk: isSet(object.ownerPk)
+        ? bytesFromBase64(object.ownerPk)
+        : isSet(object.owner_pk)
+        ? bytesFromBase64(object.owner_pk)
+        : new Uint8Array(0),
+      ekPub: isSet(object.ekPub)
+        ? bytesFromBase64(object.ekPub)
+        : isSet(object.ek_pub)
+        ? bytesFromBase64(object.ek_pub)
+        : new Uint8Array(0),
       nullifier: isSet(object.nullifier) ? bytesFromBase64(object.nullifier) : new Uint8Array(0),
-      address: isSet(object.address) ? globalThis.String(object.address) : "",
       expiresAt: isSet(object.expiresAt)
         ? globalThis.Number(object.expiresAt)
         : isSet(object.expires_at)
@@ -904,13 +1415,19 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
     };
   },
 
-  toJSON(message: ReferrerBinding): unknown {
+  toJSON(message: Handle): unknown {
     const obj: any = {};
+    if (message.handle !== "") {
+      obj.handle = message.handle;
+    }
+    if (message.ownerPk.length !== 0) {
+      obj.ownerPk = base64FromBytes(message.ownerPk);
+    }
+    if (message.ekPub.length !== 0) {
+      obj.ekPub = base64FromBytes(message.ekPub);
+    }
     if (message.nullifier.length !== 0) {
       obj.nullifier = base64FromBytes(message.nullifier);
-    }
-    if (message.address !== "") {
-      obj.address = message.address;
     }
     if (message.expiresAt !== 0) {
       obj.expiresAt = Math.round(message.expiresAt);
@@ -918,14 +1435,190 @@ export const ReferrerBinding: MessageFns<ReferrerBinding> = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<ReferrerBinding>, I>>(base?: I): ReferrerBinding {
-    return ReferrerBinding.fromPartial(base ?? ({} as any));
+  create<I extends Exact<DeepPartial<Handle>, I>>(base?: I): Handle {
+    return Handle.fromPartial(base ?? ({} as any));
   },
-  fromPartial<I extends Exact<DeepPartial<ReferrerBinding>, I>>(object: I): ReferrerBinding {
-    const message = createBaseReferrerBinding();
+  fromPartial<I extends Exact<DeepPartial<Handle>, I>>(object: I): Handle {
+    const message = createBaseHandle();
+    message.handle = object.handle ?? "";
+    message.ownerPk = object.ownerPk ?? new Uint8Array(0);
+    message.ekPub = object.ekPub ?? new Uint8Array(0);
     message.nullifier = object.nullifier ?? new Uint8Array(0);
-    message.address = object.address ?? "";
     message.expiresAt = object.expiresAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseUsedRegistrationBinding(): UsedRegistrationBinding {
+  return { binding: new Uint8Array(0), expiresAt: 0 };
+}
+
+export const UsedRegistrationBinding: MessageFns<UsedRegistrationBinding> = {
+  encode(message: UsedRegistrationBinding, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.binding.length !== 0) {
+      writer.uint32(10).bytes(message.binding);
+    }
+    if (message.expiresAt !== 0) {
+      writer.uint32(16).int64(message.expiresAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UsedRegistrationBinding {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseUsedRegistrationBinding();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.binding = reader.bytes();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.expiresAt = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): UsedRegistrationBinding {
+    return {
+      binding: isSet(object.binding) ? bytesFromBase64(object.binding) : new Uint8Array(0),
+      expiresAt: isSet(object.expiresAt)
+        ? globalThis.Number(object.expiresAt)
+        : isSet(object.expires_at)
+        ? globalThis.Number(object.expires_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: UsedRegistrationBinding): unknown {
+    const obj: any = {};
+    if (message.binding.length !== 0) {
+      obj.binding = base64FromBytes(message.binding);
+    }
+    if (message.expiresAt !== 0) {
+      obj.expiresAt = Math.round(message.expiresAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UsedRegistrationBinding>, I>>(base?: I): UsedRegistrationBinding {
+    return UsedRegistrationBinding.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UsedRegistrationBinding>, I>>(object: I): UsedRegistrationBinding {
+    const message = createBaseUsedRegistrationBinding();
+    message.binding = object.binding ?? new Uint8Array(0);
+    message.expiresAt = object.expiresAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseLeaseHold(): LeaseHold {
+  return { seconds: 0, until: 0 };
+}
+
+export const LeaseHold: MessageFns<LeaseHold> = {
+  encode(message: LeaseHold, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.seconds !== 0) {
+      writer.uint32(8).int64(message.seconds);
+    }
+    if (message.until !== 0) {
+      writer.uint32(16).int64(message.until);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LeaseHold {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLeaseHold();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.seconds = longToNumber(reader.int64());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.until = longToNumber(reader.int64());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): LeaseHold {
+    return {
+      seconds: isSet(object.seconds) ? globalThis.Number(object.seconds) : 0,
+      until: isSet(object.until) ? globalThis.Number(object.until) : 0,
+    };
+  },
+
+  toJSON(message: LeaseHold): unknown {
+    const obj: any = {};
+    if (message.seconds !== 0) {
+      obj.seconds = Math.round(message.seconds);
+    }
+    if (message.until !== 0) {
+      obj.until = Math.round(message.until);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LeaseHold>, I>>(base?: I): LeaseHold {
+    return LeaseHold.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LeaseHold>, I>>(object: I): LeaseHold {
+    const message = createBaseLeaseHold();
+    message.seconds = object.seconds ?? 0;
+    message.until = object.until ?? 0;
     return message;
   },
 };

@@ -17,16 +17,28 @@ export interface Params {
    */
   epochSeconds: number;
   /**
-   * min_position is the smallest derth a Groundworks position may lock. Every
-   * position is re-weighed at every epoch end, so this bounds that work.
+   * min_position is the smallest derth a Groundworks position may lock.
+   * Positions are weighed per validator (one Groundworks voter each), so no
+   * epoch work grows with their number; this only keeps dust out.
    */
   minPosition: string;
-  /** max_positions caps how many positions exist at once, for the same reason. */
-  maxPositions: number;
+  /**
+   * stake_root_window_seconds is how long a superseded stake-tree root stays
+   * an anchor (the latest never expires; a vote's snapshot root is accepted
+   * for its proposal).
+   */
+  stakeRootWindowSeconds: number;
+  /**
+   * min_delegation is the smallest private delegation, in uerth, and the
+   * least derth one may credit. It keeps validator books from being created
+   * for dust (every book is processed at epoch end) and bounds the rounding
+   * a donation to the validator's rewards pool can inflict on a delegator.
+   */
+  minDelegation: string;
 }
 
 function createBaseParams(): Params {
-  return { epochSeconds: 0, minPosition: "", maxPositions: 0 };
+  return { epochSeconds: 0, minPosition: "", stakeRootWindowSeconds: 0, minDelegation: "" };
 }
 
 export const Params: MessageFns<Params> = {
@@ -37,8 +49,11 @@ export const Params: MessageFns<Params> = {
     if (message.minPosition !== "") {
       writer.uint32(18).string(message.minPosition);
     }
-    if (message.maxPositions !== 0) {
-      writer.uint32(24).uint64(message.maxPositions);
+    if (message.stakeRootWindowSeconds !== 0) {
+      writer.uint32(32).uint64(message.stakeRootWindowSeconds);
+    }
+    if (message.minDelegation !== "") {
+      writer.uint32(42).string(message.minDelegation);
     }
     return writer;
   },
@@ -72,12 +87,20 @@ export const Params: MessageFns<Params> = {
             message.minPosition = reader.string();
             continue;
           }
-          case 3: {
-            if (tag !== 24) {
+          case 4: {
+            if (tag !== 32) {
               break;
             }
 
-            message.maxPositions = longToNumber(reader.uint64());
+            message.stakeRootWindowSeconds = longToNumber(reader.uint64());
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.minDelegation = reader.string();
             continue;
           }
         }
@@ -104,11 +127,16 @@ export const Params: MessageFns<Params> = {
         : isSet(object.min_position)
         ? globalThis.String(object.min_position)
         : "",
-      maxPositions: isSet(object.maxPositions)
-        ? globalThis.Number(object.maxPositions)
-        : isSet(object.max_positions)
-        ? globalThis.Number(object.max_positions)
+      stakeRootWindowSeconds: isSet(object.stakeRootWindowSeconds)
+        ? globalThis.Number(object.stakeRootWindowSeconds)
+        : isSet(object.stake_root_window_seconds)
+        ? globalThis.Number(object.stake_root_window_seconds)
         : 0,
+      minDelegation: isSet(object.minDelegation)
+        ? globalThis.String(object.minDelegation)
+        : isSet(object.min_delegation)
+        ? globalThis.String(object.min_delegation)
+        : "",
     };
   },
 
@@ -120,8 +148,11 @@ export const Params: MessageFns<Params> = {
     if (message.minPosition !== "") {
       obj.minPosition = message.minPosition;
     }
-    if (message.maxPositions !== 0) {
-      obj.maxPositions = Math.round(message.maxPositions);
+    if (message.stakeRootWindowSeconds !== 0) {
+      obj.stakeRootWindowSeconds = Math.round(message.stakeRootWindowSeconds);
+    }
+    if (message.minDelegation !== "") {
+      obj.minDelegation = message.minDelegation;
     }
     return obj;
   },
@@ -133,7 +164,8 @@ export const Params: MessageFns<Params> = {
     const message = createBaseParams();
     message.epochSeconds = object.epochSeconds ?? 0;
     message.minPosition = object.minPosition ?? "";
-    message.maxPositions = object.maxPositions ?? 0;
+    message.stakeRootWindowSeconds = object.stakeRootWindowSeconds ?? 0;
+    message.minDelegation = object.minDelegation ?? "";
     return message;
   },
 };
