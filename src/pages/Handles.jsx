@@ -93,8 +93,11 @@ const Handles = () => {
         own identities can follow yours. After you switch identity or renew your registration (which
         uses your wallet&apos;s next identity, from the same recovery phrase), the app can move the
         handle to your new identity, and only there. Within one wallet the phrase is enough; from
-        another wallet, both must be on the phone. The app suggests a random time to move and never
-        moves on its own. Without a move (or if the old phrase is lost), the old identity&apos;s
+        another wallet, both must be on the phone. Move before the handle&apos;s lease ends: only a
+        live handle moves, and the old identity can no longer renew it. The app suggests a random
+        time to move, at least 3 days before that, and never moves on its own. So renew your handle
+        before your registration&apos;s year ends, and before you switch if its lease ends soon.
+        Without a move (or if the old phrase is lost), the old identity&apos;s
         handle keeps resolving, unchangeable, until its lease ends. Renew it while it is live: in
         its renewal period it cannot be moved, and renewing it then counts as a new claim, which a
         passport that replaced another (a switch or renewal) cannot make until its

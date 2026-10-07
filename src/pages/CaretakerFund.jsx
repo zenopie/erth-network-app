@@ -95,8 +95,11 @@ const CaretakerFund = () => {
         your own identities can follow yours. After you switch identity or renew your registration
         (which uses your wallet&apos;s next identity, from the same recovery phrase), the app can
         move the split to your new identity, and only there. Within one wallet the phrase is
-        enough; from another wallet, both must be on the phone. The app suggests a random time to
-        move and never moves on its own. Without a move (or if the old phrase is lost), the old
+        enough; from another wallet, both must be on the phone. Move before the split&apos;s lease
+        ends: only a live split moves, and the old identity can no longer renew it. The app suggests
+        a random time to move, at least 3 days before that, and never moves on its own. So renew
+        your split before your registration&apos;s year ends, and before you switch if its lease
+        ends soon. Without a move (or if the old phrase is lost), the old
         identity&apos;s split keeps counting, unchangeable, until it lapses, and casting again is a
         new split: a passport that replaced another (a switch or renewal) waits until anything its
         predecessor cast could have lapsed
