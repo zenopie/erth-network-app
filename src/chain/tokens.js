@@ -7,7 +7,7 @@ import { UANML, UERTH } from "./config";
 export const TOKENS = {
   [UERTH]: { symbol: "ERTH", decimals: 6, logo: "/images/coin/ERTH.png" },
   [UANML]: { symbol: "ANML", decimals: 6, logo: "/images/coin/ANML.png" },
-  // No bare uusdc / uatom: nothing on earth-1 mints them, and a future native
+  // No bare uusdc / uatom: nothing on the chain mints them, and a future native
   // denom of that name would be labelled USDC / ATOM without being either.
   // IBC assets arrive as ibc/<hash>; add each one here, pinned by its hash,
   // with its decimals, once its channel exists (until then the auction page

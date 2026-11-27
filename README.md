@@ -147,7 +147,6 @@ on connect.
 | `VITE_EARTH_LCD` | LCD endpoint. | `https://lcd.erth.network` |
 | `VITE_EARTH_RPC` | CometBFT RPC (Keplr registration, the explorer's block ranges). | `https://rpc.erth.network` |
 | `VITE_EARTH_API` | Privacy backend, for the handle directory stream; `""` reads the chain's pages only. | `https://api.erth.network` |
-| `VITE_EARTH_CHAIN_ID` | Chain id. | `earth-1` |
 | `VITE_MOBILE_APP_URL` | Where "Get the app" links point. | `https://erth.network` |
 
 The image is built without `VITE_` variables, so the defaults are what ships.
