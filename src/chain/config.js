@@ -17,7 +17,8 @@ export const EARTH_LCD_URL = isDev
   ? "/lcd"
   : (import.meta.env.VITE_EARTH_LCD ?? "https://lcd.erth.network");
 
-export const EARTH_CHAIN_ID = import.meta.env.VITE_EARTH_CHAIN_ID ?? "earth-1";
+// The chain id: this repo's one copy, not a build setting.
+export const EARTH_CHAIN_ID = "earth-2";
 
 // CometBFT RPC. Keplr wants it, and the explorer uses it for the one read the
 // LCD has no equivalent for: a range of blocks in a single request. In dev,
